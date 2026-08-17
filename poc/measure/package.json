@@ -10,7 +10,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "measure:warm": "node scripts/measure.ts warm",
-    "measure:cold": "node scripts/measure.ts cold"
+    "measure:cold": "node scripts/measure.ts cold",
+    "measure:concurrency": "node scripts/concurrency.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",

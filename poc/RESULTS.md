@@ -53,6 +53,28 @@ Query sederhana warm: **p50 ≈ 190 ms** (didominasi RTT lintas-region Vercel-ia
 
 **Kesimpulan sementara (final di 0.2.4):** Turso layak lanjut secara arsitektur (latensi query basis rendah bila co-located; provisioning & concurrency diverifikasi di 0.2.2/0.2.3). Region/plan DB dan strategi cold start menjadi pertimbangan keputusan GO/NO-GO.
 
+---
+
+# POC RESULTS — Concurrent write & BEGIN IMMEDIATE (0.2.3)
+
+> Diukur 2026-08-18 terhadap Turso `poc-latency` (aws-ap-south-1) via `@libsql/client` 0.17.4 HTTP (hrana), 20 worker konkuren, satu baris counter (`value` + `version`). Skrip: `poc/measure/scripts/concurrency.ts`; raw: `poc/results-concurrency.jsonl`.
+
+## Hasil
+
+| Skenario | final | expected | lost updates | konflik/busy | catatan |
+|---|---|---|---|---|---|
+| Naive (tanpa tx, read-modify-write) | **1** | 20 | **19** | — | semua worker baca 0 lalu tulis 1 → hilang 19 update |
+| `transaction("write")` + retry | **20** | 20 | 0 | busy 0 (run ini) | kunci tulis diambil saat BEGIN; retry menangani SQLITE_BUSY |
+| Optimistic locking (version check + retry) | **20** | 20 | 0 | **177 konflik** terdeteksi | tidak ada overwrite diam-diam; konflik di-retry |
+
+## Temuan
+
+1. **`BEGIN IMMEDIATE` via `@libsql/client` HTTP = `transaction("write")`.** String mode `"immediate"` TIDAK didukung driver 0.17.4 (RangeError: hanya `"write" | "read" | "deferred"`); `"write"` mengakuisisi write lock saat BEGIN — setara `BEGIN IMMEDIATE` (A.6). Implementasi transaksi produksi MUST memakai mode `"write"`.
+2. **SQLITE_BUSY di bawah kontensi.** `BEGIN` saat write lock dipegang tx lain → `SQLITE_BUSY` segera (tanpa menunggu), pada beberapa run teramati error ini. Mitigasi yang berlaku: **retry loop** pada `SQLITE_BUSY` (terbukti: 20/20 sukses).
+3. **`PRAGMA busy_timeout` DILARANG di protokol hrana/HTTP Turso** (`SQL not allowed statement: PRAGMA busy_timeout`). Jadi busy-wait SQLite klasik tidak tersedia pada jalur HTTP — retry application-level adalah satu-satunya opsi (untuk libSQL lokal/native PRAGMA berlaku normal).
+4. **Tanpa transaksi: lost updates masif** (19/20) — menguatkan kewajiban INV #6/#7 dan pola A.6 (mutation + activity atomik dalam satu tx `"write"`).
+5. Durasi 20 worker serialized ≈ 4–5 s (roundtrip HTTP per tx; Turso remote). Catatan: naive run teramati sangat lambat (103 s) — dugaan retry/backoff driver pada error — tidak memengaruhi kesimpulan.
+
 ## Reproduksi
 
 1. `turso db create poc-latency` → `TURSO_DB_URL`/`TURSO_DB_TOKEN` (`.env`; vercel env add production).
