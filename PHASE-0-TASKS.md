@@ -105,7 +105,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.5.1 | 🔎 | [CL-16](#cl-16) | 80 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.5.2 | 🔎 | [CL-17](#cl-17) | 80 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
-| 0.5.3 | ⬜️ | — | 0 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
+| 0.5.3 | 🔎 | [CL-18](#cl-18) | 80 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
 
 **Test:** Migrasi diterapkan ke Project DB test; `project_state` tepat satu dan memiliki `version` + timestamp lifecycle; junction punya `removed_at`.
 **DoD:** Schema sesuai B.3; `project_state` menjadi sumber lifecycle Project; migrasi Project applicable terprogram (fondasi fan-out F.3).
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-18"></a>
+### CL-18 — 2026-08-18 · 0.5.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-migrate-programmatic`: `applyGlobalMigrations` + `applyProjectMigrations` (src/database/migrate.ts) menerapkan ke DB baru terprogram (journal global 1, 10 tabel project terpasang, junction punya `removed_at`), apply ulang idempotent; typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** Fungsi ini fondasi fan-out F.3 — dipakai 0.6.1 (provisioning seed atomik) & 0.12.2 (deploy). Penerapan di DB Turso nyata terjadi di 0.6.1/0.12.2. Tidak ada perubahan SOT.
 
 <a id="cl-17"></a>
 ### CL-17 — 2026-08-18 · 0.5.2 🔄 → 🔎
