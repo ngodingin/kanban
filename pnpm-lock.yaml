@@ -50,6 +50,26 @@ importers:
         specifier: 6.0.2
         version: 6.0.2
 
+  apps/web: {}
+
+  packages/contracts:
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+
+  packages/domain:
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+
   packages/infrastructure:
     dependencies:
       '@libsql/client':
@@ -58,6 +78,15 @@ importers:
       zod:
         specifier: 4.4.3
         version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: 24.13.3
+        version: 24.13.3
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
+
+  packages/shared:
     devDependencies:
       '@types/node':
         specifier: 24.13.3

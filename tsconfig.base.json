@@ -14,6 +14,8 @@
     "noImplicitOverride": true,
     "noFallthroughCasesInSwitch": true,
     "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "sourceMap": true
   }
 }

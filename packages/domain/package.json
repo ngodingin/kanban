@@ -1,0 +1,17 @@
+{
+  "name": "@kanban/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "6.0.2"
+  }
+}

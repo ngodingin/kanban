@@ -50,7 +50,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.1.1 | 🔎 | [CL-01](#cl-01) | 80 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
-| 0.1.2 | ⬜️ | — | 0 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | ⬜️ | — | 0 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
 
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-09"></a>
+### CL-09 — 2026-08-18 · 0.1.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** Struktur A.7 terverifikasi: `apps/api` (ada) + `apps/web` (placeholder package.json + README Phase 7) + `packages/domain`, `contracts`, `shared` (package/tsconfig/src placeholder) + `infrastructure/src/database/` (di-rename dari `src/db/` sesuai A.7, smoke tetap hijau). `pnpm -r build` & `pnpm -r typecheck` 0 error; `pnpm lint` exit 0; `pnpm --filter @kanban/infrastructure test:smoke` lulus.
+**Catatan:** `tsconfig.base.json` ditambah `allowImportingTsExtensions` + `rewriteRelativeImportExtensions` (import `.ts` untuk node native type-stripping, tsc menulis ulang `.js` saat emit). `apps/web` tanpa deps Vite/React sesuai A.8 (UI Phase 7). Tidak ada perubahan SOT.
 
 <a id="cl-08"></a>
 ### CL-08 — 2026-08-18 · 0.3.1 🔄 → 🔎

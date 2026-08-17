@@ -1,4 +1,4 @@
-import { createGlobalClient, createProjectClient, parseGlobalDbEnv } from "../src/db/factory.ts";
+import { createGlobalClient, createProjectClient, parseGlobalDbEnv } from "../src/database/factory.ts";
 
 const dbUrl = process.env.TURSO_DB_URL;
 const dbToken = process.env.TURSO_DB_TOKEN;
