@@ -77,7 +77,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.3.1 | ⬜️ | — | 0 | P0 | Factory koneksi libSQL/Drizzle (pisah Global client vs Project client dinamis) | [03-ENG A.4](docs/03-ENGINEERING.md), [A.5](docs/03-ENGINEERING.md) | 0.1.3 |
+| 0.3.1 | 🔎 | [CL-08](#cl-08) | 80 | P0 | Factory koneksi libSQL/Drizzle (pisah Global client vs Project client dinamis) | [03-ENG A.4](docs/03-ENGINEERING.md), [A.5](docs/03-ENGINEERING.md) | 0.1.3 |
 | 0.3.2 | ⬜️ | — | 0 | P0 | Resolver `project_id → database` via tabel `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.3.3 | ⬜️ | — | 0 | P0 | Guard: `project_id` tak dikenal tidak pernah jatuh ke DB Project lain | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2 |
 
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-08"></a>
+### CL-08 — 2026-08-18 · 0.3.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke`: 3 negatif (env tidak lengkap / url non-libsql / token kosong → throw) + 2 positif (Global & Project client → `SELECT 1` ok, Turso remote nyata); typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** Factory di `packages/infrastructure/src/db/factory.ts` (paket baru, dep: @libsql/client 0.17.4 + zod 4.4.3 exact): `createGlobalClient`/`parseGlobalDbEnv` (env `GLOBAL_DB_URL`/`GLOBAL_DB_TOKEN`) dan `createProjectClient({url, authToken})` — pemisahan Global vs Project per A.4; boundary infrastruktur berdiri (0.1.2 melengkapi sisa skeleton). Nama env `GLOBAL_DB_*` keputusan teknis Dev (belum di-SOT), mudah diganti. Node native type-stripping: import antar-TS wajib ekstensi `.ts`; `tsconfig.base.json` baru (types: node) — apps/api tidak tersentuh. Tidak ada perubahan SOT.
 
 <a id="cl-07"></a>
 ### CL-07 — 2026-08-18 · 0.2.4 🔄 → 🔎

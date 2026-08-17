@@ -34,10 +34,6 @@ type Database = {
   };
 };
 
-type DatabaseList = {
-  databases: { name: string; hostname: string; group: string }[];
-};
-
 type Organization = { name: string; slug: string };
 type Group = { name: string; locations: string[] };
 

@@ -1,0 +1,22 @@
+{
+  "name": "@kanban/infrastructure",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "node scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "0.17.4",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "typescript": "6.0.2"
+  }
+}
