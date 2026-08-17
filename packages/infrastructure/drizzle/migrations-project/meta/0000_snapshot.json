@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "c2ccda35-19c0-44dc-b08a-503afe27ec91",
+  "id": "b96b6283-4032-4ec6-bbcb-87e710dea7fc",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "activities": {
@@ -77,7 +77,12 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
-      "checkConstraints": {}
+      "checkConstraints": {
+        "activities_entity_type_check": {
+          "name": "activities_entity_type_check",
+          "value": "\"activities\".\"entity_type\" IN ('project', 'milestone', 'board', 'list', 'card')"
+        }
+      }
     },
     "board_labels": {
       "name": "board_labels",

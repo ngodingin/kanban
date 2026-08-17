@@ -6,7 +6,8 @@ CREATE TABLE `activities` (
 	`actor_user_id` text NOT NULL,
 	`action` text NOT NULL,
 	`data` text NOT NULL,
-	`created_at` text NOT NULL
+	`created_at` text NOT NULL,
+	CONSTRAINT "activities_entity_type_check" CHECK("activities"."entity_type" IN ('project', 'milestone', 'board', 'list', 'card'))
 );
 --> statement-breakpoint
 CREATE INDEX `activities_entity_idx` ON `activities` (`entity_type`,`entity_id`);--> statement-breakpoint

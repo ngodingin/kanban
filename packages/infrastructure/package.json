@@ -17,6 +17,7 @@
     "test:smoke-global-constraints": "node scripts/smoke-global-constraints.ts",
     "test:smoke-migration": "node scripts/smoke-migration.ts",
     "test:smoke-project-schema": "node scripts/smoke-project-schema.ts",
+    "test:smoke-project-behavior": "node scripts/smoke-project-behavior.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
   },

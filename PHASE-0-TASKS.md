@@ -104,7 +104,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.5.1 | 🔎 | [CL-16](#cl-16) | 80 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.5.2 | ⬜️ | — | 0 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
+| 0.5.2 | 🔎 | [CL-17](#cl-17) | 80 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
 | 0.5.3 | ⬜️ | — | 0 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
 
 **Test:** Migrasi diterapkan ke Project DB test; `project_state` tepat satu dan memiliki `version` + timestamp lifecycle; junction punya `removed_at`.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-17"></a>
+### CL-17 — 2026-08-18 · 0.5.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-project-behavior`: negatif duplikat junction aktif → partial UNIQUE; positif re-add setelah `removed_at` (riwayat append-only 2 baris); positif activities polymorphic + `data` JSON round-trip (B.5 `card.moved`); negatif `entity_type` di luar enum → CHECK ditolak; query polymorphic entity+id berfungsi; seluruh smoke global (16 tabel + constraints) tetap PASS; typecheck 0 error; lint exit 0.
+**Catatan:** Temuan: enum drizzle sqlite TIDAK emit CHECK di DDL → ditambahkan `check()` eksplisit (6 di Global: provisioning_state, scope_type ×3, card_read_visibility ×2; 1 di Project: entity_type), migration 0000 regenerated ulang dari awal (pre-deploy, belum ada data produksi). Isolasi Project tidak diuji di level ini (0.10.1/0.12.1). Tidak ada perubahan SOT.
 
 <a id="cl-16"></a>
 ### CL-16 — 2026-08-18 · 0.5.1 🔄 → 🔎

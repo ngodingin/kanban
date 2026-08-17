@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index, check } from "drizzle-orm/sqlite-core";
 
 export const users = sqliteTable(
   "users",
@@ -67,18 +67,24 @@ export const authVerifications = sqliteTable(
   (t) => [uniqueIndex("auth_verifications_identifier_unique").on(t.identifier)],
 );
 
-export const projects = sqliteTable("projects", {
-  id: text("id").primaryKey(),
-  ownerUserId: text("owner_user_id")
-    .notNull()
-    .references(() => users.id),
-  provisioningState: text("provisioning_state", {
-    enum: ["PROVISIONING", "READY", "FAILED"],
-  })
-    .notNull()
-    .default("PROVISIONING"),
-  createdAt: text("created_at").notNull(),
-});
+export const projects = sqliteTable(
+  "projects",
+  {
+    id: text("id").primaryKey(),
+    ownerUserId: text("owner_user_id")
+      .notNull()
+      .references(() => users.id),
+    provisioningState: text("provisioning_state", {
+      enum: ["PROVISIONING", "READY", "FAILED"],
+    })
+      .notNull()
+      .default("PROVISIONING"),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    check("projects_provisioning_state_check", sql`${t.provisioningState} IN ('PROVISIONING', 'READY', 'FAILED')`),
+  ],
+);
 
 export const projectDatabases = sqliteTable("project_databases", {
   projectId: text("project_id")
@@ -141,7 +147,10 @@ export const groupPermissions = sqliteTable(
     }),
     createdAt: text("created_at").notNull(),
   },
-  (t) => [uniqueIndex("group_permissions_group_permission_unique").on(t.groupId, t.permissionId)],
+  (t) => [
+    uniqueIndex("group_permissions_group_permission_unique").on(t.groupId, t.permissionId),
+    check("group_permissions_visibility_check", sql`${t.cardReadVisibility} IS NULL OR ${t.cardReadVisibility} IN ('CREATED_BY_ME', 'ASSIGNED_TO_ME', 'ALL')`),
+  ],
 );
 
 export const scopedScopeType = ["project", "milestone", "board", "list", "card"] as const;
@@ -166,6 +175,7 @@ export const membershipGroupAssignments = sqliteTable(
     uniqueIndex("membership_group_assignments_active_unique")
       .on(t.membershipId, t.groupId, t.scopeType, t.scopeId)
       .where(sql`${t.revokedAt} IS NULL`),
+    check("membership_group_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board')`),
   ],
 );
 
@@ -191,6 +201,8 @@ export const membershipPermissionAssignments = sqliteTable(
     uniqueIndex("membership_permission_assignments_active_unique")
       .on(t.membershipId, t.permissionId, t.scopeType, t.scopeId)
       .where(sql`${t.revokedAt} IS NULL`),
+    check("membership_permission_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board')`),
+    check("membership_permission_assignments_visibility_check", sql`${t.cardReadVisibility} IS NULL OR ${t.cardReadVisibility} IN ('CREATED_BY_ME', 'ASSIGNED_TO_ME', 'ALL')`),
   ],
 );
 
@@ -226,7 +238,10 @@ export const invitationGroupAssignments = sqliteTable(
     scopeType: text("scope_type", { enum: scopedScopeType }).notNull(),
     scopeId: text("scope_id").notNull(),
   },
-  (t) => [index("invitation_group_assignments_invitation_idx").on(t.invitationId)],
+  (t) => [
+    index("invitation_group_assignments_invitation_idx").on(t.invitationId),
+    check("invitation_group_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board')`),
+  ],
 );
 
 export const apiKeys = sqliteTable(

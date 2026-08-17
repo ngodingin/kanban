@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { sqliteTable, text, integer, uniqueIndex, index } from "drizzle-orm/sqlite-core";
+import { sqliteTable, text, integer, uniqueIndex, index, check } from "drizzle-orm/sqlite-core";
 
 export const projectState = sqliteTable("project_state", {
   projectId: text("project_id").primaryKey(),
@@ -173,5 +173,8 @@ export const activities = sqliteTable(
     data: text("data", { mode: "json" }).notNull(),
     createdAt: text("created_at").notNull(),
   },
-  (t) => [index("activities_entity_idx").on(t.entityType, t.entityId)],
+  (t) => [
+    index("activities_entity_idx").on(t.entityType, t.entityId),
+    check("activities_entity_type_check", sql`${t.entityType} IN ('project', 'milestone', 'board', 'list', 'card')`),
+  ],
 );
