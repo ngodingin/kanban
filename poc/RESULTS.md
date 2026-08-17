@@ -75,6 +75,29 @@ Query sederhana warm: **p50 ≈ 190 ms** (didominasi RTT lintas-region Vercel-ia
 4. **Tanpa transaksi: lost updates masif** (19/20) — menguatkan kewajiban INV #6/#7 dan pola A.6 (mutation + activity atomik dalam satu tx `"write"`).
 5. Durasi 20 worker serialized ≈ 4–5 s (roundtrip HTTP per tx; Turso remote). Catatan: naive run teramati sangat lambat (103 s) — dugaan retry/backoff driver pada error — tidak memengaruhi kesimpulan.
 
+---
+
+# POC RESULTS — Provisioning via Turso API (0.2.2)
+
+> Diukur 2026-08-18 terhadap org `ngodingin-ai` (plan starter), group `default` (aws-ap-south-1), via `api.turso.tech/v1` + `@libsql/client` 0.17.4. Skrip: `poc/measure/scripts/provisioning.ts`; raw: `poc/results-provisioning.jsonl`. DB uji di-delete setelah tiap run (cleanup terverifikasi 200).
+
+## Hasil (n=3)
+
+| run | createMs | tokenMs | readyMs (create→query pertama OK) | firstQueryMs |
+|---|---|---|---|---|
+| 1 | 1305.2 | 606.8 | 2470.2 | 245.0 |
+| 2 | 710.5 | 599.5 | 2044.7 | 295.8 |
+| 3 | 713.8 | 499.0 | 2114.8 | 293.6 |
+| **p50** | ~714 | ~600 | ~2115 | ~294 |
+
+## Temuan
+
+1. **Provisioning cepat: DB siap pakai (create + token + query pertama OK) ≈ 2.0–2.5 s** — masuk kategori "≲ beberapa detik" F.2 → **sinkron layak** untuk `POST /projects`; tidak perlu async queue untuk MVP.
+2. **Alur provisioning nyata = create DB + mint JWT per-DB.** `POST /v1/organizations/{org}/databases` → `{database.Hostname}` (field **kapital**); `POST /v1/databases/{name}/auth/tokens` `{authorization:"full-access"}` → `{jwt}` (endpoint di bawah `/v1/databases/`, bukan `/organizations/`).
+3. **Org API token TIDAK valid untuk koneksi libsql (401)** — hanya untuk REST API. Koneksi `libsql://` wajib memakai JWT per-DB (temuan wajib untuk 0.6/0.8).
+4. Readiness tidak diekspos sebagai status instance di API v1 ini — polling query `SELECT 1` adalah sinyal "siap pakai" yang andal.
+5. Biaya waktu tambahan provisioning untuk transaksi F.2: +migration Project schema + seed `project_state`/Activity di dalam satu tx `"write"` (0.5.3/0.6.1) — diperkirakan menambah ≲1 s (roundtrip + tx) pada jalur sinkron.
+
 ## Reproduksi
 
 1. `turso db create poc-latency` → `TURSO_DB_URL`/`TURSO_DB_TOKEN` (`.env`; vercel env add production).
