@@ -63,7 +63,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.2.1 | 🔄 | [CL-01](#cl-01)<br>[CL-02](#cl-02) | 20 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.2.1 | 🔎 | [CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[CL-03](#cl-03) | 80 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.2 | ⬜️ | — | 0 | P0 | Ukur waktu provisioning DB baru via Turso API | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.3 | ⬜️ | — | 0 | P0 | Uji concurrent write + perilaku `BEGIN IMMEDIATE` | [03-ENG A.6](docs/03-ENGINEERING.md), [A.11](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.4 | ⬜️ | — | 0 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
@@ -246,6 +246,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-03"></a>
+### CL-03 — 2026-08-18 · 0.2.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** Pengukuran riil tercatat di `poc/RESULTS.md`: cold start setelah idle ≥10 menit = 2.47 s & 2.38 s (body JSON `dbMs` terverifikasi); warm n=12: total p50 459.90 ms / p95 669.59 ms, `dbMs` p50 189.90 ms (query `SELECT 1`); deploy Vercel production `ng-odingin/ngodingin-kanban-poc` (fungsi `api/[[...route]].ts`, Hono 4.13.2 + @libsql/client 0.17.4); Turso DB `poc-latency` (aws-ap-south-1).
+**Catatan:** (1) Dominan latensi = region mismatch (DB Mumbai vs fungsi iad1) → rekomendasi co-location di 0.2.4; (2) cold start melewati ambang 1.5 s (2.4 s) dan warm total melewati 300 ms (670 ms) — assessment & keputusan GO/NO-GO final di 0.2.4; (3) temuan routing: static fallback `index.html` sesekali melayani `/api/measure` saat transisi scale-to-zero/boot — pola catch-all + pemisahan static/API direkomendasikan untuk produksi; (4) Turso free plan tidak mengizinkan replikasi group ke AWS region (hanya region non-AWS) — perlu plan/group berbayar untuk co-location; (5) usaha tambahan: diagnose deployment Vercel (builds/routes config vs auto-detect, project settings via API) — di luar scope goal, tidak mengubah SOT.
 
 <a id="cl-02"></a>
 ### CL-02 — 2026-08-17 · 0.2.1 🔄

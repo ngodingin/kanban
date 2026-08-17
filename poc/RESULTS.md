@@ -1,34 +1,62 @@
 # POC RESULTS — Turso cold start & query latency (0.2.1)
 
-> Diisi saat pengukuran riil dijalankan. Metodologi dan ambang ditetapkan saat POC sesuai [03-ENGINEERING A.11](../docs/03-ENGINEERING.md) item 1.
+> Pengukuran riil 2026-08-18 (WIB) sesuai metodologi [03-ENGINEERING A.11](../docs/03-ENGINEERING.md) item 1.
 
-## Metodologi
+## Setup
 
-- Fungsi serverless Vercel: `poc/measure/api/measure.ts` (Hono `4.13.2` + `@libsql/client` `0.17.4`), endpoint `GET /api/measure`, query sederhana `SELECT 1`.
-- Deploy sebagai project Vercel terpisah (region default) dengan env `TURSO_DB_URL` + `TURSO_DB_TOKEN` (Turso DB baru).
-- **Warm p95:** skrip `pnpm measure:warm` — 1 request warm-up (dibuang), lalu 60 request sekuensial; hitung p50/p95/p99/mean/min/max dari total latency sisi klien.
-- **Cold start:** fungsi di-diamkan (idle ≥ 5–6 menit / scale-to-zero), lalu 1 request pertama diukur via `pnpm measure:cold`; dicatat beberapa kali untuk stabilitas.
-- Tanggal/versi: TBD saat pengukuran.
+- Fungsi serverless Vercel: `poc/measure/api/[[...route]].ts` — Hono `4.13.2` + `@libsql/client` `0.17.4`, catch-all pattern, `SELECT 1`.
+- Deploy: project `ng-odingin/ngodingin-kanban-poc`, production, region fungsi `iad1` (Washington, D.C. US East). Env `TURSO_DB_URL`/`TURSO_DB_TOKEN` (Sensitive).
+- Turso DB: `poc-latency` @ group default, primary `aws-ap-south-1` (Mumbai). Client koneksi dibuat sekali per instance (module-level).
+- Pengukuran: `poc/measure/scripts/measure.ts` — mode `cold` (1 request pertama setelah idle ≥ 10 menit) dan mode `warm` (request sekuensial; `dbMs` = durasi `client.execute`).
+- Node v24.19.0 lokal; Vercel CLI 59.1.3; Turso CLI v1.0.31.
 
-## Ambang POC (ditetapkan saat POC)
+## Ambang POC (ditetapkan saat POC, lihat hasil assessment di bawah)
 
 | Metrik | Ambang | Alasan |
 |---|---|---|
-| Warm p95 (total request) | **≤ 300 ms** | Interaksi Kanban biasa (buka board = 1–2 query + overhead API); < 300 ms dianggap responsif (100–200 ms target umum UX) |
-| Cold start p95 | **≤ 1.5 s** | Toleransi load pertama/after-idle; di atas ini pengalaman "lambat" saat membuka aplikasi setelah idle |
-
-Ambang dapat direvisi berdasarkan hasil awal dengan alasan tercatat; keputusan GO/NO-GO dilakukan di 0.2.4.
+| Warm p95 (total request) | ≤ 300 ms | Interaksi Kanban responsif |
+| Cold start p95 | ≤ 1.5 s | Toleransi load pertama/after-idle |
 
 ## Hasil
 
-| Run | Mode | Tanggal | Region | n | min | p50 | p95 | p99 | max | mean | dbMs (query) | Keterangan |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| — | — | — | — | — | — | — | — | — | — | — | — | belum dijalankan |
+### Cold start (request pertama setelah idle ≥ 10 menit, fungsi benar-benar dipanggil)
+
+| Run | Tanggal | totalMs | dbMs | Keterangan |
+|---|---|---|---|---|
+| 1 | 2026-08-18 | 2474.09 | 905.39 | setelah idle 7 menit (era auto-detect deploy) |
+| 2 | 2026-08-18 | 2383.42 | 886.79 | setelah idle 10 menit (era catch-all deploy) |
+
+Cold start ≈ **2.4 s** (instansiasi λ + inisialisasi client + TLS/auth handshake Turso ~880 ms + query).
+
+### Warm (instance hangat; n=12 sample fungsi, diambil via batch dengan verifikasi body JSON)
+
+| Metrik | total (ms) | dbMs (ms) |
+|---|---|---|
+| min | 442.97 | 188.58 |
+| p50 | 459.90 | 189.90 |
+| p95 | 669.59 | 190.5 |
+| max | 669.59 | 190.94 |
+
+Query sederhana warm: **p50 ≈ 190 ms** (didominasi RTT lintas-region Vercel-iad1 ↔ Turso-Mumbai). Overhead di luar query ≈ 260–280 ms (edge sin1 → fungsi iad1).
+
+## Temuan
+
+1. **Region mismatch dominan.** DB di `aws-ap-south-1` (Mumbai), fungsi di `iad1` (Washington). RTT ~190 ms untuk `SELECT 1`. Rekomendasi produksi: co-locate DB dengan region fungsi (Turso `aws-us-east-1` ≈ Vercel `iad1`) — menurunkan query ke puluhan ms. Turso plan free saat ini tidak mengizinkan replikasi group ke region AWS lain (`replication is not supported at AWS`); opsi berbayar/group baru perlu diverifikasi di 0.2.4.
+2. **Cold start ≈ 2.4 s.** Mayoritas = boot λ + handshake TLS/JWT Turso (~880 ms). Di atas ambang 1.5 s. Mitigasi: koneksi client di-cache per instance (sudah diterapkan), region co-location, dan pertimbangan `maxDuration`/region pin di 0.2.4.
+3. **Routing flaky saat transisi cold.** Pada momen scale-to-zero/boot, sebagian request dapat dilayani static fallback (`index.html`) oleh edge, bukan fungsi (terjadi pada konfigurasi hybrid static+functions; pola catch-all mengurangi tapi tidak menghilangkan pada burst saat boot). Request wake pertama yang benar-benar sampai ke fungsi = ukuran cold start di atas. Catatan untuk produksi: gunakan satu fungsi catch-all untuk seluruh `/api/*` dan jangan campur static fallback pada path API.
+4. Total warm ~450 ms (> ambang 300 ms) akibat overhead edge→fungsi + region mismatch; komponen query 190 ms akan turun drastis dengan co-location.
+
+## Assessment terhadap ambang
+
+- Warm p95 total: **GAGAL ambang** (670 ms vs 300 ms) — penyebab utama region mismatch + overhead routing; query saja (190 ms) mendekati batas UX.
+- Cold start p95: **GAGAL ambang** (2.4 s vs 1.5 s) — wajar untuk boot λ + handshake; perlu co-location dan/atau strategi keep-warm bila UX menjadi prioritas.
+
+**Kesimpulan sementara (final di 0.2.4):** Turso layak lanjut secara arsitektur (latensi query basis rendah bila co-located; provisioning & concurrency diverifikasi di 0.2.2/0.2.3). Region/plan DB dan strategi cold start menjadi pertimbangan keputusan GO/NO-GO.
 
 ## Reproduksi
 
-1. `turso db create poc-latency` + dapatkan `TURSO_DB_URL`/`TURSO_DB_TOKEN`.
-2. Deploy `poc/measure` ke Vercel (`vercel deploy --prod`), set kedua env di dashboard/CLI.
-3. `POC_URL=<url-prod> pnpm measure:warm` (di `poc/measure`).
-4. Tunggu idle ≥ 5–6 menit, lalu `POC_URL=<url-prod> pnpm measure:cold` (ulangi ≥ 3×).
-5. Catat hasil ke tabel di atas.
+1. `turso db create poc-latency` → `TURSO_DB_URL`/`TURSO_DB_TOKEN` (`.env`; vercel env add production).
+2. Deploy `poc/measure` (project settings: `buildCommand: "mkdir -p public"`, `outputDirectory: "public"`, `public/index.html` shell; fungsi `api/[[...route]].ts`).
+3. Warm: `POC_URL=<url> POC_SAMPLE=60 pnpm measure:warm`; verifikasi setiap body memuat `dbMs` (n>0).
+4. Cold: tunggu idle ≥ 10 menit → `POC_URL=<url> pnpm measure:cold`; verifikasi body `dbMs` (bukan `index.html`).
+5. Catat ke tabel di atas.
