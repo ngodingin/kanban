@@ -19,12 +19,14 @@
     "test:smoke-project-schema": "node scripts/smoke-project-schema.ts",
     "test:smoke-project-behavior": "node scripts/smoke-project-behavior.ts",
     "test:smoke-migrate-programmatic": "node scripts/smoke-migrate-programmatic.ts",
+    "test:smoke-provision": "node --env-file-if-exists=../../.env scripts/smoke-provision.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",
     "drizzle-orm": "0.45.2",
+    "ulid": "3.0.2",
     "zod": "4.4.3"
   },
   "devDependencies": {

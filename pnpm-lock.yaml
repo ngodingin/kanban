@@ -78,6 +78,9 @@ importers:
       drizzle-orm:
         specifier: 0.45.2
         version: 0.45.2(@libsql/client@0.17.4)
+      ulid:
+        specifier: 3.0.2
+        version: 3.0.2
       zod:
         specifier: 4.4.3
         version: 4.4.3

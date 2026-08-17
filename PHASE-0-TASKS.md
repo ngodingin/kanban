@@ -116,7 +116,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.6.1 | ⬜️ | — | 0 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
+| 0.6.1 | 🔎 | [CL-19](#cl-19) | 80 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
 | 0.6.2 | ⬜️ | — | 0 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
 | 0.6.3 | ⬜️ | — | 0 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
 | 0.6.4 | ⬜️ | — | 0 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-19"></a>
+### CL-19 — 2026-08-18 · 0.6.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-provision` (live, Turso group `ngodingin-kanban`, org `ngodingin-ai`): Project DB `proj-projsmoke*` dibuat → migrasi 10 tabel terpasang → seed atomik: `project_state` tepat satu ACTIVE (version=1, archived_at/deleted_at NULL) + Activity `project.created` tunggal (entity_version=1, data B.5 snapshot.name); negatif: tx duplikat gagal & tidak meninggalkan activity yatim (F.2). DB uji dihapus (cleanup). typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** Temuan API: `@libsql/client` 0.17.4 `transaction(mode)` object-style (callback arg diabaikan → wajib drizzle `db.transaction` + `.run()`); nama DB Turso hanya lowercase/angka/dash (prefix `proj-`). `provisionProjectDatabase` (src/provisioning/provision.ts) gagal → `ProjectProvisioningError` + cleanup delete DB. Penerapan mapping ke Global = 0.6.2. Tidak ada perubahan SOT.
 
 <a id="cl-18"></a>
 ### CL-18 — 2026-08-18 · 0.5.3 🔄 → 🔎
