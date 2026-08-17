@@ -15,6 +15,7 @@
     "test:smoke-guard": "node scripts/smoke-guard.ts",
     "test:smoke-global-schema": "node scripts/smoke-global-schema.ts",
     "test:smoke-global-constraints": "node scripts/smoke-global-constraints.ts",
+    "test:smoke-migration": "node scripts/smoke-migration.ts",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

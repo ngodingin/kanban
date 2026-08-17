@@ -92,7 +92,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.4.2 | 🔎 | [CL-14](#cl-14) | 80 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
-| 0.4.3 | ⬜️ | — | 0 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.3 | 🔎 | [CL-15](#cl-15) | 80 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
 **Test:** Migration up idempotent; Better Auth generated-schema contract cocok dengan custom mapping B.2; constraint UNIQUE teruji; scoped assignment tidak dapat menghubungkan Membership/Group beda Project; credential dan Magic Link token tidak disimpan raw.
 **DoD:** Semua tabel B.2 hadir; ULID dipakai; `users.email` normalized/unique; **tidak ada** `UNIQUE(name/title)` domain; migrasi bersih & idempotent.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-15"></a>
+### CL-15 — 2026-08-18 · 0.4.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-migration`: apply 1x → journal 1 entry, 16 tabel; apply ulang → journal tetap 1 (idempotent); apply ulang sesudah insert data → no-op, data utuh; typecheck 0 error; lint exit 0.
+**Catatan:** `migrate()` drizzle = journal `__drizzle_migrations` (version tracking F.3). Penerapan ke Global DB nyata (Turso) + fan-out Project DB adalah 0.12.2/0.5.3. Tidak ada perubahan SOT.
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-18 · 0.4.2 🔄 → 🔎
