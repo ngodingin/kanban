@@ -103,7 +103,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.5.1 | ⬜️ | — | 0 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.5.1 | 🔎 | [CL-16](#cl-16) | 80 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.5.2 | ⬜️ | — | 0 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
 | 0.5.3 | ⬜️ | — | 0 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
 
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-16"></a>
+### CL-16 — 2026-08-18 · 0.5.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `drizzle-kit generate --config drizzle.config.project.ts` sukses; `pnpm --filter @kanban/infrastructure test:smoke-project-schema`: 10 tabel B.3 ada di DDL + DB (apply migration), `project_state` punya `project_id` anchor, semua entity punya `version` + `archived_at`/`deleted_at`, junction punya `removed_at`, migration idempotent; typecheck 0 error; lint exit 0.
+**Catatan:** `project-schema.ts` + `drizzle.config.project.ts` + `drizzle/migrations-project/0000_project_schema_v1.sql`. Tidak ada `project_id` di tabel child (isolasi via DB, B.1); `cards.creator_user_id`/`assignee_user_id` tanpa FK (app-level FK A.5); `activities.data` JSON (drizzle json mode). Tidak ada perubahan SOT.
 
 <a id="cl-15"></a>
 ### CL-15 — 2026-08-18 · 0.4.3 🔄 → 🔎

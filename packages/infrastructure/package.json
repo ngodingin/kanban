@@ -16,7 +16,9 @@
     "test:smoke-global-schema": "node scripts/smoke-global-schema.ts",
     "test:smoke-global-constraints": "node scripts/smoke-global-constraints.ts",
     "test:smoke-migration": "node scripts/smoke-migration.ts",
-    "db:generate": "drizzle-kit generate"
+    "test:smoke-project-schema": "node scripts/smoke-project-schema.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",
