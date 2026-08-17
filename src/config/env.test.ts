@@ -1,5 +1,5 @@
 import { strict as assert } from 'assert'
-import { parseEnv } from './env'
+import { parseEnv } from './env.ts'
 
 describe('env.parseEnv', () => {
   it('parses valid environment correctly', () => {

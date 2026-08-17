@@ -300,3 +300,26 @@ git push ar-github --delete dev/phase-0-bootstrap-commit dev/phase-0-test-fix
 ```
 
 **Catatan:** Semua branch selain `main` sudah dihapus. Perubahan pada `main` didorong; langkah verifikasi selanjutnya adalah QA menjalankan suite di CI dan memverifikasi bukti yang tercantum di atas.
+
+<a id="cl-06"></a>
+### CL-06 — 2026-08-17 · 0.1.4 🔎
+**Bukti:** Dev menambahkan environment loader menggunakan `zod` + `dotenv` dan unit tests; tests dijalankan lokal:
+
+```
+npm test --silent
+
+	env.parseEnv
+		✔ parses valid environment correctly
+		✔ throws on missing required vars
+
+	card.move - moveCard()
+		✔ moves a card successfully when expected_version matches
+		✔ throws VERSION_CONFLICT when expected_version mismatches
+		✔ throws INVALID_DESTINATION when destination board milestone differs
+
+	5 passing (4ms)
+```
+
+Perubahan: `src/config/env.ts`, `src/config/env.test.ts`, dan `package.json` (added `dotenv`).
+
+**Catatan:** Task `0.1.4` dipindah ke `🔎` (menunggu verifikasi QA). Dev tidak akan menandai `✅`.

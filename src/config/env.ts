@@ -30,7 +30,9 @@ export function parseEnv(env: Record<string, string | undefined>) {
   return result.data
 }
 
-// default loader using process.env
-export const config = parseEnv({})
+// loader to parse current process.env at runtime
+export function loadConfig() {
+  return parseEnv({})
+}
 
-export default config
+export default loadConfig
