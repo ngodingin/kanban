@@ -10,7 +10,8 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit",
     "test:smoke": "node scripts/smoke.ts",
-    "test:smoke-config": "node scripts/smoke-config.ts"
+    "test:smoke-config": "node scripts/smoke-config.ts",
+    "test:smoke-resolver": "node scripts/smoke-resolver.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",

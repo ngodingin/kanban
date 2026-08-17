@@ -78,7 +78,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.3.1 | 🔎 | [CL-08](#cl-08) | 80 | P0 | Factory koneksi libSQL/Drizzle (pisah Global client vs Project client dinamis) | [03-ENG A.4](docs/03-ENGINEERING.md), [A.5](docs/03-ENGINEERING.md) | 0.1.3 |
-| 0.3.2 | ⬜️ | — | 0 | P0 | Resolver `project_id → database` via tabel `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.3.2 | 🔎 | [CL-11](#cl-11) | 80 | P0 | Resolver `project_id → database` via tabel `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.3.3 | ⬜️ | — | 0 | P0 | Guard: `project_id` tak dikenal tidak pernah jatuh ke DB Project lain | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2 |
 
 **Test:** Unit — resolver kembalikan koneksi benar untuk `project_id` valid; `project_id` tak dikenal ditolak aman (tidak akses DB lain).
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-11"></a>
+### CL-11 — 2026-08-18 · 0.3.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-resolver` (libsql lokal file:, tabel fixture `project_databases` sesuai B.1): positif — resolve project_id dikenal → mapping persis; negatif — project_id tak dikenal → `null` (tidak akses DB lain) & kosong → `null`; typecheck 0 error; lint exit 0.
+**Catatan:** `ProjectDatabaseResolver` interface + `SqliteProjectDatabaseResolver` di `packages/infrastructure/src/database/project-resolver.ts` (A.4: mapping adalah satu-satunya sumber resolusi). DDL fixture `(project_id TEXT PRIMARY KEY, database_id TEXT NOT NULL, created_at TEXT NOT NULL)` harus sinkron dengan schema Drizzle 0.4.1 (B.1). Tidak ada perubahan SOT.
 
 <a id="cl-10"></a>
 ### CL-10 — 2026-08-18 · 0.1.4 🔄 → 🔎
