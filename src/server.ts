@@ -1,7 +1,7 @@
 import express from 'express'
 import bodyParser from 'body-parser'
 import morgan from 'morgan'
-import { seedSampleData, getCard } from './infrastructure/in_memory_db'
+import { seedSampleData, getCard } from './infrastructure/in_memory_db.ts'
 import { moveCard, ConflictError, NotFoundError, InvalidDestinationError } from './modules/card/service'
 
 const app = express()
