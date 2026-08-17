@@ -12,14 +12,18 @@
     "test:smoke": "node scripts/smoke.ts",
     "test:smoke-config": "node scripts/smoke-config.ts",
     "test:smoke-resolver": "node scripts/smoke-resolver.ts",
-    "test:smoke-guard": "node scripts/smoke-guard.ts"
+    "test:smoke-guard": "node scripts/smoke-guard.ts",
+    "test:smoke-global-schema": "node scripts/smoke-global-schema.ts",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",
+    "drizzle-orm": "0.45.2",
     "zod": "4.4.3"
   },
   "devDependencies": {
     "@types/node": "24.13.3",
+    "drizzle-kit": "0.31.10",
     "typescript": "6.0.2"
   }
 }

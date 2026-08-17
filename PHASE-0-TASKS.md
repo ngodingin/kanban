@@ -90,7 +90,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.4.1 | ⬜️ | — | 0 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.4.2 | ⬜️ | — | 0 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.4.3 | ⬜️ | — | 0 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-13"></a>
+### CL-13 — 2026-08-18 · 0.4.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `drizzle-kit generate` sukses dari `global-schema.ts` (16 tabel sesuai B.2); `pnpm --filter @kanban/infrastructure test:smoke-global-schema`: DDL memuat tepat 16 tabel, migrasi ter-apply ke libsql lokal → 16 tabel ada, 8 UNIQUE index inti ada (users_email, auth_sessions_token, auth_accounts_provider_account, auth_verifications_identifier, project_memberships_project_user, group_permissions_group_permission, 2× scoped partial WHERE revoked_at IS NULL); typecheck 0 error; lint exit 0.
+**Catatan:** `packages/infrastructure/src/database/global-schema.ts` + `drizzle.config.ts` + `drizzle/migrations/0000_global_schema_v1.sql`; id TEXT (ULID A.13, diisi app layer), timestamp TEXT ISO UTC kecuali `auth_*` expires_at integer timestamp (kontrak Better Auth default), enum: provisioning_state, scope_type, card_read_visibility. drizzle-orm 0.45.2 + drizzle-kit 0.31.10 exact di paket infrastructure. Tidak ada perubahan SOT.
 
 <a id="cl-12"></a>
 ### CL-12 — 2026-08-18 · 0.3.3 🔄 → 🔎
