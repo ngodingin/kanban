@@ -98,6 +98,37 @@ Query sederhana warm: **p50 ≈ 190 ms** (didominasi RTT lintas-region Vercel-ia
 4. Readiness tidak diekspos sebagai status instance di API v1 ini — polling query `SELECT 1` adalah sinyal "siap pakai" yang andal.
 5. Biaya waktu tambahan provisioning untuk transaksi F.2: +migration Project schema + seed `project_state`/Activity di dalam satu tx `"write"` (0.5.3/0.6.1) — diperkirakan menambah ≲1 s (roundtrip + tx) pada jalur sinkron.
 
+---
+
+# POC RESULTS — Cost projection & GO/NO-GO assessment (0.2.4)
+
+> Proyeksi 2026-08-18. Harga Turso per sumber terverifikasi (turso.tech/pricing via comparEdge/CostBench/StackSays, Juli 2026): **Free**: 100 database, 5 GB, 500M rows read/bln, 10M rows written/bln, 1 hari PITR; **Developer**: $4.99/bln, unlimited database, 9 GB, 2.5B reads/bln, 25M writes/bln; Scaler $24.92/bln. Plan akun saat ini: `starter` (gratis). Asumsi skala MVP (03-ENG F.1/F.2): kecil–menengah, potensial ribuan DB.
+
+## Proyeksi biaya
+
+| Skenario | Plan | Biaya/bln | Keterangan |
+|---|---|---|---|
+| Dev + preview + MVP awal (≤100 Project) | Free (starter) | $0 | 100 DB gratis; risiko utama: limit DB tercapai saat pertumbuhan |
+| 100–1.000 Project | Developer | $4.99 | unlimited DB; storage/read/write MVP jauh di bawah limit |
+| 1.000+ Project | Developer + overage / Scaler | $4.99–25 | per-DB size kecil (schema + data); overage reads/storage baru relevan di trafik besar |
+
+Estimasi storage per Project DB MVP: schema tetap (10 tabel) + data — orde KB–MB; 5 GB free cukup untuk ribuan Project kosong/ringan. **Biaya tidak menjadi blocker: $0 → $4.99/bln.**
+
+## Assessment POC gate A.11 (1–4)
+
+| # | Item POC | Hasil | Verdict |
+|---|---|---|---|
+| 1 | Cold start + latensi serverless (0.2.1) | cold ~2.4 s (>1.5 s), warm p95 ~670 ms (>300 ms) — GAGAL ambang, dominan region mismatch (fungsi iad1 vs DB aws-ap-south-1) + overhead routing; `dbMs` ~190 ms | ⚠️ conditional |
+| 2 | Provisioning via API (0.2.2) | create→siap pakai ≈ 2.0–2.5 s | ✅ sinkron layak |
+| 3 | Concurrent writes + BEGIN IMMEDIATE (0.2.3) | `transaction("write")` + retry → 0 lost updates; optimistic locking deteksi konflik; SQLITE_BUSY ditangani retry | ✅ |
+| 4 | Model biaya (0.2.4) | $0 → $4.99/bln | ✅ |
+
+## Rekomendasi (menunggu keputusan manusia)
+
+- **GO Turso** — ketiga gate teknis layak; kegagalan latensi adalah konfigurasi (region), bukan provider. Mitigasi: buat group/DB co-located dengan region fungsi Vercel (us-east-1/iad1) — free plan mengizinkan primary di AWS (replikasi ke AWS yang dibatasi, CL-03), lalu re-measure (0.2.1). Jika pasca co-location tetap di atas ambang → re-evaluasi fallback A.11.
+- **Provisioning SINKRON** — 2.1 s ≲ "beberapa detik" (F.2): lebih sederhana untuk MVP, Project langsung operasional; tidak perlu `provisioning_state` async di MVP.
+- Catatan implementasi yang terbawa ke 0.6: provisioning = create DB (API) + mint JWT per-DB (`POST /v1/databases/{name}/auth/tokens`) + migrasi schema + seed `project_state`/Activity dalam satu tx `"write"`; org API token tidak valid untuk koneksi libsql (401).
+
 ## Reproduksi
 
 1. `turso db create poc-latency` → `TURSO_DB_URL`/`TURSO_DB_TOKEN` (`.env`; vercel env add production).

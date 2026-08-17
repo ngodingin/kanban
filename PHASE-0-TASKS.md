@@ -66,7 +66,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.2.1 | 🔎 | [CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[CL-03](#cl-03) | 80 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.2 | 🔎 | [CL-06](#cl-06) | 80 | P0 | Ukur waktu provisioning DB baru via Turso API | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.3 | 🔎 | [CL-04](#cl-04) | 80 | P0 | Uji concurrent write + perilaku `BEGIN IMMEDIATE` | [03-ENG A.6](docs/03-ENGINEERING.md), [A.11](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.2.4 | ⬜️ | — | 0 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
+| 0.2.4 | 🔄 | [CL-07](#cl-07) | 60 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
 
 **Test:** Hasil tiap pengukuran terdokumentasi di `poc/RESULTS.md` terhadap ambang yang ditetapkan saat POC.
 **DoD:** Keputusan tercatat: Turso GO/NO-GO **dan** provisioning sync/async. Jika NO-GO → tandai `[NEEDS-DECISION]` fallback (libSQL self-host / D1) per A.11. **Task ini gating untuk 0.6.**
@@ -246,6 +246,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-07"></a>
+### CL-07 — 2026-08-18 · 0.2.4 🔄
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `poc/RESULTS.md` §0.2.4: proyeksi biaya (Free $0/100 DB → Developer $4.99/bln unlimited) + assessment 4 gate A.11 (latensi conditional-fail region mismatch, provisioning ✅ sinkron, concurrency ✅, biaya ✅).
+**Catatan:** Goal menunggu keputusan manusia (`[NEEDS-DECISION]` sesuai C.6.5): **GO/NO-GO Turso** + **sinkron/async provisioning**. Rekomendasi Dev: GO + sinkron (2.1 s ≲ ambang F.2) dengan mitigasi co-location region DB↔fungsi. Saat keputusan tercatat → status `🔎` 80%. Tidak ada perubahan SOT.
 
 <a id="cl-06"></a>
 ### CL-06 — 2026-08-18 · 0.2.2 🔄 → 🔎
