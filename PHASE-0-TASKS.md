@@ -51,7 +51,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.1.1 | 🔎 | [CL-01](#cl-01) | 80 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | ⬜️ | — | 0 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.1.3 | ⬜️ | — | 0 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | ⬜️ | — | 0 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
 
 **Test:** `git rev-parse --is-inside-work-tree` sukses; catatan verifikasi LTS/stable tersedia; tidak ada direct dependency prerelease; clean `pnpm install --frozen-lockfile`; verifikasi `engines`/`packageManager`/exact direct pins; Hono smoke route + build + typecheck + lint hijau.
@@ -246,6 +246,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-05"></a>
+### CL-05 — 2026-08-18 · 0.1.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm install` done; `pnpm lint` exit 0; `pnpm build`/`pnpm typecheck` (apps/api + poc/measure) Done; `pnpm list --depth 0` menunjukkan exact pin tanpa prerelease: `@libsql/client` 0.17.4, `drizzle-orm` 0.45.2, `zod` 4.4.3, `ulid` 3.0.2 (deps); `drizzle-kit` 0.31.10, `eslint` 10.8.1, `@eslint/js` 10.0.1, `typescript-eslint` 8.67.0, `prettier` 3.9.6 (devDeps); `pnpm-lock.yaml` ter-commit.
+**Catatan:** pnpm 11.22 memindahkan settings dari field `pnpm` di package.json ke `pnpm-workspace.yaml` (`allowBuilds.esbuild: true` — pnpm auto-tulis placeholder saat build script di-ignore). ESLint 10 flat config `eslint.config.mjs` (@eslint/js 10.0.1 = versi 10.x terakhir; tidak ada 10.8.1). Dep runtime dipasang di root (packages/ belum ada — skeleton 0.1.2; akan dipindah ke paket pemiliknya saat goal terkait). Tidak ada perubahan SOT.
 
 <a id="cl-04"></a>
 ### CL-04 — 2026-08-18 · 0.2.3 🔄 → 🔎
