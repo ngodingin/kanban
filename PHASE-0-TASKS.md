@@ -63,7 +63,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.2.1 | ⬜️ | — | 0 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.2.1 | 🔄 | [CL-01](#cl-01)<br>[CL-02](#cl-02) | 20 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.2 | ⬜️ | — | 0 | P0 | Ukur waktu provisioning DB baru via Turso API | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.3 | ⬜️ | — | 0 | P0 | Uji concurrent write + perilaku `BEGIN IMMEDIATE` | [03-ENG A.6](docs/03-ENGINEERING.md), [A.11](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.4 | ⬜️ | — | 0 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
@@ -246,6 +246,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-02"></a>
+### CL-02 — 2026-08-17 · 0.2.1 🔄
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** Harness `poc/measure/` dibuat: fungsi serverless Vercel `api/measure.ts` (Hono + `@libsql/client` exact pin `0.17.4`, query `SELECT 1`, `build`/`typecheck` hijau) + skrip pengukuran `scripts/measure.ts` (mode `warm`: p50/p95/p99 dari 60 request sekuensial; mode `cold`: single shot) + `poc/RESULTS.md` berisi metodologi dan ambang POC yang ditetapkan (warm p95 ≤ 300 ms, cold start p95 ≤ 1.5 s).
+**Catatan:** Blocker: pengukuran riil memerlukan akun Turso (token + DB) dan Vercel (deploy + URL) yang belum tersedia di environment — menunggu credential/akses dari manusia sebelum menjalankan pengukuran. `%` 20 = harness + metodologi + ambang terbukti ada, hasil pengukuran belum ada. Bukan transisi ⏸️ (Dev tidak membuka ⏸️); goal tetap 🔄 menunggu input manusia.
 
 <a id="cl-01"></a>
 ### CL-01 — 2026-08-17 · 0.1.1 🔄 → 🔎
