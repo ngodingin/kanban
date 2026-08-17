@@ -10,3 +10,5 @@ coverage/
 .idea/
 AGENTS.md
 CLAUDE.md
+auth
+auth-wal
