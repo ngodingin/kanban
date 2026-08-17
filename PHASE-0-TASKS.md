@@ -49,7 +49,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.1.1 | ⬜️ | — | 0 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
+| 0.1.1 | 🔎 | [CL-01](#cl-01) | 80 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | ⬜️ | — | 0 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | ⬜️ | — | 0 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | ⬜️ | — | 0 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
@@ -247,10 +247,8 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
 
-<!-- Contoh (hapus saat entry nyata pertama ditambahkan):
-<a id="cl-00"></a>
-### CL-00 — 2026-08-17 · 0.1.1 🔎
-**Role:** AI-Dev · **Model:** DeepSeek V4 Flash
-**Bukti:** `pnpm build` exit 0; `pnpm typecheck` exit 0 (log CI #12).
-**Catatan:** Tidak ada penyimpangan; menunggu verifikasi QA.
--->
+<a id="cl-01"></a>
+### CL-01 — 2026-08-17 · 0.1.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `git rev-parse --is-inside-work-tree` = true (repo `main`, commit 643e094); Node v24.19.0 (memenuhi `>=24.18.0 <25`); `npm view` konfirmasi versi exact baseline A.8 (hono 4.13.2, typescript 6.0.2, pnpm 11.22.0) tersedia di registry; `pnpm install --frozen-lockfile` clean; `pnpm build` + `pnpm typecheck` exit 0; smoke `app.request('/health')` → 200 `{"ok":true}`.
+**Catatan:** Transisi `⬜️ → 🔄` (Gate A) lalu `🔄 → 🔎` 80% dalam satu sesi Dev; masuk commit pertama. Repo sudah terinisialisasi Git — tidak perlu init ulang. Versi baseline A.8.2 diperiksa 2026-08-17 (tanggal baseline) dan sesuai; tidak ada direct dependency prerelease. `docs/design/` dibiarkan untracked (di luar scope goal).
