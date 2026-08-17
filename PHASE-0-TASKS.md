@@ -52,7 +52,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.1.1 | 🔎 | [CL-01](#cl-01) | 80 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.1.4 | ⬜️ | — | 0 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.4 | 🔎 | [CL-10](#cl-10) | 80 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
 
 **Test:** `git rev-parse --is-inside-work-tree` sukses; catatan verifikasi LTS/stable tersedia; tidak ada direct dependency prerelease; clean `pnpm install --frozen-lockfile`; verifikasi `engines`/`packageManager`/exact direct pins; Hono smoke route + build + typecheck + lint hijau.
 **DoD:** Git aktif; semua goal ✅; struktur folder cocok A.7; latest compatible LTS/stable sudah diverifikasi dan versi exact sesuai A.8; `pnpm-lock.yaml` ter-commit; `.env.example` lengkap; tidak ada secret ter-commit.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-10"></a>
+### CL-10 — 2026-08-18 · 0.1.4 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-config`: 4 negatif (secret <32 / resend kosong / dev+origin produksi / staging+BETTER_AUTH_URL salah → throw) + 3 positif (prod=kanban.ngodingin.xyz via VERCEL_ENV=production, staging=stag-kanban.ngodingin.xyz via preview, dev localhost + MAIL_FROM default); typecheck 0 error; lint exit 0. `.env.example` dilengkapi `GLOBAL_DB_URL`/`GLOBAL_DB_TOKEN`/`BETTER_AUTH_SECRET`/`BETTER_AUTH_URL`/`AUTH_RESEND_KEY`/`MAIL_FROM` — tanpa secret nyata.
+**Catatan:** Loader `packages/infrastructure/src/config/env.ts` (zod 4): deteksi env dari `VERCEL_ENV` (production/preview) fallback `NODE_ENV`; enforces canonical origin per env sesuai D.7 (staging MUST NOT memakai origin produksi, dst.) — fondasi guard test 0.8.4. Tidak ada perubahan SOT.
 
 <a id="cl-09"></a>
 ### CL-09 — 2026-08-18 · 0.1.2 🔄 → 🔎
