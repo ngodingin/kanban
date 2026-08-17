@@ -79,7 +79,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.3.1 | 🔎 | [CL-08](#cl-08) | 80 | P0 | Factory koneksi libSQL/Drizzle (pisah Global client vs Project client dinamis) | [03-ENG A.4](docs/03-ENGINEERING.md), [A.5](docs/03-ENGINEERING.md) | 0.1.3 |
 | 0.3.2 | 🔎 | [CL-11](#cl-11) | 80 | P0 | Resolver `project_id → database` via tabel `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.3.3 | ⬜️ | — | 0 | P0 | Guard: `project_id` tak dikenal tidak pernah jatuh ke DB Project lain | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2 |
+| 0.3.3 | 🔎 | [CL-12](#cl-12) | 80 | P0 | Guard: `project_id` tak dikenal tidak pernah jatuh ke DB Project lain | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2 |
 
 **Test:** Unit — resolver kembalikan koneksi benar untuk `project_id` valid; `project_id` tak dikenal ditolak aman (tidak akses DB lain).
 **DoD:** Resolver di balik interface; tidak ada koneksi Project DB hard-coded; fondasi isolation (BR-007/BR-009) terbukti via test.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-12"></a>
+### CL-12 — 2026-08-18 · 0.3.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-guard`: positif — resolveOrThrow project dikenal → mapping; negatif — project tak dikenal → `ProjectDatabaseNotFoundError` (bukan mapping salah/fallback); negatif — DB Project lain terbukti tidak tersentuh/berubah; typecheck 0 error; lint exit 0.
+**Catatan:** `resolveOrThrow` (BR-007/BR-009): satu-satunya jalur resolusi DB Project; mapping null MUST throw, tidak pernah return fallback. Fondasi pipeline 0.9.3 (resolve DB setelah verifikasi membership). Tidak ada perubahan SOT.
 
 <a id="cl-11"></a>
 ### CL-11 — 2026-08-18 · 0.3.2 🔄 → 🔎

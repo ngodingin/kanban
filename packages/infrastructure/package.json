@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test:smoke": "node scripts/smoke.ts",
     "test:smoke-config": "node scripts/smoke-config.ts",
-    "test:smoke-resolver": "node scripts/smoke-resolver.ts"
+    "test:smoke-resolver": "node scripts/smoke-resolver.ts",
+    "test:smoke-guard": "node scripts/smoke-guard.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",

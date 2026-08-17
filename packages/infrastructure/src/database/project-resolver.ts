@@ -10,6 +10,24 @@ export interface ProjectDatabaseResolver {
   resolve(projectId: string): Promise<ProjectDatabaseMapping | null>;
 }
 
+export class ProjectDatabaseNotFoundError extends Error {
+  constructor(projectId: string) {
+    super(`Project DB mapping tidak ditemukan untuk project_id: ${projectId}`);
+    this.name = "ProjectDatabaseNotFoundError";
+  }
+}
+
+export async function resolveOrThrow(
+  resolver: ProjectDatabaseResolver,
+  projectId: string,
+): Promise<ProjectDatabaseMapping> {
+  const mapping = await resolver.resolve(projectId);
+  if (!mapping) {
+    throw new ProjectDatabaseNotFoundError(projectId);
+  }
+  return mapping;
+}
+
 export class SqliteProjectDatabaseResolver implements ProjectDatabaseResolver {
   readonly #client: Client;
 
