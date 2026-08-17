@@ -1,4 +1,5 @@
-import { db, getCard, getList, getBoard, appendActivity, Card } from '../../infrastructure/in_memory_db'
+import { db, getCard, getList, getBoard, appendActivity } from '../../infrastructure/in_memory_db.ts'
+import type { Card } from '../../infrastructure/in_memory_db.ts'
 
 interface MoveParams {
   projectId: string

@@ -1,6 +1,6 @@
 import { strict as assert } from 'assert'
-import { db, seedSampleData, getCard } from '../../infrastructure/in_memory_db'
-import { moveCard, ConflictError, InvalidDestinationError } from './service'
+import { db, seedSampleData, getCard } from '../../infrastructure/in_memory_db.ts'
+import { moveCard, ConflictError, InvalidDestinationError } from './service.ts'
 
 describe('card.move - moveCard()', () => {
   beforeEach(() => {
