@@ -91,7 +91,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.4.2 | ⬜️ | — | 0 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.2 | 🔎 | [CL-14](#cl-14) | 80 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.4.3 | ⬜️ | — | 0 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
 **Test:** Migration up idempotent; Better Auth generated-schema contract cocok dengan custom mapping B.2; constraint UNIQUE teruji; scoped assignment tidak dapat menghubungkan Membership/Group beda Project; credential dan Magic Link token tidak disimpan raw.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-14"></a>
+### CL-14 — 2026-08-18 · 0.4.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-global-constraints` (libsql lokal, migration 0000 ter-apply): negatif — duplikat users.email / membership (project_id,user_id) / group_permissions / assignment aktif → constraint violation; positif — assignment yang sama boleh dibuat ulang setelah `revoked_at` (partial UNIQUE WHERE revoked_at IS NULL); asersi — scope_type+revoked_at ada, credential hanya `key_hash`/`token_hash` (tanpa kolom raw), `auth_verifications.identifier` wadah hash, kolom Better Auth core lengkap snake_case (B.2); typecheck 0 error; lint exit 0.
+**Catatan:** Perbaikan smoke: `permission_groups.updated_at` NOT NULL. Mapping adapter Better Auth (fieldMapping) diimplementasikan di 0.8.1; schema sudah siap kontrak. Tidak ada perubahan SOT.
 
 <a id="cl-13"></a>
 ### CL-13 — 2026-08-18 · 0.4.1 🔄 → 🔎
