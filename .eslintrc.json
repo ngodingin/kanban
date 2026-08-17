@@ -14,6 +14,10 @@
     "es2021": true,
     "mocha": true
   },
+  "parserOptions": {
+    "project": "./tsconfig.json",
+    "tsconfigRootDir": "."
+  },
   "settings": {
     "react": {
       "version": "detect"

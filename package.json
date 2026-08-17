@@ -8,6 +8,7 @@
     "start": "next start -p $PORT",
     "typecheck": "tsc --noEmit",
     "lint": "eslint --ext .ts,.tsx src",
+    "lint:fix": "eslint --ext .ts,.tsx src --fix",
     "test": "node --import ./node_modules/ts-node/esm.mjs ./node_modules/mocha/bin/mocha.js \"src/**/*.test.ts\""
   },
   "dependencies": {
@@ -34,4 +35,5 @@
     "eslint-config-prettier": "^8.0.0",
     "prettier": "^2.8.8"
   }
+
 }
