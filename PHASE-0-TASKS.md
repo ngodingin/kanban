@@ -46,7 +46,7 @@ Catatan: Dev hanya boleh mengatur persentase sampai maksimum 80%; nilai 100% han
 | 0.1.1 | 🔎 | 80 | Bootstrap Next.js + TypeScript (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | 🔎 | 80 | Buat skeleton folder domain-oriented (modules/, infrastructure/, shared/) | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | 80 | Pasang tooling: Zod, Drizzle + drizzle-kit, linter/formatter | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.1.4 | ⬜️ | 0 | `.env.example` + loader config env (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.4 | 🔎 | 80 | `.env.example` + loader config env (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.1 |
 
 **Test:** `next build` + typecheck hijau; linter jalan tanpa error blocking.
 **DoD:** Semua goal ✅; struktur folder cocok A.7; `.env.example` lengkap; tidak ada secret ter-commit.
