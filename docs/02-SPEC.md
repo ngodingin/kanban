@@ -45,55 +45,53 @@ stateDiagram-v2
     ACTIVE --> DELETED : delete
     ARCHIVED --> DELETED : delete
     ARCHIVED --> ACTIVE : restore*
-    DELETED --> ACTIVE : restore*
     note right of ARCHIVED
-        Read-only. Tolak update / move / comment
-        (INV-LIFE-003)
+        Read-only. Restore hanya jika seluruh
+        ancestor ACTIVE (INV-LIFE-002).
     end note
     note right of DELETED
-        Terminal bagi user. Tolak update / move /
-        archive / comment / delete (INV-LIFE-004)
+        Terminal bagi user hingga internal prune.
+        Tidak dapat di-restore (INV-LIFE-004).
     end note
     note left of ACTIVE
-        restore* hanya boleh jika SELURUH ancestor
-        chain sudah ACTIVE (INV-LIFE-002).
-        Child tak boleh ACTIVE saat ancestor
-        archived/deleted (INV-LIFE-001).
+        Operasional hanya jika SELURUH ancestor
+        chain juga ACTIVE (INV-LIFE-001).
     end note
 ```
 
 - **BR-011** `deleted_at` MUST diprioritaskan saat menentukan state entity.
 - **BR-012** Implementasi SHOULD menyediakan helper eksplisit (`IsActive()`, `IsArchived()`, `IsDeleted()`) dan MUST NOT menyebarkan logika interpretasi lifecycle ke banyak tempat berbeda.
 
-### INV-LIFE-001 — Ancestor Activity Requirement
-Child MUST NOT berstatus ACTIVE apabila ada ancestor yang ARCHIVED atau DELETED. → `ACTIVE child ⟹ ACTIVE ancestor chain`.
+### INV-LIFE-001 — Effective Ancestor Requirement
+Entity hanya operasional jika local state-nya ACTIVE **dan** seluruh ancestor chain ACTIVE. Descendant MAY tetap memiliki local state ACTIVE saat ancestor ARCHIVED/DELETED, tetapi MUST diperlakukan tidak operasional: tidak menerima mutation dan tidak muncul pada query aktif.
 
 ### INV-LIFE-002 — Restore Dependency
-Child MAY di-restore **hanya jika** seluruh ancestor chain-nya ACTIVE, berurutan dari ancestor teratas.
+Entity ARCHIVED MAY di-restore **hanya jika** seluruh ancestor chain-nya ACTIVE, berurutan dari ancestor teratas. Entity DELETED tidak dapat di-restore.
 ```text
 Board=ARCHIVED, List=ARCHIVED → restore List langsung: DENY
 Urutan benar: restore Board, lalu restore List
 ```
 
 ### INV-LIFE-003 — Archived Resource Mutation
-Entity ARCHIVED MUST NOT menerima: update, move, comment (minimal).
+Entity ARCHIVED MUST NOT menerima update, move, atau comment. Operasi valid: read/audit, restore (tunduk INV-LIFE-002), atau delete.
 
 ### INV-LIFE-004 — Deleted Resource Mutation
-Entity DELETED MUST NOT menerima: update, move, archive, comment, delete. Satu-satunya operasi valid tersisa adalah restore (tunduk INV-LIFE-002).
+Entity DELETED MUST NOT menerima mutation apa pun, termasuk restore. Entity MAY dibaca melalui Deleted/Audit view sesuai permission sampai internal prune menghapusnya permanen.
 
-## A.4 Parent-Child Handling
+## A.4 Parent Lifecycle Effect
 
-- **BR-013** Parent entity (Project, Milestone, Board, List — Card bukan parent) yang di-**archive atau delete** MUST menawarkan pilihan child handling: `archive` / `delete` / `move`.
-- **BR-014** Child handling adalah **pilihan opsional user**, bukan kewajiban selalu memindahkan child.
-- **BR-015** Project MUST NOT menyediakan strategi `move` untuk child handling (tidak ada Project tujuan valid — cross-project transfer dilarang).
-- **BR-016** Card MUST NOT memiliki child handling apa pun (leaf entity).
+- **BR-013** Archive/delete parent MUST hanya mengubah lifecycle timestamp, `version`, dan Activity parent tersebut. Local state, `version`, dan parent relation seluruh descendant MUST tetap.
+- **BR-014** Descendant dengan ancestor ARCHIVED/DELETED MUST menjadi tidak operasional secara efektif sesuai INV-LIFE-001, tanpa cascade lifecycle.
+- **BR-015** Restore parent ARCHIVED MUST membuat descendant kembali operasional sesuai local state masing-masing; descendant yang local state-nya ARCHIVED/DELETED tetap non-ACTIVE.
+- **BR-016** Internal prune pada entity DELETED MUST menghapus seluruh subtree secara fisik sebagai satu unit agar tidak menghasilkan orphan. Prune bukan operasi user.
+- **BR-016A** Entity DELETED MUST disimpan minimal 30 hari penuh sejak `deleted_at` dan MUST NOT di-prune sebelum `deleted_at <= now - 30 days`. Setelah batas tersebut entity menjadi eligible untuk prune; sistem MAY mengeksekusinya kemudian sesuai jadwal internal.
 
 ## A.5 Move Invariants
 
-- **INV-MOVE-001 — Same Project.** Entity yang dipindahkan (List, Board, Card) MUST tetap dalam Project sama.
-- **INV-MOVE-002 — Valid Destination.** Destination MUST: ada, berada di Project sama, berstatus ACTIVE, dan menjadi parent valid secara hierarki untuk entity yang dipindahkan.
+- **INV-MOVE-001 — Card Only & Same Project.** Hanya Card yang dapat dipindahkan pada MVP dan MUST tetap dalam Project sama. Milestone, Board, dan List MUST NOT memiliki operasi move.
+- **INV-MOVE-002 — Valid Destination.** Destination List MUST ada, berada di Project sama, memiliki seluruh ancestor ACTIVE, dan menjadi parent valid untuk Card.
 - **INV-MOVE-003 — Destination Authorization.** Actor MUST punya permission cukup untuk menulis ke destination. **Permission menghapus source TIDAK otomatis memberi permission menulis destination.**
-- **INV-MOVE-004 — Atomicity.** Delete/archive parent dengan child movement MUST atomic: source transition + child movement + activities semua berhasil, atau semua rollback.
+- **INV-MOVE-004 — Atomicity.** Perubahan `card.list_id`, increment `version`, penyesuaian asosiasi Label yang terdampak, dan Activity `card.moved` MUST commit atomik atau seluruhnya rollback.
 
 ## A.6 Card Movement (Spesifik)
 
@@ -111,9 +109,9 @@ Entity DELETED MUST NOT menerima: update, move, archive, comment, delete. Satu-s
 ## A.8 Activity (Audit Trail)
 
 - **BR-024** Activity MUST immutable & append-only — tidak ada UPDATE/DELETE.
-- **BR-025** Setiap entity (Project, Milestone, Board, List, Card) MUST memiliki Activity sendiri.
+- **BR-025** Setiap entity (Project, Milestone, Board, List, Card) MUST memiliki Activity sendiri. Untuk Project, state otoritatif (`name`, lifecycle, dan `version`) dan Activity-nya MUST berada di Project DB yang sama, serta MUST dimutasi dalam satu transaksi Project DB.
 - **BR-026** Activity MUST mencatat action spesifik (mis. `card.moved`, bukan generic `entity.status_changed`).
-- **BR-027** Operasi lifecycle pada parent (dengan child handling) MUST menghasilkan Activity terpisah untuk setiap descendant terdampak.
+- **BR-027** Operasi lifecycle parent MUST hanya menghasilkan Activity parent. Descendant tidak mendapat Activity lifecycle karena local state-nya tidak berubah.
 - **BR-028** Activity payload MUST menyimpan cukup konteks historis agar tetap bermakna walau entity yang direferensikan (mis. nama List lama) sudah dihapus.
 - **BR-029** `actor_user_id` pada Activity MUST tetap valid historis walau membership actor dicabut — MUST NOT jadi NULL.
 
@@ -141,15 +139,17 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 
 - **BR-035** Owner adalah **ownership property** (`Project.owner_user_id`), bukan Permission Group. Owner MUST NOT kehilangan ownership akibat perubahan Permission Group apa pun.
 - **BR-036** Co-Owner MUST diimplementasikan sebagai Permission Group biasa, bukan ownership kedua. Co-Owner MUST NOT otomatis bypass permission check.
-- **BR-037** Owner MAY bypass permission-group restriction untuk operasi dalam Project miliknya, tetapi tetap tunduk business invariant (mis. tidak bisa cross-project move) & concurrency validation.
-- **BR-038** Permission bersifat **additive** — MVP MUST NOT mengimplementasikan DENY. Effective permission = union seluruh grant berlaku dari semua Permission Group User.
+- **BR-037** Owner MAY bypass pemeriksaan grant dari Permission Group/direct Permission untuk operasi dalam Project miliknya, tetapi tetap tunduk lifecycle, business invariant (mis. tidak bisa cross-project move), dan concurrency validation.
+- **BR-038** Permission bersifat **additive** — MVP MUST NOT mengimplementasikan DENY. Effective permission = union seluruh scoped Permission Group assignment dan scoped direct Permission assignment yang berlaku bagi Membership.
 - **BR-039** Permission Group MUST Project-scoped, bukan global, dan MUST bukan hard-coded role (`if role == "manager"` dilarang).
-- **BR-040** Perubahan Permission Group (tambah/kurangi permission) MUST langsung berlaku ke semua member yang memakainya — tidak ada snapshot permission per membership.
+- **BR-040** Perubahan isi Permission Group (tambah/kurangi permission atau visibility `card.read`) MUST langsung berlaku ke semua Membership yang memiliki assignment Group tersebut — tidak ada snapshot permission per assignment.
 - **BR-041** Soft-delete Permission Group MUST menyebabkan seluruh member kehilangan permission dari group tersebut, tanpa menghapus riwayat assignment.
-- **BR-042** Permission MAY diberikan pada level Project/Milestone/Board/List/Card & diwariskan ke descendant.
+- **BR-042** Permission Group MUST diberikan kepada Membership melalui scoped assignment pada tepat satu level Project/Milestone/Board/List/Card dan diwariskan ke descendant scope tersebut. Group yang sama MAY diberikan kepada Membership berbeda pada scope berbeda.
+- **BR-042A** Membership MAY menerima direct Permission pada tepat satu hierarchy scope. Direct Permission menambah effective permission tanpa mengubah Permission Group dan tanpa mencabut grant lain.
+- **BR-042B** Setiap scoped assignment MUST merujuk resource yang ada, berada dalam Project Membership/Group yang sama, dan divalidasi ulang terhadap hierarchy terkini saat authorization.
 - **BR-043** Otorisasi MUST dievaluasi **per-operasi** — `card.read` MUST NOT diasumsikan memberi `card.update`, `card.move`, `card.delete`, dsb.
 - **BR-044** `card.move` adalah permission tersendiri, terpisah dari `card.update` — karena Move adalah state transition yang lebih consequential.
-- **BR-045** Creator & Assignee pada Card **bukan permission grant**. Menjadi creator/assignee TIDAK otomatis memberi hak update/delete — hak tetap dari Permission Group.
+- **BR-045** Creator & Assignee pada Card **bukan permission grant**. Menjadi creator/assignee TIDAK otomatis memberi hak update/delete — hak tetap berasal dari scoped Group/direct Permission.
 - **BR-046** Lifecycle entity selalu menang atas permission: walau User punya `card.delete`, jika Card DELETED, seluruh operasi mutasi tetap DENY.
 
 ## A.11 Card Visibility Scope
@@ -157,15 +157,15 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 - **BR-047** Card memiliki dimensi visibility tambahan: `ALL`, `CREATED_BY_ME`, `ASSIGNED_TO_ME`.
   - `ALL` — semua Card dalam applicable authorization scope.
   - `CREATED_BY_ME` — Card dengan `creator_user_id == current_user_id`.
-  - `ASSIGNED_TO_ME` — Card dengan `assignee_user_id == current_user_id`.
-- **BR-048** Urutan keluasan: `ASSIGNED_TO_ME < CREATED_BY_ME < ALL`. Jika User punya beberapa grant scope berbeda, **scope terluas menang** (union, bukan intersection).
-- **BR-049** Scope visibility MUST NOT berubah hanya karena User berada di child hierarchy berbeda — scope konsisten sesuai grant.
+  - `ASSIGNED_TO_ME` — Card dengan `creator_user_id == current_user_id` **atau** `assignee_user_id == current_user_id`.
+- **BR-048** Urutan keluasan: `CREATED_BY_ME < ASSIGNED_TO_ME < ALL`. Default saat `card.read` dibuat tanpa visibility eksplisit adalah `CREATED_BY_ME`. Jika beberapa grant berlaku pada entity yang sama, visibility terluas menang.
+- **BR-049** Visibility MUST dihitung hanya dari grant yang applicable terhadap hierarchy terkini Card. Berpindah ke child hierarchy lain tidak memperluas visibility kecuali ada scoped grant lain yang memang berlaku di sana.
 
 ## A.12 Invitation & Membership
 
 - **BR-050** Membership Project MUST melalui invitation — tidak ada join bebas.
-- **BR-051** Invitation MUST menentukan Permission Group sejak dibuat.
-- **BR-052** Invitation SHOULD menyimpan **reference** ke Permission Group, bukan snapshot seluruh definisi permission — jika Group berubah sebelum/sesudah acceptance, User dapat definisi Group yang berlaku saat itu.
+- **BR-051** Invitation MUST menentukan minimal satu Permission Group beserta hierarchy scope assignment-nya sejak dibuat.
+- **BR-052** Invitation SHOULD menyimpan **reference** ke Permission Group dan scope resource, bukan snapshot definisi permission — jika Group berubah sebelum/sesudah acceptance, Membership mendapat definisi Group yang berlaku saat itu.
 - **BR-053** Pencabutan membership MUST mencabut otorisasi berjalan, MUST NOT menghapus data historis (`creator_user_id`, `activity.actor_user_id` tetap utuh).
 - **BR-054** Jika Assignee kehilangan membership, sistem MUST men-set `assignee_user_id = NULL` & mencatat Activity `card.unassigned`. `creator_user_id` MUST NOT berubah.
 
@@ -178,12 +178,12 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 
 ## A.14 Database Cascade
 
-- **BR-059** Business deletion MUST NOT bergantung pada `ON DELETE CASCADE` sebagai pengganti domain logic. Child handling, otorisasi, lifecycle, Activity, transaksi, & semantik restore MUST dikendalikan eksplisit oleh application/domain layer.
+- **BR-059** Logical deletion MUST NOT memakai `ON DELETE CASCADE`; hanya parent yang berubah. Physical cascade hanya MAY dipakai oleh internal prune setelah otorisasi/lifecycle/retention ditangani domain layer.
 - **BR-060** Database cascade MAY dipakai hanya jika tidak melanggar semantik domain di atas.
 
 ## A.15 API Design Constraint
 
-- **BR-061** Business transition (move/archive/restore/delete) MUST NOT diimplementasikan sebagai arbitrary field update via generic PATCH.
+- **BR-061** Business transition (Card move serta archive/restore/delete) MUST NOT diimplementasikan sebagai arbitrary field update via generic PATCH.
 - **BR-062** Generic PATCH MUST NOT mengizinkan perubahan field yang dikendalikan domain: `id`, `project_id`, `creator_user_id`, `created_at`, `version`, `archived_at`, `deleted_at`, serta relasi hierarki (mis. `list_id`).
 
 ## A.16 Sepuluh Invariant Inti (Jantung Aplikasi)
@@ -192,7 +192,7 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 2. Every List MUST belong to exactly one Board.
 3. Every Board MUST belong to exactly one Milestone.
 4. Resources MUST NOT cross Project boundaries.
-5. A Card MAY move between Boards only inside the same Milestone.
+5. Only Card is movable; it MAY move between Boards only inside the same Milestone.
 6. Mutations MUST validate current state before committing.
 7. Concurrent mutations MUST use optimistic concurrency/version checking.
 8. Activity MUST be immutable and append-only.
@@ -206,15 +206,15 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait di Part A.
 
 ## B.1 Project
-- **FR-001** Sistem MUST mengizinkan User membuat Project baru; pembuat otomatis jadi Owner.
+- **FR-001** Sistem MUST mengizinkan User membuat Project baru; pembuat otomatis jadi Owner. Provisioning MUST membuat record `project_state` awal di Project DB sebagai state domain Project yang otoritatif.
 - **FR-002** Sistem MUST memastikan setiap Project punya tepat satu Owner.
 - **FR-003** Sistem MUST NOT menyediakan operasi pemindahan resource antar-Project.
-- **FR-004** Sistem MUST mendukung lifecycle Project (Active/Archived/Deleted) dengan child handling (archive/delete descendants) tanpa opsi "move".
+- **FR-004** Sistem MUST mendukung lifecycle Project: ARCHIVED dapat di-restore, DELETED terminal hingga prune; transition Project tidak mengubah local state descendant.
 
 ## B.2 Membership & Invitation
 - **FR-005** Sistem MUST mensyaratkan invitation untuk join Project (tidak ada join bebas).
-- **FR-006** Invitation MUST menentukan Permission Group(s) sejak dibuat.
-- **FR-007** Setelah invitation diterima, sistem MUST otomatis membuat Membership dengan Permission Group sesuai invitation.
+- **FR-006** Invitation MUST menentukan Permission Group assignment beserta hierarchy scope sejak dibuat.
+- **FR-007** Setelah invitation diterima, sistem MUST otomatis membuat Membership dengan scoped Permission Group assignment sesuai invitation.
 - **FR-008** Sistem MUST mengizinkan revoke membership; efeknya pencabutan otorisasi, bukan penghapusan data historis.
 
 ## B.3 Permission Group
@@ -222,7 +222,8 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-010** Sistem MUST mendukung baseline groups (Co-Owner, Manager, Contributor, Viewer) yang permission-nya dapat dikonfigurasi, bukan hard-coded.
 - **FR-011** Sistem MUST menghitung effective permission sebagai union seluruh grant berlaku (additive, tanpa DENY).
 - **FR-012** Perubahan permission pada Group MUST langsung berlaku ke seluruh member (live reference, bukan snapshot).
-- **FR-013** Sistem MUST mendukung permission assignment pada level Project/Milestone/Board/List/Card, dengan pewarisan ke descendant.
+- **FR-013** Sistem MUST mendukung assignment `Membership + Permission Group + scope` pada level Project/Milestone/Board/List/Card, dengan pewarisan ke descendant.
+- **FR-013A** Sistem MUST mendukung scoped direct Permission pada Membership; effective permission adalah union Group dan direct grant tanpa DENY.
 
 ## B.4 Milestone
 - **FR-014** Sistem MUST mengizinkan pembuatan Milestone (title, description, progress 0–100, start_date, due_date).
@@ -237,7 +238,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 
 ## B.6 List
 - **FR-021** Sistem MUST mengizinkan pembuatan List (title bebas tanpa semantic bawaan).
-- **FR-022** Sistem MUST menolak penghapusan List selama masih punya Card aktif.
+- **FR-022** Sistem MUST mengizinkan archive/delete List tanpa mengubah local state atau parent relation Card di dalamnya; Card menjadi tidak operasional secara efektif.
 - **FR-023** List MUST NOT punya field status di MVP.
 
 ## B.7 Card
@@ -259,7 +260,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-035** Sistem MUST mencatat Activity untuk setiap perubahan signifikan pada Project, Milestone, Board, List, Card.
 - **FR-036** Activity MUST append-only & immutable — tidak ada endpoint UPDATE/DELETE.
 - **FR-037** Activity MUST menyimpan cukup konteks historis (mis. nama List sebelumnya) agar tetap bermakna walau entity terkait dihapus.
-- **FR-038** Operasi lifecycle pada parent (dengan child handling) MUST menghasilkan Activity untuk setiap descendant terdampak.
+- **FR-038** Operasi lifecycle parent MUST hanya menghasilkan Activity parent; tidak ada Activity descendant tanpa perubahan local state descendant.
 
 ## B.10 Comment
 - **FR-039** Sistem MUST mengizinkan penambahan comment pada Card sebagai bagian Activity Card.
@@ -268,11 +269,11 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-042** Sistem MUST menolak comment baru pada Card berstatus Deleted atau Archived.
 
 ## B.11 Lifecycle
-- **FR-043** Sistem MUST mendukung state Active/Archived/Deleted untuk Project, Milestone, Board, List, Card.
-- **FR-044** Sistem MUST NOT mengizinkan entity ACTIVE apabila ada ancestor Archived/Deleted.
-- **FR-045** Sistem MUST menolak restore entity apabila ancestor belum sepenuhnya Active.
-- **FR-046** Sistem MUST menyediakan opsi child handling (archive/delete/move) saat parent di-archive/delete, kecuali Card (leaf) & Project (tanpa move).
-- **FR-047** Operasi child handling yang melibatkan banyak entity MUST transactional (all-or-nothing).
+- **FR-043** Sistem MUST mendukung state Active/Archived/Deleted untuk Project, Milestone, Board, List, Card; hanya ARCHIVED yang dapat di-restore.
+- **FR-044** Sistem MUST memperlakukan entity local-ACTIVE sebagai tidak operasional jika ada ancestor Archived/Deleted.
+- **FR-045** Sistem MUST menolak restore entity ARCHIVED apabila ancestor belum sepenuhnya Active dan MUST selalu menolak restore entity DELETED.
+- **FR-046** Archive/delete parent MUST tidak mengubah local state descendant dan MUST tidak meminta child handling.
+- **FR-047** Internal prune entity DELETED MUST menghapus seluruh subtree secara permanen tanpa orphan, hanya setelah retention 30 hari terpenuhi; prune bukan endpoint user MVP.
 
 ## B.12 Concurrency
 - **FR-048** Setiap entity mutable MUST punya `version` yang increment atomically pada tiap mutation.
@@ -286,7 +287,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-054** Sistem MUST menolak autentikasi dengan credential revoked/expired.
 
 ## B.14 API & Sinkronisasi
-- **FR-055** API MUST membedakan CRUD biasa dari domain command (move/archive/restore/delete) untuk operasi dengan business meaning.
+- **FR-055** API MUST membedakan CRUD biasa dari domain command (Card move serta archive/restore/delete) untuk operasi dengan business meaning.
 - **FR-056** Generic update (PATCH) MUST NOT mengizinkan perubahan field yang dikendalikan domain.
 - **FR-057** MVP MUST beroperasi tanpa realtime; client pakai pull/refresh.
 
@@ -323,26 +324,31 @@ Error:
 Error codes kanonik minimum:
 ```text
 PROJECT_ACCESS_DENIED · PERMISSION_DENIED · RESOURCE_NOT_FOUND · RESOURCE_ARCHIVED
-RESOURCE_DELETED · INVALID_STATE · INVALID_DESTINATION · INVALID_CHILD_HANDLING
+RESOURCE_DELETED · INVALID_STATE · INVALID_DESTINATION
 VERSION_CONFLICT · TOKEN_EXPIRED · TOKEN_REVOKED · INVITATION_EXPIRED · INVITATION_ALREADY_USED
 ```
 
 ## C.3 Idempotency
 
-Untuk mutation yang berpotensi diulang akibat network retry, gunakan `Idempotency-Key: <client-generated-key>`, terutama untuk `POST` yang membuat resource atau menjalankan domain command berisiko (create, move, delete dengan child handling).
+Untuk mutation yang berpotensi diulang akibat network retry, gunakan `Idempotency-Key: <client-generated-key>`, terutama untuk `POST` yang membuat resource atau menjalankan domain command berisiko (create, move, archive, delete).
 
 ## C.4 Project
 ```http
+GET    /api/v1/projects
+POST   /api/v1/projects
 GET    /api/v1/projects/:project_id
 PATCH  /api/v1/projects/:project_id
 POST   /api/v1/projects/:project_id/archive
 POST   /api/v1/projects/:project_id/restore
 POST   /api/v1/projects/:project_id/delete
 ```
-Delete body (tanpa `move`, lihat BR-015):
+`GET /projects` mengembalikan seluruh Project yang masih tercatat dapat diakses User, termasuk ARCHIVED/DELETED sesuai filter; setelah prune Project tidak lagi tersedia. `POST /projects` membuat registry, Owner Membership, Project DB, `project_state`, dan Activity `project.created` melalui provisioning F.2.
+`GET`/`PATCH` Project membaca/memutasi state domain pada `project_state` di Project DB; Global DB hanya dipakai untuk registry, owner, membership, dan resolusi database.
+Archive/restore/delete membawa version:
 ```json
-{ "child_handling": { "strategy": "archive" }, "expected_version": 4 }
+{ "expected_version": 4 }
 ```
+Restore hanya valid dari ARCHIVED; DELETED selalu menolak.
 
 ## C.5 Milestone
 ```http
@@ -357,11 +363,7 @@ Create:
 ```json
 { "title": "MVP", "description": "...", "progress": 0, "start_date": "2026-08-17", "due_date": "2026-09-30" }
 ```
-Update (`PATCH`) wajib membawa `expected_version`. Delete/Archive dengan child handling:
-```json
-{ "child_handling": { "strategy": "move", "destination_id": "milestone_456" }, "expected_version": 4 }
-```
-`destination_id` hanya muncul jika `strategy = "move"`.
+Update (`PATCH`) dan seluruh domain command wajib membawa `expected_version`. Archive/delete Milestone hanya mengubah Milestone; Board/List/Card descendant mempertahankan local state.
 
 ## C.6 Board
 ```http
@@ -372,20 +374,18 @@ POST   /api/v1/projects/:project_id/boards/:board_id/archive
 POST   /api/v1/projects/:project_id/boards/:board_id/restore
 POST   /api/v1/projects/:project_id/boards/:board_id/delete
 ```
-Child handling Board mencakup List (dan Card di dalamnya transitif). Destination untuk `move` harus Board dalam **Milestone sama**.
+Archive/delete Board hanya mengubah Board; List/Card descendant mempertahankan local state. Board tidak memiliki operasi move.
 
 ## C.7 List
 ```http
 POST   /api/v1/projects/:project_id/boards/:board_id/lists
 GET    /api/v1/projects/:project_id/lists/:list_id
 PATCH  /api/v1/projects/:project_id/lists/:list_id
-POST   /api/v1/projects/:project_id/lists/:list_id/move
 POST   /api/v1/projects/:project_id/lists/:list_id/archive
 POST   /api/v1/projects/:project_id/lists/:list_id/restore
 POST   /api/v1/projects/:project_id/lists/:list_id/delete
 ```
-Move: `{ "destination_board_id": "board_456", "expected_version": 7 }`
-Delete List dengan Card membutuhkan child handling (`archive cards` / `delete cards` / `move cards`).
+List tidak memiliki operasi move. Archive/delete List hanya mengubah List; Card descendant mempertahankan local state dan `list_id`.
 
 ## C.8 Card
 ```http
@@ -403,7 +403,7 @@ Move: `{ "destination_list_id": "list_456", "expected_version": 12 }`
 
 Server MUST memvalidasi: source Card, source List, destination List, kesamaan Project, destination ACTIVE, otorisasi, version, dan business invariant (`source_board.milestone_id == target_board.milestone_id`) sebelum eksekusi.
 
-Card **tidak memiliki** `child_handling` pada archive/delete/restore (BR-016).
+Restore Card hanya valid dari ARCHIVED dan jika seluruh ancestor ACTIVE. Card DELETED tidak dapat di-restore.
 
 ## C.9 Activity
 ```http
@@ -435,17 +435,33 @@ Assign: `{ "label_id": "label_123" }`. Server menentukan scope Label & memvalida
 GET    /api/v1/projects/:project_id/permission-groups
 POST   /api/v1/projects/:project_id/permission-groups
 PATCH  /api/v1/projects/:project_id/permission-groups/:group_id
-POST   /api/v1/projects/:project_id/members/:membership_id/groups
+POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments
+POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments/:assignment_id/revoke
+POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments
+POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke
 ```
-Assignment: `{ "group_id": "group_123" }`
+Scoped Group assignment:
+```json
+{ "group_id": "group_123", "scope_type": "milestone", "scope_id": "milestone_app_x" }
+```
+Scoped direct Permission assignment:
+```json
+{ "permission_id": "perm_card_read", "scope_type": "milestone", "scope_id": "milestone_app_x", "card_read_visibility": "ALL" }
+```
+`card_read_visibility` hanya berlaku untuk `card.read`; jika tidak diberikan default `CREATED_BY_ME`. Assignment bersifat additive dan revoke mempertahankan riwayat.
 
 ## C.13 Invitation
 ```http
 POST /api/v1/projects/:project_id/invitations
 POST /api/v1/invitations/:invitation_id/accept
 ```
-Create: `{ "email": "user@example.com", "group_ids": ["developer", "reviewer"] }`
-Setelah accept: `Invitation → Membership → Permission Groups` otomatis, tanpa assignment kedua kali.
+Create:
+```json
+{ "email": "eko@example.com", "assignments": [
+  { "group_id": "contributor", "scope_type": "milestone", "scope_id": "milestone_app_x" }
+] }
+```
+Setelah accept: `Invitation → Membership → scoped Permission Group assignments` otomatis, tanpa assignment kedua kali.
 
 ## C.14 API Key & PAT
 ```http
@@ -464,7 +480,7 @@ Generic `PATCH` MUST NOT menerima field yang merepresentasikan business transiti
 
 > Tidak boleh ada API endpoint yang memungkinkan client secara langsung mengubah field yang merepresentasikan business transition.
 
-Ini aturan paling penting dari kontrak API dan acuan utama saat AI coding agent membuat route handler baru.
+Ini aturan paling penting dari kontrak API dan acuan utama saat AI coding agent membuat HTTP handler Hono baru.
 
 ---
 
@@ -476,7 +492,7 @@ Format kanonik: `<resource>.<action>`.
 project.read · project.update
 milestone.read · milestone.create · milestone.update · milestone.archive · milestone.delete · milestone.restore
 board.read · board.create · board.update · board.archive · board.delete · board.restore
-list.read · list.create · list.update · list.move · list.archive · list.delete · list.restore
+list.read · list.create · list.update · list.archive · list.delete · list.restore
 card.read · card.create · card.update · card.move · card.archive · card.delete · card.restore · card.comment · card.comment.update
 member.read · member.invite · member.update · member.remove
 permission_group.read · permission_group.create · permission_group.update · permission_group.delete
@@ -499,7 +515,6 @@ Milestone / Board / List (pola sama):
 |---|:-:|:-:|:-:|:-:|:-:|
 | Read | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Create/Update/Archive/Delete/Restore | ✓ | ✓ | ✓ | — | — |
-| Move (List saja) | ✓ | ✓ | ✓ | — | — |
 
 Card:
 | Operation | Owner | Co-Owner | Manager | Contributor | Viewer |
@@ -513,21 +528,22 @@ Catatan: matrix ini adalah konfigurasi **default** baseline group. Nilai sebenar
 
 Model otorisasi Card memisahkan dua hal:
 ```text
-WHERE permission applies   (assignment level: Project/Milestone/Board/List/Card)
+WHERE permission applies   (Membership + Group/direct Permission + hierarchy scope)
         +
 WHICH cards are visible    (scope: ALL / CREATED_BY_ME / ASSIGNED_TO_ME)
 ```
-Keduanya disimpan & dievaluasi terpisah. Contoh: `Manager Group assigned at Board` menentukan *di mana* permission berlaku; `card.read.scope = assigned_to_me` menentukan *Card mana* yang terlihat.
+Keduanya disimpan & dievaluasi terpisah. Contoh: `Eko + Contributor Group assigned at Milestone X` menentukan *di mana* permission berlaku; `card.read.visibility = ASSIGNED_TO_ME` menentukan Card yang dibuat Eko atau di-assign kepada Eko. Default visibility adalah `CREATED_BY_ME`.
 
 ## D.4 Aturan Resolusi (ringkas)
 ```text
 resolve_permission(user, project, entity, action):
   1. Verify membership
-  2. Load applicable permission groups
-  3. Resolve hierarchy (Project → Milestone → Board → List → Card)
-  4. Collect permissions (union, additive)
-  5. Resolve card scope if applicable (MAX broadest scope)
-  6. Apply entity lifecycle restrictions (lifecycle wins)
-  7. Return allow/deny
+  2. Resolve Project DB
+  3. Load entity & current hierarchy (Project → Milestone → Board → List → Card)
+  4. Load applicable scoped Group + direct Permission assignments
+  5. Collect permissions (union, additive)
+  6. Resolve card visibility if applicable (MAX: CREATED_BY_ME < ASSIGNED_TO_ME < ALL)
+  7. Apply local + ancestor lifecycle restrictions (lifecycle wins)
+  8. Return allow/deny
 ```
-Owner: bypass permission-group (dalam Project sendiri), tetap tunduk business invariant + concurrency. Co-Owner: tidak bypass. Comment: `can_comment = can_read_card AND has(card.comment) AND card.is_active`.
+Owner: bypass Group/direct restriction (dalam Project sendiri), tetap tunduk business invariant + lifecycle + concurrency. Co-Owner: tidak bypass. Comment: `can_comment = can_read_card AND has(card.comment) AND card.is_effectively_active`.

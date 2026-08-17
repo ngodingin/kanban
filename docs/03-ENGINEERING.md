@@ -14,8 +14,10 @@
 Microservices **sengaja tidak dipilih** untuk MVP. Domain (Project, Membership, Permission, Milestone, Board, List, Card, Label, Activity, Credential) saling berhubungan erat & butuh **transactional consistency** kuat (mutation Card + Activity harus atomic). Memecahnya jadi service terpisah memperkenalkan network hop, transaction coordination, & event choreography yang tidak dibutuhkan pada skala MVP.
 
 ```text
-Satu API application, satu codebase, satu deployment.
+Satu API application + satu SPA, satu codebase, satu canonical origin, satu deployment project.
 ```
+
+API dan web dipisahkan sebagai package/module, bukan sebagai microservice. Build React/Vite menjadi static assets; Hono menjadi serverless API. Keduanya dipublikasikan dari satu Vercel project dan origin yang sama agar cookie Magic Link, redirect, serta client API tidak membutuhkan CORS lintas-origin.
 
 ## A.2 Diagram Tingkat Tinggi
 
@@ -28,8 +30,7 @@ Satu API application, satu codebase, satu deployment.
                                   │ HTTPS / API
                          ┌────────▼─────────┐
                          │   API Layer      │
-                         │ (Next.js Route   │
-                         │   Handlers)      │
+                         │  (Hono HTTP API) │
                          └────────┬─────────┘
                     ┌─────────────┴─────────────┐
              Identity/Auth              Project Resolver
@@ -55,11 +56,11 @@ Project Database
 Domain resources
 ```
 
-**Global DB** (info lintas-Project): `users, projects, project_memberships, permission_groups, permissions, group_permissions, membership_groups, invitations, invitation_groups, api_keys, personal_access_tokens, project_databases`.
+**Global DB** (control plane lintas-Project): `users`, Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`), `projects` (registry), `project_memberships`, `permission_groups`, `permissions`, `group_permissions`, scoped Group/direct Permission assignments, invitation assignments, credential, dan `project_databases`.
 
-**Project DB** (domain Project-local): `milestones, milestone_labels, boards, board_labels, lists, cards, card_milestone_labels, card_board_labels, activities`.
+**Project DB** (domain Project-local): `project_state`, `milestones, milestone_labels, boards, board_labels, lists, cards, card_milestone_labels, card_board_labels, activities`.
 
-Alasan: "User A punya akses ke Project B" adalah info **global**; "Card X di List Y" adalah info **Project-local**. Pemisahan membuat Project isolation eksplisit di level arsitektur, bukan hanya konvensi query.
+Alasan: "User A punya akses ke Project B" adalah info **global**; state operasional Project itu sendiri—termasuk lifecycle dan Activity—adalah **Project-local**. Pemisahan membuat Project isolation eksplisit di level arsitektur, bukan hanya konvensi query.
 
 ## A.4 Database-per-Project = Isolation Strategy, Bukan Kontrak Publik
 
@@ -68,8 +69,11 @@ Domain model MUST NOT bergantung pada asumsi "satu Project = satu file SQLite fi
 Request flow wajib:
 ```text
 Authentication → Identify User → Load Project → Verify Membership
-→ Resolve Permission → Resolve Project Database → Execute Query
+→ Resolve Project Database → Load Entity + Current Hierarchy
+→ Resolve Scoped Permission → Execute Query
 ```
+
+`projects` di Global DB adalah registry/akses, bukan sumber state domain Project. Untuk menampilkan daftar Project, aplikasi MAY membaca registry/membership dari Global DB lalu membaca detail/status masing-masing Project dari Project DB-nya. Rangkaian read ini bukan transaksi lintas database. Mutasi Project hanya mengubah `project_state` dan Activity dalam satu transaksi pada Project DB.
 
 ## A.5 Cross-Database Referential Integrity
 
@@ -90,9 +94,11 @@ COMMIT   (kegagalan step manapun → ROLLBACK)
 ```
 Untuk SQLite, mutation + activity append SHOULD pakai `BEGIN IMMEDIATE` untuk hindari write-write race di level DB, di atas optimistic locking level aplikasi. Referensi rule: 02-SPEC A.7, A.8, INV-MOVE-004.
 
-### A.6.1 Sequence — Child Handling (kasus paling rawan bug)
+Untuk entity Project, transaksi di atas dijalankan pada Project DB yang memiliki `project_state` dan `activities`; Global DB tidak dimutasi oleh command lifecycle/update Project. Pembuatan registry Global dan provisioning Project DB adalah alur provisioning terpisah yang mengikuti kompensasi/rollback di F.2, bukan mutation lifecycle Project.
 
-Contoh: **Delete Board A dengan `child_handling.strategy = move`** (List dipindah ke Board B). Ini alur paling kompleks; strategi `archive`/`delete` mengikuti pola yang sama tetapi tanpa langkah validasi/permission destination. Semua di dalam SATU transaksi (INV-MOVE-004) — kegagalan langkah manapun → rollback total.
+### A.6.1 Sequence — Lifecycle Parent Tanpa Cascade
+
+Contoh: **Delete Board A**. Hanya local state Board dan Activity Board yang berubah. List/Card descendant tetap menunjuk parent yang sama dan mempertahankan local state/version; setelah commit mereka menjadi tidak operasional secara efektif karena ancestor DELETED.
 
 ```mermaid
 sequenceDiagram
@@ -101,61 +107,80 @@ sequenceDiagram
     participant AUTH as AuthZ
     participant DB as Project DB (tx)
 
-    C->>API: POST /boards/A/delete { strategy=move, destination_id=B, expected_version }
+    C->>API: POST /boards/A/delete { expected_version }
     API->>DB: BEGIN IMMEDIATE
     API->>DB: Load Board A (+ version)
     API->>AUTH: cek board.delete pada Board A
     AUTH-->>API: allow/deny
     Note over API: version cocok? (else 409 VERSION_CONFLICT → ROLLBACK)
-    API->>DB: Load Board B (destination)
-    Note over API,DB: Board B ada? ACTIVE? Project sama?<br/>Milestone sama (untuk List)? (else INVALID_DESTINATION → ROLLBACK)
-    API->>AUTH: cek permission WRITE di destination (INV-MOVE-003)
-    AUTH-->>API: allow/deny (deny → PERMISSION_DENIED → ROLLBACK)
-    loop untuk setiap List anak Board A
-        API->>DB: pindah List.board_id = B (version += 1)
-        API->>DB: append Activity list.moved (from A → to B)
-    end
     API->>DB: set Board A deleted_at (version += 1)
-    API->>DB: append Activity board.deleted { cascade:false }
+    API->>DB: append Activity board.deleted
     API->>DB: COMMIT
     API-->>C: 200 { data }
-    Note over API,DB: Kegagalan di langkah manapun → ROLLBACK penuh,<br/>tidak ada partial state (AC-019)
+    Note over API,DB: List/Card tidak di-update dan tidak mendapat Activity.<br/>Mutation descendant berikutnya ditolak oleh effective ancestor check.
 ```
-
-Untuk `strategy = delete`/`archive`, langkah "pindah List" diganti transisi lifecycle tiap descendant + Activity `list.deleted`/`list.archived` dengan `{ cascade:true, via_parent:{board,A} }` (B.5), dan Card di dalamnya juga bertransisi + ber-Activity (BR-027). Subtree besar → pertimbangkan async job (A.10), tetapi tetap satu unit transaksional-logis.
 
 
 ## A.7 Struktur Kode (Domain-Oriented Modular Monolith)
 
 ```text
-src/
-├── app/api/                 # HTTP route handlers (thin layer)
-├── modules/
-│   ├── project/  membership/  permission/  milestone/
-│   ├── board/  list/  card/  label/  activity/  credential/
+apps/
+├── api/                     # Hono app + HTTP routes; thin transport layer
+└── web/                     # React/Vite SPA; implementation dibuka Phase 7
+packages/
+├── domain/                  # project, membership, permission, milestone,
+│                            # board, list, card, label, activity, credential
 ├── infrastructure/
 │   ├── database/            # DB resolver, migrations, query layer
-│   ├── auth/                # session, API key, PAT resolution
-│   └── storage/
-└── shared/
-    ├── errors/  validation/  types/
+│   └── auth/                # session, API key, PAT resolution
+├── contracts/               # schema request/response API publik
+└── shared/                  # errors, validation, cross-package types
 ```
 
 Domain-oriented (bukan `controllers/services/repositories/models` tercampur). Setiap module punya domain logic, validation, & data access sendiri — mudah dipetakan ke Business Rules per modul.
 
 ## A.8 Stack Teknologi
 
-| Layer | Pilihan | Status |
-|---|---|---|
-| Frontend | Next.js + TypeScript | Direkomendasikan |
-| API | Next.js Route Handlers | Direkomendasikan; dedicated service jika kelak dibutuhkan |
-| Database engine | libSQL (SQLite-compatible) | **Locked (v1.0.1)** |
-| Database provider | **Turso** (managed libSQL, database-per-project) | **Locked pending POC gate** — lihat A.11 |
-| ORM / Query layer | **Drizzle ORM** (+ drizzle-kit untuk migration) | **Locked (v1.0.1)** — lihat A.12 |
-| ID format | **ULID**, disimpan sebagai TEXT | **Locked (v1.0.1)** — lihat A.13 |
-| Auth (web session) | **Auth.js (NextAuth)**, user di Global DB | **Locked (v1.0.3)** — lihat A.14 |
-| Validation | Zod | Direkomendasikan |
-| Deployment | Vercel | Direkomendasikan (Part D) |
+### A.8.1 Kebijakan versi
+
+- Pemilihan versi MUST mengikuti urutan: **(1)** lini LTS terbaru yang masih didukung vendor dan terbukti kompatibel; **(2)** jika teknologi tidak memiliki kanal LTS, rilis stable terbaru yang terbukti kompatibel; **(3)** jika pilihan terbaru gagal compatibility gate, gunakan rilis stable/LTS terakhir yang lulus dan dokumentasikan penyebab penundaannya. `latest` tidak berarti langsung dipakai tanpa verifikasi.
+- **Terbukti kompatibel/stabil** berarti clean install, build, typecheck, lint, unit/integration test, dan smoke test yang relevan lulus bersama pada runtime target; peer dependency valid; serta tidak ada known issue/security advisory kritis yang belum dimitigasi.
+- Versi MUST direvalidasi oleh lane **AI-Planning & Review** saat baseline dibuat, sebelum bootstrap Phase 0, dan ketika membuka phase baru yang memasang dependency tambahan. Jika ada versi LTS/stable lebih baru yang lulus gate, matriks SOT diperbarui lebih dahulu. AI-Dev tetap dilarang mengubah SOT.
+- **Baseline version** di bawah mengunci lini kompatibilitas yang dipakai v1.0. **Pin awal** adalah versi exact yang telah diperiksa pada **2026-08-17** dan merupakan versi terbaru atau versi terakhir yang terbukti stabil sesuai aturan di atas.
+- Dependency langsung MUST ditulis sebagai versi exact di `package.json` (tanpa `latest`, `*`, `^`, atau `~`), `packageManager` MUST memuat versi pnpm exact, dan `pnpm-lock.yaml` MUST di-commit. Setelah bootstrap, `package.json` + lockfile menjadi sumber kebenaran versi patch yang benar-benar terpasang.
+- Patch upgrade dalam baseline yang sama MAY dilakukan tanpa menaikkan `SPEC_VERSION` jika tidak mengubah kontrak/perilaku, clean install + build + typecheck + lint + test tetap hijau, dan perubahan tercatat di dependency PR/commit. Perubahan major/minor baseline atau perubahan yang memengaruhi perilaku MUST direview dan memperbarui SOT terlebih dahulu.
+- Dependency prerelease (`alpha`, `beta`, `rc`, canary, nightly) MUST NOT menjadi baseline production. Pengecualian hanya boleh dibuat melalui keputusan manusia + amandemen SOT yang menjelaskan mengapa tidak ada rilis stable/LTS yang memenuhi kebutuhan, risiko, batas waktu migrasi, dan test gate tambahan.
+- Dependency UI khusus Phase 7 tidak dipasang pada Phase 0. Baseline major-nya dicatat sekarang, tetapi pin exact MUST diverifikasi ulang ketika gate Phase 7 dibuka.
+
+### A.8.2 Matriks versi terkunci
+
+| Layer / package | Baseline version | Pin/constraint snapshot | Status / catatan |
+|---|---:|---:|---|
+| Runtime — Node.js | **24.x LTS** | `>=24.18.0 <25` | Locked; jangan gunakan Node Current/non-LTS untuk production |
+| Package manager — pnpm | **11.x** | `11.22.0` | Locked; tulis `packageManager: pnpm@11.22.0` |
+| API framework — `hono` | **4.x stable** | `4.13.2` | Locked; Web Standard Request/Response, Vercel-compatible |
+| Web build — `vite` / `@vitejs/plugin-react` | **8.x / 6.x stable** | `8.2.1` / `6.0.5` | Phase 7 baseline; exact pin direvalidasi saat gate dibuka |
+| UI runtime — React / React DOM | **19.2.x** | `19.2.8` | Phase 7 baseline; SPA |
+| Language — TypeScript | **6.0.x** | `6.0.2` | Locked untuk bootstrap; TypeScript 7 ditunda sampai lint/tooling mendukung compiler API-nya |
+| Database engine/provider | **libSQL / Turso Cloud** | managed service | Locked pending POC A.11; versi server dicatat dalam hasil POC |
+| Database client — `@libsql/client` | **0.17.x** | `0.17.4` | Locked; jalur production-ready untuk integrasi Drizzle + Turso |
+| Provisioning SDK — `@tursodatabase/api` | **2.0.x** | `2.0.5` | Locked untuk Platform API provisioning |
+| ORM — `drizzle-orm` | **0.45.x** | `0.45.2` | Locked |
+| Migration — `drizzle-kit` | **0.31.x** | `0.31.10` | Locked |
+| Validation — `zod` | **4.x** | `4.4.3` | Locked |
+| Identifier — `ulid` | **3.x** | `3.0.2` | Locked; nilai tetap disimpan sebagai TEXT |
+| Web auth — `better-auth` | **1.6.x stable** | `1.6.29` | Locked; Hono + Magic Link plugin |
+| Auth adapter — `@better-auth/drizzle-adapter` | **1.6.x stable** | `1.6.29` | Locked; `provider: "sqlite"`, kompatibilitas libSQL wajib integration test |
+| Email SDK — `resend` | **6.x** | `6.20.0` | Locked; jalur aktif memakai API key |
+| Unit/integration test — `vitest` | **4.x** | `4.1.10` | Locked |
+| E2E — `@playwright/test` | **1.62.x** | `1.62.1` | Locked |
+| Lint — `eslint` / `typescript-eslint` | **10.x / 8.x** | `10.8.1` / `8.67.0` | Locked; TypeScript `<6.1.0` sesuai peer range lint tooling |
+| Formatter — `prettier` | **3.x** | `3.9.6` | Locked |
+| Deployment | **Vercel** | managed platform | Direkomendasikan; runtime production mengikuti Node.js 24.x LTS |
+
+Baseline Phase 7: React Router **8.x**, Tailwind CSS **4.x**, shadcn CLI/components **4.x**, TanStack Query **5.x**, Zustand **5.x**, dan dnd-kit core **6.x**. Pin exact ditetapkan ulang saat Phase 7 dibuka karena implementasinya masih blocked.
+
+**Alasan TypeScript 6:** TypeScript 7.0 sudah stabil, tetapi toolchain `typescript-eslint` yang tersedia saat baseline ini dibuat masih menyatakan dukungan `<6.1.0`. Memilih 6.0.2 menghindari peer-dependency tidak valid dan menjaga lint sebagai quality gate. Upgrade ke TypeScript 7 dilakukan setelah seluruh lint/Hono/Vite/test tooling menyatakan kompatibel.
 
 > Ketiga keputusan yang sebelumnya *open* (provider database, ORM, format ID) kini dikunci di v1.0.1. Rationale & alternatif di A.11–A.13. Keputusan ini bersifat implementasi (tidak mengubah business invariant/authorization/lifecycle/API semantics), sehingga naik versi patch, bukan minor/major.
 
@@ -207,28 +232,35 @@ Domain-oriented (bukan `controllers/services/repositories/models` tercampur). Se
 
 **Konvensi opsional:** prefix per-entity untuk keterbacaan (mis. `card_<ulid>`, `brd_<ulid>`) — boleh dipakai asalkan konsisten; ini kosmetik dan tidak mengubah semantik identity.
 
-## A.14 Keputusan: Authentication (Web Session) — Auth.js (NextAuth)
+## A.14 Keputusan: Authentication (Web Session) — Better Auth Magic Link
 
-**Keputusan (Locked v1.0.3):** Auth.js (NextAuth) untuk autentikasi **web session interaktif**, dengan adapter Drizzle, **user disimpan di Global DB (`users`)**. API Key (Project-scoped) & PAT (User-scoped) yang sudah didefinisikan (02-SPEC A.13, Part C) **tetap dipakai untuk akses programatik/API** — tidak berubah.
+**Keputusan (Locked v2.0.6):** Better Auth stable dengan plugin **Magic Link via email** sebagai satu-satunya metode login web MVP. Callback `sendMagicLink()` memanggil **Resend SDK/API key**; adapter Drizzle memakai Global DB; session disimpan di `auth_sessions` dan dikirim sebagai secure HTTP-only cookie; **user tetap otoritatif di Global DB (`users`)**. Jalur SMTP Resend MAY menjadi fallback operasional, tetapi bukan jalur aktif/default MVP. API Key Project dan PAT aplikasi **tetap dipakai untuk akses programatik/API** dan berbeda dari API key Resend yang hanya secret infrastruktur.
 
 **Alasan utama (arsitektural):**
 - Tabel `users` (Global DB) adalah **jangkar seluruh domain**: `owner_user_id`, `creator_user_id`, `assignee_user_id`, `actor_user_id` menunjuk ke sana, sebagian sebagai historical reference lintas-database yang MUST tetap stabil (BR-029, BR-053). Karena itu **identitas user WAJIB otoritatif di database sendiri**.
-- Auth.js dengan adapter DB menyimpan user di Global DB kita → memenuhi syarat di atas, **sekaligus** menangani flow login manusia yang sensitif keamanan (OAuth/email/session) tanpa hand-rolling.
-- Gratis, open-source, native ke Next.js (stack sudah dipilih), tanpa dependency identitas pihak ketiga (konsisten dengan semangat isolation & kontrol).
+- Better Auth dengan adapter Drizzle menyimpan user, session, account metadata, dan verification record di Global DB kita → memenuhi syarat di atas, **sekaligus** menangani token/callback/session Magic Link tanpa hand-rolling autentikasi berbasis password. Callback `sendMagicLink()` hanya menjadi transport email melalui Resend API; pembuatan, penyimpanan, konsumsi atomik, dan expiry token tetap mekanisme Better Auth.
+- Gratis, open-source, terintegrasi langsung dengan Hono melalui Web Standard `Request`/`Response`, dan tidak menjadikan identity SaaS pihak ketiga sebagai source of truth.
 
 **Kenapa bukan Clerk:** Clerk memiliki identitas user di pihak ketiga → menimbulkan sinkronisasi terus-menerus dengan tabel `users` yang jadi anchor ownership/membership/activity. Menambah vendor dependency yang berlawanan dengan prinsip kontrol/isolation. (Boleh dipertimbangkan hanya jika kecepatan go-to-market jadi prioritas jauh di atas kontrol.)
 
 **Kenapa bukan Custom JWT (untuk login manusia):** konsisten dengan PAT tetapi memaksa reimplementasi flow sensitif (password hashing, email verification, reset, session rotation, CSRF) — risiko tinggi untuk tim kecil. PAT/API Key adalah *machine credential* (lebih sederhana) sehingga tetap dirancang sendiri; login manusia diserahkan ke library matang.
 
 **Integrasi dengan model otorisasi (konsisten, tidak mengubah semantik):**
-- Auth.js session hanyalah **mekanisme identitas**. Setelah identitas ditetapkan, rantai otorisasi yang SAMA berlaku:
+- Better Auth session hanyalah **mekanisme identitas**. Setelah identitas ditetapkan, rantai otorisasi yang SAMA berlaku:
   ```text
   Session → User → Project Membership → Permission
   ```
   identik dengan `API Key → User → ...` dan `PAT → User → ...` (02-SPEC A.13, 03-ENGINEERING C.1). Session valid ≠ authorization — otorisasi selalu diresolusi ulang server-side per request.
-- **Session strategy:** JWT session (stateless) direkomendasikan untuk efisiensi serverless. Revocation membership tetap efektif karena membership & permission SELALU diresolusi ulang terhadap Global DB per request (bukan bergantung pada isi session) — konsisten dengan BR-053 & prinsip "credential ≠ authorization".
+- **Session strategy:** database-backed opaque session adalah baseline MVP agar session dapat dicabut segera. Cookie cache/stateless session Better Auth MUST tetap nonaktif sampai ada kebutuhan dan threat review tersendiri. Revocation membership tetap efektif walau session valid karena membership & permission SELALU diresolusi ulang terhadap Global DB per request — konsisten dengan BR-053 dan prinsip "credential ≠ authorization".
+- Better Auth MUST memakai custom table/field mapping B.2 dan custom `generateId` berbasis ULID agar tidak menciptakan identitas kedua atau format ID yang menyimpang.
 
-**Masih open (implementasi, bukan blocker arsitektur):** pemilihan provider identitas konkret di dalam Auth.js (email/password vs OAuth Google/GitHub vs magic link) — ditetapkan di Phase 0 sesuai kebutuhan onboarding. Yang dikunci adalah **Auth.js sebagai mekanisme + user tetap di Global DB**.
+**Routing:** handler Better Auth dipasang sebelum catch-all lain pada `/api/auth/*`. Endpoint domain Hono berada di `/api/v1/*`. SPA fallback MUST tidak menangkap `/api/*`.
+
+**Provider scope:** `emailAndPassword` MUST disabled dan tidak ada social/OAuth provider pada MVP. Magic Link MAY membuat `users` baru setelah link berhasil diverifikasi; request link itu sendiri tidak boleh dianggap sebagai user terverifikasi.
+
+**Batas fase:** Phase 0 MUST mengimplementasikan request Magic Link, penyimpanan token dalam bentuk hash (`storeToken: "hashed"`), konsumsi atomik single-use/expiring, pengiriman email melalui `sendMagicLink()` + Resend SDK/API, callback, database-backed session, sign-out/revocation dasar, serta antarmuka uji minimal. Desain dan state UX login final (loading, link terkirim, expired/used link, error) dikerjakan pada Phase 7.
+
+**Keamanan minimum:** response request-link MUST tidak membocorkan apakah email sudah terdaftar; token MUST single-use, memiliki expiry, dan tidak disimpan sebagai raw secret. `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, dan `AUTH_RESEND_KEY` MUST berasal dari environment/secret manager, tidak disimpan di database atau source control. `BETTER_AUTH_URL` MUST sama dengan canonical origin environment aktif. Sender dikunci ke `noreply@kanban.ngodingin.xyz`. Callback origin MUST berasal dari konfigurasi server-side environment, bukan mempercayai request `Host` secara bebas. Rate limiting endpoint auth mengikuti F.5.
 
 
 ## A.9 Realtime (Bukan MVP)
@@ -241,7 +273,7 @@ Activity **bukan** message queue/event bus — ia historical record. Event/realt
 
 ## A.10 Long-Running Operations (Future)
 
-Operasi berpotensi panjang (**bukan MVP**): physical purge (setelah retention), large cascade, database provisioning otomatis, large export/backup. Arsitektur SHOULD tidak menghalangi pola `API → enqueue job → background worker` di masa depan.
+Operasi berpotensi panjang (**bukan MVP**): internal subtree prune setelah retention, database provisioning otomatis, large export/backup. Arsitektur SHOULD tidak menghalangi pola `API → enqueue job → background worker` di masa depan.
 
 ---
 
@@ -251,7 +283,7 @@ Operasi berpotensi panjang (**bukan MVP**): physical purge (setelah retention), 
 
 ## B.1 Prinsip
 
-- **`project_id` tidak diulang di setiap tabel Project DB** karena database itu sendiri adalah isolation boundary → kurangi redundancy & risiko kebocoran lintas Project.
+- **`project_id` tidak diulang di tabel child Project DB** karena database itu sendiri adalah isolation boundary → kurangi redundancy & risiko kebocoran lintas Project. Pengecualian tunggal adalah `project_state.project_id`, sebagai anchor yang mengikat satu Project DB ke registry Global.
 - Lifecycle pakai **timestamp** (`archived_at`, `deleted_at`), bukan boolean (`is_archived`/`is_deleted`) → beri info tambahan "kapan" & konsisten dengan 02-SPEC A.3.
 - **Tidak ada `UNIQUE(title/name)`** di entity manapun — `id` satu-satunya identity. **Slug tidak** dipakai sebagai identifier di MVP.
 
@@ -259,10 +291,34 @@ Operasi berpotensi panjang (**bukan MVP**): physical purge (setelah retention), 
 
 ```text
 users
-  id · email · name · created_at · updated_at
+  id · email(UNIQUE, normalized) · email_verified(boolean) · name · image(nullable)
+  created_at · updated_at
+  # Better Auth model `user` dipetakan ke tabel ini; tetap anchor identity domain
+
+auth_sessions
+  id · user_id(→users.id) · token(UNIQUE, sensitive) · expires_at
+  ip_address(nullable) · user_agent(nullable) · created_at · updated_at
+  # Better Auth model `session`; cookie HTTP-only/Secure/SameSite, jangan log token
+
+auth_accounts
+  id · user_id(→users.id) · account_id · provider_id
+  access_token(nullable) · refresh_token(nullable) · access_token_expires_at(nullable)
+  refresh_token_expires_at(nullable) · scope(nullable) · id_token(nullable)
+  password(nullable) · created_at · updated_at
+  UNIQUE(provider_id, account_id)
+  # core compatibility Better Auth; password/social provider tidak diaktifkan pada MVP
+
+auth_verifications
+  id · identifier(token_hash untuk Magic Link; never raw token)
+  value(metadata JSON tanpa raw token; dapat memuat email/PII)
+  expires_at · created_at · updated_at
+  UNIQUE(identifier)
+  # Better Auth model `verification`; magicLink.storeToken="hashed"
+  # successful consumption MUST atomik dan single-use
 
 projects
-  id · owner_user_id(→users.id) · name · created_at · updated_at · archived_at · deleted_at
+  id · owner_user_id(→users.id) · provisioning_state("PROVISIONING"|"READY"|"FAILED") · created_at
+  # registry/control-plane; bukan sumber state domain Project
 
 project_databases
   project_id(→projects.id) · database_id(logical, bukan nama file) · created_at
@@ -279,19 +335,37 @@ permission_groups
   created_at · updated_at · archived_at · deleted_at
 
 group_permissions
-  group_id(→permission_groups.id) · permission_id(→permissions.id) · created_at
+  group_id(→permission_groups.id) · permission_id(→permissions.id)
+  card_read_visibility(nullable; CREATED_BY_ME|ASSIGNED_TO_ME|ALL) · created_at
   UNIQUE(group_id, permission_id)
+  # app-level invariant: visibility MUST NULL kecuali permission.key = "card.read";
+  # service mengisi CREATED_BY_ME jika card.read dibuat tanpa visibility eksplisit
 
-membership_groups
-  membership_id(→project_memberships.id) · group_id(→permission_groups.id) · created_at
-  (app-level invariant: Group harus dari Project sama dengan Membership)
+membership_group_assignments
+  id · membership_id(→project_memberships.id) · group_id(→permission_groups.id)
+  scope_type("project"|"milestone"|"board"|"list"|"card") · scope_id
+  created_at · revoked_at
+  UNIQUE aktif(membership_id, group_id, scope_type, scope_id) WHERE revoked_at IS NULL
+
+membership_permission_assignments
+  id · membership_id(→project_memberships.id) · permission_id(→permissions.id)
+  scope_type("project"|"milestone"|"board"|"list"|"card") · scope_id
+  card_read_visibility(nullable; CREATED_BY_ME|ASSIGNED_TO_ME|ALL)
+  created_at · revoked_at
+  UNIQUE aktif(membership_id, permission_id, scope_type, scope_id) WHERE revoked_at IS NULL
+  # app-level invariant: visibility MUST NULL kecuali permission.key = "card.read";
+  # service mengisi CREATED_BY_ME jika card.read dibuat tanpa visibility eksplisit
+
+  (app-level invariant untuk kedua tabel: Membership, Group, dan scope harus dari
+   Project sama; resource scope divalidasi ke Project DB karena tidak ada FK lintas DB)
 
 invitations
   id · project_id(→projects.id) · email · invited_by_user_id(→users.id)
   expires_at · accepted_at · revoked_at · created_at
 
-invitation_groups
-  invitation_id(→invitations.id) · group_id(→permission_groups.id)
+invitation_group_assignments
+  id · invitation_id(→invitations.id) · group_id(→permission_groups.id)
+  scope_type("project"|"milestone"|"board"|"list"|"card") · scope_id
 
 api_keys
   id · project_id(→projects.id) · created_by_user_id(→users.id) · name
@@ -305,6 +379,11 @@ personal_access_tokens
 ## B.3 Project Database — Schema
 
 ```text
+project_state
+  project_id(PK; = Global projects.id; tepat satu record per Project DB)
+  name · created_at · updated_at · archived_at · deleted_at · version
+  # sumber otoritatif state domain Project
+
 milestones
   id · title · description · progress(0..100, manual) · start_date · due_date
   created_at · updated_at · archived_at · deleted_at · version
@@ -359,6 +438,8 @@ Comment **bukan** tabel terpisah — Comment adalah `activities` dengan `action 
 | Asosiasi Label punya `removed_at` (bukan hapus fisik) | Saat Card pindah Board, Board Label lama jadi orphaned tapi riwayat "Card ini pernah berlabel X" harus tetap terlihat di Activity. |
 | `version` per entity, bukan per Project | Concurrent mutation entity tak berhubungan (Card A vs Card B) tidak boleh saling blokir (BR-020). |
 | `activities` tabel terpisah (bukan JSON di dalam entity) | Query, pagination, indexing, retention, audit jauh lebih baik. |
+| `project_state` berada di Project DB | Lifecycle, update, optimistic locking, dan Activity Project dapat di-commit atomik dalam satu database. Global `projects` hanya registry akses; daftar Project membaca detail/status dari Project DB saat diperlukan. |
+| Scoped assignment berada di Global DB | Assignment adalah bagian control plane Membership. `scope_id` ke resource Project DB divalidasi application layer; authorization tetap membaca hierarchy terkini dari Project DB agar move Card langsung mengubah grant yang berlaku. |
 | User reference dari Project DB tanpa physical FK | SQLite tidak mendukung FK lintas database praktis; integrity di app layer. |
 | Timestamp lifecycle, bukan boolean | Beri info historis "kapan" bukan hanya "apakah". |
 
@@ -378,10 +459,9 @@ Payload MUST menyimpan cukup **konteks historis**, bukan hanya ID mentah — ent
 | `*.created` | `{}` atau `{ "snapshot": { <field inti minimal> } }` (snapshot opsional) |
 | `*.updated` | `{ "changes": { "title": { "before": "...", "after": "..." } } }` |
 | `card.moved` | `{ "from": { "list_id": "...", "list_title": "...", "board_id": "...", "board_title": "..." }, "to": { ...sama... } }` |
-| `list.moved` / `board.moved` | `{ "from": { "<parent>_id": "...", "<parent>_title": "..." }, "to": { ...sama... } }` |
 | `card.assigned` | `{ "assignee_user_id": "..." }` |
 | `card.unassigned` | `{ "previous_assignee_user_id": "...", "reason": "manual" \| "membership_revoked" }` |
-| `*.archived` / `*.deleted` / `*.restored` | `{ "cascade": true\|false, "via_parent": { "entity_type": "...", "entity_id": "..." } }` (`via_parent` hanya jika transisi dipicu operasi parent) |
+| `*.archived` / `*.deleted` / `*.restored` | `{}` atau `{ "previous_state": "ACTIVE"\|"ARCHIVED" }`; tidak ada `cascade` karena descendant tidak berubah |
 | `label.added` / `label.removed` | `{ "label_id": "...", "label_scope": "board"\|"milestone", "label_name": "..." }` |
 | `comment.added` | `{ "body": "..." }` |
 | `comment.edited` | `{ "before": "...", "after": "..." }` |
@@ -392,8 +472,8 @@ Contoh konkret:
 { "from": { "list_id": "list_a", "list_title": "Todo",  "board_id": "brd_1", "board_title": "Sprint" },
   "to":   { "list_id": "list_b", "list_title": "Review","board_id": "brd_1", "board_title": "Sprint" } }
 
-// card.deleted (dipicu delete Board dengan strategy=delete)
-{ "cascade": true, "via_parent": { "entity_type": "board", "entity_id": "brd_1" } }
+// board.deleted; descendant tidak mendapat Activity lifecycle
+{ "previous_state": "ACTIVE" }
 
 // label.removed (Board Label jadi orphaned karena Card pindah Board)
 { "label_id": "lbl_9", "label_scope": "board", "label_name": "Bug" }
@@ -416,6 +496,9 @@ erDiagram
     USERS ||--o{ PERSONAL_ACCESS_TOKENS : "has"
     USERS ||--o{ API_KEYS : "created"
     USERS ||--o{ INVITATIONS : "invited by"
+    USERS ||--o{ AUTH_SESSIONS : "has web session"
+    USERS ||--o{ AUTH_ACCOUNTS : "has auth account"
+    USERS |o--o{ AUTH_VERIFICATIONS : "verifies email"
 
     PROJECTS ||--|| PROJECT_DATABASES : "maps to"
     PROJECTS ||--o{ PROJECT_MEMBERSHIPS : "has"
@@ -423,18 +506,21 @@ erDiagram
     PROJECTS ||--o{ INVITATIONS : "has"
     PROJECTS ||--o{ API_KEYS : "has"
 
-    PROJECT_MEMBERSHIPS ||--o{ MEMBERSHIP_GROUPS : "assigned"
-    PERMISSION_GROUPS   ||--o{ MEMBERSHIP_GROUPS : "referenced by"
+    PROJECT_MEMBERSHIPS ||--o{ MEMBERSHIP_GROUP_ASSIGNMENTS : "receives group"
+    PERMISSION_GROUPS   ||--o{ MEMBERSHIP_GROUP_ASSIGNMENTS : "referenced by"
+    PROJECT_MEMBERSHIPS ||--o{ MEMBERSHIP_PERMISSION_ASSIGNMENTS : "receives direct"
+    PERMISSIONS         ||--o{ MEMBERSHIP_PERMISSION_ASSIGNMENTS : "referenced by"
     PERMISSION_GROUPS   ||--o{ GROUP_PERMISSIONS : "has"
     PERMISSIONS         ||--o{ GROUP_PERMISSIONS : "referenced by"
-    INVITATIONS         ||--o{ INVITATION_GROUPS : "carries"
-    PERMISSION_GROUPS   ||--o{ INVITATION_GROUPS : "referenced by"
+    INVITATIONS         ||--o{ INVITATION_GROUP_ASSIGNMENTS : "carries"
+    PERMISSION_GROUPS   ||--o{ INVITATION_GROUP_ASSIGNMENTS : "referenced by"
 ```
 
 ### B.6.2 Project DB (mermaid)
 
 ```mermaid
 erDiagram
+    PROJECT_STATE    ||--o{ MILESTONES : "contains"
     MILESTONES       ||--o{ BOARDS : "has"
     MILESTONES       ||--o{ MILESTONE_LABELS : "has"
     BOARDS           ||--o{ LISTS : "has"
@@ -452,7 +538,7 @@ erDiagram
 ## B.7 Yang Belum Dikunci
 **Sudah dikunci di v1.0.1:** Format ID → ULID (A.13) · Provider database-per-project → Turso/libSQL pending POC (A.11).
 
-**Masih open:** Strategi indexing detail (ditetapkan saat implementasi & pola query terlihat) · Retention period sebelum physical purge.
+**Masih open:** Strategi indexing detail (ditetapkan saat implementasi & pola query terlihat).
 
 **Dikunci v1.0.2:** Struktur `activities.data` — konvensi baku di B.5.
 
@@ -473,6 +559,8 @@ Credential → User → Project Membership → Permission
 
 ## C.2 Credential Types
 
+**Better Auth Session — User-scoped web identity.** Opaque token berada dalam secure HTTP-only cookie dan record session berada di Global DB. Session MUST punya expiry, dapat sign-out/revoke, dan tidak membawa permission sebagai authorization claim. Token session MUST tidak pernah ditulis ke log atau response body aplikasi.
+
 **API Key — Project-scoped.** Dibuat per Project, bukan authorization layer baru. MUST punya `expires_at` & dapat revoke. MUST NOT bisa dipakai ke Project lain (AC-021).
 
 **PAT — User-scoped.** Dapat akses beberapa Project sesuai membership. MUST NOT beri permission tambahan di luar yang dimiliki User (AC-022). MUST punya `expires_at` & dapat revoke.
@@ -487,7 +575,7 @@ ALLOW(operation) = valid membership AND permission granted AND scope matches
     AND entity state permits AND business invariant permits AND version valid
 ```
 
-- **Permission Group, bukan role hard-coded.** `if role == "manager"` **dilarang**. Permission diresolusi dinamis dari Group. Baseline group permission dapat dikonfigurasi ulang.
+- **Permission Group, bukan role hard-coded.** `if role == "manager"` **dilarang**. Membership menerima Group pada hierarchy scope tertentu dan MAY menerima scoped direct Permission. Baseline group permission dapat dikonfigurasi ulang.
 - **Owner vs Co-Owner:**
 
 | | Owner | Co-Owner |
@@ -499,8 +587,8 @@ ALLOW(operation) = valid membership AND permission granted AND scope matches
 
 - **Permission per operasi.** `card.read ≠ card.update ≠ card.move ≠ card.delete`. `card.move` sengaja dipisah karena lebih consequential.
 - **Data domain ≠ permission grant.** Creator/assignee TIDAK otomatis beri `card.update`/`card.delete` (cegah privilege escalation implisit).
-- **Card visibility scope.** `ALL > CREATED_BY_ME > ASSIGNED_TO_ME`; union scope terluas menang.
-- **Lifecycle selalu menang.** Entity DELETED tidak terima mutasi apa pun kecuali restore — tidak bisa di-bypass permission apa pun, termasuk Owner.
+- **Card visibility scope.** `CREATED_BY_ME < ASSIGNED_TO_ME < ALL`; `ASSIGNED_TO_ME` mencakup Card yang dibuat atau di-assign ke User. Default `card.read` adalah `CREATED_BY_ME`; grant terluas yang applicable menang.
+- **Lifecycle selalu menang.** Entity atau ancestor DELETED/ARCHIVED membuat entity tidak operasional. DELETED tidak menerima mutation apa pun termasuk restore; Owner tidak dapat bypass.
 - **Destination authorization terpisah dari source** (INV-MOVE-003): `source.delete` & `destination.write` dicek independen.
 
 ## C.4 Project Isolation sebagai Security Boundary
@@ -515,7 +603,7 @@ Tidak ada implicit cross-project access, bahkan untuk User anggota banyak Projec
 
 ## C.6 Data Retention & Deletion
 
-Delete = **logical** (`deleted_at`), bukan physical destruction langsung. Physical purge = proses internal setelah retention period, bukan operasi user-triggered di MVP. Activity historis ikut lifecycle retention/purge entity terkait — tidak dipertahankan selamanya terpisah dari entity induk, kecuali requirement legal/audit khusus.
+Delete = **logical** (`deleted_at`), bukan physical destruction langsung. Retention minimum adalah **30 hari penuh sejak `deleted_at`**. Entity baru eligible untuk internal prune saat `deleted_at <= now - 30 days`; eksekusi MAY terjadi setelah batas itu tetapi MUST NOT sebelumnya. **Prune** menghapus entity DELETED beserta seluruh subtree secara permanen dan bukan operasi user-triggered. Activity historis ikut retention/prune entity terkait — tidak dipertahankan selamanya terpisah dari entity induk, kecuali requirement legal/audit khusus.
 
 ## C.7 Historical Integrity sebagai Prinsip Audit
 
@@ -529,7 +617,7 @@ Delete = **logical** (`deleted_at`), bukan physical destruction langsung. Physic
 | Bypass business rule lewat generic PATCH | BR-062 — field domain diblokir dari PATCH |
 | Cross-project data leakage | Isolation di level arsitektur (database-per-project) + validasi membership tiap request |
 | Silent overwrite concurrent request | Optimistic locking per-entity (BR-019..023) |
-| Move sebagai jalan bypass otorisasi destination | INV-MOVE-003 — destination auth independen dari source |
+| Move Card sebagai jalan bypass otorisasi destination | INV-MOVE-003 — destination auth independen dari source dan hierarchy terkini selalu di-resolve |
 | Kebocoran credential | Secret hash; expiration & revocation wajib |
 | Manipulasi audit trail | Activity immutable append-only; actor reference historis tidak berubah |
 | Akses setelah membership dicabut | Tiap request re-validasi membership aktif, bukan bergantung session lama |
@@ -540,9 +628,11 @@ Delete = **logical** (`deleted_at`), bukan physical destruction langsung. Physic
 
 ## D.1 Target Platform
 
-**Vercel** direkomendasikan (selaras Next.js).
+**Vercel** direkomendasikan untuk satu public origin: Hono sebagai Vercel Functions dan build React/Vite sebagai static assets/CDN.
 ```text
-Vercel (Next.js App: Web + API)
+Vercel Project
+├── /api/*  → Hono Functions
+└── /*      → React/Vite SPA static assets (fallback non-API → index.html)
    ↓
 Global DB (control plane)  +  Project Resolver → Project A DB / Project B DB / ...
 ```
@@ -567,21 +657,32 @@ Harus mendukung: banyak database logis (potensial ribuan) · provisioning otomat
 
 | Komponen | Lokasi | Catatan |
 |---|---|---|
-| Web + API (Next.js) | Vercel | Serverless, auto-scaling |
+| API (Hono) | Vercel Functions | `/api/auth/*` untuk Better Auth; `/api/v1/*` untuk domain API |
+| Web (React/Vite SPA) | Vercel Static/CDN | Build `apps/web`; same-origin; SPA fallback tidak boleh menangkap `/api/*` |
 | Global DB | Managed database eksternal | users, projects, membership, permission, credentials |
 | Project DB (per Project) | Managed SQLite-compatible eksternal | Satu (logis) per Project, di-resolve via mapping table |
-| Static assets | Vercel Edge/CDN | Bawaan platform |
 
 ## D.6 Long-Running Operations (Bukan MVP)
-physical purge · large cascade · database provisioning otomatis · large export/backup. Untuk MVP dijaga skala kecil-menengah & synchronous dalam transaction. Arsitektur tidak boleh menghalangi `API → enqueue job → background worker` di masa depan.
+internal subtree prune · database provisioning otomatis · large export/backup. Untuk MVP dijaga skala kecil-menengah & synchronous dalam transaction. Arsitektur tidak boleh menghalangi `API → enqueue job → background worker` di masa depan.
 
 ## D.7 Environment & Konfigurasi
 - Connection string MUST NOT hardcoded — via environment variables Vercel per environment (dev/staging/prod).
 - Tiap environment SHOULD punya Global DB & set Project DB terisolasi penuh (tidak berbagi data antar environment).
-- Migration schema SHOULD idempotent, bagian dari deployment pipeline. Tooling migrasi masih **open**.
+- Canonical public origin dikunci:
+
+| Environment | Canonical origin | Magic Link sender |
+|---|---|---|
+| Production | `https://kanban.ngodingin.xyz` | `noreply@kanban.ngodingin.xyz` |
+| Staging | `https://stag-kanban.ngodingin.xyz` | `noreply@kanban.ngodingin.xyz` |
+| Development | localhost eksplisit dari env lokal | transport/sender test; tidak boleh mengirim sebagai production tanpa konfigurasi sadar |
+
+- Magic Link dan redirect callback MUST memakai canonical origin environment aktif. Staging MUST NOT menghasilkan link production dan production MUST NOT menghasilkan link staging.
+- Web, domain API, dan Better Auth MUST dipublikasikan di canonical origin yang sama. Konfigurasi rewrite/fallback MUST diuji agar `/api/*` tidak pernah dikembalikan sebagai `index.html` dan route web tidak memerlukan CORS.
+- Staging dan production MUST memakai secret Resend terpisah walau sender address sama.
+- Migration schema SHOULD idempotent dan menjadi bagian deployment pipeline. Drizzle-kit sudah terkunci; detail orchestration fan-out ditetapkan serta diuji pada Phase 0.
 
 ## D.8 Open Decisions (Deployment)
-Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisioning") — diputuskan setelah POC gate (A.11) · backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Project-DB di skala besar (arah dasar di F.4) · retention policy physical purge · autentikasi provider.
+Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisioning") — diputuskan setelah POC gate (A.11) · backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Project-DB di skala besar (arah dasar di F.4).
 
 ---
 
@@ -590,10 +691,6 @@ Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisio
 **Sudah dikunci di v1.0.1** (sebelumnya open): Format ID → ULID (A.13) · ORM/query layer → Drizzle (A.12) · Database provider → Turso/libSQL, pending POC gate (A.11).
 
 **Masih open** — sengaja belum dikunci sampai kebutuhan implementasi jelas (prinsip "Simple by default"):
-- Authentication provider.
-- Retention period data deleted + trigger physical purge.
-- Struktur `activities.data` → **dikunci v1.0.2** (konvensi B.5).
-- Authentication → **dikunci v1.0.3**: Auth.js untuk web session, user di Global DB (A.14). Sisa: pemilihan provider identitas di dalam Auth.js (email/password vs OAuth vs magic link) ditetapkan di Phase 0.
 - Detail indexing (ditetapkan saat schema diimplementasi & pola query terlihat).
 - Mekanisme provisioning DB otomatis (sinkron vs async) — diputuskan setelah POC gate A.11.
 
@@ -611,9 +708,10 @@ Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisio
 
 ## F.2 Provisioning Database Project Baru
 - Saat `POST /projects` sukses, sebuah Project DB baru MUST tersedia sebelum Project dianggap operasional.
+- Provisioning MUST menginisialisasi tepat satu `project_state` ACTIVE (`version = 1`) dan Activity `project.created` dalam satu transaksi Project DB sebelum Project dianggap operasional. Record ini menjadi sumber state domain Project.
 - **Keputusan sinkron vs async ditunda sampai POC gate (A.11)** — mengukur waktu provisioning Turso menentukan pilihan:
   - Jika cepat (≲ beberapa detik) → **sinkron** dalam request create (lebih sederhana untuk MVP, UX langsung siap).
-  - Jika lambat → **async** dengan Project berstatus `provisioning` hingga siap.
+  - Jika lambat → **async** dengan registry Global ber-`provisioning_state = PROVISIONING` hingga siap. State ini hanya menunjukkan kesiapan provisioning; bukan lifecycle domain Project (`ACTIVE`/`ARCHIVED`/`DELETED`) dan tidak menggantikan `project_state`.
 - Mapping hasil provisioning MUST dicatat di `project_databases` (Global DB) sebagai satu-satunya sumber resolusi (A.4). Kegagalan provisioning MUST menggagalkan/rollback create Project (tidak boleh ada Project tanpa database).
 
 ## F.3 Migration (Global DB & Project DB)
@@ -637,7 +735,7 @@ Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisio
 ## F.6 Release Checklist (per rilis)
 Sebelum promote ke production, verifikasi:
 1. Semua migrasi (Global + fan-out Project DB) berhasil di staging.
-2. Smoke test alur inti: create Project (+ provisioning), invite→accept, create board/list/card, move card, archive+restore, comment.
+2. Smoke test alur inti: create Project (+ provisioning), scoped invite→accept, create board/list/card, move Card, archive→restore, delete terminal, comment.
 3. Definition of Done (04-DELIVERY C.3) hijau untuk fase yang dirilis.
 4. Backup Global DB terverifikasi & restore pernah diuji (F.1).
 5. Rollback plan tersedia: migrasi punya jalur mundur atau strategi forward-fix terdokumentasi.
@@ -646,5 +744,5 @@ Sebelum promote ke production, verifikasi:
 ## F.7 Performance Gate (endpoint kritis)
 Endpoint berikut SHOULD diuji di bawah konkurensi sebelum MVP dianggap production-ready (dimasukkan sebagai bagian Phase 6):
 - `POST /cards/:id/move` — termasuk skenario dua request bersamaan pada Card sama (validasi optimistic locking di beban nyata, AC-020).
-- Parent delete + child handling (delete/archive/move) pada subtree berukuran wajar — ukur durasi transaksi & pastikan rollback bersih di kegagalan (AC-019).
+- Scoped authorization lookup pada hierarchy dalam + kombinasi Group/direct Permission — ukur latensi dan pastikan tidak ada kebocoran scope.
 Target angka ditetapkan saat POC (A.11) berdasarkan latensi Turso terukur.

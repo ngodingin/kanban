@@ -1,14 +1,14 @@
-# 05 — FRONTEND (Design System · Template Foundation · UI↔Domain Mapping)
+# 05 — FRONTEND (Design System · React/Vite Foundation · UI↔Domain Mapping)
 
 > Status: **Content ready — IMPLEMENTASI BLOCKED.** Pekerjaan frontend (PHASE-7-TASKS.md) TIDAK dimulai sebelum Phase 0–6 selesai & terverifikasi.
 > Related: 01-PRODUCT.md, 02-SPEC.md, 03-ENGINEERING.md, 04-DELIVERY.md (Part A UX Flows)
-> SOT version: 1.0.4
+> SOT version: 2.0.6
 
 ---
 
 ## 1. Prinsip
 
-- **SOT menang atas template & mockup.** Template hanya UI/UX foundation + engineering patterns. Tidak boleh ada keputusan visual yang mengubah Project isolation, Permission Group, Card visibility, lifecycle, Activity, atau aturan domain lain.
+- **SOT menang atas scaffold & mockup.** Scaffold/tooling hanya UI/UX foundation + engineering patterns. Tidak boleh ada keputusan visual yang mengubah Project isolation, Permission Group, Card visibility, lifecycle, Activity, atau aturan domain lain.
 - **UI tidak boleh memperkenalkan field domain baru.** Kalau mockup menampilkan sesuatu yang tidak ada di 02-SPEC, itu dibuang dari UI — bukan ditambahkan ke domain (kecuali lewat amandemen SOT sadar).
 - **Visual personality:** clean, compact, modern, developer-oriented, low visual noise, high information density. Bukan consumer app yang terlalu rounded/colorful.
 
@@ -48,36 +48,33 @@ Radius: `sm` → controls · `md` → cards · `lg` → dialogs/sheets. Tidak te
 
 ---
 
-## 3. Template Foundation
+## 3. Frontend Foundation
 
-**Foundation:** Kiranism `next-shadcn-dashboard-starter` (Next.js 16, React 19, TypeScript, Tailwind v4, shadcn/ui, feature-based, React Query, Zustand, forms, tables, command palette, kanban drag-and-drop bawaan).
+**Foundation:** React **19.2.x** + Vite **8.x** SPA dengan React Router **8.x**, TypeScript **6.0.x**, Tailwind CSS **4.x**, shadcn **4.x**, TanStack Query **5.x**, Zustand **5.x**, dan dnd-kit core **6.x**; lihat [03-ENGINEERING A.8](03-ENGINEERING.md). Gunakan scaffold resmi Vite dan shadcn primitives; tidak ada starter dashboard pihak ketiga yang menjadi sumber domain atau arsitektur.
 
-Alasan: struktur teknis paling dekat dengan kebutuhan; bukan untuk ditiru visualnya. Pertahankan ~80% infrastructure/UI foundation, hanya ~20–30% demo/domain screens (di-rework).
+Versi exact dependency UI MUST diverifikasi ulang dan dipin ketika gate Phase 7 dibuka. Phase 0 tidak boleh memasang dependency UI hanya untuk mengejar baseline ini.
 
-### 3.1 Keep / Customize / Remove
+Alasan: Kanban adalah aplikasi interaktif setelah login dan tidak membutuhkan SSR/SEO sebagai kebutuhan MVP. SPA menjaga web sebagai client murni terhadap public API Hono, sementara shadcn menyediakan primitives tanpa membawa demo domain, auth vendor, atau asumsi dashboard yang harus dibersihkan.
 
-| Area template | Keputusan |
+### 3.1 Gunakan / Bangun / Jangan Tambahkan
+
+| Area | Keputusan |
 |---|---|
-| UI primitives (shadcn/ui) | **KEEP** — jangan diutak-atik banyak; hanya set spacing/typography/radius/colors/density |
-| App shell (sidebar+header+content) | **KEEP** |
-| Sidebar / Header | **CUSTOM** — context-aware (Project navigation) |
-| Drag & drop | **KEEP + CUSTOM** — untuk Card/List movement |
-| Tables | **KEEP** — Members / API Keys / Groups |
-| Forms / Dialog / Sheet | **KEEP + CUSTOM** |
-| Command palette (kbar) | **KEEP** |
-| Theme system | **KEEP + ADAPT** (tokens §2) |
-| React Query | **KEEP** — semua server state |
-| Zustand | **KEEP TERBATAS** — UI/interaction/drag/sidebar/command-palette saja; **bukan** database lokal seluruh app |
-| Kanban demo | **REWORK** → Board/List/Card domain |
-| Dashboard demo | **REWORK** → work-management Home |
-| Users demo | **REWORK** → Project Members |
-| Roles demo | **REWORK BESAR** → Permission Groups (bukan RBAC sederhana) |
-| **Clerk (auth)** | **BUANG** — kita pakai Auth.js + model User/Membership/Permission sendiri (03-ENG A.14). Clerk Organization ≠ Kanban Project |
-| Billing / CRM / Finance / E-commerce / Analytics / Chat / Invoice / Calendar / Academy / Logistics / Blog / demo API / demo org/roles/users | **BUANG** — jalankan cleanup script |
+| UI primitives (shadcn/ui) | **GUNAKAN** — adapt spacing/typography/radius/colors/density melalui tokens |
+| App shell, Sidebar, Header | **BANGUN** — context-aware terhadap Project/Milestone/Board |
+| Drag & drop | **BANGUN dengan dnd-kit** — hanya Card movement; List tidak dapat dipindahkan pada MVP |
+| Tables | **BANGUN dari shadcn primitives** — Members / API Keys / Groups |
+| Forms / Dialog / Sheet | **BANGUN dari shadcn primitives** |
+| Command palette | **OPSIONAL dalam MVP UI** — hanya navigasi/aksi yang sudah ada; bukan search engine |
+| Theme system | **BANGUN** dari tokens §2 |
+| TanStack Query | **GUNAKAN** — semua server state |
+| Zustand | **GUNAKAN TERBATAS** — UI/interaction/drag/sidebar/command-palette saja; **bukan** database lokal seluruh app |
+| Better Auth client | **GUNAKAN** hanya untuk identity/session/Magic Link; authorization tetap melalui API domain |
+| Clerk/identity SaaS, role template, billing/CRM/analytics/chat/invoice/calendar/demo domain | **JANGAN TAMBAHKAN** |
 
 ### 3.2 Data flow
 ```text
-UI → Feature hook → React Query → API client → Kanban backend
+UI → Feature hook → TanStack Query → same-origin API client → Hono API → domain
 ```
 Contoh hooks: `useBoard`, `useCards(listId)`, `useCreateCard`, `useMoveCard`, `useArchiveCard`, `useRestoreCard`. API layer terpisah dari UI; backend tetap mengikuti 02-SPEC Part C.
 
@@ -95,37 +92,43 @@ Hasil rekonsiliasi mockup terhadap SOT. **UI MUST mengikuti kolom "Resolusi", bu
 | **Inbox (badge 3)** di sidebar | Notification = non-goal | **BUANG dari sidebar MVP.** Cukup Home / My Tasks / Activity. | [01-PRODUCT §2.2](01-PRODUCT.md) |
 | Milestone progress | Ada (Milestone) | **KEEP** — progress bar hanya di level Milestone. | [02-SPEC FR-014](02-SPEC.md) |
 | Single assignee | Ada | **KEEP** — satu avatar; multiple assignee non-goal. | [02-SPEC A.6](02-SPEC.md) |
-| Labels (backend/auth/…) | Ada (Board/Milestone Label) | **KEEP** | [02-SPEC A.11 Labels](02-SPEC.md) |
+| Labels (backend/auth/…) | Ada (Board/Milestone Label) | **KEEP** | [02-SPEC B.8/C.11](02-SPEC.md) |
 | Activity timeline | Ada (immutable) | **KEEP** — sebagai audit timeline, bukan notification feed. | [02-SPEC A.8](02-SPEC.md) |
 
 ---
 
 ## 5. Layar Utama (ringkas — detail di PHASE-7-TASKS.md)
 
-- **App shell:** sidebar (Home · My Tasks · Activity · PROJECTS ▾ · Members · Permissions · API Keys · Settings) + header (breadcrumb Project › Milestone › Board). Branding "Kanban — Powered by NGodingiN" di login/register/sidebar-bawah/footer saja.
+- **Authentication:** satu form email untuk meminta Magic Link. UI final menangani state request, link terkirim, expired/used link, dan error tanpa membocorkan keberadaan akun. Tidak ada form password atau halaman register terpisah pada MVP.
+- **App shell:** sidebar (Home · My Tasks · Activity · PROJECTS ▾ · Members · Permissions · API Keys · Settings) + header (breadcrumb Project › Milestone › Board). Branding "Kanban — Powered by NGodingiN" di layar autentikasi/sidebar-bawah/footer saja.
 - **Home/Dashboard:** work-management style ("Your work": My Tasks / Due soon / Overdue · Recent Projects · Recent Activity). BUKAN admin panel (revenue/charts).
-- **Board:** kolom = List (nama bebas), header kolom tampilkan count. Card compact. Drag & drop → panggil move API (bukan ubah state lokal saja). "Review"/"Done" hanyalah nama List, tanpa makna sistem.
+- **Board:** kolom = List (nama bebas), header kolom tampilkan count. Card compact. Drag & drop Card → panggil Card move API (bukan ubah state lokal saja). List tetap pada Board asal dan tidak dapat di-drag untuk dipindahkan. "Review"/"Done" hanyalah nama List, tanpa makna sistem.
 - **Card (compact):** title · description preview · labels · assignee · due date. TANPA priority, TANPA progress, TANPA status field.
 - **Card Detail (Sheet besar desktop / full-screen mobile):** Details (description, assignee, due date, labels, **current List** — bukan "status") + Activity timeline + Comments. TANPA priority/progress.
-- **Permission Groups (custom besar):** Permission × Resource × Scope × Inheritance + Card visibility (All / Created by me / Assigned to me). BUKAN RBAC "Role → Permissions".
+- **Permission Groups (custom besar):** definisi Group + scoped assignment ke Membership + direct Permission + inheritance. Card visibility: Created by me (default) / Assigned to me (created OR assigned) / All. BUKAN RBAC "Role → Permissions".
 - **Members:** tabel (User · Group · Status Active/Pending) + Invite. Reuse table foundation.
-- **Invitation:** minimal — Email + Permission Group (+ Card access bila perlu). Group menentukan akses.
+- **Invitation:** Email + Permission Group + hierarchy scope wajib. Accept membuat Membership dan scoped Group assignment.
 - **Activity:** timeline historis (grouped by day/time), bukan notification feed.
 - **API Keys (Project Settings):** tabel + create (secret sekali tampil) + revoke.
 - **PAT (User Settings):** tabel + create + revoke. Terpisah dari Project.
-- **Lifecycle UI:** archive/delete/restore + **modal child-handling** (archive/delete/move; move destination hanya ACTIVE & Milestone sama; Project tanpa move). Tangani `VERSION_CONFLICT` dengan pesan + reload (jangan auto-overwrite). Ref UX: [04-DELIVERY Part A](04-DELIVERY.md).
+- **Lifecycle UI:** archive/delete/restore tanpa child handling. Archive restorable; delete terminal. Parent transition tidak mengubah local state descendant tetapi menonaktifkan subtree secara efektif. Tangani `VERSION_CONFLICT` dengan pesan + reload. Ref UX: [04-DELIVERY Part A](04-DELIVERY.md).
+
+Testing frontend: Vitest + React Testing Library untuk React component/hook; Playwright untuk routing, Magic Link, dan alur E2E pada production build Vite yang disajikan bersama Hono.
 
 ---
 
 ## 6. Struktur Frontend
 
 ```text
-features/
-├── auth/  dashboard/  projects/  milestones/  boards/  lists/  cards/
-├── activity/  comments/  members/  permissions/  invitations/
-├── api-keys/  personal-access-tokens/  settings/
-components/
-├── ui/  layout/  kanban/  dialogs/  navigation/
+apps/web/src/
+├── features/
+│   ├── auth/  dashboard/  projects/  milestones/  boards/  lists/  cards/
+│   ├── activity/  comments/  members/  permissions/  invitations/
+│   └── api-keys/  personal-access-tokens/  settings/
+├── components/
+│   └── ui/  layout/  kanban/  dialogs/  navigation/
+├── routes/
+└── lib/api/
 ```
 
 ---
@@ -138,5 +141,5 @@ components/
 
 ## 8. Governance Frontend
 - Setiap komponen yang menampilkan data domain MUST memetakan ke field yang ADA di 02-SPEC. Menemukan kebutuhan field baru → `[NEEDS-SPEC-AMENDMENT]`, berhenti, jangan tambah diam-diam.
-- Drag & drop, quick-edit, dsb tetap lewat domain command API (move/archive/…), tunduk optimistic locking (`expected_version`) & permission — UI tidak boleh mem-bypass business rule.
+- Drag & drop Card, quick-edit, dan aksi lifecycle tetap lewat domain command API, tunduk optimistic locking (`expected_version`) & permission — UI tidak boleh mem-bypass business rule.
 - **Implementasi frontend BLOCKED sampai Phase 0–6 selesai & terverifikasi** (lihat PHASE-7-TASKS.md).

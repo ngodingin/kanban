@@ -12,7 +12,7 @@ Fokus: alur pengguna utama yang mencerminkan aturan domain, bukan wireframe visu
 ## A.1 Onboarding & Invitation
 
 ```text
-Owner/Co-Owner buat Invitation (email + Permission Group)
+Owner/Co-Owner buat Invitation (email + Permission Group + hierarchy scope)
         ▼
 Email/notif terkirim → calon anggota buka link
         ▼
@@ -21,7 +21,7 @@ Email/notif terkirim → calon anggota buka link
  Accept     Expired/Revoked → "Invitation sudah tidak berlaku"
    │
    ▼
-Membership dibuat dengan Permission Group sesuai invitation
+Membership dibuat dengan scoped Permission Group assignment sesuai invitation
    ▼
 User masuk Project, langsung punya akses (tanpa assignment kedua kali)
 ```
@@ -60,33 +60,28 @@ Pilih Board + List tujuan → POST /cards/:id/move
 Sukses / INVALID_DESTINATION (server-side validation tetap jalan)
 ```
 
-## A.4 Archive / Delete (Parent Entity)
+## A.4 Archive / Delete (Semua Entity)
 
 ```text
-Klik "Delete" pada Board
+Klik "Archive" atau "Delete" pada Board
         ▼
-Board punya child?
-   ┌────┴────┐
-   ▼ Tidak    ▼ Ya
- Delete       Modal Child Handling:
- langsung      ○ Archive semua isi
-               ○ Delete semua isi
-               ○ Pindahkan (move) ke Board lain
-                  └── dropdown Board tujuan (hanya ACTIVE dalam Milestone sama)
+Modal konfirmasi menjelaskan dampak subtree:
+  Archive → descendant tidak operasional sampai Board dipulihkan
+  Delete  → terminal; descendant tidak operasional sampai ikut di-prune
         ▼
-Konfirmasi → Transaksi backend (ATOMIC):
-  validasi destination (jika move) → validasi permission destination (jika move)
-  → eksekusi child handling → eksekusi delete/archive Board
-  → catat Activity untuk Board + setiap child
+Konfirmasi → Transaksi backend:
+  ubah local state + version Board
+  → catat Activity Board saja
         ▼
-Sukses / Gagal (permission/invalid destination) → rollback penuh + error spesifik
+Sukses → local state List/Card tidak berubah
+Gagal → Board dan Activity rollback
 ```
-**Catatan penting:** Opsi "Pindahkan" **tidak muncul** untuk Project (cross-project dilarang). Untuk Card, modal ini **tidak pernah muncul** — cukup konfirmasi delete biasa (leaf entity).
+**Catatan penting:** Tidak ada child handling atau cascade lifecycle. Delete tidak dapat dipulihkan dan UI MUST memberi peringatan kuat sebelum konfirmasi.
 
 ## A.5 Restore
 
 ```text
-Buka "Archived"/"Deleted" view → klik "Restore" pada List
+Buka "Archived" view → klik "Restore" pada List
         ▼
 Cek ancestor chain: Board (parent) statusnya apa?
    ┌────┴─────┐
@@ -95,6 +90,7 @@ Cek ancestor chain: Board (parent) statusnya apa?
  berhasil     [archived/deleted]. Pulihkan Board terlebih dahulu."
 ```
 **Catatan:** UI SHOULD tampilkan tombol "Restore parent first" sebagai shortcut, bukan hanya pesan error pasif.
+Entity DELETED tidak memiliki tombol restore; hanya dapat dilihat pada Deleted/Audit view sampai prune.
 
 ## A.6 Comment (dengan Race Condition Handling)
 
@@ -115,9 +111,13 @@ Co-Owner buka "Permission Groups" → pilih/buat Group
         ▼
 Toggle permission (card.read, card.update, card.move, ...)
         ▼
-Set scope visibility untuk card.read: ALL / CREATED_BY_ME / ASSIGNED_TO_ME
+Set visibility card.read (default CREATED_BY_ME):
+CREATED_BY_ME / ASSIGNED_TO_ME / ALL
         ▼
 Simpan → LANGSUNG berlaku ke semua member Group (tanpa re-invite/re-assign)
+        ▼
+Assign Group ke Membership pada Project/Milestone/Board/List/Card tertentu
+atau tambahkan direct Permission pada Membership di scope tertentu
 ```
 
 ## A.8 Card Visibility di List View
@@ -128,15 +128,15 @@ Buka Board → resolve effective scope User untuk card.read
    ▼    ▼    ▼
   ALL  CREATED  ASSIGNED
        BY_ME    TO_ME
-  semua  hanya    hanya
-  Card   Card     Card yang
-         buatan   di-assign
-         sendiri  ke User ini
+  semua  hanya    Card buatan
+  Card   Card     sendiri ATAU
+         buatan   di-assign ke User
+         sendiri
 ```
-**Catatan:** Sebaiknya ada indikator ("Menampilkan Card yang di-assign ke Anda") agar user tidak bingung — transparansi scope penting untuk trust.
+**Catatan:** Sebaiknya ada indikator ("Menampilkan Card yang Anda buat atau ditugaskan kepada Anda") agar user tidak bingung — transparansi scope penting untuk trust.
 
 ## A.9 Prinsip UX Umum
-- **Tidak ada silent data loss.** Operasi destruktif berdampak child SELALU tampilkan pilihan eksplisit sebelum eksekusi.
+- **Tidak ada silent data loss.** Delete terminal selalu menampilkan dampak bahwa seluruh subtree tidak operasional hingga prune.
 - **Konflik ditampilkan, tidak disembunyikan.** `VERSION_CONFLICT` tidak pernah di-resolve otomatis dengan menimpa — user diberi tahu & diminta refresh.
 - **Riwayat selalu dapat ditelusuri.** Entity archived/deleted tetap dapat dibuka Activity-nya sesuai izin.
 - **UI tidak berasumsi tentang makna List.** Tidak ada visual/logic khusus untuk List bernama tertentu (mis. "Done").
@@ -151,30 +151,32 @@ Testing = **kontrak yang dapat diverifikasi otomatis** terhadap 02-SPEC Part A. 
 ## B.2 Piramida Test
 ```text
   E2E     — sedikit, alur kritis lintas modul (dari UX Flows Part A)
-Integration — sedang, per domain command (move, delete+child handling, dsb)
+Integration — sedang, per domain command (Card move, archive, delete, restore, dsb)
    Unit   — banyak, per invariant, permission resolution, lifecycle helper
 ```
 - **Unit:** fungsi murni (permission resolution, lifecycle state helper, scope ordering, version check).
 - **Integration:** satu domain command end-to-end terhadap database test (mis. `POST /cards/:id/move` berbagai skenario state).
-- **E2E:** alur multi-langkah realistis (invite → accept → create board → create card → move → archive → restore).
+- **E2E:** alur multi-langkah realistis (scoped invite → accept → create board → create card → move → archive → restore → delete terminal).
 
 ## B.3 Area Wajib Diuji (Non-Negotiable)
 1. Project isolation — tidak ada kebocoran lintas Project.
 2. Hierarchy integrity — tiap entity anak punya tepat satu parent valid.
-3. Permission per Group — tiap baseline group diuji terhadap seluruh operasi di matrix.
-4. Permission inheritance — grant level Milestone berlaku ke descendant.
-5. Card visibility scope — ALL/CREATED_BY_ME/ASSIGNED_TO_ME + union multiple grants.
-6. Lifecycle transitions — ACTIVE/ARCHIVED/DELETED + ancestor-chain requirement.
-7. Parent-child handling — archive/delete/move children, termasuk atomicity & rollback.
+3. Permission Group + direct Permission — scoped assignment, union additive, dan revoke diuji.
+4. Permission inheritance — assignment Membership+Group/direct grant level Milestone berlaku ke descendant saja.
+5. Card visibility scope — default CREATED_BY_ME; CREATED_BY_ME < ASSIGNED_TO_ME < ALL.
+6. Lifecycle transitions — ARCHIVED restorable, DELETED terminal, effective ancestor requirement.
+7. Parent lifecycle isolation — archive/delete parent tidak mengubah local state/version/Activity descendant.
 8. Cross-project isolation — reject eksplisit tiap upaya cross-project.
 9. Activity immutability — tidak ada jalur update/delete Activity.
 10. Comment rules — tidak bisa dihapus; ditolak pada Card deleted/archived; edit → Activity baru tanpa ubah lama.
 11. Optimistic concurrency — version conflict terdeteksi & ditolak; tidak ada silent overwrite.
-12. Transaction rollback — kegagalan parsial tidak meninggalkan state sebagian.
+12. Transaction rollback — mutation entity + Activity dan Card move tidak meninggalkan partial state.
 13. API Key scope — tidak bisa lintas Project.
 14. PAT authorization — tunduk membership & permission real-time, bukan snapshot.
-15. Invitation flow — Group ter-assign benar saat accept.
+15. Invitation flow — scoped Group assignment terbuat benar saat accept.
 16. Restore dependency — restore ditolak jika ancestor belum ACTIVE.
+17. Project lifecycle atomicity — state Project dan Activity Project selalu commit/rollback bersama dalam Project DB.
+18. Prune retention — entity/subtree DELETED tidak pernah di-prune sebelum 30 hari dan eligible setelah batas tersebut.
 
 (Identik dengan Definition of Done di Part C.3.)
 
@@ -183,44 +185,47 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 
 - **AC-001 Project Isolation** — Given akses Project A & B; When operasi di A; Then data B MUST NOT accessible implisit.
 - **AC-002 Cross-Project Move** — Given Card milik Project A; When minta pindah ke List di B; Then API MUST menolak.
-- **AC-003 Permission Inheritance** — Given Manager Group di Milestone A; When akses Board di bawahnya; Then permission warisan MUST diperhitungkan.
-- **AC-004 Permission Granularity** — Given `card.read` scope `assigned_to_me`; When Card di-assign ke User lain; Then MUST NOT terlihat via permission itu.
-- **AC-005 Multiple Groups** — Given A→`assigned_to_me`, B→`all`; Then effective scope MUST `all`.
+- **AC-003 Permission Inheritance** — Given Membership mendapat Manager Group di Milestone A; When akses Board descendant A; Then permission berlaku. Board di Milestone B MUST tidak ikut terbuka.
+- **AC-004 Permission Granularity** — Given `card.read=ASSIGNED_TO_ME`; Then Card yang dibuat User atau di-assign ke User terlihat, sedangkan Card lain tidak.
+- **AC-005 Group + Direct Union** — Given Group memberi `card.read=ASSIGNED_TO_ME` dan direct grant applicable memberi `card.read=ALL`; Then effective visibility MUST `ALL` tanpa mengubah Group member lain.
 - **AC-006 Creator Does Not Grant Access** — Given creator tanpa `card.read` berlaku; Then MUST NOT otomatis akses.
 - **AC-007 Assignee Does Not Grant Access** — sama AC-006 untuk assignee.
-- **AC-008 Archive Child Integrity** — Given Board archived; Then child List/Card MUST NOT tetap ACTIVE.
-- **AC-009 Restore Dependency** — Given Board archived; When restore List langsung; Then MUST gagal.
-- **AC-010 Delete Card** — Given Card ACTIVE; When user berwenang hapus; Then Card=DELETED + Activity `card.deleted`.
+- **AC-008 Effective Ancestor State** — Given Board archived; Then local state/version List/Card tetap, tetapi query aktif dan seluruh mutation descendant MUST ditolak.
+- **AC-009 Restore Dependency** — Given Board archived dan List local-ARCHIVED; When restore List langsung; Then MUST gagal. Setelah Board dipulihkan, List MAY dipulihkan.
+- **AC-010 Delete Card Terminal** — Given Card ACTIVE; When user berwenang hapus; Then Card=DELETED + Activity `card.deleted`; restore selalu ditolak sampai prune.
 - **AC-011 Comment After Delete** — Given Card DELETED; When coba comment; Then MUST ditolak.
 - **AC-012 Historical Comment** — Given Card punya comment lalu dihapus; Then comment historis tetap tersedia sesuai akses.
 - **AC-013 Comment Immutability** — Given Comment A diedit; Then Activity historis A tak berubah; Activity baru `comment.edited` ditambahkan.
 - **AC-014 Activity Immutability** — Given Activity ada; Then tidak ada jalur mutasi normal mengubah/menghapusnya.
-- **AC-015 Parent Delete with Archive** — Given Board punya List & Card; When delete `strategy=archive`; Then Board=DELETED, List/Card=ARCHIVED + Activity masing-masing.
-- **AC-016 Parent Delete with Delete** — sama AC-015, `strategy=delete` → descendant DELETED atomic.
-- **AC-017 Parent Delete with Move** — Given Board A & B; When delete A + move List ke B; Then sukses hanya jika: B ACTIVE, Project sama, destination valid, punya permission destination, punya permission delete source.
-- **AC-018 Invalid Destination** — Given Board B ARCHIVED; When move List ke B; Then MUST menolak.
-- **AC-019 Transaction Rollback** — Given operasi parent modif banyak descendant; When salah satu gagal; Then tidak ada partial state ter-commit.
+- **AC-015 Parent Archive Isolation** — Given Board punya List/Card; When archive Board; Then hanya Board archived/version/Activity berubah. Restore Board membuat descendant kembali operasional sesuai local state.
+- **AC-016 Parent Delete Isolation** — Given Board punya List/Card; When delete Board; Then hanya Board DELETED/version/Activity berubah; descendant tidak operasional dan Board tidak dapat di-restore.
+- **AC-017 Scoped Group Assignment** — Given Eko dan Budi memakai Contributor pada Milestone berbeda; Then masing-masing hanya memperoleh permission pada scope dan descendant assignment-nya.
+- **AC-018 Invalid Card Destination** — Given destination List atau salah satu ancestornya ARCHIVED/DELETED; When move Card; Then MUST menolak tanpa state/Activity baru.
+- **AC-019 Card Move Rollback** — Given Card move gagal saat update asosiasi/Activity; Then `list_id`, version, label association, dan Activity MUST seluruhnya rollback.
 - **AC-020 Optimistic Locking** — Given Card.version=10; dua client `expected_version=10`; pertama sukses → version=11; kedua MUST `VERSION_CONFLICT`.
 - **AC-021 API Key Scope** — Given API Key Project A; When dipakai ke B; Then MUST ditolak.
 - **AC-022 PAT Scope** — Given PAT User A; When akses Project B; Then akses tetap bergantung membership & permission B.
 - **AC-023 Expired Credential** — Given `expiration < now`; Then autentikasi MUST gagal.
 - **AC-024 Revoked Credential** — Given `revoked = true`; Then autentikasi MUST gagal.
-- **AC-025 Invitation** — Given invitation assign Contributor; When diterima; Then membership MUST punya Group tersebut.
+- **AC-025 Scoped Invitation** — Given invitation assign Contributor pada Milestone X; When diterima; Then Membership MUST punya Group assignment tepat pada Milestone X, bukan seluruh Project.
 - **AC-026 Membership Revocation** — Given punya membership; When dicabut; Then request berikutnya MUST gagal otorisasi; Activity historis tetap utuh.
 - **AC-027 Owner** — Given User Owner; Then MUST tetap pegang ownership penuh walau Permission Group diubah.
 - **AC-028 Co-Owner** — Given anggota Co-Owner Group; Then dapat permission dari Group tapi TIDAK jadi Owner.
 - **AC-029 Generic PATCH Protection** — Given Card ada; When `PATCH` dengan `deleted_at`/`list_id`; Then MUST menolak/mengabaikan field terproteksi.
 - **AC-030 Project Move Prohibition** — Given Project A & B; When upaya pindah descendant A ke B; Then MUST menolak.
+- **AC-031 Project Activity Atomicity** — Given mutation lifecycle/update pada Project; When Activity append gagal; Then `project_state` MUST rollback. When mutation gagal; Then tidak ada Activity Project baru. Kedua operasi MUST terjadi dalam satu transaksi Project DB.
+- **AC-032 Prune Retention** — Given entity DELETED belum mencapai 30 hari; When internal prune berjalan; Then entity dan subtree MUST tetap ada. Given `deleted_at <= now - 30 days`; Then entity eligible untuk di-prune sebagai satu subtree tanpa orphan.
 
 ## B.5 Strategi Test per Layer
 
-| Layer | Fokus | Pendekatan (disarankan, belum final) |
+| Layer | Fokus | Tool yang dikunci |
 |---|---|---|
-| Domain/Unit | Permission resolution, lifecycle helper, scope ordering, version comparator | Unit framework sesuai stack (mis. Vitest/Jest) |
-| Integration | Domain command end-to-end terhadap database test terisolasi | Database test terpisah per suite; transaksi di-rollback setelah test |
+| Domain/Unit | Permission resolution, lifecycle helper, scope ordering, version comparator | **Vitest** |
+| Integration | Domain command/API end-to-end terhadap database test terisolasi | **Vitest** + database test terpisah per suite; transaksi di-rollback setelah test |
 | Concurrency | Dua request paralel pada entity sama | Test yang fire dua mutation dengan `expected_version` sama |
 | Authorization matrix | Group × Operation × Resource | Table-driven test dari matrix di 02-SPEC Part D |
-| E2E | Alur multi-langkah realistis | Skenario dari UX Flows Part A |
+| Frontend component | React component/hooks | **Vitest + React Testing Library**; routing dan integrasi production build diuji lewat E2E |
+| E2E | Alur multi-langkah realistis pada build production-like | **Playwright**, skenario dari UX Flows Part A |
 
 ## B.6 Aturan Test Tambahan untuk AI Coding Agent
 - Setiap Business Rule (`BR-xxx`) SHOULD punya minimal satu test yang mereferensikan ID rule di nama/deskripsi.
@@ -240,7 +245,7 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 ```
 
 **Phase 0 — Foundation**
-- Setup Auth (identity provider — open decision di 03-ENGINEERING)
+- Setup Hono API + Better Auth Magic Link untuk identitas web: mekanisme server + antarmuka uji minimal; React/Vite UI final Phase 7
 - Setup Global DB (schema 03-ENGINEERING B.2)
 - Project DB provisioning (awal, boleh manual/sinkron dulu)
 - Project isolation di layer request (resolusi `project_id → database`)
@@ -248,15 +253,16 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 
 **Phase 1 — Project**
 - Project CRUD (create/read/update, archive/restore/delete)
+- State Project (`project_state`) + Activity Project atomik di Project DB; Global DB hanya registry/akses
 - Membership model
-- Invitation flow (create, accept)
+- Scoped invitation flow (create, accept)
 - Owner assignment otomatis saat create Project
-- Permission Group dasar (CRUD, baseline groups)
+- Permission Group dasar (CRUD, baseline groups) + persistence scoped Group/direct assignments
 
 **Phase 2 — Kanban Core**
 - Milestone (CRUD, progress manual)
 - Board (CRUD)
-- List (CRUD, guard "tidak bisa dihapus jika masih ada Card")
+- List (CRUD; archive/delete tidak mengubah Card descendant)
 - Card (CRUD)
 - Card movement (`/cards/:id/move` + validasi same-Milestone untuk cross-board)
 
@@ -269,16 +275,17 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 
 **Phase 4 — Authorization**
 - Permission resolution engine (formula ALLOW 02-SPEC A.10)
-- Permission inheritance sepanjang hierarchy
-- Card visibility scope + union multiple grants
+- Scoped Group/direct Permission resolution terhadap hierarchy terkini
+- Permission inheritance sepanjang descendant scope
+- Card visibility default/kumulatif + union multiple grants
 - API Key (create, revoke, resolve saat autentikasi)
 - PAT (create, revoke, resolve saat autentikasi)
 
 **Phase 5 — Lifecycle**
-- Archive/Delete/Restore untuk seluruh entity
-- Child handling (archive/delete/move) untuk parent entity
-- Ancestor-chain validation untuk restore (INV-LIFE-002)
-- Retention policy dasar (logical delete dulu; physical purge menyusul)
+- Archive/Restore untuk seluruh entity; Delete terminal tanpa restore
+- Effective ancestor state tanpa cascade local state/Activity descendant
+- Ancestor-chain validation untuk operasi dan restore ARCHIVED (INV-LIFE-001/002)
+- Retention 30 hari + internal subtree prune tanpa orphan
 
 **Phase 6 — Hardening**
 - Optimistic locking penuh di semua domain command
@@ -299,9 +306,9 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 | 0 | 03-ENGINEERING Part A, B, D |
 | 1 | 02-SPEC A.2, A.12; C.4, C.13 |
 | 2 | 02-SPEC A.1, A.6; C.5–C.8 |
-| 3 | 02-SPEC A.4, A.8, A.9, A.11; C.9–C.11 |
+| 3 | 02-SPEC A.8, A.9; B.8–B.10; C.9–C.11 |
 | 4 | 02-SPEC A.10, A.11, A.13; 03-ENGINEERING Part C |
-| 5 | 02-SPEC A.3, A.4, A.5; C.4–C.8 |
+| 5 | 02-SPEC A.3, A.4, A.14; C.4–C.8 |
 | 6 | 02-SPEC A.7, A.14, A.15; 04-DELIVERY Part B |
 | 7 | 04-DELIVERY Part A · docs/05-FRONTEND.md · PHASE-7-TASKS.md (blocked s/d Phase 0–6 verified) |
 
@@ -309,11 +316,11 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 
 Implementasi domain compliant **hanya jika** seluruh berikut terpenuhi:
 - Seluruh invariant di 02-SPEC Part A tercakup automated test.
-- Test otorisasi mencakup setiap Permission Group baseline.
+- Test otorisasi mencakup setiap Permission Group baseline serta direct Permission.
 - Test permission inheritance ada.
 - Test Card visibility scope ada.
-- Test lifecycle (archive/delete/restore + ancestor chain) ada.
-- Test parent-child handling (archive/delete/move) ada.
+- Test lifecycle (archive/restore, delete terminal, ancestor effective state) ada.
+- Test parent lifecycle tidak mengubah local state/version/Activity descendant ada.
 - Test cross-project isolation ada.
 - Test Activity immutability ada.
 - Terbukti test: comment tidak dapat dihapus.
@@ -324,16 +331,21 @@ Implementasi domain compliant **hanya jika** seluruh berikut terpenuhi:
 - Test PAT authorization ada.
 - Test invitation flow ada.
 - Test restore dependency ada.
+- Test atomicity mutation Project + Activity Project ada.
+- Test retention 30 hari dan subtree prune tanpa orphan ada.
 
 (Identik dengan Part B.3 — keduanya harus tetap sinkron.)
 
 ## C.4 Implementation Rules for AI Coding Agents
 
+**Lane Guardrail — Dev Cannot Amend SOT.** AI-Dev MUST NOT mengubah file SOT, `SPEC_VERSION`, atau changelog. Jika implementasi membutuhkan perubahan SOT, Dev mencatat `[NEEDS-SPEC-AMENDMENT]` pada task/CL dan berhenti; amandemen dilakukan lane AI-Planning & Review setelah keputusan manusia.
+**Execution Gate — Tracking Before and After Coding.** Sebelum mengubah implementasi, AI-Dev MUST memastikan goal `🔄` dan CL awal sudah tercatat. Sebelum menyatakan selesai, AI-Dev MUST memastikan goal `🔎`/`80%`, CL handoff, test hijau, serta commit sudah tersedia. Final response tanpa Goal, Status/%, CL, commit, dan hasil test bukan handoff yang valid (lihat [AGENTS.md](../AGENTS.md) §0).
+**Dependency Selection Gate.** Pemilihan dependency MUST mengikuti [03-ENGINEERING A.8](03-ENGINEERING.md): latest compatible LTS, atau latest compatible stable jika tidak ada kanal LTS; prerelease dilarang tanpa keputusan manusia + amandemen SOT. Setelah lulus compatibility gate, direct dependency MUST dipin exact dan lockfile di-commit.
 **Rule 1 — Do Not Invent Domain Behavior.** Jika perilaku tidak dispesifikasi, MUST NOT diam-diam menciptakan business rule baru yang mengubah invariant.
-**Rule 2 — Domain Commands.** MUST pakai operasi domain eksplisit untuk move/archive/restore/delete — bukan generic field update.
+**Rule 2 — Domain Commands.** MUST pakai operasi domain eksplisit untuk Card move serta archive/restore/delete — bukan generic field update. Milestone/Board/List tidak memiliki command move pada MVP.
 **Rule 3 — Authorization First.** Setiap operasi terproteksi MUST cek otorisasi sebelum mutation.
-**Rule 4 — Validate Destination.** Operasi move MUST validasi destination independen (existence, Project sama, ACTIVE, permission).
-**Rule 5 — Preserve Activity.** Perubahan state destruktif/bermakna MUST menghasilkan Activity.
+**Rule 4 — Validate Destination.** Move Card MUST validasi destination independen (existence, Project sama, seluruh ancestor ACTIVE, permission).
+**Rule 5 — Preserve Activity.** Perubahan state destruktif/bermakna MUST menghasilkan Activity entity yang berubah; jangan membuat Activity descendant tanpa perubahan local state.
 **Rule 6 — Activity Is Immutable.** MUST NOT sediakan jalur update terhadap Activity historis.
 **Rule 7 — No Cross-Project Leakage.** Repository/service MUST selalu menegakkan Project boundary di setiap query.
 **Rule 8 — Transactional Domain Commands.** Operasi memengaruhi banyak entity MUST transactional.
@@ -349,10 +361,8 @@ Implementasi domain compliant **hanya jika** seluruh berikut terpenuhi:
 4. Activity immutability
 5. Authorization formula dasar (membership + permission check)
 
-**Boleh ditunda** ke iterasi berikutnya (dengan catatan technical debt eksplisit):
-- Card visibility scope granular (sementara default `ALL` untuk semua)
-- Label lifecycle (`removed_at`) — sementara delete fisik dengan catatan risiko hilang histori
-- Move children saat parent delete (sementara hanya archive/delete, tanpa move)
+**Tidak boleh ditunda karena menjaga histori:**
+- Lifecycle asosiasi Label (`created_at`/`removed_at`); asosiasi historis tidak boleh diganti dengan delete fisik.
 
 **Tidak boleh ditunda** (risiko keamanan langsung):
 API Key/PAT scope enforcement · credential hashing · generic PATCH field protection.
@@ -365,6 +375,7 @@ Task granular **tidak ditulis statis** di dokumen ini — task cepat basi karena
 - Generate task hanya untuk **satu Phase yang sedang aktif** (dari C.1). MUST NOT lompat/mendahului fase berikutnya.
 - Sebelum generate, code AI MUST membaca: seluruh **02-SPEC**, **03-ENGINEERING** Part A & B, dan baris Phase terkait di C.1 + pemetaan acuannya di C.2.
 - Sebelum generate, code AI MUST memeriksa state repo aktual (file/module yang sudah ada) agar task merujuk artefak nyata, bukan asumsi.
+- Jika Phase memasang dependency baru, lane AI-Planning & Review MUST merevalidasi latest compatible LTS/stable terhadap A.8 sebelum task implementasi dibuka; task MUST menyebut exact baseline hasil verifikasi, bukan tag `latest`.
 
 ### C.6.2 Format Wajib Tiap Task
 Setiap task yang di-generate MUST memuat enam elemen berikut:
@@ -380,14 +391,18 @@ Setiap task yang di-generate MUST memuat enam elemen berikut:
 
 Aturan tambahan:
 - **Satu task = satu unit yang bisa di-review terpisah.** Jika sebuah task menyentuh >~5 file atau menggabungkan beberapa concern (mis. schema + endpoint + auth sekaligus), pecah lebih lanjut.
-- **Pecah task menjadi goal kecil (WAJIB).** Task di-breakdown jadi goal-goal kecil dalam tabel (ID · Status · % · Goal · Reference · Dependency), dengan prinsip **satu goal = satu Reference, satu Test, satu DoD, satu unit review**. Alasan: implementasi dikerjakan sesi Dev yang bisa memakai **model ringan** ([AGENTS.md](../AGENTS.md) §11.2); scope goal yang sempit adalah mitigasi utama untuk model lemah — mempersempit ruang salah, memuat context (cukup kirim section Reference goal, bukan seluruh SOT), dan membuat verifikasi jadi biner (hijau/tidak). Jika sebuah goal menuntut banyak keputusan sekaligus atau menyentuh >~3–5 file, pecah lagi.
+- **Pecah task menjadi goal kecil (WAJIB).** Task di-breakdown jadi goal-goal kecil dalam tabel (ID · Status · CL · % · Prior · Goal · Reference · Dependency), dengan prinsip **satu goal = satu Reference, satu Test, satu DoD, satu unit review**. `CL` berisi link ke seluruh Closure Log goal yang sudah dibuat: `CL-nn` dari Dev, `QA-CL-nn` dari QA, dan `Review-CL-nn` dari AI-Planning & Review/reviewer; setiap entry wajib mencantumkan Role sesuai lane dan nama/identifier Model aktual. Jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`), bukan menebak model. Gunakan `—` jika belum ada. Kolom CL append-only: setiap link baru ditambahkan memakai `<br>` tanpa mengganti/menghapus link lama. `%` wajib berdasarkan bukti, bukan asumsi; Dev maksimal `80`, sedangkan `100` hanya boleh ditetapkan QA bersama `✅`. `Prior` memakai `P0` (blocker/gate/fondasi kritis), `P1` (tinggi/core dependency), `P2` (normal), atau `P3` (lanjutan/polish); Dependency dan Status selalu mengalahkan Prior. Alasan: implementasi dikerjakan sesi Dev yang bisa memakai **model ringan** ([AGENTS.md](../AGENTS.md) §11.2); scope goal yang sempit adalah mitigasi utama untuk model lemah — mempersempit ruang salah, memuat context (cukup kirim section Reference goal, bukan seluruh SOT), dan membuat verifikasi jadi biner (hijau/tidak). Jika sebuah goal menuntut banyak keputusan sekaligus atau menyentuh >~3–5 file, pecah lagi.
+- **Reference berbeda fungsi per lane.** Untuk Dev, Reference melengkapi baseline tetap di [AGENTS.md](../AGENTS.md) §2.1 dan menjadi fokus implementasi. Untuk QA, Reference hanya titik awal: verifikasi MUST diperluas ke rule/cross-reference, dependency, diff aktual, kondisi tepi, dan kontrak lintas-modul yang relevan sesuai [AGENTS.md](../AGENTS.md) §2.2.
+- **Ringkasan Task wajib derived.** Status/% Task tidak boleh menjadi state manual kedua. Task `%` adalah rata-rata `%` semua goal yang dibulatkan ke bawah; Task Status dihitung deterministik dari status goal menurut [AGENTS.md](../AGENTS.md) §6.2. Task tidak memiliki CL terpisah; seluruh bukti berasal dari CL goal.
 - Task MUST diurutkan sesuai dependency (mis. migration sebelum repository sebelum endpoint sebelum test integrasi).
 - Setiap task yang menyentuh **mutation** MUST menyertakan test optimistic locking (`AC-020` pattern) di elemen Test.
 - Setiap task yang menyentuh **operasi terproteksi** MUST menyertakan authorization test (minimal satu positive + satu negative) di elemen Test.
 - Setiap task yang menyentuh **query resource** MUST menyertakan verifikasi Project boundary (tidak ada kebocoran lintas Project) di Done-when.
 
 ### C.6.3 Guardrails Saat Generate & Mengerjakan
-Code AI MUST tetap tunduk pada **C.4 Implementation Rules** saat memecah maupun mengerjakan task. Secara khusus saat generate task:
+Code AI MUST tetap tunduk pada **C.4 Implementation Rules** saat memecah maupun mengerjakan task. Aturan operasional:
+- Sebelum setiap update Status/CL/%, agent MUST membaca ulang state goal dan repo aktual dari disk; memory bukan sumber status. Setiap perubahan Status wajib mempunyai Closure Log + link CL dan commit yang sama. Pengecualian hanya waktu commit awal `→ 🔄`: Dev boleh mulai tanpa commit terpisah, tetapi tracking awal wajib masuk commit pertama.
+- Dev MUST mengubah goal `⬜️`/`⚠️` menjadi `🔄` sebelum bekerja. Dev tidak boleh membuka atau mengerjakan `⏸️`. Goal `⏸️` baru menjadi **Gate candidate** jika seluruh dependency/gate objektif dan keputusan manusia yang diwajibkan sudah tersedia; hanya QA atau AI-Planning & Review/reviewer yang boleh memverifikasi lalu melakukan `⏸️ → ⬜️` dengan CL + commit. Yang belum memenuhi syarat tetap **Blocked**.
 - MUST NOT membuat task yang memperkenalkan fitur non-MVP (lihat 01-PRODUCT § 2.2) — jika sebuah kebutuhan terasa perlu tapi di luar scope, buat task terpisah bertanda `[NEEDS-SPEC-AMENDMENT]` dan berhenti, jangan implementasi diam-diam (lihat C.6.5).
 - MUST NOT membuat task yang melanggar salah satu dari 10 invariant inti (02-SPEC A.16). Jika phase scope tampak menuntut pelanggaran, itu sinyal task salah pecah — tinjau ulang.
 - MUST memetakan setiap endpoint yang dibuat ke definisinya di 02-SPEC Part C. Tidak boleh ada endpoint yang tidak tercantum di kontrak API tanpa amandemen.

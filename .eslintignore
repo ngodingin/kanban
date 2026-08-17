@@ -1,6 +1,0 @@
-node_modules/
-dist/
-.next/
-package-lock.json
-migrations/
-drizzle/
