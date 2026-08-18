@@ -173,7 +173,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.10.1 | 🔎 | [CL-24](#cl-24) | 80 | P0 | Pola repository — domain logic tidak import Drizzle langsung | [03-ENG A.7](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.10.2 | ⬜️ | — | 0 | P0 | Transaction helper `BEGIN IMMEDIATE` (mutation + activity atomic) | [03-ENG A.6](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.10.2 | 🔎 | [CL-25](#cl-25) | 80 | P0 | Transaction helper `BEGIN IMMEDIATE` (mutation + activity atomic) | [03-ENG A.6](docs/03-ENGINEERING.md) | 0.3.1 |
 
 **Test:** Unit — transaction helper commit menyimpan; rollback membatalkan (uji mutation + dummy activity atomic).
 **DoD:** Boundary jelas; domain tidak bergantung API Drizzle langsung; tx helper tersedia (fondasi A.6 / atomic Card move INV-MOVE-004).
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-25"></a>
+### CL-25 — 2026-08-18 · 0.10.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-transaction`: commit simpan mutation+activity; rollback saat fn throw; negatif activity invalid → seluruh tx dibatalkan (tidak ada mutation yatim, INV #9); typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** `runInWriteTransaction` (src/database/transaction.ts): `client.transaction("write")` (= `BEGIN IMMEDIATE`, setara hasil POC 0.2.3) + retry SQLITE_BUSY (3×, 50 ms) → `TransactionBusyError`. Fondasi A.6 / atomic Card move (INV-MOVE-004). Perilaku busy retry terbukti di POC 0.2.3 (20/20 tanpa lost update), bukan di helper ini. TASK-0.10 tuntas. Tidak ada perubahan SOT.
 
 <a id="cl-24"></a>
 ### CL-24 — 2026-08-18 · 0.10.1 🔄 → 🔎

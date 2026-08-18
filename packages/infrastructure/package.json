@@ -23,6 +23,7 @@
     "test:smoke-global-mapping": "node --env-file-if-exists=../../.env scripts/smoke-global-mapping.ts",
     "test:smoke-rollback": "node --env-file-if-exists=../../.env scripts/smoke-rollback.ts",
     "test:smoke-repository": "node scripts/smoke-repository.ts",
+    "test:smoke-transaction": "node scripts/smoke-transaction.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
   },
