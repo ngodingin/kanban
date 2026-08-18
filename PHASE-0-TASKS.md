@@ -146,7 +146,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.8.1 | 🔎 | [CL-28](#cl-28) | 80 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.8.2 | 🔎 | [CL-29](#cl-29) | 80 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
 | 0.8.3 | ⬜️ | — | 0 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
-| 0.8.4 | ⬜️ | — | 0 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
+| 0.8.4 | 🔎 | [CL-30](#cl-30) | 80 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
 
 **Test:** Integration — handler auth terpasang sebelum catch-all; password/social auth tidak tersedia; request Magic Link tidak membocorkan keberadaan email; sender tepat; staging link hanya memakai `https://stag-kanban.ngodingin.xyz`, production link hanya memakai `https://kanban.ngodingin.xyz`; database tidak menyimpan raw verification token; token expired/used/invalid ditolak; dua konsumsi konkuren hanya satu yang sukses; link valid menghasilkan session; sign-out/revoke membuat session tidak valid.
 **DoD:** Identitas web session melalui Better Auth Magic Link dan satu `resolveIdentity()`; User otoritatif di Global DB; ID auth memakai ULID; verification hashed/single-use/expiring; session database-backed dan revocable; transport email memakai `sendMagicLink()` + Resend SDK/API; secret/alamat pengirim hanya dari environment; UI final ditunda ke Phase 7.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-30"></a>
+### CL-30 — 2026-08-18 · 0.8.4 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-magic-link` (live Global DB Turso): 21 asersi PASS — request link 200 `{status:true}` identik untuk email dikenal vs tak dikenal (no enumeration); `sendMagicLink()` menerima `{email, url, token}` (stub injectable); link memakai canonical origin per env (staging `stag-kanban.ngodingin.xyz`, production `kanban.ngodingin.xyz`); token tersimpan `storeToken:"hashed"` (identifier SHA-256 base64url 43 char, token mentah tidak pernah ada di DB); verify valid → session baru + Set-Cookie `__Secure-kanban.session_token` HttpOnly+Secure; negatif: reuse (single-use), token invalid, expired → redirect `error=INVALID_TOKEN`; **dua konsumsi konkuren → tepat satu sukses** (konsumsi atomik); sign-in/email → 400 (emailAndPassword disabled); sign-in/google → 404. smoke-session & smoke-auth tetap PASS; typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** Plugin `magicLink` dari `better-auth/plugins/magic-link` (expiresIn 300 s; `allowedAttempts` deprecated — konsumsi atomik bawaan plugin, DUAL delete-by-id dalam transaksi adapter). Cookie session di origin https memakai prefix `__Secure-` (BA internal, isProduction = baseURL https) — sesuai secure cookie A.14. Transport email: `resend@6.20.0` exact pin di infrastructure; `defaultSendMagicLink` membaca `AUTH_RESEND_KEY` + `MAIL_FROM` via `loadAppConfig` (0.1.4), sender `noreply@kanban.ngodingin.xyz`; stub di smoke membuktikan kontrak tanpa mengirim email nyata (kirim nyata = Phase 1 handler + secret Vercel). Rate limit plugin 5/60s (F.5 seam). Tidak ada perubahan SOT.
 
 <a id="cl-29"></a>
 ### CL-29 — 2026-08-18 · 0.8.2 🔄 → 🔎

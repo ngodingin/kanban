@@ -25,6 +25,7 @@
     "test:smoke-repository": "node scripts/smoke-repository.ts",
     "test:smoke-auth": "node --env-file-if-exists=../../.env scripts/smoke-auth.ts",
     "test:smoke-session": "node --env-file-if-exists=../../.env scripts/smoke-session.ts",
+    "test:smoke-magic-link": "node --env-file-if-exists=../../.env scripts/smoke-magic-link.ts",
     "test:smoke-transaction": "node scripts/smoke-transaction.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
@@ -34,6 +35,7 @@
     "@libsql/client": "0.17.4",
     "better-auth": "1.6.30",
     "drizzle-orm": "0.45.2",
+    "resend": "6.20.0",
     "ulid": "3.0.2",
     "zod": "4.4.3"
   },

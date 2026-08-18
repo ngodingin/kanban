@@ -1,15 +1,37 @@
 import { betterAuth } from "better-auth";
+import { magicLink } from "better-auth/plugins/magic-link";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import type { Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
+import { Resend } from "resend";
 import { users, authSessions, authAccounts, authVerifications } from "../database/global-schema.ts";
+import { loadAppConfig } from "../config/env.ts";
+
+export interface SendMagicLinkData {
+  email: string;
+  url: string;
+  token: string;
+}
 
 export interface AuthConfigInput {
   globalClient: Client;
   baseUrl: string;
   secret: string;
   trustedOrigins?: string[];
+  sendMagicLink?: (data: SendMagicLinkData) => Promise<void>;
+}
+
+async function defaultSendMagicLink(data: SendMagicLinkData): Promise<void> {
+  const config = loadAppConfig(process.env);
+  const resend = new Resend(config.AUTH_RESEND_KEY);
+  const res = await resend.emails.send({
+    from: config.MAIL_FROM,
+    to: data.email,
+    subject: "Masuk ke NGodingin Kanban",
+    html: `<p>Klik tautan berikut untuk masuk ke NGodingin Kanban:</p><p><a href="${data.url}">${data.url}</a></p>`,
+  });
+  if (res.error) throw new Error(`Resend gagal: ${res.error.message}`);
 }
 
 export function createAuth(config: AuthConfigInput) {
@@ -72,7 +94,14 @@ export function createAuth(config: AuthConfigInput) {
     emailAndPassword: {
       enabled: false,
     },
-advanced: {
+    plugins: [
+      magicLink({
+        storeToken: "hashed",
+        expiresIn: 300,
+        sendMagicLink: config.sendMagicLink ?? defaultSendMagicLink,
+      }),
+    ],
+    advanced: {
       cookiePrefix: "kanban",
       database: {
         generateId: () => ulid().toLowerCase(),
