@@ -10,6 +10,9 @@
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "devDependencies": {
     "@types/node": "24.13.3",
     "typescript": "6.0.2"

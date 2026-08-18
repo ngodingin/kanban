@@ -130,9 +130,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.7.1 | ⬜️ | — | 0 | P1 | Bentuk sukses `{data}` & error `{error:{code,message}}` | [02-SPEC C.2](docs/02-SPEC.md) | 0.1.2 |
-| 0.7.2 | ⬜️ | — | 0 | P1 | Enum error code kanonik (12 code) | [02-SPEC C.2](docs/02-SPEC.md) | 0.7.1 |
-| 0.7.3 | ⬜️ | — | 0 | P2 | Helper mapping error domain → HTTP + seam `Idempotency-Key` | [02-SPEC C.2](docs/02-SPEC.md), [C.3](docs/02-SPEC.md) | 0.7.2 |
+| 0.7.1 | 🔎 | [CL-37](#cl-37) | 80 | P1 | Bentuk sukses `{data}` & error `{error:{code,message}}` | [02-SPEC C.2](docs/02-SPEC.md) | 0.1.2 |
+| 0.7.2 | 🔎 | [CL-38](#cl-38) | 80 | P1 | Enum error code kanonik (12 code) | [02-SPEC C.2](docs/02-SPEC.md) | 0.7.1 |
+| 0.7.3 | 🔎 | [CL-39](#cl-39) | 80 | P2 | Helper mapping error domain → HTTP + seam `Idempotency-Key` | [02-SPEC C.2](docs/02-SPEC.md), [C.3](docs/02-SPEC.md) | 0.7.2 |
 
 **Test:** Unit — helper menghasilkan bentuk response benar; tiap error code kanonik terpetakan ke HTTP status.
 **DoD:** Handler mendatang dapat memakai helper konsisten; seluruh error code C.2 tersedia.
@@ -186,7 +186,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.11.1 | 🔎 | [CL-26](#cl-26) | 80 | P0 | Setup Vitest 4.x exact pin untuk unit + integration | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.2](docs/04-DELIVERY.md), [B.5](docs/04-DELIVERY.md) | 0.1.3 |
 | 0.11.2 | 🔎 | [CL-27](#cl-27) | 80 | P0 | DB test terisolasi per suite + rollback antar test | [04-DEL B.5](docs/04-DELIVERY.md) | 0.4.3, 0.5.3 |
-| 0.11.3 | ⬜️ | — | 0 | P1 | Konvensi penamaan test mereferensikan ID rule (BR/AC) | [04-DEL B.6](docs/04-DELIVERY.md) | 0.11.1 |
+| 0.11.3 | 🔎 | [CL-40](#cl-40) | 80 | P1 | Konvensi penamaan test mereferensikan ID rule (BR/AC) | [04-DEL B.6](docs/04-DELIVERY.md) | 0.11.1 |
 | 0.11.4 | ⬜️ | — | 0 | P2 | Setup Playwright 1.62.x exact pin + production-like webServer untuk E2E smoke | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | 0.1.1 |
 
 **Test:** (meta) contoh Vitest unit+integration dan Playwright E2E smoke lulus lokal.
@@ -271,6 +271,30 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
 **Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-pipeline`: `pipe-permission-seam` PASS — konteks pipeline memuat `permission: null` dari `EmptyPermissionResolver`. typecheck 0; lint 0.
 **Catatan:** `PermissionResolver` interface + `EmptyPermissionResolver` (src/pipeline/permission-step.ts): kontrak `resolve(PermissionContext) → PermissionResolution`, diisi Phase 4 (A.10 formula ALLOW). Context membawa identity + project + membership — semua data yang dibutuhkan permission engine, tanpa akses DB. Tidak ada perubahan SOT.
+
+<a id="cl-37"></a>
+### CL-37 — 2026-08-18 · 0.7.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm test` (vitest): `packages/contracts/test/api-response.test.ts` 4 asersi PASS — `ok()` → `{data}`, payload passthrough (null/array/scalar), `apiError()` → `{error:{code,message}}`, envelope error TIDAK mengandung field `data`. typecheck 0; lint 0.
+**Catatan:** Helpers hidup di `@kanban/contracts` (paket kontrak API; exports → src sesuai pola domain). 0.7.1–0.7.3 dikerjakan sebagai satu unit kontrak dengan test terpisah per goal. Tidak ada perubahan SOT.
+
+<a id="cl-38"></a>
+### CL-38 — 2026-08-18 · 0.7.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm test` (vitest): `packages/contracts/test/error-codes.test.ts` 4 asersi PASS — tepat 12 kode kanonik C.2 (list penuh), isErrorCode menerima semua kode, menolak unknown/undefined/empty, tipe union tertutup. typecheck 0; lint 0.
+**Catatan:** `ERROR_CODES` (as const) + `ErrorCode` + `isErrorCode` di `packages/contracts/src/error-codes.ts`. Tidak ada perubahan SOT.
+
+<a id="cl-39"></a>
+### CL-39 — 2026-08-18 · 0.7.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm test` (vitest): `packages/contracts/test/http-mapping.test.ts` 7 asersi PASS — semua kode → status 4xx/5xx; mapping khusus (TOKEN_EXPIRED/REVOKED 401, ACCESS/PERMISSION_DENIED 403, NOT_FOUND 404, VERSION_CONFLICT 409); `httpStatus` eksplisit override (dipakai PipelineError); kode tidak dikenal → 500 INVALID_STATE tanpa bocor; `extractIdempotencyKey` ada/tidak ada/blank. typecheck 0; lint 0.
+**Catatan:** `CODE_TO_HTTP` + `toErrorResponse` + `IDEMPOTENCY_HEADER`/`extractIdempotencyKey` + interface `IdempotencyStore` (implementasi penyimpanan Phase 1 — seam, sesuai non-MVP no-idempotency infra). Status per kode adalah keputusan teknis Dev (C.2 tidak menetapkan status; mudah diganti, catat untuk AI-Planning bila ingin di-SOT-kan). `toErrorResponse` menerima bentuk PipelineError (0.9.5) — jembatan ke error handler Hono Phase 1. Tidak ada perubahan SOT.
+
+<a id="cl-40"></a>
+### CL-40 — 2026-08-18 · 0.11.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm test` (vitest) 6 file / 23 test PASS. Nama test kini mereferensikan ID rule: `db-isolation.test.ts` → `AC-001/BR-007` (Project isolation, 4 asersi); `transaction.test.ts` → `INV-9/INV-MOVE-004` (atomic mutation+activity); file baru contracts test → `C.2`/`04-DEL B.5` (tiap describe). typecheck 0; lint 0.
+**Catatan:** 04-DEL B.6: tiap Business Rule SHOULD punya minimal satu test mereferensikan ID di nama/deskripsi — konvensi siap dipakai seluruh test Phase 1–7 (nama test baru wajib ber-format `ID-rule: deskripsi`). Tidak ada perubahan SOT.
 
 <a id="cl-36"></a>
 ### CL-36 — 2026-08-18 · 0.9.5 🔄 → 🔎

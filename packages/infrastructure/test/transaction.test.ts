@@ -25,7 +25,7 @@ afterAll(async () => {
 });
 
 describe("runInWriteTransaction (integration, local Project DB)", () => {
-  it("commit menyimpan mutation + activity bersama (AC-020-friendly)", async () => {
+  it("INV-9/INV-MOVE-004: commit menyimpan mutation + activity bersama", async () => {
     await runInWriteTransaction(client, async (tx) => {
       await tx.execute(
         "INSERT INTO milestones (id, title, created_at, updated_at, version) VALUES ('ms_1', 'M1', ?, ?, 1)",
@@ -41,7 +41,7 @@ describe("runInWriteTransaction (integration, local Project DB)", () => {
     expect(Number(rows.rows[0]?.a)).toBe(1);
   });
 
-  it("rollback membatalkan mutation saat fn throw", async () => {
+  it("INV-9/INV-MOVE-004: rollback membatalkan mutation saat fn throw", async () => {
     await expect(
       runInWriteTransaction(client, async (tx) => {
         await tx.execute(
