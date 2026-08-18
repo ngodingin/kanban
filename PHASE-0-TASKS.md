@@ -157,11 +157,11 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.9.1 | ⬜️ | — | 0 | P0 | Resolve identity (session; seam untuk PAT/API Key di Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.8.3 |
-| 0.9.2 | ⬜️ | — | 0 | P0 | Load Project dari `:project_id` + verify membership exists | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2, 0.9.1 |
-| 0.9.3 | ⬜️ | — | 0 | P0 | Resolve Project DB **setelah** verifikasi membership | [03-ENG A.4](docs/03-ENGINEERING.md) | 0.9.2 |
-| 0.9.4 | ⬜️ | — | 0 | P0 | Permission resolution = seam kosong (diisi Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.9.1 |
-| 0.9.5 | ⬜️ | — | 0 | P0 | Semua akses resource WAJIB lewat pipeline (tidak ada bypass) | [BR-008](docs/02-SPEC.md), [AC-001](docs/04-DELIVERY.md) | 0.9.3 |
+| 0.9.1 | 🔎 | [CL-32](#cl-32) | 80 | P0 | Resolve identity (session; seam untuk PAT/API Key di Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.8.3 |
+| 0.9.2 | 🔎 | [CL-33](#cl-33) | 80 | P0 | Load Project dari `:project_id` + verify membership exists | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2, 0.9.1 |
+| 0.9.3 | 🔎 | [CL-34](#cl-34) | 80 | P0 | Resolve Project DB **setelah** verifikasi membership | [03-ENG A.4](docs/03-ENGINEERING.md) | 0.9.2 |
+| 0.9.4 | 🔎 | [CL-35](#cl-35) | 80 | P0 | Permission resolution = seam kosong (diisi Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.9.1 |
+| 0.9.5 | 🔎 | [CL-36](#cl-36) | 80 | P0 | Semua akses resource WAJIB lewat pipeline (tidak ada bypass) | [BR-008](docs/02-SPEC.md), [AC-001](docs/04-DELIVERY.md) | 0.9.3 |
 
 **Test:** Integration — request tanpa identitas → ditolak; ke Project tanpa membership → `PROJECT_ACCESS_DENIED`; menyebut `project_id` Project lain → tidak pernah mengakses DB Project lain.
 **DoD:** Tidak ada jalur akses resource yang melewati pipeline; `project_id` diverifikasi terhadap membership **sebelum** resolve Project DB; fondasi AC-001/AC-030 terpasang.
@@ -247,6 +247,36 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-32"></a>
+### CL-32 — 2026-08-18 · 0.9.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-pipeline` (live Global DB + Project DB file lokal): `pipe-identity` PASS — session valid → identitas; `pipe-anonymous` PASS — tanpa cookie → PipelineError TOKEN_EXPIRED 401; `pipe-invalid-cookie` PASS — cookie invalid → TOKEN_EXPIRED 401. typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** `ResolveIdentityStep` (src/pipeline/identity-step.ts) = langkah pertama pipeline; seam PAT/API Key Phase 4 = tambah cabang di `IdentityResolver` (0.8.3), bukan jalur baru. **Keputusan manusia (2026-08-18):** credential hilang/tidak valid ditolak dengan kode kanonik `TOKEN_EXPIRED` + HTTP 401 (12 kode C.2 tidak punya kode unauthenticated; opsinya tercatat di sesi — pilih TOKEN_EXPIRED, catat untuk amandemen bila AI-Planning ingin menambah kode). Tidak ada perubahan SOT.
+
+<a id="cl-33"></a>
+### CL-33 — 2026-08-18 · 0.9.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-pipeline`: `pipe-project-membership` PASS — project + membership valid dimuat; `pipe-no-membership` PASS — user B ke Project A → PROJECT_ACCESS_DENIED 403; `pipe-cross-project` PASS — user A ke Project B → PROJECT_ACCESS_DENIED 403 (BR-009); `pipe-unknown-project` PASS — RESOURCE_NOT_FOUND 404; `pipe-revoked-membership` PASS — membership revoked → PROJECT_ACCESS_DENIED 403. typecheck 0; lint 0.
+**Catatan:** `LoadProjectStep` (src/pipeline/project-step.ts) membaca Global DB via `getProject`/`getMembership` (src/database/global-reads.ts; membership aktif = `revoked_at IS NULL`, konsisten partial UNIQUE B.2). Verifikasi membership terjadi SEBELUM resolve DB (A.4). Keputusan teknis Dev: project tidak dikenal → RESOURCE_NOT_FOUND (bukan PROJECT_ACCESS_DENIED — hindari leak keberadaan project? sebaliknya: 404 menandakan tidak ada; dicatat sebagai pilihan, mudah diubah). Tidak ada perubahan SOT.
+
+<a id="cl-34"></a>
+### CL-34 — 2026-08-18 · 0.9.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-pipeline`: `pipe-db` PASS — DB Project ter-resolve (spy resolver tercatat) hanya setelah membership lolos dan siap query (SELECT 1); `pipe-cross-project-no-db` PASS — untuk user A yang bukan anggota B, resolver TIDAK pernah dipanggil untuk project B. typecheck 0; lint 0.
+**Catatan:** `ResolveDatabaseStep` (src/pipeline/database-step.ts): `resolveOrThrow` (0.3.2) + `ProjectClientFactory` seam — prod akan memakai factory Turso (token JWT per-DB dari hostname, 0.6.1); test memakai factory file:. Mapping hilang → RESOURCE_NOT_FOUND 404 (keputusan teknis Dev: Project terdaftar tapi DB belum siap = tidak tersedia). Tidak ada perubahan SOT.
+
+<a id="cl-35"></a>
+### CL-35 — 2026-08-18 · 0.9.4 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-pipeline`: `pipe-permission-seam` PASS — konteks pipeline memuat `permission: null` dari `EmptyPermissionResolver`. typecheck 0; lint 0.
+**Catatan:** `PermissionResolver` interface + `EmptyPermissionResolver` (src/pipeline/permission-step.ts): kontrak `resolve(PermissionContext) → PermissionResolution`, diisi Phase 4 (A.10 formula ALLOW). Context membawa identity + project + membership — semua data yang dibutuhkan permission engine, tanpa akses DB. Tidak ada perubahan SOT.
+
+<a id="cl-36"></a>
+### CL-36 — 2026-08-18 · 0.9.5 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-pipeline`: seluruh 11 asersi PASS — termasuk `pipe-cross-project-no-db` (DB project lain tidak pernah di-resolve/diakses, BR-008/AC-001) dan setiap jalur negatif ditolak di langkah pipeline yang benar (identity → project/membership → db → permission). typecheck 0; lint 0.
+**Catatan:** `RequestPipeline.run(request, projectId) → ProjectRequestContext` (src/pipeline/pipeline.ts) = SATU-SATUNYA entry akses resource: identity (0.9.1) → project+membership (0.9.2) → DB (0.9.3) → permission (0.9.4). Tidak ada jalur bypass; handler Phase 1 wajib memakai pipeline ini. TASK-0.9 tuntas (catatan: 5 goal dikerjakan sebagai satu unit pipeline dengan satu smoke — asersi terpisah per goal agar QA tetap verifikabel per goal; keputusan teknis Dev). Tidak ada perubahan SOT.
 
 <a id="cl-31"></a>
 ### CL-31 — 2026-08-18 · 0.8.3 🔄 → 🔎
