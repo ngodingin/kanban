@@ -1,10 +1,6 @@
 import { createClient } from "@libsql/client";
 import { applyGlobalMigrations } from "../src/database/migrate.ts";
-import {
-  deleteProjectRegistry,
-  recordProjectDatabaseMapping,
-  registerProject,
-} from "../src/database/global-store.ts";
+import { deleteProjectRegistry, registerProject } from "../src/database/global-store.ts";
 import { provisionProjectWithMapping, ProjectProvisioningError } from "../src/provisioning/provision.ts";
 import {
   createDatabase,
@@ -13,9 +9,6 @@ import {
   projectDatabaseName,
   deleteDatabase,
 } from "../src/provisioning/turso.ts";
-import { drizzle } from "drizzle-orm/libsql";
-import { users } from "../src/database/global-schema.ts";
-import { eq } from "drizzle-orm";
 
 const token = process.env.TURSO_API_TOKEN;
 const globalUrl = process.env.GLOBAL_DB_URL;

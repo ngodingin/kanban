@@ -22,10 +22,12 @@
     "test:smoke-provision": "node --env-file-if-exists=../../.env scripts/smoke-provision.ts",
     "test:smoke-global-mapping": "node --env-file-if-exists=../../.env scripts/smoke-global-mapping.ts",
     "test:smoke-rollback": "node --env-file-if-exists=../../.env scripts/smoke-rollback.ts",
+    "test:smoke-repository": "node scripts/smoke-repository.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
   },
   "dependencies": {
+    "@kanban/domain": "workspace:*",
     "@libsql/client": "0.17.4",
     "drizzle-orm": "0.45.2",
     "ulid": "3.0.2",

@@ -72,6 +72,9 @@ importers:
 
   packages/infrastructure:
     dependencies:
+      '@kanban/domain':
+        specifier: workspace:*
+        version: link:../domain
       '@libsql/client':
         specifier: 0.17.4
         version: 0.17.4
