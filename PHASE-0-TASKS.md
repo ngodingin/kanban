@@ -200,7 +200,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.12.1 | ⬜️ | — | 0 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
 | 0.12.2 | ⬜️ | — | 0 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
-| 0.12.3 | ⬜️ | — | 0 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
+| 0.12.3 | 🔄 | [CL-24](#cl-24) | 40 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
 | 0.12.4 | ⬜️ | — | 0 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
 | 0.12.5 | ⬜️ | — | 0 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
 
@@ -227,6 +227,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="cl-24"></a>
+### CL-24 — 2026-08-18 · 0.12.3 ⬜️ → 🔄
+**Role:** AI-Dev · **Model:** Codex
+**Bukti:** `.env.example` dipetakan ke D.7: development `http://localhost:5173`, Vercel Preview/staging `https://stag-kanban.ngodingin.xyz`, dan production `https://kanban.ngodingin.xyz`; loader `packages/infrastructure/src/config/env.ts` serta smoke test `smoke-config.ts` sudah menegakkan pemetaan yang sama.
+**Catatan:** Keputusan manusia mempertahankan canonical staging SOT. Konfigurasi secret dan koneksi DB nyata di Vercel masih memerlukan nilai rahasia dari operator; tidak ada secret ditulis ke repository.
 
 ```
 <a id="cl-01"></a>
