@@ -20,6 +20,7 @@
     "test:smoke-project-behavior": "node scripts/smoke-project-behavior.ts",
     "test:smoke-migrate-programmatic": "node scripts/smoke-migrate-programmatic.ts",
     "test:smoke-provision": "node --env-file-if-exists=../../.env scripts/smoke-provision.ts",
+    "test:smoke-global-mapping": "node --env-file-if-exists=../../.env scripts/smoke-global-mapping.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
   },
