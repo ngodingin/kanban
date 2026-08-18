@@ -49,7 +49,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.1.1 | ⚠️ | [CL-01](#cl-01)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
+| 0.1.1 | 🔄 | [CL-01](#cl-01)<br>[Review-CL-02](#review-cl-02)<br>[CL-25](#cl-25) | 60 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | 🔎 | [CL-10](#cl-10) | 80 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
@@ -404,3 +404,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
 **Bukti:** `git rev-parse --is-inside-work-tree` = true (repo `main`, commit 643e094); Node v24.19.0 (memenuhi `>=24.18.0 <25`); `npm view` konfirmasi versi exact baseline A.8 (hono 4.13.2, typescript 6.0.2, pnpm 11.22.0) tersedia di registry; `pnpm install --frozen-lockfile` clean; `pnpm build` + `pnpm typecheck` exit 0; smoke `app.request('/health')` → 200 `{"ok":true}`.
 **Catatan:** Transisi `⬜️ → 🔄` (Gate A) lalu `🔄 → 🔎` 80% dalam satu sesi Dev; masuk commit pertama. Repo sudah terinisialisasi Git — tidak perlu init ulang. Versi baseline A.8.2 diperiksa 2026-08-17 (tanggal baseline) dan sesuai; tidak ada direct dependency prerelease. `docs/design/` dibiarkan untracked (di luar scope goal).
+
+<a id="cl-25"></a>
+### CL-25 — 2026-08-18 · 0.1.1 ⚠️ → 🔄
+**Role:** AI-Dev · **Model:** Codex
+**Bukti:** `Review-CL-02` menetapkan ulang goal karena Node/pnpm tidak tersedia pada PATH host, sedangkan `docker --version` dan `docker compose version` tersedia. Manusia mengonfirmasi perbaikan 0.1.1 melalui runtime Docker terisolasi.
+**Catatan:** Scope perbaikan dibatasi pada Compose development environment yang memakai Node 24.18.0 dan pnpm 11.22.0; tanpa image aplikasi produksi atau secret.
