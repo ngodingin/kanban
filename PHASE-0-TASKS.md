@@ -184,7 +184,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.11.1 | ⬜️ | — | 0 | P0 | Setup Vitest 4.x exact pin untuk unit + integration | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.2](docs/04-DELIVERY.md), [B.5](docs/04-DELIVERY.md) | 0.1.3 |
+| 0.11.1 | 🔎 | [CL-26](#cl-26) | 80 | P0 | Setup Vitest 4.x exact pin untuk unit + integration | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.2](docs/04-DELIVERY.md), [B.5](docs/04-DELIVERY.md) | 0.1.3 |
 | 0.11.2 | ⬜️ | — | 0 | P0 | DB test terisolasi per suite + rollback antar test | [04-DEL B.5](docs/04-DELIVERY.md) | 0.4.3, 0.5.3 |
 | 0.11.3 | ⬜️ | — | 0 | P1 | Konvensi penamaan test mereferensikan ID rule (BR/AC) | [04-DEL B.6](docs/04-DELIVERY.md) | 0.11.1 |
 | 0.11.4 | ⬜️ | — | 0 | P2 | Setup Playwright 1.62.x exact pin + production-like webServer untuk E2E smoke | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | 0.1.1 |
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-26"></a>
+### CL-26 — 2026-08-18 · 0.11.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm test` → Vitest 4.1.10 (exact pin, root devDep): 2 test files / 5 tests PASS (unit `projectDatabaseName`; integration `runInWriteTransaction` commit/rollback/atomic INV #9); seluruh smoke (migrate-programmatic, repository, transaction, project-schema) tetap PASS setelah perubahan; typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** `vitest.config.ts` (root, include `packages/*/test/**/*.test.ts`, env node); scripts root `test`/`test:watch`. Temuan: `applyGlobalMigrations`/`applyProjectMigrations` sebelumnya resolve path relative CWD → gagal saat Vitest (cwd=root) → kini `import.meta.dirname` (path-invariant). Tidak ada perubahan SOT.
 
 <a id="cl-25"></a>
 ### CL-25 — 2026-08-18 · 0.10.2 🔄 → 🔎
