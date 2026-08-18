@@ -53,6 +53,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | 🔎 | [CL-10](#cl-10) | 80 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.5 | ⚠️ | [Review-CL-03](#review-cl-03) | 40 | P1 | Tambah `compose.devenv.yml`: Docker Compose Node 24.18.0 + Corepack pnpm 11.22.0 untuk menjalankan `pnpm install --frozen-lockfile`, build, typecheck, lint, dan smoke test tanpa runtime host | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | — |
 
 **Test:** `git rev-parse --is-inside-work-tree` sukses; catatan verifikasi LTS/stable tersedia; tidak ada direct dependency prerelease; clean `pnpm install --frozen-lockfile`; verifikasi `engines`/`packageManager`/exact direct pins; Hono smoke route + build + typecheck + lint hijau.
 **DoD:** Git aktif; semua goal ✅; struktur folder cocok A.7; latest compatible LTS/stable sudah diverifikasi dan versi exact sesuai A.8; `pnpm-lock.yaml` ter-commit; `.env.example` lengkap; tidak ada secret ter-commit.
@@ -91,7 +92,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.4.2 | 🔎 | [CL-14](#cl-14) | 80 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.2 | ⚠️ | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.4.3 | 🔎 | [CL-15](#cl-15) | 80 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
 **Test:** Migration up idempotent; Better Auth generated-schema contract cocok dengan custom mapping B.2; constraint UNIQUE teruji; scoped assignment tidak dapat menghubungkan Membership/Group beda Project; credential dan Magic Link token tidak disimpan raw.
@@ -116,9 +117,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.6.1 | 🔎 | [CL-19](#cl-19) | 80 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
+| 0.6.1 | ⚠️ | [CL-19](#cl-19)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
 | 0.6.2 | 🔎 | [CL-20](#cl-20) | 80 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
-| 0.6.3 | 🔎 | [CL-22](#cl-22) | 80 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
+| 0.6.3 | ⚠️ | [CL-22](#cl-22)<br>[Review-CL-02](#review-cl-02) | 50 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
 | 0.6.4 | 🔎 | [CL-23](#cl-23) | 80 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
 
 **Test:** Integration — provisioning menghasilkan Project DB + `project_state` ACTIVE + Activity `project.created` atomik + mapping tercatat; simulasi kegagalan → tidak ada DB/mapping yatim.
@@ -227,6 +228,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-03"></a>
+### Review-CL-03 — 2026-08-18 · 0.1.5 ⬜️ → ⚠️
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** `compose.devenv.yml` mematok `node:24.18.0-bookworm-slim`, Corepack pnpm 11.22.0, `pnpm install --frozen-lockfile`, build, typecheck, lint, dan `test:smoke-config`; `docker compose -f compose.devenv.yml config` sukses. Tetapi image belum tersedia lokal dan pull dari Docker Hub terhenti, sehingga runtime pipeline belum dapat dibuktikan. Image lokal Node 24.16.0 tidak memenuhi `package.json#engines` `>=24.18.0 <25`.
+**Catatan:** Goal Compose adalah alat verifikasi bootstrap sehingga tidak bergantung pada 0.1.1. Jangan mengganti ke Node 24.16.0 atau melonggarkan `engines`; Dev melanjutkan setelah image 24.18.0 tersedia.
+
+<a id="review-cl-02"></a>
+### Review-CL-02 — 2026-08-18 · 0.4.2, 0.6.1, 0.6.3 🔎 → ⚠️
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** Pada kode `stag`, `global-schema.ts` dan migration masih membatasi `scope_type` ke `project/milestone/board`, padahal `scopedScopeType` serta 03-ENGINEERING B.2/BR-042 juga mensyaratkan `list/card`; `provisionProjectDatabase()` tetap menghapus database dalam catch meski `createDatabase()` gagal sebelum membuatnya; dan Activity `project.created` masih memakai ID deterministik `act_${projectId}_created`, bukan ULID.
+**Catatan:** Dev perlu memperluas CHECK/migration + test positif/negatif List/Card; hanya menghapus DB yang dibuat invocation gagal dan mengubah test konflik nama agar membuktikan DB existing tidak terhapus; gunakan ULID untuk activity provisioning. Tidak ada perubahan SOT.
 
 ```
 <a id="cl-01"></a>

@@ -1,0 +1,27 @@
+services:
+  checks:
+    image: node:24.18.0-bookworm-slim
+    working_dir: /workspace
+    environment:
+      COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
+      PNPM_HOME: /pnpm
+    volumes:
+      - ./:/workspace
+      - pnpm-store:/pnpm/store
+      - node-modules:/workspace/node_modules
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        corepack enable
+        corepack prepare pnpm@11.22.0 --activate
+        pnpm config set store-dir /pnpm/store
+        pnpm install --frozen-lockfile
+        pnpm build
+        pnpm typecheck
+        pnpm lint
+        pnpm --filter @kanban/infrastructure test:smoke-config
+
+volumes:
+  node-modules:
+  pnpm-store:

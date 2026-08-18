@@ -7,6 +7,7 @@ coverage/
 *.log
 .DS_Store
 .vscode/
+*.swp
 .idea/
 AGENTS.md
 CLAUDE.md
