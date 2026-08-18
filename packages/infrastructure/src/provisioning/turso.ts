@@ -45,6 +45,16 @@ export async function deleteDatabase(env: TursoEnv, name: string): Promise<void>
   await api<{ database?: unknown }>(env, `/organizations/${env.org}/databases/${name}`, { method: "DELETE" });
 }
 
+export async function databaseExists(env: TursoEnv, name: string): Promise<boolean> {
+  try {
+    await api<{ database?: unknown }>(env, `/organizations/${env.org}/databases/${name}`);
+    return true;
+  } catch (error) {
+    if (String(error).includes("404")) return false;
+    throw error;
+  }
+}
+
 export function projectDatabaseName(projectId: string): string {
   return `proj-${projectId.toLowerCase().replace(/[^a-z0-9-]/g, "")}`;
 }

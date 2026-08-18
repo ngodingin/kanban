@@ -1,6 +1,12 @@
 import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { applyProjectMigrations } from "../database/migrate.ts";
+import {
+  deleteProjectDatabaseMapping,
+  deleteProjectRegistry,
+  recordProjectDatabaseMapping,
+  registerProject,
+} from "../database/global-store.ts";
 import { activities, projectState } from "../database/project-schema.ts";
 import {
   createDatabase,
@@ -16,6 +22,7 @@ export interface ProvisionInput {
   projectName: string;
   creatorUserId: string;
   now: string;
+  tokenExpiration?: string;
 }
 
 export interface ProvisionResult {
@@ -32,7 +39,7 @@ export async function provisionProjectDatabase(input: ProvisionInput): Promise<P
   let client: Client | undefined;
   try {
     const created = await createDatabase(input.turso, databaseName);
-    const authToken = await mintDatabaseToken(input.turso, databaseName);
+    const authToken = await mintDatabaseToken(input.turso, databaseName, input.tokenExpiration ?? "1y");
     const url = `https://${created.hostname}`;
     client = createClient({ url, authToken });
 
@@ -65,5 +72,43 @@ export async function provisionProjectDatabase(input: ProvisionInput): Promise<P
     await deleteDatabase(input.turso, databaseName).catch(() => undefined);
     if (error instanceof ProjectProvisioningError) throw error;
     throw new ProjectProvisioningError(`provisioning Project DB ${databaseName} gagal: ${String(error)}`);
+  }
+}
+
+export interface ProvisionWithMappingInput extends ProvisionInput {
+  globalClient: Client;
+  ownerUserId: string;
+}
+
+export async function provisionProjectWithMapping(input: ProvisionWithMappingInput): Promise<ProvisionResult> {
+  let projectRegistered = false;
+  let mappingRecorded = false;
+  try {
+    await registerProject(input.globalClient, {
+      projectId: input.projectId,
+      ownerUserId: input.ownerUserId,
+      now: input.now,
+    });
+    projectRegistered = true;
+
+    const result = await provisionProjectDatabase(input);
+
+    await recordProjectDatabaseMapping(input.globalClient, {
+      projectId: input.projectId,
+      databaseId: result.databaseName,
+      now: input.now,
+    });
+    mappingRecorded = true;
+
+    return result;
+  } catch (error) {
+    if (mappingRecorded) {
+      await deleteProjectDatabaseMapping(input.globalClient, input.projectId).catch(() => undefined);
+    }
+    if (projectRegistered) {
+      await deleteProjectRegistry(input.globalClient, input.projectId).catch(() => undefined);
+    }
+    if (error instanceof ProjectProvisioningError) throw error;
+    throw new ProjectProvisioningError(`provisioning project ${input.projectId} gagal: ${String(error)}`);
   }
 }

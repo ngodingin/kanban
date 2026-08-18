@@ -118,7 +118,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.6.1 | 🔎 | [CL-19](#cl-19) | 80 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
 | 0.6.2 | 🔎 | [CL-20](#cl-20) | 80 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
-| 0.6.3 | ⬜️ | — | 0 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
+| 0.6.3 | 🔎 | [CL-22](#cl-22) | 80 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
 | 0.6.4 | ⬜️ | — | 0 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
 
 **Test:** Integration — provisioning menghasilkan Project DB + `project_state` ACTIVE + Activity `project.created` atomik + mapping tercatat; simulasi kegagalan → tidak ada DB/mapping yatim.
@@ -247,6 +247,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-18 · 0.6.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-rollback` (live Turso): A — apiToken invalid → tidak ada DB yatim + registry projects di-rollback; C — DB pre-created lalu provision gagal (name conflict) → DB yang gagal dihapus + registry di-rollback; B — register duplikat → tidak ada DB baru + mapping eksisting tidak tersentuh; cleanup penuh; typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** `provisionProjectWithMapping` (src/provisioning/provision.ts) = orchestrasi register → provision → mapping dengan rollback berlapis; `deleteProjectRegistry`/`deleteProjectDatabaseMapping` di global-store. Temuan: drizzle 0.45 `where` callback TIDAK didukung di delete (dibind sebagai param) → wajib `eq()`; error drizzle libsql membungkus driver di `.cause`; Turso menerima expiration token sembarang (tidak ada validasi format). Token provisioning tetap "1y" (opsi `tokenExpiration` hanya untuk kebutuhan khusus). Tidak ada perubahan SOT.
+
+<a id="cl-21"></a>
+### CL-21 — 2026-08-18 · Catatan Keputusan Manusia — Domain deployment (bukan transisi status)
+**Role:** AI-Dev (mencatat keputusan manusia) · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Keputusan manusia:** Production → `https://kanban.ngodingin.xyz` (cocok SOT D.7); **Staging → `https://kanban-ngodingin.vercel.app`** (Vercel project `kanban`, divergen dari SOT D.7 `https://stag-kanban.ngodingin.xyz`). Project Vercel `kanban` diverifikasi (`vercel project ls` → `kanban-ngodingin.vercel.app`, Node 24.x).
+**Dampak `[NEEDS-SPEC-AMENDMENT]`:** 03-ENGINEERING D.7 origin staging perlu diubah → `https://kanban-ngodingin.vercel.app` oleh AI-Planning & Review (wajib bump SPEC_VERSION + changelog). Loader env 0.1.4 TIDAK diubah di sesi ini (SOT menang); setelah amandemen, loader menyesuaikan. Preview Vercel = origin staging.
 
 <a id="cl-20"></a>
 ### CL-20 — 2026-08-18 · 0.6.2 🔄 → 🔎

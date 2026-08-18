@@ -1,4 +1,5 @@
 import type { Client } from "@libsql/client";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { projectDatabases, projects } from "./global-schema.ts";
 
@@ -32,4 +33,15 @@ export async function registerProject(client: Client, input: { projectId: string
     provisioningState: "READY",
     createdAt: input.now,
   }).run();
+}
+
+export async function deleteProjectRegistry(client: Client, projectId: string): Promise<void> {
+  const db = drizzle(client);
+  await db.delete(projectDatabases).where(eq(projectDatabases.projectId, projectId)).run();
+  await db.delete(projects).where(eq(projects.id, projectId)).run();
+}
+
+export async function deleteProjectDatabaseMapping(client: Client, projectId: string): Promise<void> {
+  const db = drizzle(client);
+  await db.delete(projectDatabases).where(eq(projectDatabases.projectId, projectId)).run();
 }
