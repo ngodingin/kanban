@@ -97,7 +97,6 @@ try {
   const projectB = `proj_rollback_b_${stamp}`;
   const dbNameB = projectDatabaseName(projectB);
   await registerProject(globalClient, { projectId: projectB, ownerUserId: userId, now });
-  await recordProjectDatabaseMapping(globalClient, { projectId: projectB, databaseId: "db-placeholder", now });
   try {
     await provisionProjectWithMapping({
       turso,
@@ -108,15 +107,18 @@ try {
       creatorUserId: userId,
       now,
     });
-    fail("B: register duplikat harus gagal");
+    fail("B: pencatatan mapping duplikat harus gagal");
   } catch (e) {
     if (!(e instanceof ProjectProvisioningError)) fail("B: tipe error harus ProjectProvisioningError", e);
     else {
-      if (await databaseExists(turso, dbNameB)) fail("B: DB yatim dibuat walau register gagal");
-      else console.log("PASS B: tidak ada DB yatim saat register gagal");
+      if (await databaseExists(turso, dbNameB)) fail("B: DB yatim masih ada setelah mapping gagal");
+      else console.log("PASS B: DB dihapus saat pencatatan mapping gagal (tidak ada DB yatim)");
+      const rows = await globalClient.execute("SELECT COUNT(*) AS n FROM projects WHERE id = ?", [projectB]);
+      if (Number(rows.rows[0]?.n) !== 1) fail("B: baris projects eksisting tidak boleh terhapus");
+      else console.log("PASS B: registry eksisting tidak tersentuh (rollback hanya scope operasi ini)");
       const maps = await globalClient.execute("SELECT COUNT(*) AS n FROM project_databases WHERE project_id = ?", [projectB]);
-      if (Number(maps.rows[0]?.n) !== 1) fail("B: mapping awal tidak boleh terhapus");
-      else console.log("PASS B: mapping eksisting tidak tersentuh (rollback hanya scope operasi ini)");
+      if (Number(maps.rows[0]?.n) !== 0) fail("B: mapping yatim tidak boleh ada");
+      else console.log("PASS B: tidak ada mapping yatim (registrasi+mapping atomik)");
     }
   }
 

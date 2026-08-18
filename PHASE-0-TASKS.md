@@ -119,7 +119,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.6.1 | 🔎 | [CL-19](#cl-19) | 80 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
 | 0.6.2 | 🔎 | [CL-20](#cl-20) | 80 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
 | 0.6.3 | 🔎 | [CL-22](#cl-22) | 80 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
-| 0.6.4 | ⬜️ | — | 0 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
+| 0.6.4 | 🔎 | [CL-23](#cl-23) | 80 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
 
 **Test:** Integration — provisioning menghasilkan Project DB + `project_state` ACTIVE + Activity `project.created` atomik + mapping tercatat; simulasi kegagalan → tidak ada DB/mapping yatim.
 **DoD:** Panggilan provisioning menghasilkan Project DB siap pakai, satu `project_state` ACTIVE, Activity `project.created`, + mapping; kegagalan bersih; strategi sesuai 0.2. Endpoint `POST /projects` penuh = Phase 1 (di sini hanya mekanisme + seam).
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-23"></a>
+### CL-23 — 2026-08-18 · 0.6.4 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-rollback` (live Turso) — urutan final sinkron F.2: provision DB → registrasi+mapping Global dalam SATU transaksi → kegagalan mapping → DB dihapus, registry eksisting tak tersentuh, tanpa mapping yatim; A/C (gagal awal & tengah) tetap hijau; `test:smoke-provision` + `test:smoke-global-mapping` tetap PASS; typecheck 0 error; `pnpm lint` exit 0. Latensi sinkron: provisioning ~2.1 s (bukti 0.2.2) → jalur sinkron layak (keputusan 0.2.4).
+**Catatan:** Strategi **sinkron** diterapkan: `provisionProjectWithMapping` (src/provisioning/provision.ts) menunggu provisioning selesai sebelum respons; tidak ada state perantara `PROVISIONING` yang terekspos (registrasi muncul saat DB sudah siap — tidak ada Project tanpa database, F.2). `project_databases` = satu-satunya sumber resolusi (A.4). `provisioning_state` di projects tetap ada untuk masa depan async. TASK-0.6 tuntas. Tidak ada perubahan SOT.
 
 <a id="cl-22"></a>
 ### CL-22 — 2026-08-18 · 0.6.3 🔄 → 🔎

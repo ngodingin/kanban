@@ -1,12 +1,7 @@
 import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { applyProjectMigrations } from "../database/migrate.ts";
-import {
-  deleteProjectDatabaseMapping,
-  deleteProjectRegistry,
-  recordProjectDatabaseMapping,
-  registerProject,
-} from "../database/global-store.ts";
+import { projectDatabases, projects } from "../database/global-schema.ts";
 import { activities, projectState } from "../database/project-schema.ts";
 import {
   createDatabase,
@@ -81,34 +76,28 @@ export interface ProvisionWithMappingInput extends ProvisionInput {
 }
 
 export async function provisionProjectWithMapping(input: ProvisionWithMappingInput): Promise<ProvisionResult> {
-  let projectRegistered = false;
-  let mappingRecorded = false;
+  const result = await provisionProjectDatabase(input);
+
   try {
-    await registerProject(input.globalClient, {
-      projectId: input.projectId,
-      ownerUserId: input.ownerUserId,
-      now: input.now,
+    const db = drizzle(input.globalClient);
+    await db.transaction(async (tx) => {
+      await tx.insert(projects).values({
+        id: input.projectId,
+        ownerUserId: input.ownerUserId,
+        provisioningState: "READY",
+        createdAt: input.now,
+      }).run();
+      await tx.insert(projectDatabases).values({
+        projectId: input.projectId,
+        databaseId: result.databaseName,
+        createdAt: input.now,
+      }).run();
     });
-    projectRegistered = true;
-
-    const result = await provisionProjectDatabase(input);
-
-    await recordProjectDatabaseMapping(input.globalClient, {
-      projectId: input.projectId,
-      databaseId: result.databaseName,
-      now: input.now,
-    });
-    mappingRecorded = true;
-
-    return result;
   } catch (error) {
-    if (mappingRecorded) {
-      await deleteProjectDatabaseMapping(input.globalClient, input.projectId).catch(() => undefined);
-    }
-    if (projectRegistered) {
-      await deleteProjectRegistry(input.globalClient, input.projectId).catch(() => undefined);
-    }
+    await deleteDatabase(input.turso, result.databaseName).catch(() => undefined);
     if (error instanceof ProjectProvisioningError) throw error;
-    throw new ProjectProvisioningError(`provisioning project ${input.projectId} gagal: ${String(error)}`);
+    throw new ProjectProvisioningError(`pencatatan mapping project ${input.projectId} gagal: ${String(error)}`);
   }
+
+  return result;
 }
