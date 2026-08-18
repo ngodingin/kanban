@@ -144,7 +144,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.8.1 | 🔎 | [CL-28](#cl-28) | 80 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
-| 0.8.2 | ⬜️ | — | 0 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
+| 0.8.2 | 🔎 | [CL-29](#cl-29) | 80 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
 | 0.8.3 | ⬜️ | — | 0 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
 | 0.8.4 | ⬜️ | — | 0 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
 
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-29"></a>
+### CL-29 — 2026-08-18 · 0.8.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-session` (live Global DB Turso): 16 asersi PASS — session tersimpan di `auth_sessions` (database-backed); cookie `kanban.session_token` HttpOnly + SameSite=Lax + Path=/ + Secure pada origin https (kanban.ngodingin.xyz), non-Secure hanya di dev http; getSession valid untuk cookie **signed**; negatif: signature tampered, token tak dikenal, session expired → null; revoke (deleteSession) → row hilang + getSession null; `useCookieCache` nonaktif. smoke-auth tetap PASS; typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** Temuan Better Auth 1.6.30: (1) cookie session **signed** (`token.signature`, HMAC-SHA256 base64) — cookie mentah tidak diterima getSession; (2) `cookiePrefix` berada di `advanced.cookiePrefix` (bukan top-level); (3) `internalAdapter.createSession(userId, dontRememberMe, override, overrideAll)` — override hanya diterapkan jika `overrideAll=true` (dipakai membuat session expired untuk test); (4) getSession membaca cookie via `getSignedCookie` → tamper-proof. `advanced.generateId` + mapping B.2 sudah terbukti di 0.8.1. SOT tidak berubah. Branch kerja: `stag`.
 
 <a id="cl-28"></a>
 ### CL-28 — 2026-08-18 · 0.8.1 🔄 → 🔎

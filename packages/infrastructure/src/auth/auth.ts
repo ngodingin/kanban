@@ -73,6 +73,7 @@ export function createAuth(config: AuthConfigInput) {
       enabled: false,
     },
 advanced: {
+      cookiePrefix: "kanban",
       database: {
         generateId: () => ulid().toLowerCase(),
       },
