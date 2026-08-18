@@ -49,10 +49,11 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.1.1 | 🔎 | [CL-01](#cl-01) | 80 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
+| 0.1.1 | ⚠️ | [CL-01](#cl-01)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | 🔎 | [CL-10](#cl-10) | 80 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.5 | ⬜️ | — | 0 | P1 | Tambah `compose.devenv.yml`: Docker Compose Node 24.18.0 + Corepack pnpm 11.22.0 untuk menjalankan `pnpm install --frozen-lockfile`, build, typecheck, lint, dan smoke test tanpa runtime host | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | 0.1.1 |
 
 **Test:** `git rev-parse --is-inside-work-tree` sukses; catatan verifikasi LTS/stable tersedia; tidak ada direct dependency prerelease; clean `pnpm install --frozen-lockfile`; verifikasi `engines`/`packageManager`/exact direct pins; Hono smoke route + build + typecheck + lint hijau.
 **DoD:** Git aktif; semua goal ✅; struktur folder cocok A.7; latest compatible LTS/stable sudah diverifikasi dan versi exact sesuai A.8; `pnpm-lock.yaml` ter-commit; `.env.example` lengkap; tidak ada secret ter-commit.
@@ -227,6 +228,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-02"></a>
+### Review-CL-02 — 2026-08-18 · 0.1.1 🔎 → ⚠️
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** Environment saat ini tidak memiliki `node` atau `pnpm` pada PATH, sehingga baseline build/typecheck/lint/smoke tidak dapat direproduksi lokal; Docker 29.5.3 dan Docker Compose v5.1.4 tersedia.
+**Catatan:** Atas permintaan manusia, 0.1.1 dibuka kembali untuk menambahkan runtime terisolasi. Goal 0.1.5 dibuat terpisah agar Docker Compose dapat direview mandiri: Node 24.18.0, pnpm 11.22.0, lockfile immutable, tanpa image aplikasi produksi atau secret.
 
 <a id="review-cl-01"></a>
 ### Review-CL-01 — 2026-08-18 · 0.4.2, 0.6.1, 0.6.3 🔎 → ⚠️
