@@ -1,0 +1,39 @@
+{
+  "name": "@kanban/infrastructure",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test:smoke": "node scripts/smoke.ts",
+    "test:smoke-config": "node scripts/smoke-config.ts",
+    "test:smoke-resolver": "node scripts/smoke-resolver.ts",
+    "test:smoke-guard": "node scripts/smoke-guard.ts",
+    "test:smoke-global-schema": "node scripts/smoke-global-schema.ts",
+    "test:smoke-global-constraints": "node scripts/smoke-global-constraints.ts",
+    "test:smoke-migration": "node scripts/smoke-migration.ts",
+    "test:smoke-project-schema": "node scripts/smoke-project-schema.ts",
+    "test:smoke-project-behavior": "node scripts/smoke-project-behavior.ts",
+    "test:smoke-migrate-programmatic": "node scripts/smoke-migrate-programmatic.ts",
+    "test:smoke-provision": "node --env-file-if-exists=../../.env scripts/smoke-provision.ts",
+    "test:smoke-global-mapping": "node --env-file-if-exists=../../.env scripts/smoke-global-mapping.ts",
+    "test:smoke-rollback": "node --env-file-if-exists=../../.env scripts/smoke-rollback.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "0.17.4",
+    "drizzle-orm": "0.45.2",
+    "ulid": "3.0.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.13.3",
+    "drizzle-kit": "0.31.10",
+    "typescript": "6.0.2"
+  }
+}

@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - poc/measure
+
+onlyBuiltDependencies:
+  - esbuild
+allowBuilds:
+  esbuild: true

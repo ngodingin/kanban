@@ -1,0 +1,61 @@
+# Internal agent instructions and task tracking
+AGENTS.md
+AGENTS.override.md
+CLAUDE.md
+PHASE*TASKS.md
+.codex/
+.claude/
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Build output and tool caches
+out/
+dist/
+build/
+.vite/
+
+# Tests and coverage
+coverage/
+playwright-report/
+test-results/
+blob-report/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# Deployment and tooling
+.vercel/
+.turbo/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Local databases
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# Editors and operating systems
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,28 @@
+{
+  "name": "ngodingin-kanban",
+  "version": "0.0.0",
+  "private": true,
+  "description": "NGodingin Kanban — project management / Kanban platform (API-based, multi-tenant via database-per-project)",
+  "packageManager": "pnpm@11.22.0",
+  "engines": {
+    "node": ">=24.18.0 <25"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@libsql/client": "0.17.4",
+    "drizzle-orm": "0.45.2",
+    "ulid": "3.0.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "drizzle-kit": "0.31.10",
+    "eslint": "10.8.1",
+    "prettier": "3.9.6",
+    "typescript-eslint": "8.67.0"
+  }
+}
