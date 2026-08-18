@@ -49,7 +49,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.1.1 | 🔄 | [CL-01](#cl-01)<br>[Review-CL-02](#review-cl-02)<br>[CL-25](#cl-25)<br>[CL-26](#cl-26) | 70 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
+| 0.1.1 | 🔄 | [CL-01](#cl-01)<br>[Review-CL-02](#review-cl-02)<br>[CL-25](#cl-25)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 70 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | 🔎 | [CL-10](#cl-10) | 80 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
@@ -416,3 +416,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Role:** AI-Dev · **Model:** Codex
 **Bukti:** `docker compose -f compose.devenv.yml config` sukses dan meresolusikan service `checks` dengan image `node:24.18.0-bookworm-slim`, Corepack `pnpm@11.22.0`, immutable install, build, typecheck, lint, serta smoke config. Runtime command `docker compose -f compose.devenv.yml run --rm checks` berhenti sebelum pull dengan `Cannot connect to the Docker daemon at unix:///Users/ahmad-dti/.docker/run/docker.sock`.
 **Catatan:** Implementasi Compose selesai, tetapi test runtime belum dapat dijalankan karena Docker daemon tidak aktif. Setelah daemon aktif, jalankan perintah runtime di atas; goal tetap `🔄` sampai semua perintah hijau.
+
+<a id="cl-27"></a>
+### CL-27 — 2026-08-18 · 0.1.1 🔄 (70%)
+**Role:** AI-Dev · **Model:** Codex
+**Bukti:** Docker daemon kemudian tersedia (`docker info --format 'daemon={{.ServerVersion}}'` → `daemon=29.5.3`). Namun `docker pull node:24.18.0-bookworm-slim` tidak menyelesaikan pengunduhan layer setelah lebih dari 90 detik tanpa progres, lalu dihentikan; `docker image inspect node:24.18.0-bookworm-slim` exit 1, jadi container checks belum dapat dimulai.
+**Catatan:** Blocker berubah dari daemon tidak aktif menjadi pull image Docker Hub yang tertahan. Tidak ada perubahan implementasi tambahan; `compose.devenv.yml` tetap valid. Goal tetap `🔄` sampai image tersedia dan pipeline selesai hijau.
