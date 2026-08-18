@@ -109,3 +109,5 @@ export function createAuth(config: AuthConfigInput) {
     },
   });
 }
+
+export type Auth = ReturnType<typeof createAuth>;

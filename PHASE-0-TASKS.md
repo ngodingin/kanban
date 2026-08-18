@@ -145,7 +145,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.8.1 | 🔎 | [CL-28](#cl-28) | 80 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.8.2 | 🔎 | [CL-29](#cl-29) | 80 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
-| 0.8.3 | ⬜️ | — | 0 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
+| 0.8.3 | 🔎 | [CL-31](#cl-31) | 80 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
 | 0.8.4 | 🔎 | [CL-30](#cl-30) | 80 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
 
 **Test:** Integration — handler auth terpasang sebelum catch-all; password/social auth tidak tersedia; request Magic Link tidak membocorkan keberadaan email; sender tepat; staging link hanya memakai `https://stag-kanban.ngodingin.xyz`, production link hanya memakai `https://kanban.ngodingin.xyz`; database tidak menyimpan raw verification token; token expired/used/invalid ditolak; dua konsumsi konkuren hanya satu yang sukses; link valid menghasilkan session; sign-out/revoke membuat session tidak valid.
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-31"></a>
+### CL-31 — 2026-08-18 · 0.8.3 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-resolve-identity` (live Global DB Turso): 8 asersi PASS — request session valid → `ResolvedIdentity {type:"session", userId, email, emailVerified, image}`; tanpa cookie → null; cookie invalid → null; session expired → null; hasil resolver identik dengan `auth.api.getSession` (satu titik resolusi, C.1). typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** `BetterAuthIdentityResolver` (src/auth/resolve-identity.ts): interface `IdentityResolver` + discriminated union `ResolvedIdentity` (seam PAT/API Key Phase 4 = tambah member baru di sini, bukan jalur baru). `Auth = ReturnType<typeof createAuth>` diekspor dari auth.ts. Temuan: parameter property TS (`constructor(private ...)`) kembali ditolak Node strip-only (pola 0.10.1) → field eksplisit. TASK-0.8 tuntas (0.8.1–0.8.4 semua 🔎). Tidak ada perubahan SOT.
 
 <a id="cl-30"></a>
 ### CL-30 — 2026-08-18 · 0.8.4 🔄 → 🔎

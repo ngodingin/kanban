@@ -26,6 +26,7 @@
     "test:smoke-auth": "node --env-file-if-exists=../../.env scripts/smoke-auth.ts",
     "test:smoke-session": "node --env-file-if-exists=../../.env scripts/smoke-session.ts",
     "test:smoke-magic-link": "node --env-file-if-exists=../../.env scripts/smoke-magic-link.ts",
+    "test:smoke-resolve-identity": "node --env-file-if-exists=../../.env scripts/smoke-resolve-identity.ts",
     "test:smoke-transaction": "node scripts/smoke-transaction.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
