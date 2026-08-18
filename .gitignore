@@ -10,6 +10,6 @@ coverage/
 .idea/
 AGENTS.md
 CLAUDE.md
-auth
-auth-wal
+/auth
+/auth-wal
 docs/design/

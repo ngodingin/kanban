@@ -6,11 +6,11 @@ export const users = sqliteTable(
   {
     id: text("id").primaryKey(),
     email: text("email").notNull(),
-    emailVerified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
+    email_verified: integer("email_verified", { mode: "boolean" }).notNull().default(false),
     name: text("name").notNull(),
     image: text("image"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    created_at: text("created_at").notNull(),
+    updated_at: text("updated_at").notNull(),
   },
   (t) => [uniqueIndex("users_email_unique").on(t.email)],
 );
@@ -19,15 +19,15 @@ export const authSessions = sqliteTable(
   "auth_sessions",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id")
+    user_id: text("user_id")
       .notNull()
       .references(() => users.id),
     token: text("token").notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    expires_at: integer("expires_at", { mode: "timestamp" }).notNull(),
+    ip_address: text("ip_address"),
+    user_agent: text("user_agent"),
+    created_at: text("created_at").notNull(),
+    updated_at: text("updated_at").notNull(),
   },
   (t) => [uniqueIndex("auth_sessions_token_unique").on(t.token)],
 );
@@ -36,22 +36,22 @@ export const authAccounts = sqliteTable(
   "auth_accounts",
   {
     id: text("id").primaryKey(),
-    userId: text("user_id")
+    user_id: text("user_id")
       .notNull()
       .references(() => users.id),
-    accountId: text("account_id").notNull(),
-    providerId: text("provider_id").notNull(),
-    accessToken: text("access_token"),
-    refreshToken: text("refresh_token"),
-    accessTokenExpiresAt: integer("access_token_expires_at", { mode: "timestamp" }),
-    refreshTokenExpiresAt: integer("refresh_token_expires_at", { mode: "timestamp" }),
+    account_id: text("account_id").notNull(),
+    provider_id: text("provider_id").notNull(),
+    access_token: text("access_token"),
+    refresh_token: text("refresh_token"),
+    access_token_expires_at: integer("access_token_expires_at", { mode: "timestamp" }),
+    refresh_token_expires_at: integer("refresh_token_expires_at", { mode: "timestamp" }),
     scope: text("scope"),
-    idToken: text("id_token"),
+    id_token: text("id_token"),
     password: text("password"),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    created_at: text("created_at").notNull(),
+    updated_at: text("updated_at").notNull(),
   },
-  (t) => [uniqueIndex("auth_accounts_provider_account_unique").on(t.providerId, t.accountId)],
+  (t) => [uniqueIndex("auth_accounts_provider_account_unique").on(t.provider_id, t.account_id)],
 );
 
 export const authVerifications = sqliteTable(
@@ -60,9 +60,9 @@ export const authVerifications = sqliteTable(
     id: text("id").primaryKey(),
     identifier: text("identifier").notNull(),
     value: text("value").notNull(),
-    expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
-    createdAt: text("created_at").notNull(),
-    updatedAt: text("updated_at").notNull(),
+    expires_at: integer("expires_at", { mode: "timestamp" }).notNull(),
+    created_at: text("created_at").notNull(),
+    updated_at: text("updated_at").notNull(),
   },
   (t) => [uniqueIndex("auth_verifications_identifier_unique").on(t.identifier)],
 );

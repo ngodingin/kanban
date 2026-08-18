@@ -143,7 +143,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.8.1 | ⬜️ | — | 0 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.8.1 | 🔎 | [CL-28](#cl-28) | 80 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.8.2 | ⬜️ | — | 0 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
 | 0.8.3 | ⬜️ | — | 0 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
 | 0.8.4 | ⬜️ | — | 0 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
@@ -247,6 +247,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-28"></a>
+### CL-28 — 2026-08-18 · 0.8.1 🔄 → 🔎
+**Role:** AI-Dev · **Model:** deepseek-v4-flash-free (opencode/deepseek-v4-flash-free)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-auth` (live Global DB Turso `kanban-global`): createUser via `auth.$context.internalAdapter` → id ULID lowercase custom generateId (`advanced.database.generateId`, bukan `advanced.generateId` — key 1.6.30) PASS; kolom snake_case sesuai mapping B.2 (email_verified, created_at, dll.) PASS; negatif email duplikat → UNIQUE users_email ditolak PASS; cleanup data uji; typecheck 0 error; `pnpm lint` exit 0.
+**Catatan:** better-auth@1.6.30 exact pin di `packages/infrastructure` (A.14). `createAuth` (src/auth/auth.ts): drizzleAdapter sqlite + schema keyed MODEL NAME (`users`, `auth_sessions`, `auth_accounts`, `auth_verifications`) — adapter me-resolve `schema[modelName]` dan memerlukan properti tabel = nama kolom DB → properti TS tabel auth di global-schema.ts di-rename ke snake_case (prop == db name) sesuai B.2; mapping field BA→DB lengkap di config (user/session/account/verification, termasuk created_at/updated_at). Email/password disabled (magic link 0.8.4); cookiePrefix "kanban". Temuan API 1.6.30: option id berada di `advanced.database.generateId` (bukan `advanced.generateId`); `ulid` tidak mengekspor `ULID_REGEX` (pakai `isValid`). smoke-global-mapping disesuaikan (prop snake_case). SOT tidak berubah. Branch kerja: `stag` (keputusan manusia; push stag = deploy staging Vercel).
 
 <a id="cl-27"></a>
 ### CL-27 — 2026-08-18 · 0.11.2 🔄 → 🔎

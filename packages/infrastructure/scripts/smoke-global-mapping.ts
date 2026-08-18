@@ -33,10 +33,10 @@ try {
   await db.insert(users).values({
     id: userId,
     email: `${userId}@smoke.local`,
-    emailVerified: false,
+    email_verified: false,
     name: "Smoke User",
-    createdAt: now,
-    updatedAt: now,
+    created_at: now,
+    updated_at: now,
   }).run();
   await registerProject(client, { projectId, ownerUserId: userId, now });
   await recordProjectDatabaseMapping(client, { projectId, databaseId, now });
