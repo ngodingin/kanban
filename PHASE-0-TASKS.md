@@ -92,7 +92,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.4.2 | ⚠️ | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.2 | ⚠️ | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04) | 60 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.4.3 | 🔎 | [CL-15](#cl-15) | 80 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
 **Test:** Migration up idempotent; Better Auth generated-schema contract cocok dengan custom mapping B.2; constraint UNIQUE teruji; scoped assignment tidak dapat menghubungkan Membership/Group beda Project; credential dan Magic Link token tidak disimpan raw.
@@ -117,9 +117,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.6.1 | ⚠️ | [CL-19](#cl-19)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
+| 0.6.1 | ⚠️ | [CL-19](#cl-19)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04) | 60 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
 | 0.6.2 | 🔎 | [CL-20](#cl-20) | 80 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
-| 0.6.3 | ⚠️ | [CL-22](#cl-22)<br>[Review-CL-02](#review-cl-02) | 50 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
+| 0.6.3 | ⚠️ | [CL-22](#cl-22)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04) | 50 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
 | 0.6.4 | 🔎 | [CL-23](#cl-23) | 80 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
 
 **Test:** Integration — provisioning menghasilkan Project DB + `project_state` ACTIVE + Activity `project.created` atomik + mapping tercatat; simulasi kegagalan → tidak ada DB/mapping yatim.
@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-04"></a>
+### Review-CL-04 — 2026-08-18 · architecture/SOT review 0.4.2, 0.6.1, 0.6.3
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** Review langsung terhadap 03-ENGINEERING A.13, B.2, F.2 dan implementasi `global-schema.ts`, migration Global, `provision.ts`, serta `smoke-rollback.ts`. (1) B.2 mensyaratkan scope `project|milestone|board|list|card` untuk `membership_group_assignments`, `membership_permission_assignments`, **dan** `invitation_group_assignments`; ketiga CHECK constraint/migration masih menolak `list/card`, walau type TypeScript sudah memuat keduanya. (2) F.2 mengizinkan kompensasi hanya atas DB hasil invocation yang gagal; `provisionProjectDatabase()` selalu memanggil `deleteDatabase(databaseName)` dalam `catch`, dan test C saat ini malah mengharapkan DB yang sudah ada ikut dihapus. (3) A.13 mewajibkan ULID bagi semua primary key; Activity `project.created` memakai ID deterministik non-ULID.
+**Catatan:** Handoff Dev: perluas ketiga CHECK + migration snapshot/DDL dan test insert positif List/Card serta negatif enum invalid; lacak flag/hasil `createDatabase` dan hanya kompensasikan DB yang berhasil dibuat invocation tersebut, sementara test name-conflict wajib membuktikan DB existing tetap ada; buat `activities.id` memakai ULID (prefix opsional). Handoff QA: verifikasi migration fresh dan idempotent, seluruh tiga tabel menerima List/Card, existing DB tidak terhapus pada conflict, serta ID Activity lolos validator ULID dan transaksi tetap atomik. Tidak ada perubahan SOT dan tidak ada implementasi di lane ini.
 
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-18 · 0.1.5 ⬜️ → ⚠️
