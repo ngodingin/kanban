@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const GlobalDbEnvSchema = z.object({
   GLOBAL_DB_URL: z.string().url(),
-  GLOBAL_DB_TOKEN: z.string().min(1),
+  GLOBAL_DB_TOKEN: z.string().default(""),
 });
 
 export type GlobalDbEnv = z.infer<typeof GlobalDbEnvSchema>;
@@ -21,7 +21,6 @@ export function createGlobalClient(env: NodeJS.ProcessEnv = process.env): Client
   const { GLOBAL_DB_URL, GLOBAL_DB_TOKEN } = parseGlobalDbEnv(env);
   return createClient({ url: GLOBAL_DB_URL, authToken: GLOBAL_DB_TOKEN });
 }
-
 export function createProjectClient(opts: { url: string; authToken: string }): Client {
   if (!opts.url.startsWith("libsql://")) {
     throw new Error("Project DB url wajib memakai skema libsql:// (remote Turso)");

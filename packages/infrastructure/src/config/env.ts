@@ -14,6 +14,7 @@ const AppConfigSchema = z.object({
   BETTER_AUTH_URL: z.string().url(),
   AUTH_RESEND_KEY: z.string().min(1, "AUTH_RESEND_KEY wajib diisi"),
   MAIL_FROM: z.string().default("noreply@kanban.ngodingin.xyz"),
+  AUTH_ALLOW_NON_CANONICAL: z.string().default("0"),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema> & {
@@ -38,9 +39,15 @@ export function loadAppConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
   const canonical = CANONICAL_ORIGINS[appEnv];
   if (canonical !== null && parsed.data.BETTER_AUTH_URL !== canonical) {
-    throw new Error(
-      `BETTER_AUTH_URL untuk env ${appEnv} wajib ${canonical} (D.7), dapat: ${parsed.data.BETTER_AUTH_URL}`,
-    );
+    if (parsed.data.AUTH_ALLOW_NON_CANONICAL === "1") {
+      console.warn(
+        `[config] AUTH_ALLOW_NON_CANONICAL=1: BETTER_AUTH_URL=${parsed.data.BETTER_AUTH_URL} dipakai walau bukan canonical ${canonical} (preview/CL-21; jangan dipakai production)`,
+      );
+    } else {
+      throw new Error(
+        `BETTER_AUTH_URL untuk env ${appEnv} wajib ${canonical} (D.7), dapat: ${parsed.data.BETTER_AUTH_URL}`,
+      );
+    }
   }
   if (appEnv === "development" && !parsed.data.BETTER_AUTH_URL.startsWith("http://localhost")) {
     throw new Error(`Env development: BETTER_AUTH_URL wajib localhost, dapat: ${parsed.data.BETTER_AUTH_URL}`);

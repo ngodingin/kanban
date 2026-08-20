@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { loadAppConfig } from "../src/config/env.ts";
 
 const BASE = {
@@ -25,6 +27,17 @@ expectThrow(
   "negatif: staging + BETTER_AUTH_URL bukan stag-kanban -> throw",
 );
 
+const previewOverride = loadAppConfig({
+  ...BASE,
+  BETTER_AUTH_URL: "https://kanban-ngodingin-xyz.vercel.app",
+  VERCEL_ENV: "preview",
+  AUTH_ALLOW_NON_CANONICAL: "1",
+} as NodeJS.ProcessEnv);
+if (previewOverride.env !== "staging" || previewOverride.BETTER_AUTH_URL !== "https://kanban-ngodingin-xyz.vercel.app") {
+  throw new Error("preview override salah");
+}
+console.log("PASS positif: preview (VERCEL_ENV=preview) + AUTH_ALLOW_NON_CANONICAL=1 -> origin deployment preview dipakai");
+
 const prod = loadAppConfig({
   ...BASE,
   NODE_ENV: "production",
@@ -45,5 +58,28 @@ console.log("PASS positif: staging (VERCEL_ENV=preview) -> origin stag-kanban.ng
 const dev = loadAppConfig({ ...BASE } as NodeJS.ProcessEnv);
 if (dev.env !== "development" || dev.MAIL_FROM !== "noreply@kanban.ngodingin.xyz") throw new Error("dev config salah");
 console.log("PASS positif: development + MAIL_FROM default sender");
+
+const repoRoot = resolve(import.meta.dirname, "../../..");
+const templates = [
+  ["development", "http://localhost:5173"],
+  ["staging", "https://stag-kanban.ngodingin.xyz"],
+  ["production", "https://kanban.ngodingin.xyz"],
+] as const;
+const origins: string[] = [];
+for (const [envName, expectedOrigin] of templates) {
+  const content = readFileSync(resolve(repoRoot, `.env.${envName}.example`), "utf8");
+  if (!content.includes(`BETTER_AUTH_URL=${expectedOrigin}`)) {
+    throw new Error(`.env.${envName}.example tidak memuat canonical origin ${expectedOrigin}`);
+  }
+  if (!content.includes("AUTH_RESEND_KEY=")) {
+    throw new Error(`.env.${envName}.example tidak memuat AUTH_RESEND_KEY (secret Resend terpisah per env, D.7)`);
+  }
+  if (content.includes("<minimal-32-karakter-acak-dev>") && expectedOrigin !== "http://localhost:5173") {
+    throw new Error(`.env.${envName}.example memakai secret dev (bocor antar env)`);
+  }
+  origins.push(expectedOrigin);
+}
+if (new Set(origins).size !== origins.length) throw new Error("canonical origin antar env tidak unik");
+console.log("PASS positif: template env dev/staging/prod terpisah — origin kanonik unik + secret Resend per env (D.7)");
 
 console.log("smoke config selesai");

@@ -11,6 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kanban/contracts": "workspace:*",
+    "@kanban/infrastructure": "workspace:*",
     "hono": "4.13.2"
   },
   "devDependencies": {

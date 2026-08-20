@@ -14,3 +14,7 @@ CLAUDE.md
 /auth
 /auth-wal
 docs/design/
+.vercel
+.env*
+/.vercel/
+/.env.local

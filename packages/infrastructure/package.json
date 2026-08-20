@@ -9,8 +9,7 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test:smoke": "node scripts/smoke.ts",
-    "test:smoke-config": "node scripts/smoke-config.ts",
+    "test:smoke": "node scripts/smoke.ts",    "test:smoke-config": "node scripts/smoke-config.ts",
     "test:smoke-resolver": "node scripts/smoke-resolver.ts",
     "test:smoke-guard": "node scripts/smoke-guard.ts",
     "test:smoke-global-schema": "node scripts/smoke-global-schema.ts",
@@ -29,8 +28,13 @@
     "test:smoke-resolve-identity": "node --env-file-if-exists=../../.env scripts/smoke-resolve-identity.ts",
     "test:smoke-pipeline": "node --env-file-if-exists=../../.env scripts/smoke-pipeline.ts",
     "test:smoke-transaction": "node scripts/smoke-transaction.ts",
+    "migrate:global": "node --env-file-if-exists=../../.env scripts/migrate-global.ts",
+    "migrate:projects": "node --env-file-if-exists=../../.env scripts/migrate-projects.ts",
     "db:generate": "drizzle-kit generate",
     "db:generate:project": "drizzle-kit generate --config drizzle.config.project.ts"
+  },
+  "exports": {
+    ".": "./src/index.ts"
   },
   "dependencies": {
     "@kanban/domain": "workspace:*",
