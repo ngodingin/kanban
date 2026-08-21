@@ -49,7 +49,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 | Database Schema | Draft v1 (nama tabel/kolom dapat berubah, semantik terkunci) |
 | API Contract | Locked untuk struktur; detail response boleh berkembang |
 | Authorization Model | Locked for MVP |
-| Deployment topology | Sebagian dikunci (v1.0.1) — provider database pending POC gate |
+| Deployment topology | Dikunci — Turso/libSQL; POC Phase 0 lulus; provisioning sinkron untuk MVP |
 | Stack keputusan dan baseline versi | Locked v2.0.6 — Hono + Better Auth + React/Vite; lihat 03-ENGINEERING A.8, A.11–A.14 |
 | Authentication (web session) | Locked v2.0.6 — Better Auth Magic Link + Resend API, user di Global DB (A.14) |
 | Payload `activities.data` | Locked v1.0.2 — konvensi B.5 |
@@ -57,7 +57,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 2.0.7
+SPEC_VERSION = 2.0.8
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 2.0.7
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **2.0.8** — Menutup POC gate Phase 0 dengan keputusan final **Turso/libSQL GO** dan provisioning Project DB **sinkron** dalam request create Project. Menghapus status provider “pending/belum final” serta keputusan sync/async yang stale dari seluruh SOT aktif; mencatat hasil POC untuk latensi, provisioning, concurrent write, dan biaya. Canonical staging origin yang ditetapkan pada 2.0.7 tetap [https://kanban-ngodingin.vercel.app](https://kanban-ngodingin.vercel.app). Tidak mengubah business invariant, authorization, lifecycle, atau domain API contract.
 - **2.0.7** — Mengganti canonical origin staging dari `https://stag-kanban.ngodingin.xyz` menjadi [https://kanban-ngodingin.vercel.app](https://kanban-ngodingin.vercel.app) sesuai keputusan manusia dan Vercel project yang sudah diverifikasi. Magic Link dan redirect callback staging MUST memakai origin baru tersebut; production tetap `https://kanban.ngodingin.xyz`. README tidak lagi menampilkan origin staging.
 - **2.0.6** — Mengganti application stack pra-implementasi menjadi **Hono + Better Auth + React/Vite**. API Hono dan SPA React/Vite dipisahkan sebagai package dalam satu codebase tetapi dipublikasikan dari satu Vercel project/canonical origin. Better Auth memakai Magic Link plugin + Resend API, Drizzle adapter, ULID, token verification hashed/single-use, dan database-backed session yang revocable. Global DB menambah core auth tables `auth_sessions`, `auth_accounts`, dan `auth_verifications`; frontend foundation berpindah dari starter Next.js ke Vite + shadcn. Tidak mengubah business invariant, authorization, lifecycle, atau domain API contract.
 - **2.0.5** — Menetapkan kebijakan pemilihan versi: selalu utamakan lini LTS terbaru yang terbukti kompatibel; jika tidak ada kanal LTS, gunakan rilis stable terbaru yang lulus compatibility gate; fallback hanya ke stable/LTS terakhir yang terbukti bekerja dan alasannya wajib dicatat. Melarang prerelease sebagai baseline production tanpa keputusan manusia + amandemen SOT. Mengganti `next-auth` v5 beta dengan `next-auth` v4.24.15 stable; Resend API tetap digunakan melalui custom `sendVerificationRequest()` pada Auth.js Email Provider.
@@ -216,7 +217,7 @@ Manager/Contributor/Viewer adalah *baseline group*, bukan hard-coded role — Pr
 - MVP tidak menyediakan realtime — client pakai pull/refresh.
 - Tidak ada cross-project search — pencarian dibatasi konteks satu Project.
 - Runtime/toolchain v1.0 memakai Node.js **24.x LTS**, pnpm **11.x**, Hono **4.x**, Better Auth **1.6.x**, React **19.2.x**, Vite **8.x**, dan TypeScript **6.0.x**; exact pin serta kebijakan upgrade ada di `03-ENGINEERING.md` A.8.
-- Engine libSQL (SQLite-compatible), provider **Turso** (database-per-project) — dikunci v1.0.1 pending POC gate. ORM **Drizzle**, ID **ULID**. Detail & rationale di `03-ENGINEERING.md` A.8, A.11–A.13.
+- Engine libSQL (SQLite-compatible), provider **Turso** (database-per-project) — final setelah POC Phase 0 lulus; provisioning Project DB sinkron untuk MVP. ORM **Drizzle**, ID **ULID**. Detail & rationale di `03-ENGINEERING.md` A.8, A.11–A.13 dan F.2.
 
 ---
 

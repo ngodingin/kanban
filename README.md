@@ -9,9 +9,9 @@ Project management dan Kanban yang sederhana, fleksibel, API-first, serta teriso
 | Informasi | Nilai |
 |---|---|
 | **Status proyek** | Pra-implementasi — belum ada aplikasi yang dapat dijalankan |
-| **Source of Truth** | `SPEC_VERSION 2.0.7` |
+| **Source of Truth** | `SPEC_VERSION 2.0.8` |
 | **Fase aktif** | Phase 0 — Foundation |
-| **Gate aktif** | POC Turso sebelum provider dan strategi provisioning dikunci permanen |
+| **Gate aktif** | Tidak ada untuk provider — Turso GO dan provisioning sinkron sudah dikunci |
 | **UI** | Phase 7, blocked sampai Phase 0–6 selesai dan terverifikasi |
 
 ## Tentang proyek
@@ -87,7 +87,7 @@ Detail boundary dan rationale arsitektur tersedia di [03-ENGINEERING.md](docs/03
 | API | Hono | 4.x stable | Terkunci |
 | Web SPA | React / Vite | 19.2.x / 8.x | Phase 7; baseline terkunci |
 | Language | TypeScript | 6.0.x | Terkunci; TS 7 menunggu kompatibilitas lint tooling |
-| Database engine/provider | libSQL / Turso, database-per-project | Managed / POC | Default; menunggu POC gate |
+| Database engine/provider | libSQL / Turso, database-per-project | Managed / tervalidasi | Terkunci; POC Phase 0 lulus |
 | Database SDK | `@libsql/client` / `@tursodatabase/api` | 0.17.x / 2.0.x | Terkunci |
 | ORM dan migration | Drizzle ORM / drizzle-kit | 0.45.x / 0.31.x | Terkunci |
 | Validation / identifier | Zod / ULID | 4.x / 3.x | Terkunci |

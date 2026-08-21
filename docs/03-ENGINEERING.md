@@ -162,7 +162,7 @@ Domain-oriented (bukan `controllers/services/repositories/models` tercampur). Se
 | Web build — `vite` / `@vitejs/plugin-react` | **8.x / 6.x stable** | `8.2.1` / `6.0.5` | Phase 7 baseline; exact pin direvalidasi saat gate dibuka |
 | UI runtime — React / React DOM | **19.2.x** | `19.2.8` | Phase 7 baseline; SPA |
 | Language — TypeScript | **6.0.x** | `6.0.2` | Locked untuk bootstrap; TypeScript 7 ditunda sampai lint/tooling mendukung compiler API-nya |
-| Database engine/provider | **libSQL / Turso Cloud** | managed service | Locked pending POC A.11; versi server dicatat dalam hasil POC |
+| Database engine/provider | **libSQL / Turso Cloud** | managed service | Locked; POC A.11 lulus dan keputusan manusia menetapkan GO |
 | Database client — `@libsql/client` | **0.17.x** | `0.17.4` | Locked; jalur production-ready untuk integrasi Drizzle + Turso |
 | Provisioning SDK — `@tursodatabase/api` | **2.0.x** | `2.0.5` | Locked untuk Platform API provisioning |
 | ORM — `drizzle-orm` | **0.45.x** | `0.45.2` | Locked |
@@ -182,11 +182,11 @@ Baseline Phase 7: React Router **8.x**, Tailwind CSS **4.x**, shadcn CLI/compone
 
 **Alasan TypeScript 6:** TypeScript 7.0 sudah stabil, tetapi toolchain `typescript-eslint` yang tersedia saat baseline ini dibuat masih menyatakan dukungan `<6.1.0`. Memilih 6.0.2 menghindari peer-dependency tidak valid dan menjaga lint sebagai quality gate. Upgrade ke TypeScript 7 dilakukan setelah seluruh lint/Hono/Vite/test tooling menyatakan kompatibel.
 
-> Ketiga keputusan yang sebelumnya *open* (provider database, ORM, format ID) kini dikunci di v1.0.1. Rationale & alternatif di A.11–A.13. Keputusan ini bersifat implementasi (tidak mengubah business invariant/authorization/lifecycle/API semantics), sehingga naik versi patch, bukan minor/major.
+> Baseline pilihan provider database, ORM, dan format ID ditetapkan di v1.0.1. ORM serta ULID langsung final; Turso menjadi final setelah POC Phase 0 lulus pada v2.0.8. Rationale & alternatif ada di A.11–A.13. Keputusan ini bersifat implementasi (tidak mengubah business invariant/authorization/lifecycle/API semantics), sehingga memakai versi patch, bukan minor/major.
 
 ## A.11 Keputusan: Database Provider — Turso (libSQL)
 
-**Keputusan:** Turso sebagai managed provider, engine libSQL (fork SQLite). **Locked pending POC gate** — artinya Turso adalah default yang dikerjakan, tetapi WAJIB melewati satu POC singkat di awal Phase 0 sebelum dikunci permanen.
+**Keputusan final:** Turso sebagai managed provider, engine libSQL (fork SQLite). POC Phase 0 lulus dan keputusan manusia menetapkan **Turso GO**; provider ini terkunci untuk MVP.
 
 **Alasan:**
 - Turso/libSQL dirancang tepat untuk pola **database-per-tenant** — pembuatan banyak database logis per Project adalah use-case inti mereka, bukan workaround.
@@ -194,13 +194,13 @@ Baseline Phase 7: React Router **8.x**, Tailwind CSS **4.x**, shadcn CLI/compone
 - Kompatibel penuh dengan SQLite semantics yang jadi dasar seluruh desain schema (§ Part B).
 - Mendukung provisioning database via API (relevan untuk provisioning otomatis saat Project dibuat — lihat F.2).
 
-**POC gate (WAJIB di Phase 0, sebelum Turso dikunci permanen):**
-1. Ukur **cold start + latensi** query sederhana dari fungsi serverless Vercel (target wajar: p95 di bawah ambang yang dapat diterima UX; tetapkan angka saat POC).
-2. Uji **provisioning** database baru via API + waktu yang dibutuhkan (untuk memutuskan sinkron vs async — F.2).
-3. Uji **concurrent writes** + perilaku `BEGIN IMMEDIATE` untuk optimistic locking (A.6).
-4. Cek **model biaya** pada proyeksi jumlah Project.
+**Hasil POC Phase 0:**
+1. **Cold start + latensi:** hasil terukur bersifat conditional karena region Turso dan fungsi Vercel belum co-located; keputusan GO mensyaratkan mitigasi co-location saat deployment.
+2. **Provisioning:** database baru siap dalam kisaran beberapa detik, sehingga provisioning **sinkron** dipilih untuk MVP (F.2).
+3. **Concurrent writes:** write transaction (`transaction("write")`, padanan `BEGIN IMMEDIATE` pada client libSQL) dengan retry dan optimistic locking mencegah lost update pada pengujian konkuren.
+4. **Model biaya:** diterima untuk proyeksi MVP. Bukti mentah dan ringkasan keputusan berada di `poc/RESULTS.md`; keputusan manusia tercatat pada Phase 0 CL-07 dan diverifikasi QA-CL-08.
 
-**Fallback jika POC gagal:** libSQL self-hosted, atau evaluasi Cloudflare D1 (SQLite-based) — dengan catatan model per-tenant database D1 perlu diverifikasi ulang terhadap kebutuhan. Domain model TIDAK berubah apa pun fallback yang dipilih (database-per-project adalah strategi logis — A.4).
+**Kontingensi jika Turso kelak harus dievaluasi ulang:** libSQL self-hosted, atau evaluasi Cloudflare D1 (SQLite-based) — dengan catatan model per-tenant database D1 perlu diverifikasi ulang terhadap kebutuhan dan perubahan provider wajib melalui amandemen SOT. Domain model TIDAK berubah apa pun provider yang dipilih (database-per-project adalah strategi logis — A.4).
 
 ## A.12 Keputusan: ORM / Query Layer — Drizzle ORM
 
@@ -536,7 +536,7 @@ erDiagram
 > Catatan: `ACTIVITIES` bersifat polymorphic (`entity_type` + `entity_id`) untuk project/milestone/board/list/card, jadi bukan FK tunggal — diagram menampilkan relasi ke CARDS sebagai ilustrasi utama. `creator_user_id`/`assignee_user_id`/`actor_user_id` menunjuk `USERS` di **Global DB** (cross-database, app-level integrity — A.5), sehingga tidak digambarkan sebagai FK fisik lintas diagram.
 
 ## B.7 Yang Belum Dikunci
-**Sudah dikunci di v1.0.1:** Format ID → ULID (A.13) · Provider database-per-project → Turso/libSQL pending POC (A.11).
+**Sudah dikunci:** Format ID → ULID (A.13) · Provider database-per-project → Turso/libSQL; POC Phase 0 lulus dan keputusan GO final (A.11).
 
 **Masih open:** Strategi indexing detail (ditetapkan saat implementasi & pola query terlihat).
 
@@ -644,7 +644,7 @@ Vercel **serverless** — tidak ada persistent local disk yang dijamin antar-inv
 Vercel (serverless) → API/Application → Project Resolver
 → SQLite-compatible managed storage (Project A DB / Project B DB / ...)
 ```
-**Kandidat kuat:** Turso — **belum final**. Provider lain dengan karakteristik serupa tetap dapat dievaluasi.
+**Provider MVP:** Turso/libSQL — final setelah POC Phase 0 lulus (A.11). Evaluasi provider lain hanya dilakukan melalui amandemen SOT baru.
 
 ## D.3 Kriteria Pemilihan Provider
 
@@ -663,7 +663,7 @@ Harus mendukung: banyak database logis (potensial ribuan) · provisioning otomat
 | Project DB (per Project) | Managed SQLite-compatible eksternal | Satu (logis) per Project, di-resolve via mapping table |
 
 ## D.6 Long-Running Operations (Bukan MVP)
-internal subtree prune · database provisioning otomatis · large export/backup. Untuk MVP dijaga skala kecil-menengah & synchronous dalam transaction. Arsitektur tidak boleh menghalangi `API → enqueue job → background worker` di masa depan.
+internal subtree prune · large export/backup. Provisioning Project DB adalah bagian MVP dan berjalan sinkron sesuai F.2. Arsitektur tidak boleh menghalangi `API → enqueue job → background worker` di masa depan.
 
 ## D.7 Environment & Konfigurasi
 - Connection string MUST NOT hardcoded — via environment variables Vercel per environment (dev/staging/prod).
@@ -682,17 +682,16 @@ internal subtree prune · database provisioning otomatis · large export/backup.
 - Migration schema SHOULD idempotent dan menjadi bagian deployment pipeline. Drizzle-kit sudah terkunci; detail orchestration fan-out ditetapkan serta diuji pada Phase 0.
 
 ## D.8 Open Decisions (Deployment)
-Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisioning") — diputuskan setelah POC gate (A.11) · backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Project-DB di skala besar (arah dasar di F.4).
+Backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Project-DB di skala besar (arah dasar di F.4). Provider Turso dan provisioning sinkron bukan lagi open decision (A.11, F.2).
 
 ---
 
 # PART E — Open Decisions (Ringkasan Global)
 
-**Sudah dikunci di v1.0.1** (sebelumnya open): Format ID → ULID (A.13) · ORM/query layer → Drizzle (A.12) · Database provider → Turso/libSQL, pending POC gate (A.11).
+**Sudah dikunci:** Format ID → ULID (A.13) · ORM/query layer → Drizzle (A.12) · Database provider → Turso/libSQL setelah POC Phase 0 lulus (A.11) · provisioning Project DB → sinkron untuk MVP (F.2).
 
 **Masih open** — sengaja belum dikunci sampai kebutuhan implementasi jelas (prinsip "Simple by default"):
 - Detail indexing (ditetapkan saat schema diimplementasi & pola query terlihat).
-- Mekanisme provisioning DB otomatis (sinkron vs async) — diputuskan setelah POC gate A.11.
 
 ---
 
@@ -702,16 +701,15 @@ Mekanisme provisioning otomatis (sinkron dalam create Project vs async "provisio
 
 ## F.1 Backup & Disaster Recovery
 - **Global DB** adalah titik paling kritis (kehilangan = kehilangan pemetaan Project→database, membership, credential). MUST punya backup terjadwal + point-in-time recovery jika provider mendukung.
-- **Project DB** — backup per-database mengikuti fasilitas provider (Turso menyediakan backup/replica bawaan; verifikasi saat POC A.11). Karena jumlah database besar, backup MUST otomatis per-provisioning, bukan manual.
-- **Prinsip:** kehilangan satu Project DB tidak boleh memengaruhi Project lain (konsisten dengan isolation). RTO/RPO konkret ditetapkan setelah POC.
+- **Project DB** — backup per-database mengikuti fasilitas provider Turso. Karena jumlah database besar, backup MUST otomatis per-provisioning, bukan manual; restore tetap wajib diuji sebelum rilis.
+- **Prinsip:** kehilangan satu Project DB tidak boleh memengaruhi Project lain (konsisten dengan isolation). RTO/RPO konkret ditetapkan sebelum rilis berdasarkan kemampuan provider dan pengujian staging.
 - Restore MUST diuji minimal sekali sebelum rilis (bukan sekadar diasumsikan bekerja).
 
 ## F.2 Provisioning Database Project Baru
 - Saat `POST /projects` sukses, sebuah Project DB baru MUST tersedia sebelum Project dianggap operasional.
 - Provisioning MUST menginisialisasi tepat satu `project_state` ACTIVE (`version = 1`) dan Activity `project.created` dalam satu transaksi Project DB sebelum Project dianggap operasional. Record ini menjadi sumber state domain Project.
-- **Keputusan sinkron vs async ditunda sampai POC gate (A.11)** — mengukur waktu provisioning Turso menentukan pilihan:
-  - Jika cepat (≲ beberapa detik) → **sinkron** dalam request create (lebih sederhana untuk MVP, UX langsung siap).
-  - Jika lambat → **async** dengan registry Global ber-`provisioning_state = PROVISIONING` hingga siap. State ini hanya menunjukkan kesiapan provisioning; bukan lifecycle domain Project (`ACTIVE`/`ARCHIVED`/`DELETED`) dan tidak menggantikan `project_state`.
+- Provisioning MVP MUST berjalan **sinkron** dalam request create Project, sesuai hasil POC A.11 dan keputusan manusia. Respons sukses hanya boleh dikirim setelah Project DB siap, `project_state` serta Activity awal sudah commit, dan mapping Global tersedia.
+- `provisioning_state` pada registry Global hanya mencatat kesiapan operasional. Jalur async/queue tidak aktif pada MVP dan memerlukan amandemen SOT baru jika kelak diperkenalkan; state ini bukan lifecycle domain Project dan tidak menggantikan `project_state`.
 - Mapping hasil provisioning MUST dicatat di `project_databases` (Global DB) sebagai satu-satunya sumber resolusi (A.4). Kegagalan provisioning MUST menggagalkan/rollback create Project (tidak boleh ada Project tanpa database).
 
 ## F.3 Migration (Global DB & Project DB)

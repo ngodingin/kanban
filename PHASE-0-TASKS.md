@@ -1,6 +1,6 @@
 # Phase 0 — Foundation · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.0.7.
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.0.8.
 > Scope batas: [04-DELIVERY C.1 "Phase 0"](docs/04-DELIVERY.md). Acuan utama: [03-ENGINEERING Part A/B/D](docs/03-ENGINEERING.md) + [02-SPEC C.2](docs/02-SPEC.md).
 > **Konteks:** belum ada repo — Phase 0 adalah bootstrapping. Path file adalah *usulan* sesuai [03-ENGINEERING A.7](docs/03-ENGINEERING.md); sesuaikan saat implementasi. File ini working list, **terpisah dari SOT**.
 >
@@ -67,7 +67,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.2.1 | ✅ | [CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[CL-03](#cl-03)<br>[QA-CL-05](#qa-cl-05) | 100 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.2 | ✅ | [CL-06](#cl-06)<br>[QA-CL-06](#qa-cl-06) | 100 | P0 | Ukur waktu provisioning DB baru via Turso API | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.2.3 | ✅ | [CL-04](#cl-04)<br>[QA-CL-07](#qa-cl-07) | 100 | P0 | Uji concurrent write + perilaku `BEGIN IMMEDIATE` | [03-ENG A.6](docs/03-ENGINEERING.md), [A.11](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.2.4 | ✅ | [CL-07](#cl-07)<br>[QA-CL-08](#qa-cl-08) | 100 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
+| 0.2.4 | ✅ | [CL-07](#cl-07)<br>[QA-CL-08](#qa-cl-08)<br>[Review-CL-06](#review-cl-06) | 100 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
 
 **Test:** Hasil tiap pengukuran terdokumentasi di `poc/RESULTS.md` terhadap ambang yang ditetapkan saat POC.
 **DoD:** Keputusan tercatat: Turso GO/NO-GO **dan** provisioning sync/async. Jika NO-GO → tandai `[NEEDS-DECISION]` fallback (libSQL self-host / D1) per A.11. **Task ini gating untuk 0.6.**
@@ -120,7 +120,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.6.1 | ✅ | [CL-19](#cl-19)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-44](#cl-44)<br>[QA-CL-30](#qa-cl-30) | 100 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
 | 0.6.2 | ✅ | [CL-20](#cl-20)<br>[QA-CL-31](#qa-cl-31) | 100 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
 | 0.6.3 | ✅ | [CL-22](#cl-22)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-45](#cl-45)<br>[QA-CL-32](#qa-cl-32) | 100 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
-| 0.6.4 | ✅ | [CL-23](#cl-23)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
+| 0.6.4 | ✅ | [CL-23](#cl-23)<br>[QA-CL-33](#qa-cl-33)<br>[Review-CL-06](#review-cl-06) | 100 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
 
 **Test:** Integration — provisioning menghasilkan Project DB + `project_state` ACTIVE + Activity `project.created` atomik + mapping tercatat; simulasi kegagalan → tidak ada DB/mapping yatim.
 **DoD:** Panggilan provisioning menghasilkan Project DB siap pakai, satu `project_state` ACTIVE, Activity `project.created`, + mapping; kegagalan bersih; strategi sesuai 0.2. Endpoint `POST /projects` penuh = Phase 1 (di sini hanya mekanisme + seam).
@@ -220,7 +220,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 ## Flag terbuka (sesuai C.6.5)
 - ~~`[NEEDS-DECISION]` 0.2.4 — provisioning sinkron vs async~~ → **DIPUTUSKAN 2026-08-18 (manusia): Turso GO + provisioning SINKRON** (tercatat CL-07).
-- Catatan untuk AI-Planning & Review: A.11 "Locked pending POC gate" kini terbukti lulus — pertimbangkan amandemen SOT menghapus status pending.
+- ~~`[NEEDS-SPEC-AMENDMENT]` A.11/F.2 — finalisasi hasil POC Turso dan provisioning sinkron~~ → **DISELESAIKAN 2026-08-21:** SOT 2.0.8 menetapkan Turso GO dan provisioning sinkron melalui Review-CL-06.
 - ~~`[NEEDS-SPEC-AMENDMENT]` D.7 — canonical origin staging~~ → **DISELESAIKAN 2026-08-21 (manusia):** staging memakai `https://kanban-ngodingin.vercel.app`; SOT dinaikkan ke 2.0.7 melalui Review-CL-05. Implementasi loader/Magic Link dikembalikan ke Dev melalui 0.1.4 dan 0.8.4 ⚠️.
 
 ---
@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-06"></a>
+### Review-CL-06 — 2026-08-21 · rekonsiliasi SOT keputusan Phase 0 (tanpa perubahan status)
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** Impact scan lintas-SOT terhadap `01-PRODUCT` 0.3/0.4/2.5 serta `03-ENGINEERING` A.8/A.11/B.7/D.2/D.6/D.8/Part E/F.1/F.2 menemukan pernyataan aktif “pending POC”, “belum final”, dan “sync vs async ditunda”. Bukti keputusan: CL-07 + QA-CL-08 menetapkan Turso GO/provisioning sinkron; QA-CL-05/06/07 mereproduksi latensi, provisioning, dan concurrency; QA-CL-33 memverifikasi implementasi provisioning sinkron. SOT 2.0.8 menyelaraskan seluruh pernyataan aktif tersebut; canonical staging origin 2.0.7 tetap `https://kanban-ngodingin.vercel.app`.
+**Catatan:** Changelog/Closure Log historis yang menyebut status pending tetap dipertahankan sebagai rekam keputusan pada waktunya. Tidak ada perubahan business invariant, authorization, lifecycle, atau domain API contract. Review berikutnya mengaudit TASK-0.12 secara terpisah.
 
 <a id="qa-cl-45"></a>
 ### QA-CL-45 — 2026-08-21 · 0.12.3 🔎 → ✅
