@@ -117,10 +117,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.6.1 | 🔎 | [CL-19](#cl-19)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-44](#cl-44) | 80 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
-| 0.6.2 | 🔎 | [CL-20](#cl-20) | 80 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
-| 0.6.3 | 🔎 | [CL-22](#cl-22)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-45](#cl-45) | 80 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
-| 0.6.4 | 🔎 | [CL-23](#cl-23) | 80 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
+| 0.6.1 | ✅ | [CL-19](#cl-19)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-44](#cl-44)<br>[QA-CL-30](#qa-cl-30) | 100 | P0 | Buat Project DB baru + apply migrasi Project schema + seed `project_state` ACTIVE dan Activity `project.created` atomik | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.5.3 |
+| 0.6.2 | ✅ | [CL-20](#cl-20)<br>[QA-CL-31](#qa-cl-31) | 100 | P0 | Catat mapping hasil provisioning di `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.4.1, 0.6.1 |
+| 0.6.3 | ✅ | [CL-22](#cl-22)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-45](#cl-45)<br>[QA-CL-32](#qa-cl-32) | 100 | P0 | Rollback saat gagal (tidak ada DB/mapping yatim) | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.6.2 |
+| 0.6.4 | ✅ | [CL-23](#cl-23)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Terapkan strategi sinkron/async sesuai keputusan 0.2.4 | [03-ENG F.2](docs/03-ENGINEERING.md) | 0.2.4 |
 
 **Test:** Integration — provisioning menghasilkan Project DB + `project_state` ACTIVE + Activity `project.created` atomik + mapping tercatat; simulasi kegagalan → tidak ada DB/mapping yatim.
 **DoD:** Panggilan provisioning menghasilkan Project DB siap pakai, satu `project_state` ACTIVE, Activity `project.created`, + mapping; kegagalan bersih; strategi sesuai 0.2. Endpoint `POST /projects` penuh = Phase 1 (di sini hanya mekanisme + seam).
@@ -228,6 +228,30 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-33"></a>
+### QA-CL-33 — 2026-08-21 · 0.6.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `provisionProjectWithMapping`: provisioning berjalan sinkron dalam satu call (tanpa state perantara `PROVISIONING` terekspos ke caller), `provisioningState: "READY"` langsung ditulis — konsisten keputusan manusia 0.2.4 (QA-CL-08). `project_databases` tetap satu-satunya sumber resolusi (dipakai 0.3.2's resolver, sudah ✅).
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-32"></a>
+### QA-CL-32 — 2026-08-21 · 0.6.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-rollback` live (Turso nyata, membuat & menghapus DB sungguhan): 7/7 PASS — skenario A (token invalid, gagal di awal → tidak ada DB yatim, registry rollback), C (name conflict, gagal di tengah → hanya DB hasil invocation ini yang dihapus, DB existing tidak disentuh), B (mapping gagal setelah DB dibuat → DB dihapus, registry+mapping existing tidak tersentuh, tidak ada mapping yatim). Baca `provision.ts`: flag `created` hanya `true` setelah `createDatabase()` sukses; catch outer `provisionProjectWithMapping` hanya menghapus `result.databaseName` (yang pasti hasil invocation sukses ini, bukan DB lain) — kompensasi tidak pernah menyentuh resource di luar operasi ini.
+**Catatan:** Perbaikan Review-CL-02/04 (CL-44/45) terverifikasi ulang secara independen, bukan sekadar membaca ulang klaim Dev. Tidak ada perubahan SOT.
+
+<a id="qa-cl-31"></a>
+### QA-CL-31 — 2026-08-21 · 0.6.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-global-mapping` live: 3/3 PASS — mapping tercatat di `project_databases` dan terbaca ulang; mapping duplikat untuk `project_id` sama ditolak (satu Project = satu database, A.4).
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-30"></a>
+### QA-CL-30 — 2026-08-21 · 0.6.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-provision` live (Turso nyata — DB dibuat & dihapus sungguhan): 4/4 PASS — `project_state` tepat satu ACTIVE (`version=1`, `archived_at`/`deleted_at` NULL); Activity `project.created` tunggal dengan `entity_version=1`, payload `data.snapshot.name` sesuai B.5; Activity id memakai ULID (A.13); tx duplikat gagal tanpa meninggalkan activity yatim. Baca `provision.ts`: `project_state`+`activities` di-seed dalam satu `db.transaction` (atomik, F.2/INV #9).
+**Catatan:** Dependency 0.5.3 saat ini `⚠️` (QA-CL-15) karena assertion count migration Global yang stale di script lain — tidak memengaruhi fungsi `applyProjectMigrations` yang dipakai di sini (terbukti 10 tabel Project terpasang benar via `test:smoke-provision`). Tidak ada perubahan SOT.
 
 <a id="qa-cl-29"></a>
 ### QA-CL-29 — 2026-08-21 · 0.8.4 🔎 → ✅
