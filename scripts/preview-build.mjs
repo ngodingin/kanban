@@ -1,6 +1,7 @@
 import { build } from "esbuild";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, resolve } from "node:path";
 
 const output = resolve(import.meta.dirname, "../.vercel/output");
 const apiDir = resolve(output, "functions/api.func");
@@ -19,7 +20,21 @@ await build({
   target: "node22",
   sourcemap: true,
   logLevel: "warning",
+  // `libsql` me-resolve native binding platform-nya (mis. @libsql/linux-x64-gnu)
+  // via require() dinamis — esbuild tidak bisa membundle ini secara statis.
+  // Dibiarkan external lalu closure dependency-nya disalin utuh di bawah.
+  external: ["libsql"],
 });
+
+const apiRequire = createRequire(resolve(import.meta.dirname, "../apps/api/package.json"));
+const libsqlClientEntry = apiRequire.resolve("@libsql/client");
+const libsqlClientRequire = createRequire(libsqlClientEntry);
+// dirname(...) dua kali: resolve("libsql") -> .../node_modules/libsql/index.js,
+// node_modules privat pnpm untuk libsql (berisi libsql/, @libsql/<platform>, @neon-rs, detect-libc
+// sebagai sibling — bukan nested di dalam folder libsql/) ada satu level di atasnya.
+const libsqlPkgDir = dirname(libsqlClientRequire.resolve("libsql"));
+const libsqlPrivateNodeModules = dirname(libsqlPkgDir);
+await cp(libsqlPrivateNodeModules, resolve(apiDir, "node_modules"), { recursive: true, dereference: true });
 
 await cp(resolve(import.meta.dirname, "../apps/web/public"), staticDir, { recursive: true });
 

@@ -1,6 +1,8 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, resolve } from "node:path";
+import { ulid } from "ulid";
+import { createGlobalClient } from "../packages/infrastructure/src/database/factory.ts";
 import { createApiApp } from "../apps/api/src/index.ts";
 
 const ORIGIN = process.env.BETTER_AUTH_URL ?? "http://localhost:8787";
@@ -15,13 +17,14 @@ const { app, getAuth } = createApiApp({
 });
 
 const testEmail = `one-origin-${Date.now()}@example.com`;
+const testUserId = ulid();
 
 const authContext = await getAuth().$context;
 const existing = await authContext.internalAdapter.findUserByEmail(testEmail);
 if (!existing) {
   const now = new Date().toISOString();
   await authContext.internalAdapter.createUser({
-    id: `one-origin-user-${Date.now()}`,
+    id: testUserId,
     email: testEmail,
     name: "One Origin",
     emailVerified: false,
@@ -127,5 +130,13 @@ server.listen(port, async () => {
     }
   } finally {
     server.close();
+    const cleanupClient = createGlobalClient();
+    try {
+      await cleanupClient.execute({ sql: "DELETE FROM auth_sessions WHERE user_id = ?", args: [testUserId] });
+      await cleanupClient.execute({ sql: "DELETE FROM users WHERE id = ?", args: [testUserId] });
+      await cleanupClient.execute({ sql: "DELETE FROM auth_verifications WHERE value LIKE ?", args: [`%${testEmail}%`] });
+    } finally {
+      await cleanupClient.close();
+    }
   }
 });
