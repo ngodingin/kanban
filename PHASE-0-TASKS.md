@@ -106,7 +106,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.5.1 | ✅ | [CL-16](#cl-16)<br>[QA-CL-13](#qa-cl-13) | 100 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
 | 0.5.2 | ✅ | [CL-17](#cl-17)<br>[QA-CL-14](#qa-cl-14) | 100 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
-| 0.5.3 | 🔎 | [CL-18](#cl-18)<br>[QA-CL-15](#qa-cl-15)<br>[CL-51](#cl-51) | 80 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
+| 0.5.3 | ✅ | [CL-18](#cl-18)<br>[QA-CL-15](#qa-cl-15)<br>[CL-51](#cl-51)<br>[QA-CL-43](#qa-cl-43) | 100 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
 
 **Test:** Migrasi diterapkan ke Project DB test; `project_state` tepat satu dan memiliki `version` + timestamp lifecycle; junction punya `removed_at`.
 **DoD:** Schema sesuai B.3; `project_state` menjadi sumber lifecycle Project; migrasi Project applicable terprogram (fondasi fan-out F.3).
@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-43"></a>
+### QA-CL-43 — 2026-08-21 · 0.5.3 🔎 → ✅ (re-verifikasi pasca CL-51)
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-migrate-programmatic`: 4/4 PASS. Baca fix: assertion journal Global/Project kini dibandingkan ke `readdirSync(...).filter(f => f.endsWith(".sql")).length` (jumlah file migration nyata), bukan angka hard-code — pola sama dengan fix `smoke-migration.ts` di CL-43 (0.4.3), sekarang konsisten di kedua script.
+**Catatan:** Menutup temuan QA-CL-15. Tidak ada perubahan SOT.
 
 <a id="qa-cl-42"></a>
 ### QA-CL-42 — 2026-08-21 · 0.8.4 🔎 → ✅ (re-verifikasi pasca Review-CL-05)
