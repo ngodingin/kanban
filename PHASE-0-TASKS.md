@@ -104,9 +104,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.5.1 | 🔎 | [CL-16](#cl-16) | 80 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.5.2 | 🔎 | [CL-17](#cl-17) | 80 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
-| 0.5.3 | 🔎 | [CL-18](#cl-18) | 80 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
+| 0.5.1 | ✅ | [CL-16](#cl-16)<br>[QA-CL-13](#qa-cl-13) | 100 | P0 | Definisi 10 tabel Project DB, termasuk `project_state` otoritatif, dengan `version` + `archived_at`/`deleted_at` | [03-ENG B.3](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.5.2 | ✅ | [CL-17](#cl-17)<br>[QA-CL-14](#qa-cl-14) | 100 | P1 | Junction label dengan `removed_at`; `activities` polymorphic + `data` JSON | [03-ENG B.3](docs/03-ENGINEERING.md), [B.5](docs/03-ENGINEERING.md) | 0.5.1 |
+| 0.5.3 | ⚠️ | [CL-18](#cl-18)<br>[QA-CL-15](#qa-cl-15) | 60 | P1 | Migration template dapat diterapkan terprogram (fan-out) | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.5.1 |
 
 **Test:** Migrasi diterapkan ke Project DB test; `project_state` tepat satu dan memiliki `version` + timestamp lifecycle; junction punya `removed_at`.
 **DoD:** Schema sesuai B.3; `project_state` menjadi sumber lifecycle Project; migrasi Project applicable terprogram (fondasi fan-out F.3).
@@ -228,6 +228,24 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-15"></a>
+### QA-CL-15 — 2026-08-21 · 0.5.3 🔎 → ⚠️
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke-migrate-programmatic`: 3 assertion khusus Project **PASS** (`applyProjectMigrations` terprogram 10 tabel; junction punya `removed_at`; apply ulang idempotent) — DoD fan-out Project terbukti. Tapi assertion Global di script yang sama **FAIL**: `journal global != 1`. Root cause dibaca di `scripts/smoke-migrate-programmatic.ts` baris 20: hard-code `COUNT(*) FROM __drizzle_migrations !== 1`; sejak commit `ee31ae5`/`bf42e17` (perbaikan 0.4.2, di luar scope 0.5.x) migration Global bertambah jadi 2 file (`0000_global_schema_v1.sql` + `0001_scope_type_list_card.sql`, incremental — bukan regen ulang). `applyGlobalMigrations` (`migrate.ts`) sendiri hanya memanggil `drizzle-orm` migrator apa adanya terhadap folder migrations — tidak ada bug fungsional, murni assertion count yang stale.
+**Catatan:** Bukan regresi fungsional 0.5.3, tapi bukti CL-18 sebagai satu kesatuan command tidak reproducible (exit 1) — sesuai §11.3.3(a) dikembalikan ke Dev. Perbaikan disarankan: assertion global journal jangan hard-code angka absolut (ganti ke `>= 1` atau assert nama migration spesifik ter-apply), supaya tidak rapuh tiap kali ada migration Global baru (0.4.x, 0.12.2, dst.). Tidak ada perubahan SOT.
+
+<a id="qa-cl-14"></a>
+### QA-CL-14 — 2026-08-21 · 0.5.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke-project-behavior`: 6/6 PASS — partial UNIQUE menolak duplikat label aktif; re-add setelah `removed_at` diterima (riwayat junction append-only, tidak ada delete fisik); `activities` polymorphic + `data` JSON round-trip untuk `card.moved` sesuai bentuk baku B.5 (`from`/`to` dengan `list_id`/`list_title`/`board_id`/`board_title`); `entity_type` di luar enum ditolak CHECK; query polymorphic entity_type+entity_id berfungsi.
+**Catatan:** Bentuk payload `card.moved` yang diuji cocok persis dengan tabel B.5. Tidak ada perubahan SOT.
+
+<a id="qa-cl-13"></a>
+### QA-CL-13 — 2026-08-21 · 0.5.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `project-schema.ts` dan bandingkan field-by-field terhadap [03-ENG B.3](docs/03-ENGINEERING.md): 10 tabel cocok persis (nama tabel, kolom, referensi, tanpa `project_id` di tabel child — isolasi via DB per B.1). Re-run `pnpm --filter @kanban/infrastructure test:smoke-project-schema`: 4/4 PASS (10 tabel B.3; `project_state` otoritatif + `version`/lifecycle timestamp di seluruh entity; junction punya `removed_at`; migration idempotent).
+**Catatan:** `activities.entity_type` CHECK eksplisit (drizzle sqlite tidak auto-emit CHECK untuk enum) — temuan CL-17 yang konsisten dan sudah diterapkan di sini. Tidak ada perubahan SOT.
 
 <a id="qa-cl-12"></a>
 ### QA-CL-12 — 2026-08-21 · 0.3.3 🔎 → ✅
