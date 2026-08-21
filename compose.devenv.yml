@@ -6,7 +6,7 @@ services:
       COREPACK_ENABLE_DOWNLOAD_PROMPT: "0"
       PNPM_HOME: /pnpm
     volumes:
-      - ./:/workspace
+      - ./:/workspace:z
       - pnpm-store:/pnpm/store
       - node-modules:/workspace/node_modules
     command:
