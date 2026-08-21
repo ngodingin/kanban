@@ -57,7 +57,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 2.0.6
+SPEC_VERSION = 2.0.7
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 2.0.6
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **2.0.7** — Mengganti canonical origin staging dari `https://stag-kanban.ngodingin.xyz` menjadi [https://kanban-ngodingin.vercel.app](https://kanban-ngodingin.vercel.app) sesuai keputusan manusia dan Vercel project yang sudah diverifikasi. Magic Link dan redirect callback staging MUST memakai origin baru tersebut; production tetap `https://kanban.ngodingin.xyz`. README tidak lagi menampilkan origin staging.
 - **2.0.6** — Mengganti application stack pra-implementasi menjadi **Hono + Better Auth + React/Vite**. API Hono dan SPA React/Vite dipisahkan sebagai package dalam satu codebase tetapi dipublikasikan dari satu Vercel project/canonical origin. Better Auth memakai Magic Link plugin + Resend API, Drizzle adapter, ULID, token verification hashed/single-use, dan database-backed session yang revocable. Global DB menambah core auth tables `auth_sessions`, `auth_accounts`, dan `auth_verifications`; frontend foundation berpindah dari starter Next.js ke Vite + shadcn. Tidak mengubah business invariant, authorization, lifecycle, atau domain API contract.
 - **2.0.5** — Menetapkan kebijakan pemilihan versi: selalu utamakan lini LTS terbaru yang terbukti kompatibel; jika tidak ada kanal LTS, gunakan rilis stable terbaru yang lulus compatibility gate; fallback hanya ke stable/LTS terakhir yang terbukti bekerja dan alasannya wajib dicatat. Melarang prerelease sebagai baseline production tanpa keputusan manusia + amandemen SOT. Mengganti `next-auth` v5 beta dengan `next-auth` v4.24.15 stable; Resend API tetap digunakan melalui custom `sendVerificationRequest()` pada Auth.js Email Provider.
 - **2.0.4** — Mengunci baseline versi stack yang reproducible: Node.js 24 LTS, pnpm 11, Next.js 16, React 19.2, TypeScript 6.0, libSQL/Turso SDK, Drizzle, Zod, ULID, Auth.js v5 beta exact pin, Resend, Vitest, Playwright, ESLint, dan Prettier. Menetapkan exact direct-dependency pin + committed `pnpm-lock.yaml`, kebijakan upgrade, penundaan TypeScript 7 sampai lint tooling kompatibel, serta baseline major UI Phase 7.

@@ -9,7 +9,7 @@ Project management dan Kanban yang sederhana, fleksibel, API-first, serta teriso
 | Informasi | Nilai |
 |---|---|
 | **Status proyek** | Pra-implementasi — belum ada aplikasi yang dapat dijalankan |
-| **Source of Truth** | `SPEC_VERSION 2.0.6` |
+| **Source of Truth** | `SPEC_VERSION 2.0.7` |
 | **Fase aktif** | Phase 0 — Foundation |
 | **Gate aktif** | POC Turso sebelum provider dan strategi provisioning dikunci permanen |
 | **UI** | Phase 7, blocked sampai Phase 0–6 selesai dan terverifikasi |
@@ -157,7 +157,6 @@ Alamat berikut adalah keputusan konfigurasi; keberadaan deployment tidak boleh d
 | Environment | Canonical origin |
 |---|---|
 | Production | `https://kanban.ngodingin.xyz` |
-| Staging | `https://stag-kanban.ngodingin.xyz` |
 | Magic Link sender | `noreply@kanban.ngodingin.xyz` |
 
 ## Source of Truth dan kontribusi

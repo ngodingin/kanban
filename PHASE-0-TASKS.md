@@ -1,6 +1,6 @@
 # Phase 0 — Foundation · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.0.6.
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.0.7.
 > Scope batas: [04-DELIVERY C.1 "Phase 0"](docs/04-DELIVERY.md). Acuan utama: [03-ENGINEERING Part A/B/D](docs/03-ENGINEERING.md) + [02-SPEC C.2](docs/02-SPEC.md).
 > **Konteks:** belum ada repo — Phase 0 adalah bootstrapping. Path file adalah *usulan* sesuai [03-ENGINEERING A.7](docs/03-ENGINEERING.md); sesuaikan saat implementasi. File ini working list, **terpisah dari SOT**.
 >
@@ -52,7 +52,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.1.1 | ✅ | [CL-01](#cl-01)<br>[QA-CL-01](#qa-cl-01) | 100 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
 | 0.1.2 | ✅ | [CL-09](#cl-09)<br>[QA-CL-02](#qa-cl-02)<br>[CL-46](#cl-46)<br>[QA-CL-09](#qa-cl-09) | 100 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | ✅ | [CL-05](#cl-05)<br>[QA-CL-03](#qa-cl-03) | 100 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.1.4 | ✅ | [CL-10](#cl-10)<br>[QA-CL-04](#qa-cl-04) | 100 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.4 | ⚠️ | [CL-10](#cl-10)<br>[QA-CL-04](#qa-cl-04)<br>[Review-CL-05](#review-cl-05) | 70 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.5 | 🔎 | [Review-CL-03](#review-cl-03)<br>[CL-48](#cl-48) | 80 | P1 | Tambah `compose.devenv.yml`: Docker Compose Node 24.18.0 + Corepack pnpm 11.22.0 untuk menjalankan `pnpm install --frozen-lockfile`, build, typecheck, lint, dan smoke test tanpa runtime host | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | — |
 
 **Test:** `git rev-parse --is-inside-work-tree` sukses; catatan verifikasi LTS/stable tersedia; tidak ada direct dependency prerelease; clean `pnpm install --frozen-lockfile`; verifikasi `engines`/`packageManager`/exact direct pins; Hono smoke route + build + typecheck + lint hijau.
@@ -147,9 +147,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.8.1 | ✅ | [CL-28](#cl-28)<br>[QA-CL-26](#qa-cl-26) | 100 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.8.2 | ✅ | [CL-29](#cl-29)<br>[QA-CL-27](#qa-cl-27) | 100 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
 | 0.8.3 | ✅ | [CL-31](#cl-31)<br>[QA-CL-28](#qa-cl-28) | 100 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
-| 0.8.4 | ✅ | [CL-30](#cl-30)<br>[QA-CL-29](#qa-cl-29) | 100 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
+| 0.8.4 | ⚠️ | [CL-30](#cl-30)<br>[QA-CL-29](#qa-cl-29)<br>[Review-CL-05](#review-cl-05) | 70 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
 
-**Test:** Integration — handler auth terpasang sebelum catch-all; password/social auth tidak tersedia; request Magic Link tidak membocorkan keberadaan email; sender tepat; staging link hanya memakai `https://stag-kanban.ngodingin.xyz`, production link hanya memakai `https://kanban.ngodingin.xyz`; database tidak menyimpan raw verification token; token expired/used/invalid ditolak; dua konsumsi konkuren hanya satu yang sukses; link valid menghasilkan session; sign-out/revoke membuat session tidak valid.
+**Test:** Integration — handler auth terpasang sebelum catch-all; password/social auth tidak tersedia; request Magic Link tidak membocorkan keberadaan email; sender tepat; staging link hanya memakai `https://kanban-ngodingin.vercel.app`, production link hanya memakai `https://kanban.ngodingin.xyz`; database tidak menyimpan raw verification token; token expired/used/invalid ditolak; dua konsumsi konkuren hanya satu yang sukses; link valid menghasilkan session; sign-out/revoke membuat session tidak valid.
 **DoD:** Identitas web session melalui Better Auth Magic Link dan satu `resolveIdentity()`; User otoritatif di Global DB; ID auth memakai ULID; verification hashed/single-use/expiring; session database-backed dan revocable; transport email memakai `sendMagicLink()` + Resend SDK/API; secret/alamat pengirim hanya dari environment; UI final ditunda ke Phase 7.
 
 ---
@@ -221,13 +221,19 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Flag terbuka (sesuai C.6.5)
 - ~~`[NEEDS-DECISION]` 0.2.4 — provisioning sinkron vs async~~ → **DIPUTUSKAN 2026-08-18 (manusia): Turso GO + provisioning SINKRON** (tercatat CL-07).
 - Catatan untuk AI-Planning & Review: A.11 "Locked pending POC gate" kini terbukti lulus — pertimbangkan amandemen SOT menghapus status pending.
-- Tidak ada `[NEEDS-SPEC-AMENDMENT]` di Phase 0.
+- ~~`[NEEDS-SPEC-AMENDMENT]` D.7 — canonical origin staging~~ → **DISELESAIKAN 2026-08-21 (manusia):** staging memakai `https://kanban-ngodingin.vercel.app`; SOT dinaikkan ke 2.0.7 melalui Review-CL-05. Implementasi loader/Magic Link dikembalikan ke Dev melalui 0.1.4 dan 0.8.4 ⚠️.
 
 ---
 
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-05"></a>
+### Review-CL-05 — 2026-08-21 · amandemen D.7; 0.1.4 dan 0.8.4 ✅ 100% → ⚠️ 70%
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** Keputusan manusia di CL-21 menetapkan staging `https://kanban-ngodingin.vercel.app`; Vercel project/deployment telah diverifikasi di CL-21 dan CL-49. Impact scan menemukan SOT D.7, `packages/infrastructure/src/config/env.ts`, `.env.example`, `scripts/smoke-config.ts`, dan `scripts/smoke-magic-link.ts` masih menunjuk `https://stag-kanban.ngodingin.xyz`. Amandemen SOT 2.0.7 mengganti canonical staging origin dan memperbarui Test 0.8.4; README tidak lagi menampilkan baris staging sesuai keputusan manusia sesi ini.
+**Catatan:** Status 0.1.4 dan 0.8.4 diturunkan karena implementasi/test yang sebelumnya terverifikasi kini tidak cocok dengan SOT 2.0.7. Handoff AI-Dev: ubah loader, `.env.example`, smoke config, dan smoke Magic Link ke origin baru; jalankan test positif/negatif terkait; lalu serahkan kembali ke QA. Closure Log lama tidak diubah. Amandemen ini tidak mengubah production origin maupun sender Magic Link.
 
 <a id="qa-cl-33"></a>
 ### QA-CL-33 — 2026-08-21 · 0.6.4 🔎 → ✅

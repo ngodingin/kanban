@@ -673,7 +673,7 @@ internal subtree prune · database provisioning otomatis · large export/backup.
 | Environment | Canonical origin | Magic Link sender |
 |---|---|---|
 | Production | `https://kanban.ngodingin.xyz` | `noreply@kanban.ngodingin.xyz` |
-| Staging | `https://stag-kanban.ngodingin.xyz` | `noreply@kanban.ngodingin.xyz` |
+| Staging | [https://kanban-ngodingin.vercel.app](https://kanban-ngodingin.vercel.app) | `noreply@kanban.ngodingin.xyz` |
 | Development | localhost eksplisit dari env lokal | transport/sender test; tidak boleh mengirim sebagai production tanpa konfigurasi sadar |
 
 - Magic Link dan redirect callback MUST memakai canonical origin environment aktif. Staging MUST NOT menghasilkan link production dan production MUST NOT menghasilkan link staging.
