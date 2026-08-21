@@ -28,7 +28,7 @@ try {
   await applyGlobalMigrations(client);
 
   const sent: SendMagicLinkData[] = [];
-  const baseUrl = "https://stag-kanban.ngodingin.xyz";
+  const baseUrl = "https://kanban-ngodingin.vercel.app";
   const auth = createAuth({
     globalClient: client,
     baseUrl,

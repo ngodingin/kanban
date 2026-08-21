@@ -24,7 +24,7 @@ expectThrow({ ...BASE, AUTH_RESEND_KEY: "" } as NodeJS.ProcessEnv, "negatif: res
 expectThrow({ ...BASE, BETTER_AUTH_URL: "https://kanban.ngodingin.xyz" } as NodeJS.ProcessEnv, "negatif: dev + origin produksi -> throw");
 expectThrow(
   { ...BASE, BETTER_AUTH_URL: "http://localhost:5173", VERCEL_ENV: "preview" } as NodeJS.ProcessEnv,
-  "negatif: staging + BETTER_AUTH_URL bukan stag-kanban -> throw",
+  "negatif: staging + BETTER_AUTH_URL bukan kanban-ngodingin.vercel.app -> throw",
 );
 
 const previewOverride = loadAppConfig({
@@ -49,11 +49,11 @@ console.log("PASS positif: production (VERCEL_ENV=production) -> origin kanban.n
 
 const stag = loadAppConfig({
   ...BASE,
-  BETTER_AUTH_URL: "https://stag-kanban.ngodingin.xyz",
+  BETTER_AUTH_URL: "https://kanban-ngodingin.vercel.app",
   VERCEL_ENV: "preview",
 } as NodeJS.ProcessEnv);
-if (stag.env !== "staging" || stag.canonicalOrigin !== "https://stag-kanban.ngodingin.xyz") throw new Error("staging config salah");
-console.log("PASS positif: staging (VERCEL_ENV=preview) -> origin stag-kanban.ngodingin.xyz");
+if (stag.env !== "staging" || stag.canonicalOrigin !== "https://kanban-ngodingin.vercel.app") throw new Error("staging config salah");
+console.log("PASS positif: staging (VERCEL_ENV=preview) -> origin kanban-ngodingin.vercel.app");
 
 const dev = loadAppConfig({ ...BASE } as NodeJS.ProcessEnv);
 if (dev.env !== "development" || dev.MAIL_FROM !== "noreply@kanban.ngodingin.xyz") throw new Error("dev config salah");
@@ -62,7 +62,7 @@ console.log("PASS positif: development + MAIL_FROM default sender");
 const repoRoot = resolve(import.meta.dirname, "../../..");
 const templates = [
   ["development", "http://localhost:5173"],
-  ["staging", "https://stag-kanban.ngodingin.xyz"],
+  ["staging", "https://kanban-ngodingin.vercel.app"],
   ["production", "https://kanban.ngodingin.xyz"],
 ] as const;
 const origins: string[] = [];

@@ -5,7 +5,7 @@ export type AppEnv = z.infer<typeof AppEnv>;
 
 const CANONICAL_ORIGINS: Record<AppEnv, string | null> = {
   production: "https://kanban.ngodingin.xyz",
-  staging: "https://stag-kanban.ngodingin.xyz",
+  staging: "https://kanban-ngodingin.vercel.app",
   development: null,
 };
 
