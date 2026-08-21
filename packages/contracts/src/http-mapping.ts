@@ -32,7 +32,7 @@ export function toErrorResponse(error: DomainErrorLike): { status: number; body:
 
 export const IDEMPOTENCY_HEADER = "Idempotency-Key";
 
-export function extractIdempotencyKey(headers: Headers): string | null {
+export function extractIdempotencyKey(headers: { get(name: string): string | null }): string | null {
   const value = headers.get(IDEMPOTENCY_HEADER);
   if (!value) return null;
   const trimmed = value.trim();
