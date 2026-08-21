@@ -55,6 +55,11 @@ export async function databaseExists(env: TursoEnv, name: string): Promise<boole
   }
 }
 
+export async function getDatabase(env: TursoEnv, name: string): Promise<CreatedDatabase> {
+  const body = await api<{ database: { Hostname: string } }>(env, `/organizations/${env.org}/databases/${name}`);
+  return { name, hostname: body.database.Hostname };
+}
+
 export function projectDatabaseName(projectId: string): string {
   return `proj-${projectId.toLowerCase().replace(/[^a-z0-9-]/g, "")}`;
 }
