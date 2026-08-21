@@ -49,10 +49,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.1.1 | 🔎 | [CL-01](#cl-01) | 80 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
-| 0.1.2 | 🔎 | [CL-09](#cl-09) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.1.3 | 🔎 | [CL-05](#cl-05) | 80 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.1.4 | 🔎 | [CL-10](#cl-10) | 80 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.1 | ✅ | [CL-01](#cl-01)<br>[QA-CL-01](#qa-cl-01) | 100 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
+| 0.1.2 | ⚠️ | [CL-09](#cl-09)<br>[QA-CL-02](#qa-cl-02) | 60 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.3 | ✅ | [CL-05](#cl-05)<br>[QA-CL-03](#qa-cl-03) | 100 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.4 | ✅ | [CL-10](#cl-10)<br>[QA-CL-04](#qa-cl-04) | 100 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.5 | ⚠️ | [Review-CL-03](#review-cl-03) | 40 | P1 | Tambah `compose.devenv.yml`: Docker Compose Node 24.18.0 + Corepack pnpm 11.22.0 untuk menjalankan `pnpm install --frozen-lockfile`, build, typecheck, lint, dan smoke test tanpa runtime host | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | — |
 
 **Test:** `git rev-parse --is-inside-work-tree` sukses; catatan verifikasi LTS/stable tersedia; tidak ada direct dependency prerelease; clean `pnpm install --frozen-lockfile`; verifikasi `engines`/`packageManager`/exact direct pins; Hono smoke route + build + typecheck + lint hijau.
@@ -228,6 +228,30 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-04"></a>
+### QA-CL-04 — 2026-08-21 · 0.1.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm --filter @kanban/infrastructure test:smoke-config`: 4/4 negatif PASS (secret <32, resend kosong, dev+origin produksi, staging+BETTER_AUTH_URL salah) + 5/5 positif PASS (preview override, production, staging, development default sender, template dev/staging/prod dengan origin kanonik unik + secret Resend terpisah). `.env.example` diperiksa manual: berisi `GLOBAL_DB_URL/TOKEN`, `BETTER_AUTH_SECRET/URL`, `AUTH_RESEND_KEY`, `MAIL_FROM`, semua placeholder tanpa secret nyata. `git grep` untuk pola secret di file ter-tracked (`.env*.example` dikecualikan) tidak menemukan hasil.
+**Catatan:** Bukti CL-10 reproducible; jumlah kasus positif smoke-config sudah bertambah dari 3 menjadi 5 dibanding CL-10 (penambahan test `AUTH_ALLOW_NON_CANONICAL` dari pekerjaan 0.12.3 yang belum tercermin di Status/CL 0.12.x — lihat catatan silang di QA-CL-02) — tidak menurunkan cakupan negatif/positif asli, jadi tidak menghalangi ✅. Tidak ada perubahan SOT.
+
+<a id="qa-cl-03"></a>
+### QA-CL-03 — 2026-08-21 · 0.1.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `grep` seluruh `package.json` workspace untuk dependency inti: `hono@4.13.2`, `typescript@6.0.2`, `@libsql/client@0.17.4`, `drizzle-orm@0.45.2`, `drizzle-kit@0.31.10`, `zod@4.4.3`, `ulid@3.0.2` — semua exact pin tanpa `^`/`~`/prerelease tag. `git ls-files pnpm-lock.yaml` mengonfirmasi lockfile ter-commit. `pnpm -r build`, `pnpm -r typecheck`, `pnpm lint` seluruhnya exit 0 (dijalankan ulang bersama 0.1.1/0.1.2/0.1.4).
+**Catatan:** ESLint/Prettier versi sesuai catatan CL-05 (`@eslint/js` 10.0.1, tidak ada 10.8.1 di registry) — konsisten, bukan penyimpangan. Tidak ada perubahan SOT.
+
+<a id="qa-cl-02"></a>
+### QA-CL-02 — 2026-08-21 · 0.1.2 🔎 → ⚠️
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Struktur folder A.7 terverifikasi cocok (`apps/api`, `apps/web` placeholder, `packages/{domain,contracts,shared,infrastructure}`); `pnpm -r build`/`typecheck`/`lint` hijau. Namun bukti yang dikutip CL-09 (`pnpm --filter @kanban/infrastructure test:smoke`) **tidak reproducible**: dijalankan ulang dengan `.env` lokal (TURSO_DB_URL/TOKEN terisi) → kasus `negatif: GLOBAL_DB_TOKEN hilang -> throw` **FAIL** (seharusnya throw, tidak throw). Root cause: `packages/infrastructure/src/database/factory.ts` — `GlobalDbEnvSchema.GLOBAL_DB_TOKEN` diubah dari `z.string().min(1)` menjadi `z.string().default("")` pada commit `cc8c3e7` (2026-08-20, pekerjaan 0.12.x), sehingga `parseGlobalDbEnv`/`createGlobalClient` tidak lagi menolak token kosong — regresi validasi fail-fast untuk credential Global DB.
+**Catatan:** `[NEEDS-DECISION]` tidak diperlukan (ini murni bug implementasi, bukan ambiguitas spesifikasi) — kembalikan ke Dev untuk revert `GLOBAL_DB_TOKEN` ke required (`.min(1)`) dan re-run `test:smoke`. **Temuan silang di luar scope 0.1.2 (dicatat, bukan diubah statusnya di sini):** commit `cc8c3e7` mengklaim di pesan commit bahwa goal 0.12.1–0.12.5 pindah ke "review (80%)", tetapi `PHASE-0-TASKS.md` tidak ikut diubah pada commit tsb — goal 0.12.1–0.12.5 di disk saat ini masih `⬜️`/0%/CL `—`, melanggar §6.1 AGENTS.md (perubahan Status/%/CL wajib satu commit dengan implementasi). Direkomendasikan AI-Dev membuka `0.12.x → 🔄` dengan CL yang benar sebelum melanjutkan; regresi `factory.ts` di atas juga perlu diperbaiki sebagai bagian dari itu karena file yang sama disentuh di commit tersebut. Tidak ada perubahan SOT.
+
+<a id="qa-cl-01"></a>
+### QA-CL-01 — 2026-08-21 · 0.1.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `git rev-parse --is-inside-work-tree` = true; `node -v` = v24.19.0 (memenuhi `engines` `>=24.18.0 <25`); `pnpm -v` = 11.22.0 (cocok `packageManager`). `pnpm install --frozen-lockfile` clean ("Already up to date"). `pnpm -r build` dan `pnpm -r typecheck` seluruh 7 workspace project exit 0; `pnpm lint` (`eslint .`) exit 0. Smoke Hono: `createApiApp().app.request('/api/v1/health')` → `200 {"data":{"status":"ok","env":"unknown"}}`. `git ls-files pnpm-lock.yaml` konfirmasi lockfile ter-commit; `git grep` pola secret di file ter-tracked (kecuali `*.example`) tidak menemukan hasil; `.env` asli tidak ter-track (`.gitignore` baris 4–6, 18, 20).
+**Catatan:** Semua bukti CL-01 reproducible ulang. `env:"unknown"` pada health response adalah perilaku yang disengaja (index.ts baris 31-37: config gagal dimuat di environment minimal → health tetap hidup, bukan bug). Tidak ada perubahan SOT.
 
 <a id="review-cl-04"></a>
 ### Review-CL-04 — 2026-08-18 · architecture/SOT review 0.4.2, 0.6.1, 0.6.3
