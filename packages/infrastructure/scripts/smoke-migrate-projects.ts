@@ -7,14 +7,15 @@ import { migrateProjectFanOut } from "./migrate-projects.ts";
 const apiToken = process.env.TURSO_API_TOKEN;
 const globalUrl = process.env.GLOBAL_DB_URL;
 const globalToken = process.env.GLOBAL_DB_TOKEN;
-if (!apiToken || !globalUrl || !globalToken) {
-  console.log("SKIP: kredensial Turso/Global tidak lengkap");
+const group = process.env.TURSO_GROUP;
+if (!apiToken || !globalUrl || !globalToken || !group) {
+  console.log("SKIP: kredensial Turso/Global tidak lengkap (TURSO_GROUP wajib eksplisit per environment, tidak ada default)");
   process.exit(0);
 }
 
 const turso = {
   org: process.env.TURSO_ORG ?? "ngodingin-ai",
-  group: process.env.TURSO_GROUP ?? "ngodingin-kanban",
+  group,
   apiToken,
 };
 const now = new Date().toISOString();

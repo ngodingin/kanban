@@ -15,7 +15,7 @@ function urlIsFile(databaseId: string): boolean {
 // org-level TIDAK bisa dipakai langsung sebagai authToken libsql (temuan CL-06).
 async function resolveProjectClient(databaseId: string, turso: TursoEnv | null): Promise<Client> {
   if (urlIsFile(databaseId)) return createClient({ url: databaseId });
-  if (!turso) throw new Error("TURSO_API_TOKEN/TURSO_ORG/TURSO_GROUP wajib diisi untuk resolusi database Turso nyata");
+  if (!turso) throw new Error("TURSO_API_TOKEN/TURSO_GROUP wajib diisi untuk resolusi database Turso nyata (TURSO_GROUP berbeda per environment — production vs staging — tidak boleh diasumsikan)");
   const { hostname } = await getDatabase(turso, databaseId);
   const authToken = await mintDatabaseToken(turso, databaseId);
   return createClient({ url: `https://${hostname}`, authToken });
@@ -24,9 +24,11 @@ async function resolveProjectClient(databaseId: string, turso: TursoEnv | null):
 export async function migrateProjectFanOut(): Promise<{ total: number; ok: number; failed: string[] }> {
   const global = createGlobalClient();
   const apiToken = process.env.TURSO_API_TOKEN;
-  const turso: TursoEnv | null = apiToken
-    ? { org: process.env.TURSO_ORG ?? "ngodingin-ai", group: process.env.TURSO_GROUP ?? "ngodingin-kanban", apiToken }
-    : null;
+  const group = process.env.TURSO_GROUP;
+  // TURSO_GROUP wajib eksplisit per environment (production = ngodingin-kanban,
+  // staging = ngodingin-kanban-stag) — TIDAK boleh ada fallback default di sini,
+  // karena fallback silently mengarahkan operasi ke group yang salah environment.
+  const turso: TursoEnv | null = apiToken && group ? { org: process.env.TURSO_ORG ?? "ngodingin-ai", group, apiToken } : null;
   try {
     const db = drizzle(global);
     const mappings = await db.select().from(projectDatabases).run();

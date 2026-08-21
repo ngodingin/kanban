@@ -13,14 +13,15 @@ import {
 const token = process.env.TURSO_API_TOKEN;
 const globalUrl = process.env.GLOBAL_DB_URL;
 const globalToken = process.env.GLOBAL_DB_TOKEN;
-if (!token || !globalUrl || !globalToken) {
-  console.log("SKIP: kredensial Turso/Global tidak lengkap");
+const group = process.env.TURSO_GROUP;
+if (!token || !globalUrl || !globalToken || !group) {
+  console.log("SKIP: kredensial Turso/Global tidak lengkap (TURSO_GROUP wajib eksplisit per environment, tidak ada default)");
   process.exit(0);
 }
 
 const turso = {
   org: process.env.TURSO_ORG ?? "ngodingin-ai",
-  group: process.env.TURSO_GROUP ?? "ngodingin-kanban",
+  group,
   apiToken: token,
 };
 const now = new Date().toISOString();

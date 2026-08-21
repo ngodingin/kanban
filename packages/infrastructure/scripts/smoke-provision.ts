@@ -6,14 +6,15 @@ import { activities, projectState } from "../src/database/project-schema.ts";
 import { deleteDatabase, projectDatabaseName } from "../src/provisioning/turso.ts";
 
 const token = process.env.TURSO_API_TOKEN;
-if (!token) {
-  console.log("SKIP: TURSO_API_TOKEN tidak ada (live integration butuh kredensial)");
+const group = process.env.TURSO_GROUP;
+if (!token || !group) {
+  console.log("SKIP: TURSO_API_TOKEN/TURSO_GROUP tidak ada (live integration butuh kredensial; TURSO_GROUP wajib eksplisit per environment, tidak ada default)");
   process.exit(0);
 }
 
 const turso = {
   org: process.env.TURSO_ORG ?? "ngodingin-ai",
-  group: process.env.TURSO_GROUP ?? "ngodingin-kanban",
+  group,
   apiToken: token,
 };
 
