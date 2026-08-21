@@ -1,8 +1,14 @@
 import { createClient } from "@libsql/client";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { applyGlobalMigrations, applyProjectMigrations } from "../src/database/migrate.ts";
+
+function migrationFileCount(dirPath: string): number {
+  return readdirSync(dirPath).filter((f) => f.endsWith(".sql")).length;
+}
+const globalMigrationCount = migrationFileCount(resolve("drizzle/migrations"));
+const projectMigrationCount = migrationFileCount(resolve("drizzle/migrations-project"));
 
 const dir = mkdtempSync(join(tmpdir(), "kanban-migrate-fanout-"));
 let failed = false;
@@ -17,8 +23,9 @@ try {
   try {
     await applyGlobalMigrations(g);
     const globalTables = await g.execute("SELECT COUNT(*) AS n FROM __drizzle_migrations");
-    if (Number(globalTables.rows[0]?.n) !== 1) fail("global", "journal global != 1");
-    else console.log("PASS: applyGlobalMigrations terprogram (journal 1)");
+    if (Number(globalTables.rows[0]?.n) !== globalMigrationCount) {
+      fail("global", `journal global = ${globalTables.rows[0]?.n}, harus ${globalMigrationCount}`);
+    } else console.log(`PASS: applyGlobalMigrations terprogram (journal ${globalMigrationCount})`);
 
     await applyProjectMigrations(p);
     const state = await p.execute(
@@ -34,8 +41,9 @@ try {
 
     await applyProjectMigrations(p);
     const journal = await p.execute("SELECT COUNT(*) AS n FROM __drizzle_migrations");
-    if (Number(journal.rows[0]?.n) !== 1) fail("idempotent", "journal project != 1 setelah apply ulang");
-    else console.log("PASS: apply ulang idempotent (fan-out aman)");
+    if (Number(journal.rows[0]?.n) !== projectMigrationCount) {
+      fail("idempotent", `journal project = ${journal.rows[0]?.n} setelah apply ulang, harus tetap ${projectMigrationCount}`);
+    } else console.log("PASS: apply ulang idempotent (fan-out aman)");
   } finally {
     await g.close();
     await p.close();
