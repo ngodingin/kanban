@@ -57,7 +57,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 2.0.8
+SPEC_VERSION = 2.1.0
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 2.0.8
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **2.1.0** — Menambah 3 endpoint API yang sebelumnya hilang dari kontrak walau kapabilitasnya sudah tersirat di BR/D.1: `GET /projects/:project_id/members` & `POST /projects/:project_id/members/:membership_id/revoke` (FR-008, BR-053, D.1 `member.read`/`member.remove` — sebelumnya endpoint scoped assignment C.12 mengasumsikan `membership_id` sudah diketahui tanpa jalur untuk menemukannya) dan `POST /projects/:project_id/permission-groups/:group_id/delete` (BR-041, D.1 `permission_group.delete` — soft-delete Group tanpa menghapus riwayat assignment). Ditemukan & diamandemen saat generate task Phase 1 (AI-Planning & Review), dikonfirmasi manusia 2026-08-21. Penambahan backward-compatible; tidak mengubah business invariant/authorization formula/lifecycle yang sudah ada.
 - **2.0.8** — Menutup POC gate Phase 0 dengan keputusan final **Turso/libSQL GO** dan provisioning Project DB **sinkron** dalam request create Project. Menghapus status provider “pending/belum final” serta keputusan sync/async yang stale dari seluruh SOT aktif; mencatat hasil POC untuk latensi, provisioning, concurrent write, dan biaya. Canonical staging origin yang ditetapkan pada 2.0.7 tetap [https://kanban-ngodingin.vercel.app](https://kanban-ngodingin.vercel.app). Tidak mengubah business invariant, authorization, lifecycle, atau domain API contract.
 - **2.0.7** — Mengganti canonical origin staging dari `https://stag-kanban.ngodingin.xyz` menjadi [https://kanban-ngodingin.vercel.app](https://kanban-ngodingin.vercel.app) sesuai keputusan manusia dan Vercel project yang sudah diverifikasi. Magic Link dan redirect callback staging MUST memakai origin baru tersebut; production tetap `https://kanban.ngodingin.xyz`. README tidak lagi menampilkan origin staging.
 - **2.0.6** — Mengganti application stack pra-implementasi menjadi **Hono + Better Auth + React/Vite**. API Hono dan SPA React/Vite dipisahkan sebagai package dalam satu codebase tetapi dipublikasikan dari satu Vercel project/canonical origin. Better Auth memakai Magic Link plugin + Resend API, Drizzle adapter, ULID, token verification hashed/single-use, dan database-backed session yang revocable. Global DB menambah core auth tables `auth_sessions`, `auth_accounts`, dan `auth_verifications`; frontend foundation berpindah dari starter Next.js ke Vite + shadcn. Tidak mengubah business invariant, authorization, lifecycle, atau domain API contract.

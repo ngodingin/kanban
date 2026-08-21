@@ -432,14 +432,21 @@ Assign: `{ "label_id": "label_123" }`. Server menentukan scope Label & memvalida
 
 ## C.12 Permission & Membership
 ```http
+GET    /api/v1/projects/:project_id/members
+POST   /api/v1/projects/:project_id/members/:membership_id/revoke
 GET    /api/v1/projects/:project_id/permission-groups
 POST   /api/v1/projects/:project_id/permission-groups
 PATCH  /api/v1/projects/:project_id/permission-groups/:group_id
+POST   /api/v1/projects/:project_id/permission-groups/:group_id/delete
 POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments
 POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments/:assignment_id/revoke
 POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments
 POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke
 ```
+`GET /members` mengembalikan seluruh Membership Project (termasuk yang `revoked_at` bukan NULL sesuai filter) — dipakai antara lain untuk menemukan `membership_id` sebelum membuat scoped assignment. `POST /members/:membership_id/revoke` mencabut otorisasi berjalan (`project_memberships.revoked_at`) tanpa menghapus data historis (BR-053) — `creator_user_id`/`activity.actor_user_id` yang merujuk User tersebut tetap utuh; tidak menghapus/revoke `membership_group_assignments`/`membership_permission_assignments` secara individual (assignment tetap ada sebagai riwayat, tetapi non-applicable begitu Membership induk revoked).
+
+`POST /permission-groups/:group_id/delete` adalah soft-delete (`permission_groups.deleted_at`, BR-041): Membership yang punya assignment ke Group tersebut kehilangan permission yang di-grant Group itu, tanpa menghapus riwayat `membership_group_assignments`.
+
 Scoped Group assignment:
 ```json
 { "group_id": "group_123", "scope_type": "milestone", "scope_id": "milestone_app_x" }
