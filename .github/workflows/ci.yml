@@ -11,8 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 11
       - uses: actions/setup-node@v4
         with:
           node-version: 24
@@ -26,9 +24,9 @@ jobs:
         run: pnpm --filter @kanban/infrastructure migrate:global
         env:
           GLOBAL_DB_URL: file:///tmp/ci-global.db
-          GLOBAL_DB_TOKEN: ""
+          GLOBAL_DB_TOKEN: ci-local-placeholder
       - name: Migration fan-out smoke (0 project)
         run: pnpm --filter @kanban/infrastructure migrate:projects
         env:
           GLOBAL_DB_URL: file:///tmp/ci-global.db
-          GLOBAL_DB_TOKEN: ""
+          GLOBAL_DB_TOKEN: ci-local-placeholder
