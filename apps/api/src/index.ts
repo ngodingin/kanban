@@ -56,4 +56,12 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
 }
 
-export default handle(createApiApp().app);
+// Vercel Node.js Runtime (Build Output API v3) memerlukan named export
+// fetch-style (GET/POST/dst.) — export default (req,res)=>void diperlakukan
+// sebagai signature Node.js lama sehingga Response dari hono/vercel tidak
+// pernah terkirim (hang sampai timeout). Semua method di-dispatch ke app
+// yang sama; Hono sendiri yang merutekan berdasarkan method request.
+const { app: vercelApp } = createApiApp();
+const vercelHandler = handle(vercelApp);
+export const GET = vercelHandler;
+export const POST = vercelHandler;
