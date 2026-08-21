@@ -1,5 +1,6 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
+import { isValid as isValidUlid } from "ulid";
 import { provisionProjectDatabase, ProjectProvisioningError } from "../src/provisioning/provision.ts";
 import { activities, projectState } from "../src/database/project-schema.ts";
 import { deleteDatabase, projectDatabaseName } from "../src/provisioning/turso.ts";
@@ -50,16 +51,18 @@ try {
   }
 
   const acts = await client.execute(
-    "SELECT entity_type, entity_id, entity_version, actor_user_id, action, data FROM activities WHERE entity_type='project' AND entity_id = ?",
+    "SELECT id, entity_type, entity_id, entity_version, actor_user_id, action, data FROM activities WHERE entity_type='project' AND entity_id = ?",
     [projectId],
   );
   if (acts.rows.length !== 1) fail("activity", "Activity project.created harus tepat satu");
   else {
-    const a = acts.rows[0] as unknown as { action: string; entity_version: number; data: string };
+    const a = acts.rows[0] as unknown as { id: string; action: string; entity_version: number; data: string };
     const data = JSON.parse(a.data) as { snapshot?: { name?: string } };
     if (a.action !== "project.created" || a.entity_version !== 1 || data.snapshot?.name !== "Smoke Provisioning") {
       fail("activity", "payload project.created tidak sesuai B.5 (snapshot.name)");
     } else console.log("PASS: Activity project.created tunggal, entity_version=1, data B.5 snapshot.name");
+    if (!isValidUlid(a.id)) fail("activity", `id activity bukan ULID (A.13): ${a.id}`);
+    else console.log("PASS: Activity project.created id memakai ULID (A.13)");
   }
 
   const db = drizzle(client);

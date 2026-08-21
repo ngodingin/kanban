@@ -1,5 +1,6 @@
 import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
+import { ulid } from "ulid";
 import { applyProjectMigrations } from "../database/migrate.ts";
 import { projectDatabases, projects } from "../database/global-schema.ts";
 import { activities, projectState } from "../database/project-schema.ts";
@@ -32,10 +33,12 @@ export class ProjectProvisioningError extends Error {}
 export async function provisionProjectDatabase(input: ProvisionInput): Promise<ProvisionResult> {
   const databaseName = projectDatabaseName(input.projectId);
   let client: Client | undefined;
+  let created = false;
   try {
-    const created = await createDatabase(input.turso, databaseName);
+    const createResult = await createDatabase(input.turso, databaseName);
+    created = true;
     const authToken = await mintDatabaseToken(input.turso, databaseName, input.tokenExpiration ?? "1y");
-    const url = `https://${created.hostname}`;
+    const url = `https://${createResult.hostname}`;
     client = createClient({ url, authToken });
 
     await applyProjectMigrations(client);
@@ -50,7 +53,7 @@ export async function provisionProjectDatabase(input: ProvisionInput): Promise<P
         version: 1,
       }).run();
       await tx.insert(activities).values({
-        id: `act_${input.projectId.toLowerCase()}_created`,
+        id: ulid(),
         entityType: "project",
         entityId: input.projectId,
         entityVersion: 1,
@@ -61,10 +64,12 @@ export async function provisionProjectDatabase(input: ProvisionInput): Promise<P
       }).run();
     });
 
-    return { databaseName, url, authToken, hostname: created.hostname };
+    return { databaseName, url, authToken, hostname: createResult.hostname };
   } catch (error) {
     await client?.close();
-    await deleteDatabase(input.turso, databaseName).catch(() => undefined);
+    if (created) {
+      await deleteDatabase(input.turso, databaseName).catch(() => undefined);
+    }
     if (error instanceof ProjectProvisioningError) throw error;
     throw new ProjectProvisioningError(`provisioning Project DB ${databaseName} gagal: ${String(error)}`);
   }

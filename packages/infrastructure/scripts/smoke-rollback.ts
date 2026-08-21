@@ -79,8 +79,8 @@ try {
     fail("C: provision dengan nama DB sudah ada harus gagal");
   } catch (e) {
     if (!(e instanceof ProjectProvisioningError)) fail("C: tipe error harus ProjectProvisioningError", e);
-    else if (await databaseExists(turso, dbNameC)) fail("C: DB yatim masih ada (harus dihapus rollback)");
-    else console.log("PASS C: DB yang gagal diprovision dihapus (tidak ada DB yatim)");
+    else if (!(await databaseExists(turso, dbNameC))) fail("C: DB existing (name conflict, bukan hasil invocation ini) tidak boleh ikut terhapus");
+    else console.log("PASS C: kompensasi hanya DB hasil invocation gagal — DB existing (name conflict) tidak disentuh");
   }
   const registryC = await globalClient.execute("SELECT COUNT(*) AS n FROM projects WHERE id = ?", [projectC]);
   if (Number(registryC.rows[0]?.n) !== 0) fail("C: baris projects yatim masih ada");
