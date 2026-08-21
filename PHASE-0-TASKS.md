@@ -199,9 +199,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.12.1 | 🔎 | [CL-52](#cl-52) | 80 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
+| 0.12.1 | ✅ | [CL-52](#cl-52)<br>[QA-CL-44](#qa-cl-44) | 100 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
 | 0.12.2 | ⬜️ | — | 0 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
-| 0.12.3 | 🔎 | [CL-55](#cl-55) | 80 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
+| 0.12.3 | ✅ | [CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45) | 100 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
 | 0.12.4 | ⬜️ | — | 0 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
 | 0.12.5 | ⬜️ | — | 0 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
 
@@ -228,6 +228,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-45"></a>
+### QA-CL-45 — 2026-08-21 · 0.12.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Sesuai permintaan eksplisit CL-55 untuk memverifikasi commit benar-benar menyertakan file (bukan cuma klaim seperti anomali `cc8c3e7`): `git show e49de75 --stat` mengonfirmasi ketiga `.env.*.example` + `.gitignore` benar-benar berubah di commit tsb. `grep` pola secret (`re_...`/JWT `eyJ...`) di ketiga file → kosong. Isi origin per environment benar (dev localhost, staging `kanban-ngodingin.vercel.app`, prod `kanban.ngodingin.xyz`). `git check-ignore -v .env .env.local` → keduanya tetap ignored (tidak bocor). Re-run `test:smoke-config`: 9/9 PASS.
+**Catatan:** Anomali riwayat 0.12.x (Status/CL tidak sinkron dengan kode) untuk goal ini sekarang tertutup dengan bukti commit yang benar. Tidak ada perubahan SOT.
+
+<a id="qa-cl-44"></a>
+### QA-CL-44 — 2026-08-21 · 0.12.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `.github/workflows/ci.yml`: trigger `push:[main,stag]` + `pull_request` (semua PR), step `install --frozen-lockfile → typecheck → lint → test → build → migrate:global → migrate:projects` — cocok scope "CI: typecheck + test otomatis per push/PR". **Verifikasi independen via GitHub Actions API sungguhan** (`curl api.github.com/repos/ngodingin/kanban/actions/runs?branch=stag`, bukan dipercaya dari klaim CL-52): histori run branch `stag` menunjukkan `cc8c3e7`/`68c2692`/`40d8fb8` = **failure**, lalu `fce3406` dan setiap commit sesudahnya (termasuk 4 commit QA saya sendiri di antaranya) = **success** — 5 run hijau berturut-turut, pola persis seperti diklaim CL-52.
+**Catatan:** Anomali status/CL 0.12.x yang saya catat di QA-CL-02 kini sedang ditutup Dev secara bertahap dengan bukti nyata (bukan klaim tanpa commit seperti sebelumnya). Sisa 0.12.2/0.12.4/0.12.5 masih `⬜️`, belum diklaim selesai. Tidak ada perubahan SOT.
 
 <a id="qa-cl-43"></a>
 ### QA-CL-43 — 2026-08-21 · 0.5.3 🔎 → ✅ (re-verifikasi pasca CL-51)
