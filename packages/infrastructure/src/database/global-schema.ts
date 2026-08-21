@@ -175,7 +175,7 @@ export const membershipGroupAssignments = sqliteTable(
     uniqueIndex("membership_group_assignments_active_unique")
       .on(t.membershipId, t.groupId, t.scopeType, t.scopeId)
       .where(sql`${t.revokedAt} IS NULL`),
-    check("membership_group_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board')`),
+    check("membership_group_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board', 'list', 'card')`),
   ],
 );
 
@@ -201,7 +201,7 @@ export const membershipPermissionAssignments = sqliteTable(
     uniqueIndex("membership_permission_assignments_active_unique")
       .on(t.membershipId, t.permissionId, t.scopeType, t.scopeId)
       .where(sql`${t.revokedAt} IS NULL`),
-    check("membership_permission_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board')`),
+    check("membership_permission_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board', 'list', 'card')`),
     check("membership_permission_assignments_visibility_check", sql`${t.cardReadVisibility} IS NULL OR ${t.cardReadVisibility} IN ('CREATED_BY_ME', 'ASSIGNED_TO_ME', 'ALL')`),
   ],
 );
@@ -240,7 +240,7 @@ export const invitationGroupAssignments = sqliteTable(
   },
   (t) => [
     index("invitation_group_assignments_invitation_idx").on(t.invitationId),
-    check("invitation_group_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board')`),
+    check("invitation_group_assignments_scope_check", sql`${t.scopeType} IN ('project', 'milestone', 'board', 'list', 'card')`),
   ],
 );
 

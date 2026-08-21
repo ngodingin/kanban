@@ -92,7 +92,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.4.2 | ⚠️ | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04) | 60 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.2 | 🔎 | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42) | 80 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
 | 0.4.3 | 🔎 | [CL-15](#cl-15) | 80 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
 **Test:** Migration up idempotent; Better Auth generated-schema contract cocok dengan custom mapping B.2; constraint UNIQUE teruji; scoped assignment tidak dapat menghubungkan Membership/Group beda Project; credential dan Magic Link token tidak disimpan raw.
@@ -314,6 +314,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-41"></a>
+### CL-41 — 2026-08-21 · 0.4.2 ⚠️ → 🔄
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** (mulai) Membaca ulang Review-CL-02/04 + 03-ENGINEERING B.2 + `global-schema.ts`. Konfirmasi temuan: `membership_group_assignments_scope_check`, `membership_permission_assignments_scope_check`, `invitation_group_assignments_scope_check` (global-schema.ts baris 178/204/243) dan migration `0000_global_schema_v1.sql` masih membatasi `scope_type` ke `('project','milestone','board')`, padahal `scopedScopeType` TS union sudah `project|milestone|board|list|card`.
+**Catatan:** Lanjut: perluas ketiga CHECK constraint (schema + migration) ke 5 nilai, regenerate migration (pre-deploy, aman diregenerasi total sesuai preseden CL-17), tambah test positif List/Card + negatif enum invalid di `smoke-global-constraints.ts`. Tidak ada perubahan SOT.
+
+<a id="cl-42"></a>
+### CL-42 — 2026-08-21 · 0.4.2 🔄 → 🔎
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Perbaikan Review-CL-02/04 diterapkan: `global-schema.ts` — 3 CHECK constraint (`membership_group_assignments_scope_check`, `membership_permission_assignments_scope_check`, `invitation_group_assignments_scope_check`) diperluas dari `('project','milestone','board')` ke `('project','milestone','board','list','card')`, sesuai `scopedScopeType` TS union & B.2/BR-042. Migration `0000_global_schema_v1.sql` diregenerasi total via `drizzle-kit generate` (preseden CL-17, pre-deploy tanpa data produksi) — DDL terbukti (`grep scope_check`) memuat 5 nilai di ketiga constraint. `scripts/smoke-global-constraints.ts` diperluas: 3 insert positif (list/card) + 3 insert negatif (enum invalid → CHECK violation) untuk ketiga tabel. `pnpm --filter @kanban/infrastructure test:smoke-global-constraints` — 15 assertion PASS (termasuk 6 baru). `pnpm --filter @kanban/infrastructure test:smoke-global-schema` + `test:smoke-migration` tetap PASS (16 tabel, idempotent) — tidak ada regresi dari regenerasi migration. `pnpm -r typecheck` exit 0; `pnpm lint` exit 0; `pnpm test` (vitest) 6 file/23 test PASS.
+**Catatan:** Mapping Better Auth, uniqueness, dan hash credential (bagian lain goal ini) sudah terbukti sebelumnya di CL-14/QA — tidak disentuh ulang di sini karena di luar temuan Review-CL-02/04. Tidak ada perubahan SOT. Siap 🔎 untuk QA (verifikasi independen migration + constraint + test).
 
 <a id="cl-32"></a>
 ### CL-32 — 2026-08-18 · 0.9.1 🔄 → 🔎

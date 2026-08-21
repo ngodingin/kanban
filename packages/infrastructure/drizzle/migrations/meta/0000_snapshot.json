@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "519753bb-f80e-4950-923b-86cbed66d662",
+  "id": "d8de84e5-dc1e-4463-8b8f-db6f01c7d30c",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "api_keys": {
@@ -544,7 +544,7 @@
       "checkConstraints": {
         "invitation_group_assignments_scope_check": {
           "name": "invitation_group_assignments_scope_check",
-          "value": "\"invitation_group_assignments\".\"scope_type\" IN ('project', 'milestone', 'board')"
+          "value": "\"invitation_group_assignments\".\"scope_type\" IN ('project', 'milestone', 'board', 'list', 'card')"
         }
       }
     },
@@ -748,7 +748,7 @@
       "checkConstraints": {
         "membership_group_assignments_scope_check": {
           "name": "membership_group_assignments_scope_check",
-          "value": "\"membership_group_assignments\".\"scope_type\" IN ('project', 'milestone', 'board')"
+          "value": "\"membership_group_assignments\".\"scope_type\" IN ('project', 'milestone', 'board', 'list', 'card')"
         }
       }
     },
@@ -858,7 +858,7 @@
       "checkConstraints": {
         "membership_permission_assignments_scope_check": {
           "name": "membership_permission_assignments_scope_check",
-          "value": "\"membership_permission_assignments\".\"scope_type\" IN ('project', 'milestone', 'board')"
+          "value": "\"membership_permission_assignments\".\"scope_type\" IN ('project', 'milestone', 'board', 'list', 'card')"
         },
         "membership_permission_assignments_visibility_check": {
           "name": "membership_permission_assignments_visibility_check",

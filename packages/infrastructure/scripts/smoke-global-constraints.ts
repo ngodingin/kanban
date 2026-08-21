@@ -106,6 +106,61 @@ await client.execute({
   });
   console.log("PASS positif: assignment yang sama boleh dibuat ulang setelah revoked_at (partial UNIQUE)");
 
+  await client.execute({
+    sql: "INSERT INTO membership_group_assignments (id, membership_id, group_id, scope_type, scope_id, created_at) VALUES ('a4', 'm1', 'g1', 'list', 'list_1', ?)",
+    args: [now],
+  });
+  await client.execute({
+    sql: "INSERT INTO membership_group_assignments (id, membership_id, group_id, scope_type, scope_id, created_at) VALUES ('a5', 'm1', 'g1', 'card', 'card_1', ?)",
+    args: [now],
+  });
+  console.log("PASS positif: membership_group_assignments menerima scope_type list/card (B.2)");
+  await expectUniqueViolation(
+    () =>
+      client.execute({
+        sql: "INSERT INTO membership_group_assignments (id, membership_id, group_id, scope_type, scope_id, created_at) VALUES ('a6', 'm1', 'g1', 'invalid', 'x', ?)",
+        args: [now],
+      }),
+    "negatif: membership_group_assignments.scope_type di luar enum -> CHECK",
+  );
+
+  await client.execute({
+    sql: "INSERT INTO membership_permission_assignments (id, membership_id, permission_id, scope_type, scope_id, created_at) VALUES ('pa1', 'm1', 'perm_1', 'list', 'list_1', ?)",
+    args: [now],
+  });
+  await client.execute({
+    sql: "INSERT INTO membership_permission_assignments (id, membership_id, permission_id, scope_type, scope_id, created_at) VALUES ('pa2', 'm1', 'perm_1', 'card', 'card_1', ?)",
+    args: [now],
+  });
+  console.log("PASS positif: membership_permission_assignments menerima scope_type list/card (B.2)");
+  await expectUniqueViolation(
+    () =>
+      client.execute({
+        sql: "INSERT INTO membership_permission_assignments (id, membership_id, permission_id, scope_type, scope_id, created_at) VALUES ('pa3', 'm1', 'perm_1', 'invalid', 'x', ?)",
+        args: [now],
+      }),
+    "negatif: membership_permission_assignments.scope_type di luar enum -> CHECK",
+  );
+
+  await client.execute({
+    sql: "INSERT INTO invitations (id, project_id, email, invited_by_user_id, expires_at, created_at) VALUES ('inv1', 'proj_1', 'c@x.dev', ?, ?, ?)",
+    args: [uid1, now, now],
+  });
+  await client.execute({
+    sql: "INSERT INTO invitation_group_assignments (id, invitation_id, group_id, scope_type, scope_id) VALUES ('iga1', 'inv1', 'g1', 'list', 'list_1')",
+  });
+  await client.execute({
+    sql: "INSERT INTO invitation_group_assignments (id, invitation_id, group_id, scope_type, scope_id) VALUES ('iga2', 'inv1', 'g1', 'card', 'card_1')",
+  });
+  console.log("PASS positif: invitation_group_assignments menerima scope_type list/card (B.2)");
+  await expectUniqueViolation(
+    () =>
+      client.execute({
+        sql: "INSERT INTO invitation_group_assignments (id, invitation_id, group_id, scope_type, scope_id) VALUES ('iga3', 'inv1', 'g1', 'invalid', 'x')",
+      }),
+    "negatif: invitation_group_assignments.scope_type di luar enum -> CHECK",
+  );
+
   const gcols = await columns("membership_group_assignments");
   if (!gcols.includes("scope_type")) throw new Error("kolom scope_type hilang");
   if (!gcols.includes("revoked_at")) throw new Error("kolom revoked_at hilang");
