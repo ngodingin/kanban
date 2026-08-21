@@ -33,9 +33,12 @@ const fail = (label: string, e?: unknown): void => {
   console.error(`FAIL ${label}${e ? `: ${String(e)}` : ""}`);
 };
 
+const userId = "user_rollback_smoke";
+let dbNameC: string | undefined;
+let projectB: string | undefined;
+
 try {
   await applyGlobalMigrations(globalClient);
-  const userId = "user_rollback_smoke";
   await globalClient.execute({
     sql: "INSERT INTO users (id, email, email_verified, name, created_at, updated_at) VALUES (?, ?, 0, ?, ?, ?)",
     args: [userId, `user-rollback-${stamp}@smoke.local`, "Smoke Rollback", now, now],
@@ -64,7 +67,7 @@ try {
   else console.log("PASS A: registry projects di-rollback saat provisioning gagal");
 
   const projectC = `proj_rollback_c_${stamp}`;
-  const dbNameC = projectDatabaseName(projectC);
+  dbNameC = projectDatabaseName(projectC);
   const pre = await createDatabase(turso, dbNameC);
   await mintDatabaseToken(turso, dbNameC);
   try {
@@ -88,7 +91,7 @@ try {
   else console.log("PASS C: registry projects di-rollback saat provisioning gagal di tengah");
   void pre;
 
-  const projectB = `proj_rollback_b_${stamp}`;
+  projectB = `proj_rollback_b_${stamp}`;
   const dbNameB = projectDatabaseName(projectB);
   await registerProject(globalClient, { projectId: projectB, ownerUserId: userId, now });
   try {
@@ -115,14 +118,16 @@ try {
       else console.log("PASS B: tidak ada mapping yatim (registrasi+mapping atomik)");
     }
   }
-
-  await deleteProjectRegistry(globalClient, projectB);
-  await globalClient.execute("DELETE FROM users WHERE id = ?", [userId]);
-  await deleteDatabase(turso, dbNameC).catch(() => undefined);
-  console.log("INFO: data uji dihapus (cleanup)");
 } catch (e) {
   fail("exception", e);
 } finally {
+  // Cleanup WAJIB tanpa syarat — jalan meski assertion/exception di atas gagal
+  // sebelum sempat mencapai baris ini, supaya tidak meninggalkan Turso DB
+  // atau row Global DB yatim (temuan orphan proj-projrollbacka... 2026-08-21).
+  if (dbNameC) await deleteDatabase(turso, dbNameC).catch(() => undefined);
+  if (projectB) await deleteProjectRegistry(globalClient, projectB).catch(() => undefined);
+  await globalClient.execute("DELETE FROM users WHERE id = ?", [userId]).catch(() => undefined);
+  console.log("INFO: data uji dihapus (cleanup)");
   await globalClient.close();
 }
 
