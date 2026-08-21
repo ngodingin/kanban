@@ -185,10 +185,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.11.1 | 🔎 | [CL-26](#cl-26) | 80 | P0 | Setup Vitest 4.x exact pin untuk unit + integration | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.2](docs/04-DELIVERY.md), [B.5](docs/04-DELIVERY.md) | 0.1.3 |
-| 0.11.2 | 🔎 | [CL-27](#cl-27) | 80 | P0 | DB test terisolasi per suite + rollback antar test | [04-DEL B.5](docs/04-DELIVERY.md) | 0.4.3, 0.5.3 |
-| 0.11.3 | 🔎 | [CL-40](#cl-40) | 80 | P1 | Konvensi penamaan test mereferensikan ID rule (BR/AC) | [04-DEL B.6](docs/04-DELIVERY.md) | 0.11.1 |
-| 0.11.4 | 🔎 | [CL-47](#cl-47) | 80 | P2 | Setup Playwright 1.62.x exact pin + production-like webServer untuk E2E smoke | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | 0.1.1 |
+| 0.11.1 | ✅ | [CL-26](#cl-26)<br>[QA-CL-37](#qa-cl-37) | 100 | P0 | Setup Vitest 4.x exact pin untuk unit + integration | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.2](docs/04-DELIVERY.md), [B.5](docs/04-DELIVERY.md) | 0.1.3 |
+| 0.11.2 | ✅ | [CL-27](#cl-27)<br>[QA-CL-38](#qa-cl-38) | 100 | P0 | DB test terisolasi per suite + rollback antar test | [04-DEL B.5](docs/04-DELIVERY.md) | 0.4.3, 0.5.3 |
+| 0.11.3 | ✅ | [CL-40](#cl-40)<br>[QA-CL-39](#qa-cl-39) | 100 | P1 | Konvensi penamaan test mereferensikan ID rule (BR/AC) | [04-DEL B.6](docs/04-DELIVERY.md) | 0.11.1 |
+| 0.11.4 | ✅ | [CL-47](#cl-47)<br>[QA-CL-40](#qa-cl-40) | 100 | P2 | Setup Playwright 1.62.x exact pin + production-like webServer untuk E2E smoke | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | 0.1.1 |
 
 **Test:** (meta) contoh Vitest unit+integration dan Playwright E2E smoke lulus lokal.
 **DoD:** `test` dan `test:e2e` jalan; integration test punya DB terisolasi & bersih antar test; pola penamaan ber-ID siap.
@@ -257,6 +257,30 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ### QA-CL-35 — 2026-08-21 · 0.7.2 🔎 → ✅
 **Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
 **Bukti:** Baca `error-codes.ts` dan bandingkan terhadap [02-SPEC C.2](docs/02-SPEC.md): tepat 12 kode kanonik, cocok persis (set & isi). `isErrorCode` type guard mempersempit ke union tertutup.
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-40"></a>
+### QA-CL-40 — 2026-08-21 · 0.11.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm test:e2e`: `webServer` menjalankan `tsc build` real + `node dist/serve.js` real (bukan mock), health-check gate lulus, 1 test `e2e/health.spec.ts` PASS terhadap server production-like nyata. `@playwright/test@1.62.1` + `@hono/node-server@2.1.1` exact pin dikonfirmasi di `package.json`.
+**Catatan:** Scope sengaja terbatas ke health-check (prinsip Phase 0 "plumbing bukan domain endpoint") — skenario E2E domain menunggu `apps/web` (Phase 7). Tidak ada perubahan SOT.
+
+<a id="qa-cl-39"></a>
+### QA-CL-39 — 2026-08-21 · 0.11.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca seluruh 6 file test: mayoritas nama test memakai format `ID-rule: deskripsi` sesuai konvensi B.6 (`AC-001/BR-007`, `INV-9/INV-MOVE-004`, `C.2`) — `db-isolation.test.ts`, `transaction.test.ts`, ketiga file `contracts/test/*` konsisten. B.6 memakai kata "SHOULD" (bukan MUST) sehingga test unit murni tanpa BR spesifik (mis. `project-db-name.test.ts`) yang tidak berlabel ID tetap dapat diterima.
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-38"></a>
+### QA-CL-38 — 2026-08-21 · 0.11.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `db-isolation.test.ts`: DB file terpisah per suite (10 tabel), `beforeEach` truncate memastikan test berikutnya mulai bersih (dibuktikan test eksplisit "test lain dimulai bersih"), suite kedua punya DB kosong sendiri (state tidak bocor lintas suite). Re-run `pnpm test`: seluruh assertion isolasi PASS.
+**Catatan:** Mekanisme aktual adalah **truncate per test**, bukan literal SQL transaction rollback yang disebut B.5 — deviasi teknis yang sudah didokumentasikan jujur oleh Dev (CL-27), secara fungsional mencapai jaminan isolasi yang sama (state tidak bocor antar test/suite). Tidak ada perubahan SOT.
+
+<a id="qa-cl-37"></a>
+### QA-CL-37 — 2026-08-21 · 0.11.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `vitest@4.1.10` exact pin dikonfirmasi di `package.json` root (tanpa `^`). Re-run `pnpm test`: 6 file/23 test PASS mencakup unit + integration.
 **Catatan:** Tidak ada perubahan SOT.
 
 <a id="qa-cl-34"></a>
