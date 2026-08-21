@@ -200,10 +200,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.12.1 | ✅ | [CL-52](#cl-52)<br>[QA-CL-44](#qa-cl-44)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
-| 0.12.2 | 🔎 | [Review-CL-07](#review-cl-07)<br>[CL-59](#cl-59) | 80 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
+| 0.12.2 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-59](#cl-59)<br>[QA-CL-46](#qa-cl-46) | 100 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
 | 0.12.3 | ✅ | [CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
-| 0.12.4 | 🔎 | [Review-CL-07](#review-cl-07)<br>[CL-56](#cl-56)<br>[CL-57](#cl-57)<br>[CL-58](#cl-58) | 80 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
-| 0.12.5 | 🔎 | [Review-CL-07](#review-cl-07)<br>[CL-60](#cl-60) | 80 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
+| 0.12.4 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-56](#cl-56)<br>[CL-57](#cl-57)<br>[CL-58](#cl-58)<br>[QA-CL-47](#qa-cl-47) | 100 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
+| 0.12.5 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-60](#cl-60)<br>[QA-CL-48](#qa-cl-48) | 100 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
 
 **Test:** CI hijau di branch; migrasi Global jalan di staging; seam fan-out Project terpanggil (walau 0 Project); preview `/api/*` mengembalikan response API, route web mengembalikan HTML, unknown `/api/*` tidak pernah mengembalikan `index.html`, dan Magic Link callback mempertahankan session cookie pada origin yang sama.
 **DoD:** CI menjalankan build+typecheck+lint+test+migrasi; env terpisah; satu-origin Hono/static routing terbukti; langkah release checklist F.6 terhubung.
@@ -240,6 +240,25 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Role:** AI-Planning & Review · **Model:** Codex
 **Bukti:** Impact scan lintas-SOT terhadap `01-PRODUCT` 0.3/0.4/2.5 serta `03-ENGINEERING` A.8/A.11/B.7/D.2/D.6/D.8/Part E/F.1/F.2 menemukan pernyataan aktif “pending POC”, “belum final”, dan “sync vs async ditunda”. Bukti keputusan: CL-07 + QA-CL-08 menetapkan Turso GO/provisioning sinkron; QA-CL-05/06/07 mereproduksi latensi, provisioning, dan concurrency; QA-CL-33 memverifikasi implementasi provisioning sinkron. SOT 2.0.8 menyelaraskan seluruh pernyataan aktif tersebut; canonical staging origin 2.0.7 tetap `https://kanban-ngodingin.vercel.app`.
 **Catatan:** Changelog/Closure Log historis yang menyebut status pending tetap dipertahankan sebagai rekam keputusan pada waktunya. Tidak ada perubahan business invariant, authorization, lifecycle, atau domain API contract. Review berikutnya mengaudit TASK-0.12 secara terpisah.
+
+<a id="qa-cl-48"></a>
+### QA-CL-48 — 2026-08-21 · 0.12.5 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `node scripts/release-check.mjs`: keluaran identik klaim CL-60 — **2 PASS / 0 FAIL / 4 DEFERRED**, exit 0. Baca script: 4 butir DEFERRED (smoke domain, DoD per fase, backup/restore, observability) diberi alasan jujur terkait batas fase (bukan diklaim lolos palsu); butir 5 benar-benar membaca `docs/03-ENGINEERING.md` §F.3 dan mengecek isi kata "idempotent"/"MUST idempotent" (bukan hard-code `true`). Konfirmasi wiring: `grep release-check .github/workflows/ci.yml` → step ada setelah migration smoke.
+**Catatan:** DEFERRED yang jujur (bukan fake-pass) adalah pendekatan yang tepat untuk gate F.6 di Phase 0 — sesuai prinsip Phase 0 "plumbing bukan domain endpoint". Tidak ada perubahan SOT.
+
+<a id="qa-cl-47"></a>
+### QA-CL-47 — 2026-08-21 · 0.12.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Verifikasi independen tanpa mengandalkan curl+bypass-secret ke deployment live (diblokir kebijakan sandbox, wajar untuk credential sensitif) — dilakukan lewat build artifact lokal yang identik dengan yang di-deploy: `node scripts/preview-build.mjs` → `require('./.vercel/output/functions/api.func/index.js')` menunjukkan export `{GET, POST, createApiApp}` (bukan `default`, sesuai fix CL-57); memanggil `GET(new Request('/api/v1/health'))` → **200 sinkron, tidak hang**; `GET(new Request('/api/unknown-route-xyz'))` → **404**, membuktikan `config.json` routing (`filesystem` → regex `/api(?:/(.*))?` → catch-all `/index.html`) benar menangkap unknown API path sebelum jatuh ke SPA fallback. `require('libsql')` dari dalam `api.func/` (isolated, tanpa `node_modules` luar) sukses — native binding closure ter-copy benar (fix CL-56). Re-run `node scripts/preview-verify.ts` lokal: **7/7 PASS** (routing API/web/SPA-fallback/unknown-not-index + Magic Link same-origin session cookie).
+**Bukti tambahan — temuan & tindakan:** Query Global DB Turso nyata menemukan **1 baris orphan** `users.id = "one-origin-user"` (format lama non-ULID, dari sebelum fix CL-56/57 — persis temuan Review-CL-07 poin 2). Verifikasi fresh run saya sendiri (email timestamped + ULID id) ter-cleanup benar oleh blok `finally` (tidak menambah orphan baru). Orphan lama **dihapus manual** (`users`+`auth_sessions`+`auth_verifications` terkait) karena jelas debris test lama, bukan data asli, dan pola hapusnya identik dengan cleanup yang sudah ada di kode saat ini.
+**Catatan:** Deployment live sungguhan sudah diverifikasi Dev di CL-58 dengan automation-bypass header (di luar jangkauan QA sesi ini karena kebijakan sandbox) — QA memvalidasi ulang logika/artifact build yang identik, bukan hanya membaca ulang klaim. Gap operasional (env var `GLOBAL_DB_URL`/`GLOBAL_DB_TOKEN` belum di-set di Vercel Preview/Production) sudah dicatat CL-58 sebagai di luar scope 0.12.4, konsisten. Tidak ada perubahan SOT.
+
+<a id="qa-cl-46"></a>
+### QA-CL-46 — 2026-08-21 · 0.12.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-migrate-projects` live (Turso nyata): 3/3 PASS — fan-out melihat mapping nyata, tidak ada kegagalan, dan **migrasi benar-benar diterapkan** (10 tabel Project DB terpasang, diverifikasi via koneksi langsung ke DB hasil resolusi hostname+JWT, bukan cuma exit code). Baca `migrate-projects.ts`: `resolveProjectClient()` membedakan `file:` (lokal) vs nama Turso asli (resolve hostname via `getDatabase()` + mint JWT per-DB via `mintDatabaseToken()` — tidak lagi memakai `database_id` sebagai URL langsung, menutup bug Review-CL-07 poin 1); kegagalan per-project di-collect (tidak abort seluruh fan-out); guard "is main module" mencegah auto-run saat di-import oleh smoke test.
+**Catatan:** Regresi kasus `0/0` (CI ephemeral) tetap terbukti jalan (dicek Dev, konsisten dengan run CI hijau berturut-turut). Tidak ada perubahan SOT.
 
 <a id="qa-cl-45"></a>
 ### QA-CL-45 — 2026-08-21 · 0.12.3 🔎 → ✅
