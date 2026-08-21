@@ -78,9 +78,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.3.1 | 🔎 | [CL-08](#cl-08) | 80 | P0 | Factory koneksi libSQL/Drizzle (pisah Global client vs Project client dinamis) | [03-ENG A.4](docs/03-ENGINEERING.md), [A.5](docs/03-ENGINEERING.md) | 0.1.3 |
-| 0.3.2 | 🔎 | [CL-11](#cl-11) | 80 | P0 | Resolver `project_id → database` via tabel `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.3.3 | 🔎 | [CL-12](#cl-12) | 80 | P0 | Guard: `project_id` tak dikenal tidak pernah jatuh ke DB Project lain | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2 |
+| 0.3.1 | ✅ | [CL-08](#cl-08)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Factory koneksi libSQL/Drizzle (pisah Global client vs Project client dinamis) | [03-ENG A.4](docs/03-ENGINEERING.md), [A.5](docs/03-ENGINEERING.md) | 0.1.3 |
+| 0.3.2 | ✅ | [CL-11](#cl-11)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | Resolver `project_id → database` via tabel `project_databases` (Global) | [03-ENG A.4](docs/03-ENGINEERING.md), [B.1](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.3.3 | ✅ | [CL-12](#cl-12)<br>[QA-CL-12](#qa-cl-12) | 100 | P0 | Guard: `project_id` tak dikenal tidak pernah jatuh ke DB Project lain | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2 |
 
 **Test:** Unit — resolver kembalikan koneksi benar untuk `project_id` valid; `project_id` tak dikenal ditolak aman (tidak akses DB lain).
 **DoD:** Resolver di balik interface; tidak ada koneksi Project DB hard-coded; fondasi isolation (BR-007/BR-009) terbukti via test.
@@ -228,6 +228,24 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-12"></a>
+### QA-CL-12 — 2026-08-21 · 0.3.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke-guard`: 3/3 PASS (positif resolve dikenal; negatif `resolveOrThrow` project tak dikenal → `ProjectDatabaseNotFoundError`; negatif guard tidak menyentuh Project DB lain). Baca `resolveOrThrow` (`project-resolver.ts`): melempar `ProjectDatabaseNotFoundError` saat mapping `null`, tidak pernah fallback ke mapping lain — BR-007/BR-009 (hard isolation boundary) terpenuhi di titik resolusi.
+**Catatan:** Fondasi langsung untuk pipeline 0.9.3 (resolve DB setelah verifikasi membership). Tidak ada perubahan SOT.
+
+<a id="qa-cl-11"></a>
+### QA-CL-11 — 2026-08-21 · 0.3.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke-resolver`: 3/3 PASS (resolve project_id dikenal → mapping benar; project_id tak dikenal → `null`; project_id kosong → `null`, tidak pernah menyentuh DB lain). Baca `SqliteProjectDatabaseResolver` (`project-resolver.ts`): query terparameterisasi (`?` bind, bukan interpolasi string) ke `project_databases`, resolver di balik interface `ProjectDatabaseResolver`.
+**Catatan:** Tidak ada koneksi Project DB hard-coded; DoD task terpenuhi. Tidak ada perubahan SOT.
+
+<a id="qa-cl-10"></a>
+### QA-CL-10 — 2026-08-21 · 0.3.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke` (dengan `.env` nyata, pasca fix CL-46): 5/5 PASS (3 negatif: env tidak lengkap/url non-libsql/token kosong → throw; 2 positif: `createGlobalClient`/`createProjectClient` → `SELECT 1` ok terhadap Turso remote nyata). Baca `factory.ts`: `createGlobalClient`/`createProjectClient` terpisah sesuai A.4 (Global vs Project client), tidak ada URL/token hard-coded — parameter eksplisit atau `process.env` via `parseGlobalDbEnv`.
+**Catatan:** Evidence CL-08 kini reproducible penuh setelah regresi `GLOBAL_DB_TOKEN` (lihat QA-CL-02/QA-CL-09) diperbaiki di `factory.ts`. Tidak ada perubahan SOT.
 
 <a id="qa-cl-09"></a>
 ### QA-CL-09 — 2026-08-21 · 0.1.2 🔎 → ✅
