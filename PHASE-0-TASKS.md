@@ -131,9 +131,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.7.1 | 🔎 | [CL-37](#cl-37) | 80 | P1 | Bentuk sukses `{data}` & error `{error:{code,message}}` | [02-SPEC C.2](docs/02-SPEC.md) | 0.1.2 |
-| 0.7.2 | 🔎 | [CL-38](#cl-38) | 80 | P1 | Enum error code kanonik (12 code) | [02-SPEC C.2](docs/02-SPEC.md) | 0.7.1 |
-| 0.7.3 | 🔎 | [CL-39](#cl-39) | 80 | P2 | Helper mapping error domain → HTTP + seam `Idempotency-Key` | [02-SPEC C.2](docs/02-SPEC.md), [C.3](docs/02-SPEC.md) | 0.7.2 |
+| 0.7.1 | ✅ | [CL-37](#cl-37)<br>[QA-CL-34](#qa-cl-34) | 100 | P1 | Bentuk sukses `{data}` & error `{error:{code,message}}` | [02-SPEC C.2](docs/02-SPEC.md) | 0.1.2 |
+| 0.7.2 | ✅ | [CL-38](#cl-38)<br>[QA-CL-35](#qa-cl-35) | 100 | P1 | Enum error code kanonik (12 code) | [02-SPEC C.2](docs/02-SPEC.md) | 0.7.1 |
+| 0.7.3 | ✅ | [CL-39](#cl-39)<br>[QA-CL-36](#qa-cl-36) | 100 | P2 | Helper mapping error domain → HTTP + seam `Idempotency-Key` | [02-SPEC C.2](docs/02-SPEC.md), [C.3](docs/02-SPEC.md) | 0.7.2 |
 
 **Test:** Unit — helper menghasilkan bentuk response benar; tiap error code kanonik terpetakan ke HTTP status.
 **DoD:** Handler mendatang dapat memakai helper konsisten; seluruh error code C.2 tersedia.
@@ -245,6 +245,24 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ### QA-CL-31 — 2026-08-21 · 0.6.2 🔎 → ✅
 **Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
 **Bukti:** Re-run `test:smoke-global-mapping` live: 3/3 PASS — mapping tercatat di `project_databases` dan terbaca ulang; mapping duplikat untuk `project_id` sama ditolak (satu Project = satu database, A.4).
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-36"></a>
+### QA-CL-36 — 2026-08-21 · 0.7.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm vitest run packages/contracts`: 3 file/14 test PASS. Baca `http-mapping.ts`: `CODE_TO_HTTP` memetakan seluruh 12 kode ke status HTTP masuk akal (403/404/409/410/422/401 sesuai semantik); `toErrorResponse` default aman ke 500 `INVALID_STATE` untuk kode tak dikenal (tidak bocor detail internal); `extractIdempotencyKey` trim + null untuk kosong/blank, konstanta header `Idempotency-Key` sesuai C.3.
+**Catatan:** **Temuan non-blocking:** `packages/contracts/src/http-mapping.ts` punya perubahan **belum di-commit** di working tree (signature `extractIdempotencyKey(headers: Headers)` → `headers: { get(name): string|null }`) — sudah ada sejak awal sesi ini, tidak tertaut ke CL manapun, dan secara fungsional netral (tipe struktural yang kompatibel dengan `Headers`, tidak mengubah perilaku, semua test tetap hijau menyertakannya). Direkomendasikan Dev meng-commit atau membuang perubahan ini eksplisit alih-alih dibiarkan mengambang. Status per kode HTTP adalah keputusan teknis Dev (CL-39, C.2 tidak menetapkan status) — konsisten dan mudah diganti. Tidak ada perubahan SOT.
+
+<a id="qa-cl-35"></a>
+### QA-CL-35 — 2026-08-21 · 0.7.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `error-codes.ts` dan bandingkan terhadap [02-SPEC C.2](docs/02-SPEC.md): tepat 12 kode kanonik, cocok persis (set & isi). `isErrorCode` type guard mempersempit ke union tertutup.
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-34"></a>
+### QA-CL-34 — 2026-08-21 · 0.7.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `api-response.ts`: `ok(data) → {data}`, `apiError(code,message) → {error:{code,message}}` — cocok persis bentuk C.2.
 **Catatan:** Tidak ada perubahan SOT.
 
 <a id="qa-cl-30"></a>
