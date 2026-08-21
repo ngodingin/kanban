@@ -173,8 +173,8 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.10.1 | 🔎 | [CL-24](#cl-24) | 80 | P0 | Pola repository — domain logic tidak import Drizzle langsung | [03-ENG A.7](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.10.2 | 🔎 | [CL-25](#cl-25) | 80 | P0 | Transaction helper `BEGIN IMMEDIATE` (mutation + activity atomic) | [03-ENG A.6](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.10.1 | ✅ | [CL-24](#cl-24)<br>[QA-CL-19](#qa-cl-19) | 100 | P0 | Pola repository — domain logic tidak import Drizzle langsung | [03-ENG A.7](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.10.2 | ✅ | [CL-25](#cl-25)<br>[QA-CL-20](#qa-cl-20) | 100 | P0 | Transaction helper `BEGIN IMMEDIATE` (mutation + activity atomic) | [03-ENG A.6](docs/03-ENGINEERING.md) | 0.3.1 |
 
 **Test:** Unit — transaction helper commit menyimpan; rollback membatalkan (uji mutation + dummy activity atomic).
 **DoD:** Boundary jelas; domain tidak bergantung API Drizzle langsung; tx helper tersedia (fondasi A.6 / atomic Card move INV-MOVE-004).
@@ -228,6 +228,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-20"></a>
+### QA-CL-20 — 2026-08-21 · 0.10.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-transaction`: 3/3 PASS (commit simpan mutation+activity bersama; rollback saat throw; atomik — mutation dibatalkan saat activity gagal, INV #9). **Gap ditemukan & ditutup:** CL-25 sendiri mencatat "perilaku busy retry terbukti di POC 0.2.3, bukan di helper ini" — smoke-transaction.ts memakai `file:` lokal, tidak pernah memicu `SQLITE_BUSY` nyata, dan `isBusy()` di `transaction.ts` (cek `String(error.cause ?? error).includes("SQLITE_BUSY")`) memakai mekanisme deteksi **berbeda** dari POC 0.2.3 (`e.code === "SQLITE_BUSY"`) — potensi false-negative tidak pernah diuji. QA menulis skrip sementara (dihapus setelah run, tidak di-commit) yang memanggil `runInWriteTransaction` langsung (bukan transaksi manual seperti POC) dengan 20 worker konkuren terhadap Turso remote nyata, increment counter shared row: **2× run, 20/20 sukses, 0 lost update, 0 `TransactionBusyError` (retry habis), 0 unhandled-busy-error (isBusy() gagal deteksi)** — retry logic helper produksi ini terbukti benar-benar menangani `SQLITE_BUSY` remote nyata, bukan cuma diasumsikan dari POC yang beda kode.
+**Catatan:** Ini menutup gap concurrency-sensitive yang secara jujur diakui Dev di CL-25 (AGENTS §11.3.4 — bug interleaving tidak terlihat dari pembacaan kode). Rekomendasi non-blocking: tambahkan test serupa (retry-under-contention) permanen ke `smoke-transaction.ts` atau suite terpisah agar tidak bergantung pada verifikasi manual QA di masa depan. Tidak ada perubahan SOT, tidak ada file baru yang di-commit.
+
+<a id="qa-cl-19"></a>
+### QA-CL-19 — 2026-08-21 · 0.10.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-repository`: 5/5 PASS. Baca `packages/domain/src/project/project-repository.ts` (interface + record type polos) dan `grep drizzle packages/domain/src` → kosong (tidak ada import Drizzle di domain). `packages/infrastructure/src/database/project-repository.ts` (`DrizzleProjectRepository`) mengimplementasikan interface tsb, drizzle hanya dipakai di sisi infrastructure.
+**Catatan:** Boundary A.7/A.12 bersih. Tidak ada perubahan SOT.
 
 <a id="qa-cl-18"></a>
 ### QA-CL-18 — 2026-08-21 · 0.4.3 🔎 → ✅
