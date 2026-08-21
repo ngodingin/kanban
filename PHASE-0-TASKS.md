@@ -50,7 +50,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.1.1 | ✅ | [CL-01](#cl-01)<br>[QA-CL-01](#qa-cl-01) | 100 | P0 | Verifikasi baseline masih latest compatible LTS/stable sesuai A.8, lalu inisialisasi Git dan bootstrap pnpm workspace + Node.js 24 LTS + Hono 4 + TypeScript 6 memakai exact pin (build & typecheck jalan) | [03-ENG A.8](docs/03-ENGINEERING.md) | — |
-| 0.1.2 | 🔎 | [CL-09](#cl-09)<br>[QA-CL-02](#qa-cl-02)<br>[CL-46](#cl-46) | 80 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.1.2 | ✅ | [CL-09](#cl-09)<br>[QA-CL-02](#qa-cl-02)<br>[CL-46](#cl-46)<br>[QA-CL-09](#qa-cl-09) | 100 | P1 | Buat skeleton A.7: `apps/api` serta `packages/domain`, `infrastructure`, `contracts`, `shared`; `apps/web` tetap placeholder sampai Phase 7 | [03-ENG A.7](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.3 | ✅ | [CL-05](#cl-05)<br>[QA-CL-03](#qa-cl-03) | 100 | P0 | Pasang exact pin A.8 untuk libSQL/Turso SDK, Zod, ULID, Drizzle + drizzle-kit, ESLint + typescript-eslint, dan Prettier; commit `pnpm-lock.yaml` | [03-ENG A.8](docs/03-ENGINEERING.md), [A.12](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.4 | ✅ | [CL-10](#cl-10)<br>[QA-CL-04](#qa-cl-04) | 100 | P1 | `.env.example` + loader config untuk canonical origin per environment, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `AUTH_RESEND_KEY`, dan sender `noreply@kanban.ngodingin.xyz` (tanpa secret nyata) | [03-ENG D.7](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.1.1 |
 | 0.1.5 | 🔎 | [Review-CL-03](#review-cl-03)<br>[CL-48](#cl-48) | 80 | P1 | Tambah `compose.devenv.yml`: Docker Compose Node 24.18.0 + Corepack pnpm 11.22.0 untuk menjalankan `pnpm install --frozen-lockfile`, build, typecheck, lint, dan smoke test tanpa runtime host | [03-ENG A.8](docs/03-ENGINEERING.md), [04-DEL B.5](docs/04-DELIVERY.md) | — |
@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-09"></a>
+### QA-CL-09 — 2026-08-21 · 0.1.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke` dengan `.env` nyata: 5/5 PASS termasuk `negatif: GLOBAL_DB_TOKEN hilang -> throw` yang sebelumnya FAIL di QA-CL-02. Diff `factory.ts` dikonfirmasi: `GLOBAL_DB_TOKEN` kembali `z.string().min(1)` (CL-46). Struktur folder A.7 sudah terverifikasi sebelumnya di QA-CL-02, tidak berubah.
+**Catatan:** Regresi commit `cc8c3e7` untuk goal ini selesai ditutup oleh sesi Dev paralel (`b147962`). Tidak ada perubahan SOT.
 
 <a id="qa-cl-08"></a>
 ### QA-CL-08 — 2026-08-21 · 0.2.4 🔎 → ✅
