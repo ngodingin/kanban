@@ -158,11 +158,11 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.9.1 | 🔎 | [CL-32](#cl-32) | 80 | P0 | Resolve identity (session; seam untuk PAT/API Key di Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.8.3 |
-| 0.9.2 | 🔎 | [CL-33](#cl-33) | 80 | P0 | Load Project dari `:project_id` + verify membership exists | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2, 0.9.1 |
-| 0.9.3 | 🔎 | [CL-34](#cl-34) | 80 | P0 | Resolve Project DB **setelah** verifikasi membership | [03-ENG A.4](docs/03-ENGINEERING.md) | 0.9.2 |
-| 0.9.4 | 🔎 | [CL-35](#cl-35) | 80 | P0 | Permission resolution = seam kosong (diisi Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.9.1 |
-| 0.9.5 | 🔎 | [CL-36](#cl-36) | 80 | P0 | Semua akses resource WAJIB lewat pipeline (tidak ada bypass) | [BR-008](docs/02-SPEC.md), [AC-001](docs/04-DELIVERY.md) | 0.9.3 |
+| 0.9.1 | ✅ | [CL-32](#cl-32)<br>[QA-CL-21](#qa-cl-21) | 100 | P0 | Resolve identity (session; seam untuk PAT/API Key di Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.8.3 |
+| 0.9.2 | ✅ | [CL-33](#cl-33)<br>[QA-CL-22](#qa-cl-22) | 100 | P0 | Load Project dari `:project_id` + verify membership exists | [BR-007](docs/02-SPEC.md), [BR-009](docs/02-SPEC.md) | 0.3.2, 0.9.1 |
+| 0.9.3 | ✅ | [CL-34](#cl-34)<br>[QA-CL-23](#qa-cl-23) | 100 | P0 | Resolve Project DB **setelah** verifikasi membership | [03-ENG A.4](docs/03-ENGINEERING.md) | 0.9.2 |
+| 0.9.4 | ✅ | [CL-35](#cl-35)<br>[QA-CL-24](#qa-cl-24) | 100 | P0 | Permission resolution = seam kosong (diisi Phase 4) | [03-ENG C.1](docs/03-ENGINEERING.md) | 0.9.1 |
+| 0.9.5 | ✅ | [CL-36](#cl-36)<br>[QA-CL-25](#qa-cl-25) | 100 | P0 | Semua akses resource WAJIB lewat pipeline (tidak ada bypass) | [BR-008](docs/02-SPEC.md), [AC-001](docs/04-DELIVERY.md) | 0.9.3 |
 
 **Test:** Integration — request tanpa identitas → ditolak; ke Project tanpa membership → `PROJECT_ACCESS_DENIED`; menyebut `project_id` Project lain → tidak pernah mengakses DB Project lain.
 **DoD:** Tidak ada jalur akses resource yang melewati pipeline; `project_id` diverifikasi terhadap membership **sebelum** resolve Project DB; fondasi AC-001/AC-030 terpasang.
@@ -228,6 +228,36 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-25"></a>
+### QA-CL-25 — 2026-08-21 · 0.9.5 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `pipeline.ts`: `RequestPipeline.run()` adalah satu urutan tetap identity → project/membership → database → permission, tidak ada cabang lain untuk keluar lebih awal ke resource. Re-run `test:smoke-pipeline` penuh: 11/11 PASS termasuk `pipe-cross-project-no-db` yang secara eksplisit membuktikan resolver DB Project B **tidak pernah dipanggil** untuk user A yang bukan anggota (spy pada resolver) — DoD "tidak ada bypass" terbukti langsung, bukan cuma diklaim.
+**Catatan:** Fase 0 belum ada domain endpoint (prinsip "plumbing bukan domain endpoint") sehingga belum ada handler nyata yang bisa diperiksa memakai/tidak memakai pipeline ini — kepatuhan handler Phase 1+ terhadap "satu-satunya entry" perlu diverifikasi ulang saat endpoint domain pertama dibuat. Tidak ada perubahan SOT.
+
+<a id="qa-cl-24"></a>
+### QA-CL-24 — 2026-08-21 · 0.9.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `permission-step.ts`: `EmptyPermissionResolver` selalu mengembalikan `{permission: null}`, kontrak `PermissionResolver.resolve(PermissionContext)` sudah membawa identity+project+membership (data yang dibutuhkan Phase 4 A.10 tanpa akses DB tambahan). `pipe-permission-seam` PASS di re-run.
+**Catatan:** Seam kosong sesuai prinsip Phase 0. Tidak ada perubahan SOT.
+
+<a id="qa-cl-23"></a>
+### QA-CL-23 — 2026-08-21 · 0.9.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `pipeline.ts` baris 38-46: `databaseStep.run()` (line 44) dipanggil setelah `projectStep.run()` (line 40) yang melempar `PROJECT_ACCESS_DENIED` bila membership tidak ada — urutan kode membuktikan resolve DB **hanya** terjadi pasca-verifikasi membership (A.4), bukan cuma urutan asersi test. `pipe-db`/`pipe-cross-project-no-db` PASS di re-run.
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-22"></a>
+### QA-CL-22 — 2026-08-21 · 0.9.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `global-reads.ts` `getMembership()`: filter `projectId` **AND** `userId` **AND** `revokedAt IS NULL` — cross-project dan revoked membership tidak bisa lolos (BR-009). Re-run `test:smoke-pipeline`: `pipe-project-membership`/`pipe-no-membership`/`pipe-cross-project`/`pipe-unknown-project`/`pipe-revoked-membership` 5/5 PASS.
+**Catatan:** **Observasi non-blocking (bukan pelanggaran SOT eksplisit):** `LoadProjectStep` mengembalikan `RESOURCE_NOT_FOUND` 404 untuk project yang benar-benar tidak ada, tapi `PROJECT_ACCESS_DENIED` 403 untuk project yang ada tapi User bukan anggota — kombinasi ini membuat kode HTTP membocorkan **keberadaan** `project_id` ke User yang tidak berwenang (403 = "ada tapi bukan milikmu", 404 = "tidak ada"), berpotensi jadi enumeration side-channel di boundary isolasi Project (BR-007/C.4). CL-33 sendiri sudah mencatat ini sebagai "keputusan teknis Dev, mudah diubah" tanpa keputusan manusia eksplisit — tidak ada BR yang secara literal mewajibkan respons seragam, jadi QA tidak menahan goal ini, tapi direkomendasikan AI-Planning & Review menimbang apakah ini perlu `[NEEDS-DECISION]` sebelum Phase 4 (authorization penuh) dibangun di atasnya. Tidak ada perubahan SOT oleh QA.
+
+<a id="qa-cl-21"></a>
+### QA-CL-21 — 2026-08-21 · 0.9.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-pipeline` penuh (live Global DB + Better Auth session nyata): 11/11 PASS termasuk `pipe-identity`/`pipe-anonymous`/`pipe-invalid-cookie`. Baca `identity-step.ts`: `ResolveIdentityStep` adalah langkah pertama pipeline, melempar `TOKEN_EXPIRED` 401 bila resolver mengembalikan null — keputusan kode kanonik ini sudah tercatat sebagai **keputusan manusia** (CL-32), bukan asumsi Dev.
+**Catatan:** Tidak ada perubahan SOT.
 
 <a id="qa-cl-20"></a>
 ### QA-CL-20 — 2026-08-21 · 0.10.2 🔎 → ✅
