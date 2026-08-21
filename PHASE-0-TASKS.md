@@ -91,9 +91,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.4.1 | 🔎 | [CL-13](#cl-13) | 80 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
-| 0.4.2 | 🔎 | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42)<br>[CL-43](#cl-43) | 80 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
-| 0.4.3 | 🔎 | [CL-15](#cl-15) | 80 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.1 | ✅ | [CL-13](#cl-13)<br>[QA-CL-16](#qa-cl-16) | 100 | P0 | Definisi 16 tabel Global DB (Drizzle), termasuk Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`) dan scoped Group/direct Permission assignments | [03-ENG B.2](docs/03-ENGINEERING.md), [A.13](docs/03-ENGINEERING.md) | 0.3.1 |
+| 0.4.2 | ✅ | [CL-14](#cl-14)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42)<br>[CL-43](#cl-43)<br>[QA-CL-17](#qa-cl-17) | 100 | P0 | Constraints membership/group/direct assignment scope, Better Auth mapping, uniqueness, hash credential, dan hashed Magic Link identifier | [03-ENG B.2](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.4.3 | ✅ | [CL-15](#cl-15)<br>[QA-CL-18](#qa-cl-18) | 100 | P1 | Migration up idempotent (drizzle-kit) | [03-ENG A.12](docs/03-ENGINEERING.md), [F.3](docs/03-ENGINEERING.md) | 0.4.1 |
 
 **Test:** Migration up idempotent; Better Auth generated-schema contract cocok dengan custom mapping B.2; constraint UNIQUE teruji; scoped assignment tidak dapat menghubungkan Membership/Group beda Project; credential dan Magic Link token tidak disimpan raw.
 **DoD:** Semua tabel B.2 hadir; ULID dipakai; `users.email` normalized/unique; **tidak ada** `UNIQUE(name/title)` domain; migrasi bersih & idempotent.
@@ -228,6 +228,24 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-18"></a>
+### QA-CL-18 — 2026-08-21 · 0.4.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke-migration`: PASS — apply 2x (sebelum & sesudah insert data) tidak mengubah journal/struktur/data. Script sudah tidak hard-code jumlah migration (dibaca dinamis dari `readdirSync`, perbaikan CL-43) — tidak rapuh seperti temuan QA-CL-15 di `smoke-migrate-programmatic.ts`.
+**Catatan:** Idempotency migration Global terbukti live. Tidak ada perubahan SOT.
+
+<a id="qa-cl-17"></a>
+### QA-CL-17 — 2026-08-21 · 0.4.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `pnpm --filter @kanban/infrastructure test:smoke-global-constraints`: 15/15 PASS — UNIQUE users.email/membership/group_permissions; partial UNIQUE assignment aktif (WHERE `revoked_at IS NULL`) termasuk re-add setelah revoke; ketiga tabel scoped (`membership_group_assignments`, `membership_permission_assignments`, `invitation_group_assignments`) menerima `scope_type` `list`/`card` dan menolak nilai di luar enum (CHECK) — perbaikan Review-CL-02/04 (CL-41/42/43) terbukti utuh, bukan cuma diklaim; credential tersimpan hash-only (`key_hash`/`token_hash`), `auth_verifications.identifier` = wadah hash (magicLink `storeToken:"hashed"`); mapping kolom Better Auth core lengkap snake_case B.2. `grep uniqueIndex` di `global-schema.ts`/`project-schema.ts`: tidak ada UNIQUE pada kolom `name`/`title` domain manapun (DoD "tidak ada UNIQUE(name/title) domain" terpenuhi).
+**Catatan:** Perbaikan Review-CL-02/04 (CHECK scope_type list/card, rollback compensate-only-created, ULID activity id) sudah tervalidasi silang di sini melalui hasil constraint test — sejalan dengan verifikasi live 0.6.1 (QA belum menyentuh 0.6.x, dicatat sebagai konsistensi lintas goal). Tidak ada perubahan SOT.
+
+<a id="qa-cl-16"></a>
+### QA-CL-16 — 2026-08-21 · 0.4.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca `global-schema.ts` dan bandingkan terhadap [03-ENG B.2](docs/03-ENGINEERING.md): 16 tabel cocok (termasuk Better Auth core `auth_sessions`/`auth_accounts`/`auth_verifications` snake_case B.2, scoped Group/direct Permission assignments). Re-run `pnpm --filter @kanban/infrastructure test:smoke-global-schema`: 3/3 PASS (16 tabel di DDL & DB; 8 UNIQUE index inti ada). ID kolom TEXT (ULID diisi app layer sesuai A.13) — dikonfirmasi silang: `provision.ts`/`auth.ts` memanggil `ulid()` untuk id Activity/user (A.13).
+**Catatan:** Tidak ada perubahan SOT.
 
 <a id="qa-cl-15"></a>
 ### QA-CL-15 — 2026-08-21 · 0.5.3 🔎 → ⚠️
