@@ -144,10 +144,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.8.1 | 🔎 | [CL-28](#cl-28) | 80 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
-| 0.8.2 | 🔎 | [CL-29](#cl-29) | 80 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
-| 0.8.3 | 🔎 | [CL-31](#cl-31) | 80 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
-| 0.8.4 | 🔎 | [CL-30](#cl-30) | 80 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
+| 0.8.1 | ✅ | [CL-28](#cl-28)<br>[QA-CL-26](#qa-cl-26) | 100 | P1 | Setup exact-pinned Better Auth + Drizzle adapter, custom table/field mapping B.2, dan custom ULID `generateId` → seluruh auth state berada di Global DB | [03-ENG A.8](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.4.1 |
+| 0.8.2 | ✅ | [CL-29](#cl-29)<br>[QA-CL-27](#qa-cl-27) | 100 | P1 | Database-backed opaque session + secure HTTP-only cookie + sign-out/revocation dasar; cookie cache/stateless mode tetap nonaktif | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.8.1 |
+| 0.8.3 | ✅ | [CL-31](#cl-31)<br>[QA-CL-28](#qa-cl-28) | 100 | P0 | `resolveIdentity(request) → User` (satu titik resolusi identitas) | [03-ENG A.14](docs/03-ENGINEERING.md), [C.1](docs/03-ENGINEERING.md) | 0.8.2, 0.8.4 |
+| 0.8.4 | ✅ | [CL-30](#cl-30)<br>[QA-CL-29](#qa-cl-29) | 100 | P1 | Pasang Better Auth handler `/api/auth/*` + Magic Link plugin: `sendMagicLink()` ke Resend API, `storeToken: "hashed"`, callback, konsumsi atomik single-use/expiring, dan antarmuka uji minimal | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.1.4, 0.8.1 |
 
 **Test:** Integration — handler auth terpasang sebelum catch-all; password/social auth tidak tersedia; request Magic Link tidak membocorkan keberadaan email; sender tepat; staging link hanya memakai `https://stag-kanban.ngodingin.xyz`, production link hanya memakai `https://kanban.ngodingin.xyz`; database tidak menyimpan raw verification token; token expired/used/invalid ditolak; dua konsumsi konkuren hanya satu yang sukses; link valid menghasilkan session; sign-out/revoke membuat session tidak valid.
 **DoD:** Identitas web session melalui Better Auth Magic Link dan satu `resolveIdentity()`; User otoritatif di Global DB; ID auth memakai ULID; verification hashed/single-use/expiring; session database-backed dan revocable; transport email memakai `sendMagicLink()` + Resend SDK/API; secret/alamat pengirim hanya dari environment; UI final ditunda ke Phase 7.
@@ -228,6 +228,30 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-29"></a>
+### QA-CL-29 — 2026-08-21 · 0.8.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-magic-link` live (Global DB Turso nyata): 21/21 PASS — termasuk yang paling invariant-sensitive: `enumeration-status`/`enumeration-body` (email dikenal vs tak dikenal → respons 200/`{status:true}` identik, tidak membocorkan keberadaan akun, sesuai A.14 "Keamanan minimum"), `token-hashed`/`token-raw-not-stored` (identifier = SHA-256 base64url, token mentah tidak pernah tersimpan), `verify-reuse`/`verify-expired`/`verify-invalid` (single-use+expiry), dan **`verify-concurrent` — dua konsumsi konkuren menghasilkan tepat satu sukses**, dijalankan ulang secara langsung oleh QA (bukan dipercaya dari klaim Dev). Baca `auth.ts`: `emailAndPassword.enabled:false`, tidak ada social provider terdaftar, `magicLink({storeToken:"hashed", expiresIn:300})`, `baseUrl`/callback origin berasal dari config eksplisit (bukan membaca `Request.Host`).
+**Catatan:** Konsumsi atomik single-use adalah perilaku internal plugin Better Auth (bukan kode custom repo) — diverifikasi lewat perilaku end-to-end (race test), bukan audit kode library. Tidak ada perubahan SOT.
+
+<a id="qa-cl-28"></a>
+### QA-CL-28 — 2026-08-21 · 0.8.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-resolve-identity` live: 8/8 PASS — session valid ter-resolve; anonim/cookie invalid/expired → null; hasil `resolveIdentity()` identik dengan `auth.api.getSession()` langsung (satu titik resolusi, C.1).
+**Catatan:** Fondasi langsung `ResolveIdentityStep` yang sudah diverifikasi di TASK-0.9 (QA-CL-21). Tidak ada perubahan SOT.
+
+<a id="qa-cl-27"></a>
+### QA-CL-27 — 2026-08-21 · 0.8.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-session` live: 16/16 PASS — session database-backed di `auth_sessions`; cookie HttpOnly+SameSite=Lax+Path=/, Secure hanya di origin https (dev http tidak dipaksa Secure); cookie cache/stateless nonaktif (`useCookieCache` falsy, sesuai A.14 "MUST tetap nonaktif"); signature tamper → null; revoke → row terhapus dari `auth_sessions` + `getSession` null.
+**Catatan:** Tidak ada perubahan SOT.
+
+<a id="qa-cl-26"></a>
+### QA-CL-26 — 2026-08-21 · 0.8.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `test:smoke-auth` live: 3/3 PASS — `generateId` ULID custom; kolom snake_case sesuai B.2; email duplikat ditolak UNIQUE. Baca `auth.ts`: field mapping lengkap per model (user/session/account/verification) ke kolom snake_case B.2, `advanced.database.generateId: () => ulid().toLowerCase()` — seluruh auth state di Global DB (drizzleAdapter ke `config.globalClient`), tidak ada identity store kedua.
+**Catatan:** Tidak ada perubahan SOT.
 
 <a id="qa-cl-25"></a>
 ### QA-CL-25 — 2026-08-21 · 0.9.5 🔎 → ✅
