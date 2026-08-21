@@ -199,11 +199,11 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.12.1 | ✅ | [CL-52](#cl-52)<br>[QA-CL-44](#qa-cl-44) | 100 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
-| 0.12.2 | ⬜️ | — | 0 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
-| 0.12.3 | ✅ | [CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45) | 100 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
-| 0.12.4 | ⬜️ | — | 0 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
-| 0.12.5 | ⬜️ | — | 0 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
+| 0.12.1 | ✅ | [CL-52](#cl-52)<br>[QA-CL-44](#qa-cl-44)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
+| 0.12.2 | ⬜️ | [Review-CL-07](#review-cl-07) | 0 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
+| 0.12.3 | ✅ | [CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
+| 0.12.4 | ⬜️ | [Review-CL-07](#review-cl-07) | 0 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
+| 0.12.5 | ⬜️ | [Review-CL-07](#review-cl-07) | 0 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
 
 **Test:** CI hijau di branch; migrasi Global jalan di staging; seam fan-out Project terpanggil (walau 0 Project); preview `/api/*` mengembalikan response API, route web mengembalikan HTML, unknown `/api/*` tidak pernah mengembalikan `index.html`, dan Magic Link callback mempertahankan session cookie pada origin yang sama.
 **DoD:** CI menjalankan build+typecheck+lint+test+migrasi; env terpisah; satu-origin Hono/static routing terbukti; langkah release checklist F.6 terhubung.
@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-07"></a>
+### Review-CL-07 — 2026-08-21 · audit terpisah TASK-0.12 (tanpa perubahan status)
+**Role:** AI-Planning & Review · **Model:** Codex
+**Bukti:** Audit `03-ENGINEERING` D.1/D.5/D.7/F.3/F.6, seluruh row/Test/DoD TASK-0.12, CL-49/50/52/55, QA-CL-44/45, commit `cc8c3e7` dan perbaikan lanjutannya, workflow CI, migration scripts, Vercel Build Output, preview verifier, serta working tree. Reproduksi host Node 24.19.0/pnpm 11.22.0: `pnpm -r typecheck`, `pnpm lint`, `pnpm test` (6 file/23 test), dan `pnpm build` lulus; migration ephemeral menghasilkan Global `1` dan fan-out kosong `0/0`; `node scripts/preview-build.mjs` serta `node scripts/preview-verify.ts` lulus 7 pemeriksaan routing/auth same-origin lokal. Task derived tetap 🔄 40%: 0.12.1/0.12.3 ✅, 0.12.2/0.12.4/0.12.5 ⬜️.
+**Catatan:** (1) **0.12.2 belum siap:** `project_databases.database_id` berisi nama Turso `proj-*`, tetapi `migrate-projects.ts` memperlakukannya sebagai URL dan memakai satu `TURSO_DB_TOKEN`; hanya kasus kosong `0/0` terbukti, belum ada migrasi Global staging atau fan-out Project nyata. (2) **0.12.4 belum siap:** varian root (`vercel.json` + `scripts/preview-build.mjs`) adalah konfigurasi ter-track yang sesuai keputusan Root Directory repo, sedangkan `apps/api/build.mjs` + `apps/api/vercel.json` masih untracked dan konflik; verifikasi lokal belum membuktikan deployment staging penuh. `preview-verify.ts` juga membuat serta meninggalkan primary key User `one-origin-user-*` non-ULID—terbukti lewat query DB setelah run—sehingga wajib memakai ULID dan cleanup/DB ephemeral sebelum menjadi bukti aman A.13. (3) **0.12.5 belum siap:** workflow belum memiliki release-check step yang menghubungkan enam butir F.6; beberapa butir memang baru dapat hijau setelah fase domain/operations terkait, sehingga wiring harus membedakan pemeriksaan yang tersedia sekarang dari gate rilis final. Tidak ada `[NEEDS-DECISION]` domain/SOT; ini gap implementasi/evidence konkret untuk AI-Dev. 0.12.1 dan 0.12.3 tetap valid menurut bukti QA.
 
 <a id="review-cl-06"></a>
 ### Review-CL-06 — 2026-08-21 · rekonsiliasi SOT keputusan Phase 0 (tanpa perubahan status)
