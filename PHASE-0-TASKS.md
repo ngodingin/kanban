@@ -64,10 +64,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 0.2.1 | 🔎 | [CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[CL-03](#cl-03) | 80 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.2.2 | 🔎 | [CL-06](#cl-06) | 80 | P0 | Ukur waktu provisioning DB baru via Turso API | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.2.3 | 🔎 | [CL-04](#cl-04) | 80 | P0 | Uji concurrent write + perilaku `BEGIN IMMEDIATE` | [03-ENG A.6](docs/03-ENGINEERING.md), [A.11](docs/03-ENGINEERING.md) | 0.1.1 |
-| 0.2.4 | 🔎 | [CL-07](#cl-07) | 80 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
+| 0.2.1 | ✅ | [CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[CL-03](#cl-03)<br>[QA-CL-05](#qa-cl-05) | 100 | P0 | Ukur cold start + latensi query sederhana dari fungsi serverless Vercel | [03-ENG A.11](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.2.2 | ✅ | [CL-06](#cl-06)<br>[QA-CL-06](#qa-cl-06) | 100 | P0 | Ukur waktu provisioning DB baru via Turso API | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.2.3 | ✅ | [CL-04](#cl-04)<br>[QA-CL-07](#qa-cl-07) | 100 | P0 | Uji concurrent write + perilaku `BEGIN IMMEDIATE` | [03-ENG A.6](docs/03-ENGINEERING.md), [A.11](docs/03-ENGINEERING.md) | 0.1.1 |
+| 0.2.4 | ✅ | [CL-07](#cl-07)<br>[QA-CL-08](#qa-cl-08) | 100 | P0 | Proyeksi biaya + keputusan GO/NO-GO + sinkron vs async | [03-ENG A.11](docs/03-ENGINEERING.md), [F.2](docs/03-ENGINEERING.md) | 0.2.1, 0.2.2, 0.2.3 |
 
 **Test:** Hasil tiap pengukuran terdokumentasi di `poc/RESULTS.md` terhadap ambang yang ditetapkan saat POC.
 **DoD:** Keputusan tercatat: Turso GO/NO-GO **dan** provisioning sync/async. Jika NO-GO → tandai `[NEEDS-DECISION]` fallback (libSQL self-host / D1) per A.11. **Task ini gating untuk 0.6.**
@@ -228,6 +228,30 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="qa-cl-08"></a>
+### QA-CL-08 — 2026-08-21 · 0.2.4 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `poc/RESULTS.md` §"Cost projection & GO/NO-GO" mengagregasi keempat item gate A.11 dengan verdict eksplisit (1 conditional/⚠️ region-mismatch, 2/3/4 ✅). Keputusan manusia tercatat di **CL-07**: "Turso GO + provisioning SINKRON" (2026-08-18) — memenuhi DoD task ("Keputusan tercatat: GO/NO-GO dan sinkron/async"). Dev secara benar tidak mengamandemen SOT A.11 sendiri, hanya mencatat rekomendasi amandemen untuk AI-Planning & Review (governance §3 dipatuhi).
+**Catatan:** Task `[GATING]` untuk 0.6 kini terbuka — 0.6.1/0.6.4 dapat mengacu ke keputusan GO+sinkron ini. Rekomendasi ke AI-Planning & Review (hapus "pending POC gate" dari A.11) belum dieksekusi — bukan blocker QA, catat sebagai follow-up governance. Tidak ada perubahan SOT oleh QA.
+
+<a id="qa-cl-07"></a>
+### QA-CL-07 — 2026-08-21 · 0.2.3 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run langsung `poc/measure/scripts/concurrency.ts` terhadap Turso `poc-latency` nyata (20 worker): naive → final 2/20 (lost 18); `transaction("write")` + retry → final 20/20 (lost 0, busy 0); optimistic locking (version check) → final 20/20 (lost 0, 174 konflik terdeteksi). Hasil konsisten secara kualitatif dengan CL-04 (lost update masif tanpa tx; nol lost update dengan tx write-mode maupun optimistic locking) — variasi jumlah lost/konflik antar run adalah perilaku race-condition yang diharapkan, bukan penyimpangan.
+**Catatan:** Ini bukti paling invariant-critical di TASK-0.2 (INV #6/#7 — mutation konkuren wajib validasi state + optimistic concurrency). Reproduksi ulang berhasil dan menguatkan kesimpulan CL-04: `"immediate"` tidak didukung driver 0.17.4 HTTP, `"write"` adalah padanan `BEGIN IMMEDIATE`; `PRAGMA busy_timeout` dilarang protokol hrana → retry application-level wajib untuk 0.6/Phase 6. Tidak ada perubahan SOT.
+
+<a id="qa-cl-06"></a>
+### QA-CL-06 — 2026-08-21 · 0.2.2 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `poc/results-provisioning.jsonl` diperiksa langsung: 5 baris raw (2 percobaan awal `readyMs:-1` tidak dihitung di tabel ringkasan, 3 run lengkap cocok persis dengan tabel `poc/RESULTS.md` §0.2.2 — create 1305.2/710.5/713.8 ms, token 606.8/599.5/499.0 ms, ready 2470.2/2044.7/2114.8 ms, firstQuery 245.0/295.8/293.6 ms); seluruh 5 baris `"deleted":true` (cleanup terbukti, tidak ada DB orphan).
+**Catatan:** Tidak re-trigger provisioning nyata (create/delete DB tambahan) untuk QA ini — raw data + summary sudah konsisten dan re-provisioning menambah resource cloud tanpa menambah keyakinan berarti. Temuan CL-06 (org API token ≠ kredensial libsql; JWT per-DB wajib) relevan untuk 0.6/0.8 — dicatat, bukan blocker di sini. Tidak ada perubahan SOT.
+
+<a id="qa-cl-05"></a>
+### QA-CL-05 — 2026-08-21 · 0.2.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Re-run `poc/measure/scripts/measure.ts warm` (n=10) terhadap deployment Vercel production nyata (`$POC_URL/api/measure`): total p50 465.49 ms / dbMs p50 190.86 ms — konsisten dengan CL-03 (total p50 459.90 ms / dbMs p50 189.90 ms). Cold start tidak diukur ulang (butuh idle ≥10 menit di luar sesi QA ini); dua sampel cold CL-03 (2474/2383 ms, body `dbMs` terverifikasi) dianggap kredibel karena profil warm tereproduksi persis dan konsisten dengan overhead boot yang dijelaskan.
+**Catatan:** `.env` lokal `POC_URL` saat ini hanya domain dasar (bukan `.../api/measure`); `poc/measure/scripts/measure.ts` mengharapkan `POC_URL` = URL endpoint penuh. QA menambahkan suffix manual saat re-run. Rekomendasi kecil ke Dev: perbarui `.env`/`.env.example` POC agar `POC_URL` sudah menunjuk endpoint penuh, supaya langkah "Reproduksi" §5 RESULTS.md tidak ambigu — bukan blocker (bukti asli tetap reproducible). Tidak ada perubahan SOT.
 
 <a id="qa-cl-04"></a>
 ### QA-CL-04 — 2026-08-21 · 0.1.4 🔎 → ✅
