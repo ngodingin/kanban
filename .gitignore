@@ -6,6 +6,9 @@ playwright-report/
 .env
 .env.*
 !.env.example
+!.env.development.example
+!.env.staging.example
+!.env.production.example
 *.log
 .DS_Store
 .vscode/
@@ -17,6 +20,5 @@ CLAUDE.md
 /auth-wal
 docs/design/
 .vercel
-.env*
 /.vercel/
 /.env.local
