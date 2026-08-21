@@ -3,7 +3,7 @@ import { z } from "zod";
 
 const GlobalDbEnvSchema = z.object({
   GLOBAL_DB_URL: z.string().url(),
-  GLOBAL_DB_TOKEN: z.string().default(""),
+  GLOBAL_DB_TOKEN: z.string().min(1),
 });
 
 export type GlobalDbEnv = z.infer<typeof GlobalDbEnvSchema>;
