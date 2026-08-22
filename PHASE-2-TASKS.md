@@ -101,7 +101,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.5.1 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
+| 2.5.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
 | 2.5.2 | ⬜️ | — | 0 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
 | 2.5.3 | ⬜️ | — | 0 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
 
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-14"></a>
+### CL-14 — 2026-08-23 · goal 2.5.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET Board
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 37 file / **230** test lulus (7 test integration baru `apps/api/test/boards-create-get.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: (1) router `apps/api/src/routes/boards.ts` — `POST /v1/projects/:project_id/milestones/:milestone_id/boards` (Owner-only interim; body `{title, description}`; VALIDATION_ERROR untuk title kosong/salah tipe) + `GET /v1/projects/:project_id/boards/:board_id` (member via pipeline, 404 bila tidak ada); envelope `{data:{board}}`; wiring `buildBoardRoutesDeps` + helper `buildProjectContextDeps` bersama (cached project client factory + turso env — konsisten jalur produksi projects), mount di index.ts.
+**Catatan:** Test TASK-2.5: Project-boundary — milestone milik Project lain maupun ID asing → RESOURCE_NOT_FOUND 404 (isolation DB-per-project; tidak ada kebocoran data); create pada Milestone ARCHIVED → INVALID_STATE 409 (INV-LIFE-001); non-member → PROJECT_ACCESS_DENIED; tanpa identitas → TOKEN_EXPIRED. Test restore Board saat Milestone ARCHIVED di level HTTP menyusul di 2.5.3 (sudah tercakup unit CL-12).
+
+<a id="cl-13"></a>
+### CL-13 — 2026-08-23 · goal 2.5.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.5.1 `⬜️/—/0/P0`, dependency `2.4` → 2.4.1 `🔎/80%` commit `6f5416d` (suite 223 hijau). Kontrak C.6 dibaca ulang dari disk: create nested di bawah milestone, GET/PATCH/lifecycle flat.
+**Catatan:** Router boards.ts pola sama milestones.ts; boundary "milestone_id Project lain" ditegakkan isolation DB-per-project → MilestoneNotFoundError.
 
 <a id="cl-12"></a>
 ### CL-12 — 2026-08-23 · goal 2.4.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — domain command Board

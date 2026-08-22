@@ -25,7 +25,7 @@ import {
   type TursoEnv,
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
-import { createClient } from "@libsql/client";
+import type { BoardRoutesDeps } from "./routes/boards.ts";
 import type { MilestoneRoutesDeps } from "./routes/milestones.ts";
 import type { ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import type { ProjectRoutesDeps } from "./routes/projects.ts";
@@ -86,20 +86,49 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
 export interface BuildMilestoneRoutesDepsInput {
   identityResolver: IdentityResolver;
   globalClient: Client;
+  turso: TursoEnv | null;
 }
 
 export function buildMilestoneRoutesDeps(input: BuildMilestoneRoutesDepsInput): MilestoneRoutesDeps {
-  const { identityResolver, globalClient } = input;
+  const { identityResolver, globalClient, turso } = input;
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    newMilestoneId: newProjectId,
+  };
+}
+
+export interface BuildBoardRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+  turso: TursoEnv | null;
+}
+
+export function buildBoardRoutesDeps(input: BuildBoardRoutesDepsInput): BoardRoutesDeps {
+  const { identityResolver, globalClient, turso } = input;
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    newBoardId: newProjectId,
+  };
+}
+
+function buildProjectContextDeps(
+  identityResolver: IdentityResolver,
+  globalClient: Client,
+  turso: TursoEnv | null,
+): {
+  resolveIdentity: ProjectRoutesDeps["resolveIdentity"];
+  openProjectContext: ProjectRoutesDeps["openProjectContext"];
+} {
   const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
+  const projectClientFactory = createCachedProjectDbClientFactory({ turso });
   return {
     resolveIdentity: (request) => identityResolver.resolveIdentity(request),
-    newMilestoneId: newProjectId,
     openProjectContext: async (request, projectId) => {
       const pipeline = new RequestPipeline({
         identityResolver,
         globalClient,
         databaseResolver,
-        projectClientFactory: { create: (databaseId) => createClient({ url: databaseId }) },
+        projectClientFactory,
       });
       const resolved = await pipeline.run(request, projectId);
       return {
