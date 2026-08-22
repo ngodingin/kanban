@@ -40,6 +40,8 @@ export {
   requireActiveMember,
   revokeGroupAssignment,
   revokeMembership,
+  listProjectInvitations,
+  revokeInvitation,
   revokePermissionAssignment,
   updatePermissionGroup,
   type AcceptInvitationResult,

@@ -8,6 +8,7 @@ import {
   createPermissionGroup,
   deletePermissionGroup,
   listPermissionGroups,
+  listProjectInvitations,
   listProjectMembers,
   listProjectSummaries,
   newProjectId,
@@ -16,6 +17,7 @@ import {
   requireActiveMember,
   revokeGroupAssignment,
   revokeMembership,
+  revokeInvitation,
   revokePermissionAssignment,
   SqliteProjectDatabaseResolver,
   updatePermissionGroup,
@@ -140,11 +142,13 @@ export function buildProjectAdminDeps(input: {
         assignments: input.assignments,
         ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
       }),
-    acceptInvitation: (invitationId, userId) => acceptInvitation(globalClient, { invitationId, userId }),
+    acceptInvitation: (invitationId, userId, userEmail) => acceptInvitation(globalClient, { invitationId, userId, userEmail }),
     listMembers: async (projectId, requesterUserId, opts) => {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listProjectMembers(globalClient, projectId, opts);
     },
     revokeMembership: (projectId, membershipId) => revokeMembership(globalClient, { projectId, membershipId }),
+    listProjectInvitations: (projectId) => listProjectInvitations(globalClient, projectId),
+    revokeInvitation: (projectId, invitationId) => revokeInvitation(globalClient, { projectId, invitationId }),
   };
 }

@@ -14,6 +14,20 @@ import {
 } from "@kanban/infrastructure";
 import { toApiErrorResponse } from "./projects.ts";
 
+// Wrapper untuk mengurangi duplikasi try/catch di semua handler endpoint.
+async function withErrorHandling<T>(
+  c: any,
+  handler: () => Promise<T>,
+  successStatus: ContentfulStatusCode = 200,
+): Promise<Response> {
+  try {
+    return c.json(ok(await handler()), successStatus);
+  } catch (error) {
+    const mapped = toApiErrorResponse(error);
+    return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+  }
+}
+
 // Router untuk endpoint admin Project yang seluruh datanya di Global DB
 // (permission groups, assignments, invitations, members) — 02-SPEC C.12/C.13.
 // Otorisasi interim Phase 1 ditegakkan di lapisan operasi infrastruktur:
@@ -78,13 +92,15 @@ export interface ProjectAdminRoutesDeps {
       expiresAt?: string | null;
     },
   ): Promise<InvitationSummary>;
-  acceptInvitation(invitationId: string, userId: string): Promise<AcceptInvitationResult>;
+  acceptInvitation(invitationId: string, userId: string, userEmail: string): Promise<AcceptInvitationResult>;
   listMembers(
     projectId: string,
     requesterUserId: string,
     opts: { status?: Array<"active" | "revoked"> },
   ): Promise<ProjectMemberSummary[]>;
   revokeMembership(projectId: string, membershipId: string): Promise<ProjectMemberSummary>;
+  listProjectInvitations(projectId: string): Promise<InvitationSummary[]>;
+  revokeInvitation(projectId: string, invitationId: string): Promise<InvitationSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -176,8 +192,8 @@ function readUpdateGroupBody(body: unknown): UpdatePermissionGroupPayload {
 export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps): Hono {
   const router = new Hono().basePath("/api");
 
-  router.get("/v1/projects/:project_id/permission-groups", async (c) => {
-    try {
+  router.get("/v1/projects/:project_id/permission-groups", (c) =>
+    withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -186,33 +202,31 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       // Default exclude soft-deleted; ?include_deleted=true untuk minta eksplisit.
       const includeDeleted = c.req.query("include_deleted") === "true";
       const groups = await deps.listPermissionGroups(projectId, identity.userId, { includeDeleted });
-      return c.json(ok({ groups }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
-  });
+      return { groups };
+    }),
+  );
 
-  router.post("/v1/projects/:project_id/permission-groups", async (c) => {
-    try {
-      const deps = getDeps();
-      const projectId = c.req.param("project_id");
-      const identity = await new ResolveIdentityStep({
-        resolveIdentity: deps.resolveIdentity,
-      }).run(c.req.raw);
-      // Authorization first (Implementation Rule 3): Owner-only interim.
-      await deps.assertProjectOwner(projectId, identity.userId);
-      const payload = readCreateGroupBody(await c.req.json().catch(() => null));
-      const group = await deps.createPermissionGroup(projectId, payload);
-      return c.json(ok({ group }), 201);
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
-  });
+  router.post("/v1/projects/:project_id/permission-groups", (c) =>
+    withErrorHandling(
+      c,
+      async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const identity = await new ResolveIdentityStep({
+          resolveIdentity: deps.resolveIdentity,
+        }).run(c.req.raw);
+        // Authorization first (Implementation Rule 3): Owner-only interim.
+        await deps.assertProjectOwner(projectId, identity.userId);
+        const payload = readCreateGroupBody(await c.req.json().catch(() => null));
+        const group = await deps.createPermissionGroup(projectId, payload);
+        return { group };
+      },
+      201,
+    ),
+  );
 
-  router.patch("/v1/projects/:project_id/permission-groups/:group_id", async (c) => {
-    try {
+  router.patch("/v1/projects/:project_id/permission-groups/:group_id", (c) =>
+    withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const groupId = c.req.param("group_id");
@@ -223,12 +237,9 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       await deps.assertProjectOwner(projectId, identity.userId);
       const payload = readUpdateGroupBody(await c.req.json().catch(() => null));
       const group = await deps.updatePermissionGroup(projectId, groupId, payload);
-      return c.json(ok({ group }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
-  });
+      return { group };
+    }),
+  );
 
   router.post("/v1/projects/:project_id/permission-groups/:group_id/delete", async (c) => {
     try {
@@ -453,14 +464,42 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
     }
   });
 
-  router.post("/v1/invitations/:invitation_id/accept", async (c) => {
-    try {
+  router.post("/v1/invitations/:invitation_id/accept", (c) =>
+    withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
       // Accept tidak Owner-only — pemanggil adalah invitee yang terautentikasi.
-      const result = await deps.acceptInvitation(c.req.param("invitation_id"), identity.userId);
+      return await deps.acceptInvitation(c.req.param("invitation_id"), identity.userId, identity.email);
+    }),
+  );
+
+  router.get("/v1/projects/:project_id/invitations", async (c) => {
+    try {
+      const deps = getDeps();
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      const projectId = c.req.param("project_id");
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const result = await deps.listProjectInvitations(projectId);
+      return c.json(ok(result));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/invitations/:invitation_id/revoke", async (c) => {
+    try {
+      const deps = getDeps();
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      const projectId = c.req.param("project_id");
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const result = await deps.revokeInvitation(projectId, c.req.param("invitation_id"));
       return c.json(ok(result));
     } catch (error) {
       const mapped = toApiErrorResponse(error);

@@ -208,46 +208,48 @@ export async function updatePermissionGroup(globalClient: Client, input: UpdateP
     throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${input.groupId} tidak ditemukan di Project ini.`, 404);
   }
   const now = new Date().toISOString();
+  let requestedPermissions: Array<{ permissionId: string; cardReadVisibility: CardReadVisibility | null }> | undefined;
+  let keyById: Map<string, string> | undefined;
   if (input.permissions !== undefined) {
-    const requested: Array<{ permissionId: string; cardReadVisibility: CardReadVisibility | null }> =
-      input.permissions.map((entry) => ({
-        permissionId: entry.permissionId,
-        cardReadVisibility: normalizeVisibility(entry.cardReadVisibility),
-      }));
-    const permissionIds = [...new Set(requested.map((entry) => entry.permissionId))];
+    requestedPermissions = input.permissions.map((entry) => ({
+      permissionId: entry.permissionId,
+      cardReadVisibility: normalizeVisibility(entry.cardReadVisibility),
+    }));
+    const permissionIds = [...new Set(requestedPermissions.map((entry) => entry.permissionId))];
     const known = permissionIds.length > 0
       ? await db.select({ id: permissions.id, key: permissions.key }).from(permissions)
         .where(inArray(permissions.id, permissionIds))
       : [];
-    const keyById = new Map(known.map((row) => [row.id, row.key]));
+    keyById = new Map(known.map((row) => [row.id, row.key]));
     for (const id of permissionIds) {
       if (!keyById.has(id)) {
         throw new PipelineError("VALIDATION_ERROR", `permission_id tidak dikenal: ${id}`, 400);
       }
     }
-    for (const entry of requested) {
+    for (const entry of requestedPermissions) {
       if (entry.cardReadVisibility != null && keyById.get(entry.permissionId) !== "card.read") {
         throw new PipelineError("VALIDATION_ERROR", "card_read_visibility hanya berlaku untuk permission card.read.", 400);
       }
     }
-    await db.transaction(async (tx) => {
-      await tx.update(permissionGroups).set({ updatedAt: now }).where(eq(permissionGroups.id, input.groupId)).run();
+  }
+  await db.transaction(async (tx) => {
+    await tx.update(permissionGroups).set({
+      ...(input.name !== undefined ? { name: input.name } : {}),
+      ...(input.description !== undefined ? { description: input.description } : {}),
+      updatedAt: now,
+    }).where(eq(permissionGroups.id, input.groupId)).run();
+    if (requestedPermissions !== undefined) {
       await tx.delete(groupPermissions).where(eq(groupPermissions.groupId, input.groupId)).run();
-      if (requested.length > 0) {
-        await tx.insert(groupPermissions).values(requested.map((entry) => ({
+      if (requestedPermissions.length > 0) {
+        await tx.insert(groupPermissions).values(requestedPermissions.map((entry) => ({
           groupId: input.groupId,
           permissionId: entry.permissionId,
-          cardReadVisibility: entry.cardReadVisibility ?? (keyById.get(entry.permissionId) === "card.read" ? "CREATED_BY_ME" : null),
+          cardReadVisibility: entry.cardReadVisibility ?? (keyById!.get(entry.permissionId) === "card.read" ? "CREATED_BY_ME" : null),
           createdAt: now,
         }))).run();
       }
-    });
-  }
-  await db.update(permissionGroups).set({
-    ...(input.name !== undefined ? { name: input.name } : {}),
-    ...(input.description !== undefined ? { description: input.description } : {}),
-    updatedAt: now,
-  }).where(eq(permissionGroups.id, input.groupId)).run();
+    }
+  });
   const updated = await db.select().from(permissionGroups).where(eq(permissionGroups.id, input.groupId));
   return (await attachPermissions(globalClient, updated))[0]!;
 }
@@ -574,7 +576,7 @@ export interface AcceptInvitationResult {
 
 export async function acceptInvitation(
   globalClient: Client,
-  input: { invitationId: string; userId: string },
+  input: { invitationId: string; userId: string; userEmail: string },
 ): Promise<AcceptInvitationResult> {
   const db = drizzle(globalClient);
   const rows = await db.select().from(invitations).where(eq(invitations.id, input.invitationId));
@@ -583,6 +585,10 @@ export async function acceptInvitation(
   }
   const invitation = rows[0]!;
   const now = new Date().toISOString();
+  // BR-054A: email validation — non-specific error to prevent enumeration
+  if (input.userEmail.toLowerCase() !== invitation.email.toLowerCase()) {
+    throw new PipelineError("PERMISSION_DENIED", "Tidak dapat menerima invitation ini.", 403);
+  }
   if (invitation.revokedAt !== null) {
     throw new PipelineError("INVALID_STATE", "Invitation sudah di-revoke.", 409);
   }
@@ -592,29 +598,34 @@ export async function acceptInvitation(
   if (Date.parse(invitation.expiresAt) <= Date.parse(now)) {
     throw new PipelineError("INVITATION_EXPIRED", "Invitation sudah kedaluwarsa.", 409);
   }
-  // Unique keras (project, user): user yang masih/pernah member tidak dapat
-  // menerima invitation lagi di Phase 1.
   const existingMembership = await db.select().from(projectMemberships)
     .where(sql`${projectMemberships.projectId} = ${invitation.projectId} AND ${projectMemberships.userId} = ${input.userId}`);
-  if (existingMembership.length > 0) {
-    const state = existingMembership[0]!.revokedAt !== null ? "pernah menjadi member (sudah di-revoke)" : "sudah menjadi member aktif";
-    throw new PipelineError("INVALID_STATE", `User ${state} pada Project ini.`, 409);
-  }
   const groupRows = await db.select().from(invitationGroupAssignments)
     .where(eq(invitationGroupAssignments.invitationId, invitation.id));
   if (groupRows.length === 0) {
     throw new PipelineError("INVITATION_EXPIRED", "Invitation tidak memiliki assignment yang valid.", 409);
   }
 
-  const membershipId = ulid();
+  let membershipId = "";
   await db.transaction(async (tx) => {
-    await tx.insert(projectMemberships).values({
-      id: membershipId,
-      projectId: invitation.projectId,
-      userId: input.userId,
-      createdAt: now,
-      revokedAt: null,
-    }).run();
+    if (existingMembership.length > 0) {
+      // BR-054B: reactivate revoked membership
+      const existing = existingMembership[0]!;
+      if (existing.revokedAt === null) {
+        throw new PipelineError("INVALID_STATE", "User sudah menjadi member aktif pada Project ini.", 409);
+      }
+      membershipId = existing.id;
+      await tx.update(projectMemberships).set({ revokedAt: null }).where(eq(projectMemberships.id, membershipId)).run();
+    } else {
+      membershipId = ulid();
+      await tx.insert(projectMemberships).values({
+        id: membershipId,
+        projectId: invitation.projectId,
+        userId: input.userId,
+        createdAt: now,
+        revokedAt: null,
+      }).run();
+    }
     for (const row of groupRows) {
       await tx.insert(membershipGroupAssignments).values({
         id: ulid(),
@@ -705,5 +716,66 @@ export async function revokeMembership(
     name: String(userRows.rows[0]!.name),
     createdAt: membership.createdAt,
     revokedAt,
+  };
+}
+
+export interface InvitationSummary {
+  id: string;
+  email: string;
+  expiresAt: string;
+  acceptedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+// List Invitation Project (C.13 amandemen 2.5.0) — termasuk accepted/revoked/expired,
+// tanpa filter server-side; client filter dari accepted_at/revoked_at/expires_at.
+export async function listProjectInvitations(
+  globalClient: Client,
+  projectId: string,
+): Promise<InvitationSummary[]> {
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(invitations)
+    .where(eq(invitations.projectId, projectId))
+    .orderBy(asc(invitations.createdAt));
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    expiresAt: row.expiresAt,
+    acceptedAt: row.acceptedAt,
+    revokedAt: row.revokedAt,
+    createdAt: row.createdAt,
+  }));
+}
+
+// Revoke Invitation (C.13 amandemen 2.5.0, FR-006) — set revoked_at;
+// invitation sudah accepted MUST NOT dapat di-revoke.
+export async function revokeInvitation(
+  globalClient: Client,
+  input: { projectId: string; invitationId: string },
+): Promise<InvitationSummary> {
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(invitations)
+    .where(sql`${invitations.id} = ${input.invitationId} AND ${invitations.projectId} = ${input.projectId}`);
+  if (rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Invitation ${input.invitationId} tidak ditemukan di Project ini.`, 404);
+  }
+  const invitation = rows[0]!;
+  if (invitation.acceptedAt !== null) {
+    throw new PipelineError("INVALID_STATE", "Invitation sudah diterima dan tidak dapat di-revoke.", 409);
+  }
+  const now = new Date().toISOString();
+  let revokedAt = invitation.revokedAt;
+  if (revokedAt === null) {
+    revokedAt = now;
+    await db.update(invitations).set({ revokedAt }).where(eq(invitations.id, input.invitationId)).run();
+  }
+  return {
+    id: invitation.id,
+    email: invitation.email,
+    expiresAt: invitation.expiresAt,
+    acceptedAt: invitation.acceptedAt,
+    revokedAt,
+    createdAt: invitation.createdAt,
   };
 }
