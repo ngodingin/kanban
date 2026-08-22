@@ -58,6 +58,7 @@ export interface PermissionGroupEntry {
 
 export interface PermissionGroupSummary {
   id: string;
+  projectId: string;
   name: string;
   description: string | null;
   createdAt: string;
@@ -67,37 +68,31 @@ export interface PermissionGroupSummary {
   permissions: PermissionGroupEntry[];
 }
 
-export async function listPermissionGroups(
+const CARD_READ_VISIBILITIES = ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ALL"] as const;
+type CardReadVisibility = (typeof CARD_READ_VISIBILITIES)[number];
+
+async function attachPermissions(
   globalClient: Client,
-  projectId: string,
-  opts: { includeDeleted?: boolean } = {},
+  rows: Array<typeof permissionGroups.$inferSelect>,
 ): Promise<PermissionGroupSummary[]> {
+  if (rows.length === 0) return [];
   const db = drizzle(globalClient);
-  const condition = opts.includeDeleted === true
-    ? eq(permissionGroups.projectId, projectId)
-    : sql`${permissionGroups.projectId} = ${projectId} AND ${permissionGroups.deletedAt} IS NULL`;
-  const groupRows = await db.select().from(permissionGroups).where(condition).orderBy(asc(permissionGroups.createdAt));
-  if (groupRows.length === 0) return [];
-  const groupIds = groupRows.map((row) => row.id);
   const permissionRows = await db.select({
     groupId: groupPermissions.groupId,
     permissionId: groupPermissions.permissionId,
     cardReadVisibility: groupPermissions.cardReadVisibility,
     key: permissions.key,
   }).from(groupPermissions).innerJoin(permissions, eq(groupPermissions.permissionId, permissions.id))
-    .where(inArray(groupPermissions.groupId, groupIds));
+    .where(inArray(groupPermissions.groupId, rows.map((row) => row.id)));
   const byGroup = new Map<string, PermissionGroupEntry[]>();
   for (const row of permissionRows) {
     const list = byGroup.get(row.groupId) ?? [];
-    list.push({
-      permissionId: row.permissionId,
-      key: row.key,
-      cardReadVisibility: row.cardReadVisibility ?? null,
-    });
+    list.push({ permissionId: row.permissionId, key: row.key, cardReadVisibility: row.cardReadVisibility ?? null });
     byGroup.set(row.groupId, list);
   }
-  return groupRows.map((row) => ({
+  return rows.map((row) => ({
     id: row.id,
+    projectId: row.projectId,
     name: row.name,
     description: row.description ?? null,
     createdAt: row.createdAt,
@@ -108,6 +103,81 @@ export async function listPermissionGroups(
   }));
 }
 
-export function newPermissionGroupId(): string {
-  return ulid();
+export async function listPermissionGroups(
+  globalClient: Client,
+  projectId: string,
+  opts: { includeDeleted?: boolean } = {},
+): Promise<PermissionGroupSummary[]> {
+  const db = drizzle(globalClient);
+  // Default exclude soft-deleted (?include_deleted=true untuk minta eksplisit).
+  const condition = opts.includeDeleted === true
+    ? eq(permissionGroups.projectId, projectId)
+    : sql`${permissionGroups.projectId} = ${projectId} AND ${permissionGroups.deletedAt} IS NULL`;
+  const rows = await db.select().from(permissionGroups).where(condition).orderBy(asc(permissionGroups.createdAt));
+  return attachPermissions(globalClient, rows);
+}
+
+export interface CreatePermissionGroupInput {
+  projectId: string;
+  name: string;
+  description?: string | null;
+  permissions: Array<{ permissionId: string; cardReadVisibility?: string | null }>;
+}
+
+function normalizeVisibility(value: unknown): CardReadVisibility | null {
+  if (value == null) return null;
+  if (typeof value === "string" && (CARD_READ_VISIBILITIES as readonly string[]).includes(value)) {
+    return value as CardReadVisibility;
+  }
+  throw new PipelineError("INVALID_STATE", `card_read_visibility tidak valid: ${String(value)}`, 409);
+}
+
+// Validasi referensi katalog + invariant visibility (C.12): visibility hanya
+// boleh untuk card.read; card.read tanpa visibility → CREATED_BY_ME (BR-048).
+// Insert group + group_permissions atomik dalam satu transaksi.
+export async function createPermissionGroup(globalClient: Client, input: CreatePermissionGroupInput): Promise<PermissionGroupSummary> {
+  const db = drizzle(globalClient);
+  const now = new Date().toISOString();
+  const requested: Array<{ permissionId: string; cardReadVisibility: CardReadVisibility | null }> =
+    input.permissions.map((entry) => ({
+      permissionId: entry.permissionId,
+      cardReadVisibility: normalizeVisibility(entry.cardReadVisibility),
+    }));
+  const permissionIds = [...new Set(requested.map((entry) => entry.permissionId))];
+  const known = permissionIds.length > 0
+    ? await db.select({ id: permissions.id, key: permissions.key }).from(permissions)
+      .where(inArray(permissions.id, permissionIds))
+    : [];
+  const keyById = new Map(known.map((row) => [row.id, row.key]));
+  for (const id of permissionIds) {
+    if (!keyById.has(id)) {
+      throw new PipelineError("INVALID_STATE", `permission_id tidak dikenal: ${id}`, 409);
+    }
+  }
+  for (const entry of requested) {
+    if (entry.cardReadVisibility != null && keyById.get(entry.permissionId) !== "card.read") {
+      throw new PipelineError("INVALID_STATE", "card_read_visibility hanya berlaku untuk permission card.read.", 409);
+    }
+  }
+  const groupId = ulid();
+  await db.transaction(async (tx) => {
+    await tx.insert(permissionGroups).values({
+      id: groupId,
+      projectId: input.projectId,
+      name: input.name,
+      description: input.description ?? null,
+      createdAt: now,
+      updatedAt: now,
+    }).run();
+    if (requested.length > 0) {
+      await tx.insert(groupPermissions).values(requested.map((entry) => ({
+        groupId,
+        permissionId: entry.permissionId,
+        cardReadVisibility: entry.cardReadVisibility ?? (keyById.get(entry.permissionId) === "card.read" ? "CREATED_BY_ME" : null),
+        createdAt: now,
+      }))).run();
+    }
+  });
+  const created = await db.select().from(permissionGroups).where(eq(permissionGroups.id, groupId));
+  return (await attachPermissions(globalClient, created))[0]!;
 }

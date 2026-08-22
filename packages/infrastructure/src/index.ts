@@ -27,10 +27,12 @@ export {
 } from "./database/project-resolver.ts";
 export {
   assertProjectOwner,
+  createPermissionGroup,
   getProjectOwnerId,
   hasActiveMembership,
   listPermissionGroups,
   requireActiveMember,
+  type CreatePermissionGroupInput,
   type PermissionGroupEntry,
   type PermissionGroupSummary,
 } from "./database/project-admin.ts";

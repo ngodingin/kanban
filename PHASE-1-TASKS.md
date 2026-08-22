@@ -124,7 +124,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.7.1 | 🔎 | [CL-26](#cl-26)<br>[CL-25](#cl-25) | 80 | P1 | `GET /api/v1/projects/:project_id/permission-groups` — list Group Project-scoped (exclude yang `deleted_at` bukan NULL kecuali diminta eksplisit) | [02-SPEC C.12](docs/02-SPEC.md), FR-009 | 1.6 |
-| 1.7.2 | ⬜️ | — | 0 | P1 | `POST /api/v1/projects/:project_id/permission-groups` — create custom Group + assign permission set (referensi ke `permissions.id` katalog 1.5), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), FR-010, FR-011 | 1.5, 1.6 |
+| 1.7.2 | 🔎 | [CL-28](#cl-28)<br>[CL-27](#cl-27) | 80 | P1 | `POST /api/v1/projects/:project_id/permission-groups` — create custom Group + assign permission set (referensi ke `permissions.id` katalog 1.5), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), FR-010, FR-011 | 1.5, 1.6 |
 | 1.7.3 | ⬜️ | — | 0 | P1 | `PATCH /api/v1/projects/:project_id/permission-groups/:group_id` — ubah nama/description/permission assignment; perubahan permission langsung berlaku ke semua Membership ber-assignment (BR-040, live reference — tidak ada snapshot untuk di-invalidate), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), BR-040 | 1.7.1 |
 | 1.7.4 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | `POST /api/v1/projects/:project_id/permission-groups/:group_id/delete` — soft-delete (set `permission_groups.deleted_at`); Membership dengan assignment ke Group ini kehilangan permission yang di-grant Group tsb tanpa menghapus riwayat `membership_group_assignments` (BR-041); otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-041, D.1 `permission_group.delete` | 1.7.1 |
 
@@ -235,6 +235,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: HEAD `452dd0c`, working tree bersih; scope dikonfirmasi manusia untuk TASK-1.7–1.10 penuh (goal-per-goal sesuai dependency: 1.7.1 → 1.7.2 → 1.7.3 → 1.7.4 → 1.8.1 → 1.8.2 → 1.9.1 → 1.9.2 → 1.10.1 → 1.10.2). Dibaca ulang dari disk: 02-SPEC C.12/C.13, FR-005–011, BR-038–059, D.1–D.4, schema Global DB (global-schema.ts: permission_groups/group_permissions/membership_*_assignments/invitations/invitation_group_assignments), pola transaksi provision.ts, katalog D.1 (id ULID, lookup by key).
 **Catatan keputusan teknis interim (dicatat sejak awal, konsisten untuk seluruh scope):** authorization matrix Phase 1 mengikuti pola existing — mutasi Group/assignment/invitation/revoke = Owner-only; read (groups/members) = member aktif (setara View Project, member.read belum terisi D.2 — backlog Review-CL-03 item 1). Scope assignment Phase 1 wajib `scope_type="project"` dengan `scope_id=project_id` (BR-042B catatan revisit Phase 2/3). Revoke yang sudah revoked → idempotent (state dikembalikan apa adanya); revoke Owner Membership → INVALID_STATE 409 (invariant FR-002, bukan persoalan izin pemanggil). Entry ini mencakup transisi awal; tiap goal akan punya CL penyelesaian + commit masing-masing.
+
+<a id="cl-28"></a>
+### CL-28 — 2026-08-22 · goal 1.7.2 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 20 file / 101 test lulus, termasuk `apps/api/test/permission-groups-create.test.ts` 6/6: create 201 + persisten (list berisi group baru), card.read tanpa visibility → CREATED_BY_ME (BR-048), visibility eksplisit ASSIGNED_TO_ME tersimpan, visibility pada non-card.read → 409 INVALID_STATE (invariant C.12/B.2), non-Owner body-invalid tetap 403 PERMISSION_DENIED (authorization first), permission_id tak dikenal & nama kosong → 409, boundary Project (group tidak bocor ke Project lain). `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan implementasi:** `createPermissionGroup` di infra: validasi referensi katalog (permissions.id) + visibility rule, insert group+group_permissions atomik dalam satu transaksi. Route menegakkan Owner-only via deps.assertProjectOwner SEBELUM parse body. permissions kosong diperbolehkan (group tanpa grant).
+
+<a id="cl-27"></a>
+### CL-27 — 2026-08-22 · goal 1.7.2 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: HEAD `8f59c4e` (1.7.1 🔎), dependency 1.5 ✅ (QA-CL-10) + 1.6 ✅ (QA-CL-11). Dibaca ulang: C.12 create endpoint, FR-010/011, BR-039, aturan `card_read_visibility` (C.12: hanya card.read, default CREATED_BY_ME — dirujuk Test sebagai invariant B.2), katalog D.1 (permissions.id ULID, lookup by key).
+**Catatan:** Payload permissions memakai `permission_id` merujuk row katalog (bentuk sesuai contoh C.12); id tidak dikenal dipetakan INVALID_STATE 409 (konsisten pemetaan payload existing, backlog Review-CL-03 item 3 tetap terbuka).
 
 <a id="cl-26"></a>
 ### CL-26 — 2026-08-22 · goal 1.7.1 selesai sisi Dev (🔄 → 🔎 · 80%)

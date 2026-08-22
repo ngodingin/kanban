@@ -1,5 +1,7 @@
 import {
+  assertProjectOwner,
   createCachedProjectDbClientFactory,
+  createPermissionGroup,
   listPermissionGroups,
   listProjectSummaries,
   newProjectId,
@@ -80,5 +82,13 @@ export function buildProjectAdminDeps(input: {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listPermissionGroups(globalClient, projectId, opts);
     },
+    assertProjectOwner: (projectId, requesterUserId) => assertProjectOwner(globalClient, projectId, requesterUserId),
+    createPermissionGroup: async (projectId, payload) =>
+      createPermissionGroup(globalClient, {
+        projectId,
+        name: payload.name,
+        description: payload.description,
+        permissions: payload.permissions,
+      }),
   };
 }
