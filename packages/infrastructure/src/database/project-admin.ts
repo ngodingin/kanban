@@ -675,3 +675,35 @@ export async function listProjectMembers(
     .orderBy(asc(projectMemberships.createdAt));
   return rows;
 }
+
+// Revoke Membership (C.12 amandemen 2.1.0, BR-053, FR-002): set revoked_at
+// saja — riwayat assignment tidak disentuh; Owner tidak dapat di-revoke.
+export async function revokeMembership(
+  globalClient: Client,
+  input: { projectId: string; membershipId: string },
+): Promise<ProjectMemberSummary> {
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(projectMemberships)
+    .where(sql`${projectMemberships.id} = ${input.membershipId} AND ${projectMemberships.projectId} = ${input.projectId}`);
+  if (rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Membership ${input.membershipId} tidak ditemukan di Project ini.`, 404);
+  }
+  const membership = rows[0]!;
+  if (membership.revokedAt === null && membership.userId === (await getProjectOwnerId(globalClient, input.projectId))) {
+    throw new PipelineError("INVALID_STATE", "Owner Membership tidak dapat di-revoke — Project wajib memiliki tepat satu Owner aktif (FR-002).", 409);
+  }
+  let revokedAt = membership.revokedAt;
+  if (revokedAt === null) {
+    revokedAt = new Date().toISOString();
+    await db.update(projectMemberships).set({ revokedAt }).where(eq(projectMemberships.id, input.membershipId)).run();
+  }
+  const userRows = await globalClient.execute({ sql: "SELECT email, name FROM users WHERE id = ?", args: [membership.userId] });
+  return {
+    membershipId: membership.id,
+    userId: membership.userId,
+    email: String(userRows.rows[0]!.email),
+    name: String(userRows.rows[0]!.name),
+    createdAt: membership.createdAt,
+    revokedAt,
+  };
+}

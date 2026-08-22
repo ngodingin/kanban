@@ -15,6 +15,7 @@ import {
   RequestPipeline,
   requireActiveMember,
   revokeGroupAssignment,
+  revokeMembership,
   revokePermissionAssignment,
   SqliteProjectDatabaseResolver,
   updatePermissionGroup,
@@ -143,5 +144,6 @@ export function buildProjectAdminDeps(input: {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listProjectMembers(globalClient, projectId, opts);
     },
+    revokeMembership: (projectId, membershipId) => revokeMembership(globalClient, { projectId, membershipId }),
   };
 }

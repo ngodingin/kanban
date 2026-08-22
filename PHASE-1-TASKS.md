@@ -164,7 +164,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.10.1 | 🔎 | [CL-42](#cl-42)<br>[CL-41](#cl-41)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-09](#review-cl-09) | 80 | P2 | `GET /api/v1/projects/:project_id/members` — list Membership Project (`member.read`); query param opsional `status` (comma-separated, subset `active,revoked`) membatasi hasil, tanpa param kembalikan keduanya | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0, 2.4.0), FR-008 | 1.2 |
-| 1.10.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | `POST /api/v1/projects/:project_id/members/:membership_id/revoke` (`member.remove`) — set `project_memberships.revoked_at`, TIDAK menghapus data historis (`creator_user_id`/`activity.actor_user_id` tetap utuh, BR-053); tidak mencabut `membership_group_assignments`/`membership_permission_assignments` satu-per-satu — assignment tetap ada sebagai riwayat, non-applicable begitu Membership induk revoked; Owner Membership MUST NOT dapat di-revoke (Project selalu punya tepat satu Owner, FR-002) | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-053, FR-002, FR-008 | 1.2, 1.10.1 |
+| 1.10.2 | 🔎 | [CL-44](#cl-44)<br>[CL-43](#cl-43)<br>[Review-CL-02](#review-cl-02) | 80 | P2 | `POST /api/v1/projects/:project_id/members/:membership_id/revoke` (`member.remove`) — set `project_memberships.revoked_at`, TIDAK menghapus data historis (`creator_user_id`/`activity.actor_user_id` tetap utuh, BR-053); tidak mencabut `membership_group_assignments`/`membership_permission_assignments` satu-per-satu — assignment tetap ada sebagai riwayat, non-applicable begitu Membership induk revoked; Owner Membership MUST NOT dapat di-revoke (Project selalu punya tepat satu Owner, FR-002) | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-053, FR-002, FR-008 | 1.2, 1.10.1 |
 
 **Test:** List tidak bocor lintas Project; revoke Membership non-Owner sukses set `revoked_at` tanpa hapus row assignment; revoke Membership yang sudah revoked → idempotent atau ditolak (INVALID_STATE — bebas dipilih Dev asal konsisten, dicatat di CL); percobaan revoke Owner Membership ditolak.
 **DoD:** FR-008 (revoke tanpa hapus riwayat) terbukti test; Owner Membership tidak pernah bisa di-revoke sendiri (menjaga FR-002).
@@ -288,6 +288,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: HEAD `452dd0c`, working tree bersih; scope dikonfirmasi manusia untuk TASK-1.7–1.10 penuh (goal-per-goal sesuai dependency: 1.7.1 → 1.7.2 → 1.7.3 → 1.7.4 → 1.8.1 → 1.8.2 → 1.9.1 → 1.9.2 → 1.10.1 → 1.10.2). Dibaca ulang dari disk: 02-SPEC C.12/C.13, FR-005–011, BR-038–059, D.1–D.4, schema Global DB (global-schema.ts: permission_groups/group_permissions/membership_*_assignments/invitations/invitation_group_assignments), pola transaksi provision.ts, katalog D.1 (id ULID, lookup by key).
 **Catatan keputusan teknis interim (dicatat sejak awal, konsisten untuk seluruh scope):** authorization matrix Phase 1 mengikuti pola existing — mutasi Group/assignment/invitation/revoke = Owner-only; read (groups/members) = member aktif (setara View Project, member.read belum terisi D.2 — backlog Review-CL-03 item 1). Scope assignment Phase 1 wajib `scope_type="project"` dengan `scope_id=project_id` (BR-042B catatan revisit Phase 2/3). Revoke yang sudah revoked → idempotent (state dikembalikan apa adanya); revoke Owner Membership → INVALID_STATE 409 (invariant FR-002, bukan persoalan izin pemanggil). Entry ini mencakup transisi awal; tiap goal akan punya CL penyelesaian + commit masing-masing.
+
+<a id="cl-44"></a>
+### CL-44 — 2026-08-22 · goal 1.10.2 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 28 file / 144 test lulus, termasuk `apps/api/test/members-revoke.test.ts` 4/4: revoke member → revoked_at ter-set, row membership & assignment group tetap utuh (BR-053, assignment non-applicable via induk); re-revoke idempotent timestamp sama; Owner Membership → 409 INVALID_STATE dan Project tetap punya Owner aktif (FR-002); membership Project lain → 404; caller non-Owner → 403 PERMISSION_DENIED. `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan implementasi:** Seluruh scope Task 1.7–1.9 + 1.10 kini 🔎 80% sisi Dev. AC-020 optimistic locking tidak berlaku pada plane Global DB (tanpa kolom version) — konsisten dengan schema SOT saat ini.
+
+<a id="cl-43"></a>
+### CL-43 — 2026-08-22 · goal 1.10.2 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: HEAD `52e45f6` (1.10.1 🔎), working tree bersih, row 1.10.2 `⬜️/0`; dependency 1.2 ✅ + 1.10.1 🔎 80% sisi Dev. Dibaca ulang: C.12 amandemen 2.1.0 (`POST /members/:membership_id/revoke`), BR-053 (data historis utuh), FR-002 (tepat satu Owner).
+**Catatan keputusan teknis:** Otorisasi mutasi interim = Owner-only (assertProjectOwner sebelum apa pun). Revoke set `revoked_at` saja — assignment TIDAK disentuh (BR-053). Revoke pada membership yang sudah revoked → idempotent (kembalikan state). Revoke Owner Membership → INVALID_STATE 409. Membership lintas-Project/tak dikenal → RESOURCE_NOT_FOUND.
 
 <a id="cl-42"></a>
 ### CL-42 — 2026-08-22 · goal 1.10.1 selesai sisi Dev (🔄 → 🔎 · 80%)

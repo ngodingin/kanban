@@ -84,6 +84,7 @@ export interface ProjectAdminRoutesDeps {
     requesterUserId: string,
     opts: { status?: Array<"active" | "revoked"> },
   ): Promise<ProjectMemberSummary[]>;
+  revokeMembership(projectId: string, membershipId: string): Promise<ProjectMemberSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -428,6 +429,24 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       }
       const members = await deps.listMembers(projectId, identity.userId, { ...(status !== undefined ? { status } : {}) });
       return c.json(ok({ members }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/members/:membership_id/revoke", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): member.remove interim
+      // = Owner-only (CL-25).
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const membership = await deps.revokeMembership(projectId, c.req.param("membership_id"));
+      return c.json(ok({ membership }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);
