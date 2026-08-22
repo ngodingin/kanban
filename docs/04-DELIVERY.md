@@ -270,7 +270,7 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 - Milestone Label & Board Label (CRUD)
 - Card-Label association dengan lifecycle (`created_at`/`removed_at`)
 - Activity table & append-only write path
-- Comment (create, edit — sebagai Activity `comment_added`/`comment_edited`)
+- Comment (create, edit — sebagai Activity `comment.added`/`comment.edited`)
 - Historical context pada Activity payload (BR-028)
 
 **Phase 4 — Authorization**
