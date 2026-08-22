@@ -7,7 +7,7 @@ import {
   type MilestoneRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface MilestoneRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -125,6 +125,39 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
         );
       }
       return { milestone: milestonePayload(record) };
+    });
+  });
+
+  router.patch("/v1/projects/:project_id/milestones/:milestone_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const expectedVersion = readExpectedVersionField(body);
+      const allowedFields = ["title", "description", "progress", "start_date", "due_date"] as const;
+      for (const key of Object.keys(body)) {
+        if (!(allowedFields as readonly string[]).includes(key) && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dapat diubah via PATCH Milestone (C.15).`,
+            400,
+          );
+        }
+      }
+      const repository = new DrizzleMilestoneRepository(ctx.database);
+      const updated = await repository.updateMilestone(projectId, {
+        milestoneId: c.req.param("milestone_id"),
+        expectedVersion,
+        actorUserId: ctx.userId,
+        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
+        description: readOptionalStringField(body, "description"),
+        progress: readProgressField(body),
+        startDate: readOptionalStringField(body, "start_date"),
+        dueDate: readOptionalStringField(body, "due_date"),
+      });
+      return { milestone: milestonePayload(updated) };
     });
   });
 

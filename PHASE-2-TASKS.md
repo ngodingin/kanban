@@ -78,7 +78,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.3.1 | 🔎 | [CL-06](#cl-06)<br>[CL-05](#cl-05) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones` + `GET .../milestones/:milestone_id` — pakai `RequestPipeline` (identity+membership+resolve DB), Owner-only interim utk create (Prinsip #2), balikan `{data:{milestone:{...}}}` konsisten C.2 | [02-SPEC C.5](docs/02-SPEC.md), FR-014 | 2.2 |
-| 2.3.2 | ⬜️ | — | 0 | P1 | `PATCH /api/v1/projects/:project_id/milestones/:milestone_id` — field `title`/`description`/`progress`/`start_date`/`due_date` saja (C.15 generic PATCH tidak boleh ubah `id`/`version`/dst), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR` (bukan `INVALID_STATE`, konsisten SOT 2.3.0) | [02-SPEC C.5](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), [C.2](docs/02-SPEC.md) | 2.2, 2.3.1 |
+| 2.3.2 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | `PATCH /api/v1/projects/:project_id/milestones/:milestone_id` — field `title`/`description`/`progress`/`start_date`/`due_date` saja (C.15 generic PATCH tidak boleh ubah `id`/`version`/dst), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR` (bukan `INVALID_STATE`, konsisten SOT 2.3.0) | [02-SPEC C.5](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), [C.2](docs/02-SPEC.md) | 2.2, 2.3.1 |
 | 2.3.3 | ⬜️ | — | 0 | P1 | `POST .../milestones/:milestone_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama seperti Project (TASK-1.4) | [02-SPEC C.5](docs/02-SPEC.md), A.3 | 2.2, 2.3.1 |
 
 **Test:** Integration — create tanpa identitas ditolak; create pada Project non-ACTIVE ditolak; read tanpa membership → `PROJECT_ACCESS_DENIED`; update/lifecycle oleh non-Owner → `PERMISSION_DENIED`; version mismatch → `VERSION_CONFLICT`; payload invalid (mis. `progress` bukan angka 0–100) → `VALIDATION_ERROR`; Project-boundary — Milestone Project lain tidak pernah bocor/tersentuh.
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-08"></a>
+### CL-08 — 2026-08-23 · goal 2.3.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Milestone
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 34 file / **199** test lulus (6 test integration baru `apps/api/test/milestones-patch.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `PATCH /v1/projects/:project_id/milestones/:milestone_id` di routes/milestones.ts — Owner-only interim (PERMISSION_DENIED 403 untuk member non-Owner), hanya menerima field `title/description/progress/start_date/due_date` + `expected_version` wajib; field domain-controlled lain (`id`, `version`, `archived_at`, `deleted_at`, `list_id`) → VALIDATION_ERROR 400 (C.15); payload invalid bentuk → VALIDATION_ERROR 400 bukan INVALID_STATE (SOT 2.3.0); Activity `milestone.updated{changes:{before,after}}` diverifikasi isinya per field yang benar-benar berubah.
+**Catatan:** Test negatif: C.15 protected fields ditolak; version mismatch → VERSION_CONFLICT 409 tanpa perubahan (AC-020); non-Owner member → PERMISSION_DENIED 403; milestone ARCHIVED → INVALID_STATE 409 (INV-LIFE-003); title kosong/progress range/salah tipe → VALIDATION_ERROR.
+
+<a id="cl-07"></a>
+### CL-07 — 2026-08-23 · goal 2.3.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.3.2 `⬜️/—/0/P1`, dependency `2.2, 2.3.1` → 2.2.1 `🔎/80%` commit `e084866`, 2.3.1 `🔎/80%` commit `8bd1ba0` (suite 193 hijau). C.5 + C.15 dibaca ulang dari disk saat persiapan.
+**Catatan:** PATCH hanya field domain `title/description/progress/start_date/due_date`; `expected_version` wajib; payload invalid → VALIDATION_ERROR (bukan INVALID_STATE, SOT 2.3.0).
 
 <a id="cl-06"></a>
 ### CL-06 — 2026-08-23 · goal 2.3.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET Milestone
