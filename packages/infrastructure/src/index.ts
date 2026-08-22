@@ -20,6 +20,11 @@ export { DrizzleBoardRepository } from "./database/board-repository.ts";
 export { DrizzleListRepository } from "./database/list-repository.ts";
 export { DrizzleCardRepository, type DrizzleCardRepositoryDeps } from "./database/card-repository.ts";
 export {
+  cleanupAssigneesForRevokedMembership,
+  unassignCardFromRevokedMember,
+  type CleanupRevokedAssigneeResult,
+} from "./database/card-assignee-cleanup.ts";
+export {
   deriveProjectStatus,
   listProjectSummaries,
   type ProjectStatus,

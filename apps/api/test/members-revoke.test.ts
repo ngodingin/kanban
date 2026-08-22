@@ -8,6 +8,7 @@ import {
   applyGlobalMigrations,
   newProjectId,
   registerProjectWithOwnerMembership,
+  applyProjectMigrations,
 } from "@kanban/infrastructure";
 import { buildProjectAdminDeps } from "../src/project-deps.ts";
 import { createProjectAdminRouter } from "../src/routes/project-admin.ts";
@@ -40,6 +41,13 @@ beforeAll(async () => {
   }
 
   const projectIdA = `pg-a-${newProjectId()}`;
+  // TASK-2.12: revoke kini menjalankan cleanup assignee di Project DB —
+  // fixture wajib menyediakan Project DB sungguhan dengan schema lengkap.
+  for (const dbFile of ["unused-a.db", "unused-b.db"]) {
+    const c = createClient({ url: `file:${join(dir, dbFile)}` });
+    await applyProjectMigrations(c);
+    await c.close();
+  }
   await registerProjectWithOwnerMembership(globalClient, {
     projectId: projectIdA,
     databaseId: `file:${join(dir, "unused-a.db")}`,

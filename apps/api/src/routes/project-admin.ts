@@ -99,7 +99,7 @@ export interface ProjectAdminRoutesDeps {
     requesterUserId: string,
     opts: { status?: Array<"active" | "revoked"> },
   ): Promise<ProjectMemberSummary[]>;
-  revokeMembership(projectId: string, membershipId: string): Promise<ProjectMemberSummary>;
+  revokeMembership(projectId: string, membershipId: string, actorUserId?: string): Promise<ProjectMemberSummary>;
   listProjectInvitations(projectId: string): Promise<InvitationListSummary[]>;
   revokeInvitation(projectId: string, invitationId: string): Promise<InvitationListSummary>;
 }
@@ -440,7 +440,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       // Authorization first (Implementation Rule 3): member.remove interim
       // = Owner-only (CL-25).
       await deps.assertProjectOwner(projectId, identity.userId);
-      const membership = await deps.revokeMembership(projectId, c.req.param("membership_id"));
+      const membership = await deps.revokeMembership(projectId, c.req.param("membership_id"), identity.userId);
       return { membership };
     });
   });

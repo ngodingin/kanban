@@ -177,8 +177,16 @@ function buildProjectContextDeps(
 export function buildProjectAdminDeps(input: {
   identityResolver: IdentityResolver;
   globalClient: Client;
+  turso: TursoEnv | null;
 }): ProjectAdminRoutesDeps {
-  const { identityResolver, globalClient } = input;
+  const { identityResolver, globalClient, turso } = input;
+  const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
+  const projectClientFactory = createCachedProjectDbClientFactory({ turso });
+  const resolveProjectDbClient = async (projectId: string): Promise<Client | null> => {
+    const mapping = await databaseResolver.resolve(projectId);
+    if (!mapping) return null;
+    return projectClientFactory.create(mapping.databaseId);
+  };
   return {
     resolveIdentity: (request) => identityResolver.resolveIdentity(request),
     requireActiveMember: (projectId, requesterUserId) => requireActiveMember(globalClient, projectId, requesterUserId),
@@ -237,7 +245,10 @@ export function buildProjectAdminDeps(input: {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listProjectMembers(globalClient, projectId, opts);
     },
-    revokeMembership: (projectId, membershipId) => revokeMembership(globalClient, { projectId, membershipId }),
+    revokeMembership: async (projectId, membershipId, actorUserId) => {
+      const projectDb = await resolveProjectDbClient(projectId);
+      return revokeMembership(globalClient, { projectId, membershipId, actorUserId }, projectDb);
+    },
     listProjectInvitations: (projectId) => listProjectInvitations(globalClient, projectId),
     revokeInvitation: (projectId, invitationId) => revokeInvitation(globalClient, { projectId, invitationId }),
   };

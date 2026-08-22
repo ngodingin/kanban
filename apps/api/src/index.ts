@@ -73,6 +73,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       deps = buildProjectAdminDeps({
         identityResolver: new BetterAuthIdentityResolver(r.auth),
         globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
       });
       adminDeps = deps;
     }

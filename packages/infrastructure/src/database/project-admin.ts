@@ -16,6 +16,7 @@ import {
 } from "./global-schema.ts";
 import { PipelineError } from "../pipeline/errors.ts";
 import { runInDrizzleWriteTransaction } from "./transaction.ts";
+import { cleanupAssigneesForRevokedMembership } from "./card-assignee-cleanup.ts";
 
 // Semua operasi di modul ini bekerja pada tabel Global DB (authorization
 // plane), BUKAN Project DB — persistence tetap di balik boundary ini dan
@@ -697,9 +698,12 @@ export async function listProjectMembers(
 
 // Revoke Membership (C.12 amandemen 2.1.0, BR-053, FR-002): set revoked_at
 // saja — riwayat assignment tidak disentuh; Owner tidak dapat di-revoke.
+// TASK-2.12: setelah commit Global, cleanup assignee Card di Project DB
+// berjalan terpisah (03-ENG A.5 — app-layer, tanpa transaksi lintas-DB).
 export async function revokeMembership(
   globalClient: Client,
-  input: { projectId: string; membershipId: string },
+  input: { projectId: string; membershipId: string; actorUserId?: string },
+  projectDb?: Client | null,
 ): Promise<ProjectMemberSummary> {
   const db = drizzle(globalClient);
   const rows = await db.select().from(projectMemberships)
@@ -715,6 +719,14 @@ export async function revokeMembership(
   if (revokedAt === null) {
     revokedAt = new Date().toISOString();
     await db.update(projectMemberships).set({ revokedAt }).where(eq(projectMemberships.id, input.membershipId)).run();
+  }
+  if (projectDb) {
+    await cleanupAssigneesForRevokedMembership(
+      projectDb,
+      input.projectId,
+      membership.userId,
+      input.actorUserId ?? membership.userId,
+    );
   }
   const userRows = await globalClient.execute({ sql: "SELECT email, name FROM users WHERE id = ?", args: [membership.userId] });
   return {
