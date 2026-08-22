@@ -55,7 +55,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.1.1 | 🔎 | [CL-02](#cl-02)<br>[CL-01](#cl-01) | 80 | P0 | Bangun utility domain (mis. `packages/domain/src/lifecycle/effective-state.ts`) untuk: (a) resolusi lifecycle satu entity dari `{archivedAt, deletedAt}` — **reuse/rename** `resolveProjectLifecycle` (`packages/domain/src/project/project-lifecycle.ts`, Phase 1) jadi entity-agnostic (mis. `resolveLifecycleState`), JANGAN duplikasi logika BR-011 (deletedAt menang atas archivedAt); (b) fungsi "effective operational" yang menerima chain state entity+seluruh ancestor (List→Board→Milestone→Project) dan mengembalikan apakah entity BENAR-BENAR operasional (INV-LIFE-001 — non-operational jika ADA satu saja ancestor ARCHIVED/DELETED, walau local state entity sendiri ACTIVE); (c) fungsi validasi restore (INV-LIFE-002 — hanya izinkan jika SELURUH ancestor ACTIVE, urutan tidak masalah karena semua harus ACTIVE bersamaan, bukan restore berurutan otomatis) | [02-SPEC A.3](docs/02-SPEC.md) (INV-LIFE-001–004), BR-011–015 | — |
+| 2.1.1 | ✅ | [CL-02](#cl-02)<br>[CL-01](#cl-01)<br>[QA-CL-01](#qa-cl-01) | 100 | P0 | Bangun utility domain (mis. `packages/domain/src/lifecycle/effective-state.ts`) untuk: (a) resolusi lifecycle satu entity dari `{archivedAt, deletedAt}` — **reuse/rename** `resolveProjectLifecycle` (`packages/domain/src/project/project-lifecycle.ts`, Phase 1) jadi entity-agnostic (mis. `resolveLifecycleState`), JANGAN duplikasi logika BR-011 (deletedAt menang atas archivedAt); (b) fungsi "effective operational" yang menerima chain state entity+seluruh ancestor (List→Board→Milestone→Project) dan mengembalikan apakah entity BENAR-BENAR operasional (INV-LIFE-001 — non-operational jika ADA satu saja ancestor ARCHIVED/DELETED, walau local state entity sendiri ACTIVE); (c) fungsi validasi restore (INV-LIFE-002 — hanya izinkan jika SELURUH ancestor ACTIVE, urutan tidak masalah karena semua harus ACTIVE bersamaan, bukan restore berurutan otomatis) | [02-SPEC A.3](docs/02-SPEC.md) (INV-LIFE-001–004), BR-011–015 | — |
 
 **Test:** Unit murni (tanpa DB, terima record state sebagai input) — kombinasi state: entity ACTIVE + semua ancestor ACTIVE → operational; entity ACTIVE + satu ancestor ARCHIVED → TIDAK operational (tanpa mengubah local state descendant, BR-013/014); entity ARCHIVED + semua ancestor ACTIVE → restore diizinkan; entity ARCHIVED + satu ancestor ARCHIVED → restore ditolak (INV-LIFE-002); entity/ancestor manapun DELETED → restore selalu ditolak (INV-LIFE-004); `resolveLifecycleState` deletedAt menang atas archivedAt (BR-011) untuk seluruh kombinasi.
 **DoD:** Utility dipakai seragam oleh TASK-2.2/2.4/2.6/2.8 (Milestone/Board/List/Card) — tidak ada entity yang reimplementasi logika ancestor-chain sendiri (DRY, hindari kelas masalah Review-CL-10 Temuan 5 Phase 1); `resolveProjectLifecycle` lama di-refactor jadi alias/reuse, bukan diduplikasi.
@@ -66,7 +66,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.2.1 | 🔎 | [CL-04](#cl-04)<br>[CL-03](#cl-03) | 80 | P0 | Domain command Milestone (menggantikan smoke `createMilestone`/`listMilestones` di `project-repository.ts`, bukan memperluasnya): `createMilestone` (title/description/progress 0–100/start_date/due_date — FR-014; tolak jika Project tidak ACTIVE, BR-013/INV-LIFE-001), `updateMilestone` (title/description/progress/dates, `expected_version` wajib — progress diubah manual sesuai FR-015, TIDAK dihitung otomatis dari Board/List/Card), `archiveMilestone`, `restoreMilestone` (pakai 2.1 — ancestor = Project, hanya `project_state`), `deleteMilestone`. Setiap command: version check → validasi ancestor (create/restore) atau local-state (update/archive) → mutation+Activity (`milestone.created`/`milestone.updated`/`milestone.archived`/`milestone.restored`/`milestone.deleted`) atomik dalam satu `runInWriteTransaction`, payload sesuai konvensi B.5 | [02-SPEC A.3](docs/02-SPEC.md), [A.7](docs/02-SPEC.md), [A.8](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-014, FR-015, FR-016; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1 |
+| 2.2.1 | ✅ | [CL-04](#cl-04)<br>[CL-03](#cl-03)<br>[QA-CL-02](#qa-cl-02) | 100 | P0 | Domain command Milestone (menggantikan smoke `createMilestone`/`listMilestones` di `project-repository.ts`, bukan memperluasnya): `createMilestone` (title/description/progress 0–100/start_date/due_date — FR-014; tolak jika Project tidak ACTIVE, BR-013/INV-LIFE-001), `updateMilestone` (title/description/progress/dates, `expected_version` wajib — progress diubah manual sesuai FR-015, TIDAK dihitung otomatis dari Board/List/Card), `archiveMilestone`, `restoreMilestone` (pakai 2.1 — ancestor = Project, hanya `project_state`), `deleteMilestone`. Setiap command: version check → validasi ancestor (create/restore) atau local-state (update/archive) → mutation+Activity (`milestone.created`/`milestone.updated`/`milestone.archived`/`milestone.restored`/`milestone.deleted`) atomik dalam satu `runInWriteTransaction`, payload sesuai konvensi B.5 | [02-SPEC A.3](docs/02-SPEC.md), [A.7](docs/02-SPEC.md), [A.8](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-014, FR-015, FR-016; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1 |
 
 **Test:** Unit — create ditolak jika Project ARCHIVED/DELETED; update/archive/delete dari state salah ditolak (state machine A.3); `expected_version` salah → `VERSION_CONFLICT` tanpa perubahan/Activity (AC-020); restore ditolak jika Project tidak ACTIVE; tidak ada field `status` (FR-016) — hanya `progress` manual (FR-015); Activity payload `changes`/`previous_state` sesuai B.5.
 **DoD:** Seluruh 5 command atomik (mutation+Activity 1 transaksi); ancestor check dari 2.1 dipakai (bukan reimplementasi); tidak ada command yang bypass version check.
@@ -77,9 +77,9 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.3.1 | 🔎 | [CL-06](#cl-06)<br>[CL-05](#cl-05) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones` + `GET .../milestones/:milestone_id` — pakai `RequestPipeline` (identity+membership+resolve DB), Owner-only interim utk create (Prinsip #2), balikan `{data:{milestone:{...}}}` konsisten C.2 | [02-SPEC C.5](docs/02-SPEC.md), FR-014 | 2.2 |
-| 2.3.2 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | `PATCH /api/v1/projects/:project_id/milestones/:milestone_id` — field `title`/`description`/`progress`/`start_date`/`due_date` saja (C.15 generic PATCH tidak boleh ubah `id`/`version`/dst), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR` (bukan `INVALID_STATE`, konsisten SOT 2.3.0) | [02-SPEC C.5](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), [C.2](docs/02-SPEC.md) | 2.2, 2.3.1 |
-| 2.3.3 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P1 | `POST .../milestones/:milestone_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama seperti Project (TASK-1.4) | [02-SPEC C.5](docs/02-SPEC.md), A.3 | 2.2, 2.3.1 |
+| 2.3.1 | ✅ | [CL-06](#cl-06)<br>[CL-05](#cl-05)<br>[QA-CL-03](#qa-cl-03) | 100 | P0 | `POST /api/v1/projects/:project_id/milestones` + `GET .../milestones/:milestone_id` — pakai `RequestPipeline` (identity+membership+resolve DB), Owner-only interim utk create (Prinsip #2), balikan `{data:{milestone:{...}}}` konsisten C.2 | [02-SPEC C.5](docs/02-SPEC.md), FR-014 | 2.2 |
+| 2.3.2 | ✅ | [CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[QA-CL-04](#qa-cl-04) | 100 | P1 | `PATCH /api/v1/projects/:project_id/milestones/:milestone_id` — field `title`/`description`/`progress`/`start_date`/`due_date` saja (C.15 generic PATCH tidak boleh ubah `id`/`version`/dst), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR` (bukan `INVALID_STATE`, konsisten SOT 2.3.0) | [02-SPEC C.5](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), [C.2](docs/02-SPEC.md) | 2.2, 2.3.1 |
+| 2.3.3 | ✅ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[QA-CL-05](#qa-cl-05) | 100 | P1 | `POST .../milestones/:milestone_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama seperti Project (TASK-1.4) | [02-SPEC C.5](docs/02-SPEC.md), A.3 | 2.2, 2.3.1 |
 
 **Test:** Integration — create tanpa identitas ditolak; create pada Project non-ACTIVE ditolak; read tanpa membership → `PROJECT_ACCESS_DENIED`; update/lifecycle oleh non-Owner → `PERMISSION_DENIED`; version mismatch → `VERSION_CONFLICT`; payload invalid (mis. `progress` bukan angka 0–100) → `VALIDATION_ERROR`; Project-boundary — Milestone Project lain tidak pernah bocor/tersentuh.
 **DoD:** Endpoint sesuai kontrak C.5; response envelope C.2; field domain-controlled tidak bisa diubah via PATCH; seluruh test di atas hijau.
@@ -90,7 +90,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.4.1 | 🔎 | [CL-12](#cl-12)<br>[CL-11](#cl-11) | 80 | P0 | Domain command Board: `createBoard` (title/description, FR-018; tolak jika Milestone ATAU Project tidak ACTIVE — ancestor chain 2 level, pakai 2.1), `updateBoard`, `archiveBoard`, `restoreBoard` (ancestor: Milestone+Project keduanya ACTIVE), `deleteBoard`. Board TIDAK punya status/warna/ikon/WIP limit (FR-019). Pola sama TASK-2.2: version check → ancestor/state validasi → mutation+Activity atomik | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-018, FR-019; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.2 |
+| 2.4.1 | ✅ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-06](#qa-cl-06) | 100 | P0 | Domain command Board: `createBoard` (title/description, FR-018; tolak jika Milestone ATAU Project tidak ACTIVE — ancestor chain 2 level, pakai 2.1), `updateBoard`, `archiveBoard`, `restoreBoard` (ancestor: Milestone+Project keduanya ACTIVE), `deleteBoard`. Board TIDAK punya status/warna/ikon/WIP limit (FR-019). Pola sama TASK-2.2: version check → ancestor/state validasi → mutation+Activity atomik | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-018, FR-019; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.2 |
 
 **Test:** Unit — create ditolak jika Milestone ARCHIVED/DELETED (walau Project ACTIVE) DAN jika Project ARCHIVED/DELETED (walau Milestone local ACTIVE — INV-LIFE-001 "ada satu saja ancestor"); restore ditolak jika salah satu dari 2 ancestor tidak ACTIVE; `expected_version` salah → `VERSION_CONFLICT`; tidak ada field non-MVP (status/warna/ikon/WIP).
 **DoD:** Ancestor chain 2-level (Milestone→Project) tervalidasi benar via 2.1; atomik mutation+Activity; archive Board tidak mengubah List/Card descendant (BR-013).
@@ -101,9 +101,9 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.5.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
-| 2.5.2 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15) | 80 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
-| 2.5.3 | 🔎 | [CL-18](#cl-18)<br>[CL-17](#cl-17) | 80 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
+| 2.5.1 | ✅ | [CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[QA-CL-07](#qa-cl-07) | 100 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
+| 2.5.2 | ✅ | [CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[QA-CL-08](#qa-cl-08) | 100 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
+| 2.5.3 | ✅ | [CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[QA-CL-09](#qa-cl-09) | 100 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
 
 **Test:** Create Board dengan `milestone_id` milik Project lain → ditolak (Project-boundary); create pada Milestone ARCHIVED → ditolak; restore Board ditolak jika Milestone masih ARCHIVED (INV-LIFE-002 urutan — restore Milestone dulu baru Board); lifecycle + version-conflict pattern sama seperti TASK-2.3.
 **DoD:** Endpoint sesuai C.6; Board tidak punya operasi move (INV-MOVE-001); archive/delete Board tidak menyentuh List/Card descendant.
@@ -114,7 +114,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.6.1 | 🔎 | [CL-20](#cl-20)<br>[CL-19](#cl-19) | 80 | P0 | Domain command List: `createList` (title bebas tanpa semantic bawaan, FR-021; ancestor chain 3 level — Board+Milestone+Project ACTIVE), `updateList`, `archiveList`, `restoreList` (ancestor 3-level ACTIVE semua), `deleteList`. List TIDAK punya field status (FR-023). Archive/delete List MUST NOT mengubah local state/parent relation Card descendant (FR-022, BR-013) — Card jadi non-operational efektif via 2.1, bukan cascade | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-021–023; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.4 |
+| 2.6.1 | ✅ | [CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Domain command List: `createList` (title bebas tanpa semantic bawaan, FR-021; ancestor chain 3 level — Board+Milestone+Project ACTIVE), `updateList`, `archiveList`, `restoreList` (ancestor 3-level ACTIVE semua), `deleteList`. List TIDAK punya field status (FR-023). Archive/delete List MUST NOT mengubah local state/parent relation Card descendant (FR-022, BR-013) — Card jadi non-operational efektif via 2.1, bukan cascade | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-021–023; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.4 |
 
 **Test:** Create ditolak jika salah satu dari 3 ancestor (Board/Milestone/Project) tidak ACTIVE; archive List → Card descendant TIDAK berubah local state/version/parent (assert langsung ke row Card, bukan cuma response List); restore ditolak jika ancestor manapun belum ACTIVE.
 **DoD:** Ancestor chain 3-level benar; archive/delete List terbukti TIDAK cascade ke Card (test eksplisit membaca row Card sebelum & sesudah).
@@ -210,6 +210,70 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="qa-cl-10"></a>
+### QA-CL-10 — 2026-08-23 · goal 2.6.1 🔎 → ✅ — domain command List chain 3 level, no-cascade ke Card terbukti
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca penuh `list-repository.ts` dan `list-commands.test.ts` (16 test). Konfirmasi: `createList` memvalidasi chain 3-level (Board→Milestone→Project) via `loadAncestorStates`+`isEffectivelyOperational`, satu ancestor manapun non-ACTIVE ditolak `AncestorNotActiveError` — dites terpisah untuk masing-masing dari 3 level. `restore` pakai `evaluateRestore` dengan urutan chain benar. State machine A.3 (`update/archive:[ACTIVE]`, `restore:[ARCHIVED]`, `delete:[ACTIVE,ARCHIVED]`) sama persis pola Milestone/Board (2.2.1/2.4.1) — konsisten, tidak ada reimplementasi ancestor-chain sendiri (DoD 2.1.1 terpenuhi). **FR-022/BR-013 no-cascade** — test eksplisit membaca row Card `SELECT *` penuh sebelum vs sesudah archive DAN delete List, `toEqual` byte-identik (state/version/list_id semua utuh) — inilah level bukti yang diminta Test/DoD goal ("assert langsung ke row Card, bukan cuma response List"), bukan cuma "tidak error". `getList` mengabaikan `projectId` parameter — dikonfirmasi BENAR (bukan bug): tabel `lists` di schema tidak punya kolom `project_id` sama sekali (arsitektur database-per-project — isolasi ditegakkan oleh koneksi DB, bukan filter WHERE).
+**Observasi minor (non-blocking):** `loadAncestorStates` query `project_state LIMIT 1` tanpa `WHERE project_id = ?` (beda gaya dari Milestone/Board yang eksplisit filter) — fungsional benar karena invariant desain "1 baris project_state per Project DB" berlaku absolut di arsitektur ini, tapi kurang defense-in-depth dibanding pola Milestone/Board. Dicatat untuk konsistensi gaya di TASK-2.8 (Card, ancestor chain 4-level), bukan blocker goal ini.
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-09"></a>
+### QA-CL-09 — 2026-08-23 · goal 2.5.3 🔎 → ✅ — lifecycle endpoint Board (archive/restore/delete)
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/boards-lifecycle.test.ts` (7 test) dijalankan ulang — hijau. Pola identik `handleLifecycle` Milestone (2.3.3)/Project (TASK-1.4), `expected_version` wajib, Owner-only interim, error mapping konsisten (`INVALID_STATE`/`VERSION_CONFLICT`/`VALIDATION_ERROR`/`RESOURCE_NOT_FOUND`).
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-08"></a>
+### QA-CL-08 — 2026-08-23 · goal 2.5.2 🔎 → ✅ — PATCH Board
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/boards-patch.test.ts` (5 test) dijalankan ulang — hijau. `allowedFields` hanya `title`/`description` (C.15 domain-controlled fields ditolak `VALIDATION_ERROR`), `expected_version` wajib, konsisten pola Milestone 2.3.2.
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-07"></a>
+### QA-CL-07 — 2026-08-23 · goal 2.5.1 🔎 → ✅ — create+get Board via pipeline, Project-boundary dites lintas 2 mekanisme
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/boards-create-get.test.ts` (7 test) dijalankan ulang — hijau. Test `[Project-boundary]` memverifikasi DUA skenario terpisah: (a) `milestone_id` yang benar-benar tidak ada di DB Project pemanggil → 404; (b) `milestone_id` yang valid tapi hidup di DB Project LAIN, diakses via `project_id` Project itu sendiri (bukan Project asal milestone) → tetap 404 (bukan bocor data Project lain). Keduanya mengkonfirmasi isolasi struktural database-per-project. `createBoard` menolak `milestone_id` yang ada tapi ancestor-nya non-ACTIVE (diverifikasi via repository test 2.4.1).
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-06"></a>
+### QA-CL-06 — 2026-08-23 · goal 2.4.1 🔎 → ✅ — domain command Board, ancestor chain 2-level terbukti tepat
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca penuh `board-repository.ts` + `board-commands.test.ts` (15 test, dijalankan ulang — hijau). Konfirmasi: create menolak jika Milestone ARCHIVED/DELETED WALAU Project ACTIVE, DAN jika Project ARCHIVED/DELETED WALAU Milestone local ACTIVE — dua arah "satu ancestor saja cukup" (INV-LIFE-001) sama-sama dites eksplisit dengan skenario terpisah, bukan cuma satu arah. Restore memakai `evaluateRestore(local, [milestoneState, projectState])` — urutan chain benar (index 0 = ancestor terdekat). Test `[BR-013] archive Board tidak mengubah List/Card descendant` membaca row List DAN Card penuh sebelum/sesudah — bukti kuat no-cascade. `FR-019` dikonfirmasi via assertion `Object.keys(record).sort()` — tidak ada field status/warna/ikon/WIP menyelinap masuk.
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-05"></a>
+### QA-CL-05 — 2026-08-23 · goal 2.3.3 🔎 → ✅ — lifecycle endpoint Milestone (archive/restore/delete)
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/milestones-lifecycle.test.ts` (9 test) dijalankan ulang — hijau. Ketiga action (archive/restore/delete) diverifikasi: state-machine A.3 ditegakkan (archive ulang dari ARCHIVED → `INVALID_STATE`; restore DELETED → ditolak terminal INV-LIFE-004), version-conflict, validasi `expected_version` (hilang/salah tipe → `VALIDATION_ERROR`), authz (non-Owner → 403, tanpa identitas → 401), 404 untuk milestone tak ada.
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-04"></a>
+### QA-CL-04 — 2026-08-23 · goal 2.3.2 🔎 → ✅ — PATCH Milestone
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/milestones-patch.test.ts` (6 test) dijalankan ulang — hijau. `allowedFields` whitelist (`title`/`description`/`progress`/`start_date`/`due_date`) menolak field domain-controlled (`id`/`version`/`archived_at`/`deleted_at`/`list_id`) dengan `VALIDATION_ERROR` (C.15) — dikonfirmasi baca kode langsung di `milestones.ts:138-147`, bukan cuma percaya nama test. Payload invalid bentuk (bukan `VALIDATION_ERROR` `INVALID_STATE`, sesuai SOT 2.3.0) dan version-conflict dites terpisah.
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-03"></a>
+### QA-CL-03 — 2026-08-23 · goal 2.3.1 🔎 → ✅ — create+get Milestone via pipeline, boundary diverifikasi ulang independen
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/milestones-create-get.test.ts` (9 test) dijalankan ulang — hijau. Test suite bawaan hanya menguji "non-member ditolak PROJECT_ACCESS_DENIED" untuk klaim `[INV-04] Project-boundary` — ini authorization check, BUKAN bukti literal tidak-bocor data lintas Project. Diperluas verifikasi sendiri (test throwaway, dihapus setelah run): Owner yang jadi member Project A DAN B, membuat milestone di A, lalu `GET /projects/B/milestones/{id_milik_A}` — hasil **404 RESOURCE_NOT_FOUND**, bukan data bocor. Mengkonfirmasi isolasi struktural database-per-project (milestone Project A secara fisik tidak eksis di file DB Project B, independen dari authorization layer manapun).
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-02"></a>
+### QA-CL-02 — 2026-08-23 · goal 2.2.1 🔎 → ✅ — domain command Milestone penuh, reuse ancestor-check dari 2.1 terbukti
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca penuh `milestone-repository.ts` + `milestone-commands.test.ts` (16 test, dijalankan ulang — hijau). Konfirmasi: seluruh 5 command (create/update/archive/restore/delete) memakai `resolveLifecycleState`/`isEffectivelyOperational`/`evaluateRestore` dari 2.1 — nol reimplementasi ancestor-chain lokal (DoD 2.1.1). Version check → state-machine A.3 → mutation+Activity dalam satu `runInWriteTransaction` (BEGIN IMMEDIATE) — tidak ada jalur bypass optimistic locking (dikonfirmasi test `expectedVersion` salah → row+activity tidak berubah). FR-015 (progress manual, tidak ada auto-kalkulasi) dan FR-016 (tidak ada field status) dikonfirmasi lewat pembacaan struktur `MilestoneRecord` — tidak ada field tersembunyi.
+**Kesimpulan:** ✅ ACCEPT.
+
+<a id="qa-cl-01"></a>
+### QA-CL-01 — 2026-08-23 · goal 2.1.1 🔎 → ✅ — effective-state utility entity-agnostic, dipakai seragam TASK-2.2/2.4/2.6
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca penuh `packages/domain/src/lifecycle/effective-state.ts` + `effective-state.test.ts` (11 test, dijalankan ulang — hijau). `resolveLifecycleState` benar (BR-011 deletedAt menang archivedAt, seluruh 4 kombinasi dites). `isEffectivelyOperational`/`evaluateRestore` — hasil terdiskriminasi tipe (`ENTITY_DELETED`/`ENTITY_NOT_ARCHIVED`/`ANCESTOR_NOT_ACTIVE` + index pemblokir) memudahkan caller memetakan error tanpa re-parsing string. Konfirmasi DoD: `resolveProjectLifecycle` (Phase 1) sekarang murni delegasi (`packages/domain/src/project/project-lifecycle.ts`) — `grep resolveProjectLifecycle` menunjukkan implementasi tunggal, dipakai ulang oleh `project-repository.ts`, nol duplikasi logika. Dikonfirmasi dipakai konsisten oleh 2.2.1 (Milestone)/2.4.1 (Board)/2.6.1 (List) — DoD "dipakai seragam" terpenuhi lintas goal.
+**Kesimpulan:** ✅ ACCEPT.
+
+**Verifikasi lintas-goal (seluruh batch TASK-2.1–2.6):** `pnpm -r typecheck` → 6/6 package Done, 0 error. `pnpm lint` → `eslint .`, 0 error. `pnpm exec vitest run` → **40 file / 258 test PASS**, tidak ada regresi. Model Dev batch ini adalah `big-pickle` (opencode) — platform/model belum dikenal tim ini sebelumnya; hasil kerja diverifikasi dengan skeptisisme penuh (baca kode + reproduksi tambahan sendiri untuk klaim boundary, bukan sekadar re-run test yang disediakan) mengikuti AGENTS.md §11.3.3 — tidak ditemukan penyimpangan SOT atau klaim CL yang tidak akurat.
+**Observasi arsitektur non-blocking (dicatat untuk Planning/Review, bukan blocker goal manapun):** `withErrorHandling`/`assertOwnerInterim` diduplikasi identik di `milestones.ts` dan `boards.ts` (akan berulang lagi di `lists.ts`/`cards.ts`, TASK-2.7/2.8) — kelas DRY-gap yang sama dengan Phase 1 Review-CL-10 Temuan 5 (goal 1.11.1). Layak jadi kandidat goal cleanup terpisah setelah TASK-2.8 selesai, bukan menghalangi goal manapun sekarang.
 
 <a id="cl-20"></a>
 ### CL-20 — 2026-08-23 · goal 2.6.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — domain command List chain 3 level
