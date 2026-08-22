@@ -56,3 +56,17 @@ export {
   BoardInvalidStateError,
   BoardValidationError,
 } from "./board/board-errors.ts";
+
+export type {
+  ListRepository,
+  ListRecord,
+  CreateListInput,
+  UpdateListInput,
+  ListLifecycleInput,
+} from "./list/list-repository.ts";
+export {
+  ListNotFoundError,
+  ListVersionConflictError,
+  ListInvalidStateError,
+  ListValidationError,
+} from "./list/list-errors.ts";

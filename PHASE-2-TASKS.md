@@ -114,7 +114,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.6.1 | ⬜️ | — | 0 | P0 | Domain command List: `createList` (title bebas tanpa semantic bawaan, FR-021; ancestor chain 3 level — Board+Milestone+Project ACTIVE), `updateList`, `archiveList`, `restoreList` (ancestor 3-level ACTIVE semua), `deleteList`. List TIDAK punya field status (FR-023). Archive/delete List MUST NOT mengubah local state/parent relation Card descendant (FR-022, BR-013) — Card jadi non-operational efektif via 2.1, bukan cascade | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-021–023; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.4 |
+| 2.6.1 | 🔎 | [CL-20](#cl-20)<br>[CL-19](#cl-19) | 80 | P0 | Domain command List: `createList` (title bebas tanpa semantic bawaan, FR-021; ancestor chain 3 level — Board+Milestone+Project ACTIVE), `updateList`, `archiveList`, `restoreList` (ancestor 3-level ACTIVE semua), `deleteList`. List TIDAK punya field status (FR-023). Archive/delete List MUST NOT mengubah local state/parent relation Card descendant (FR-022, BR-013) — Card jadi non-operational efektif via 2.1, bukan cascade | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-021–023; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.4 |
 
 **Test:** Create ditolak jika salah satu dari 3 ancestor (Board/Milestone/Project) tidak ACTIVE; archive List → Card descendant TIDAK berubah local state/version/parent (assert langsung ke row Card, bukan cuma response List); restore ditolak jika ancestor manapun belum ACTIVE.
 **DoD:** Ancestor chain 3-level benar; archive/delete List terbukti TIDAK cascade ke Card (test eksplisit membaca row Card sebelum & sesudah).
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-20"></a>
+### CL-20 — 2026-08-23 · goal 2.6.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — domain command List chain 3 level
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 40 file / **258** test lulus (16 test baru `packages/infrastructure/test/list-commands.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: (1) modul domain `list/` — interface `ListRepository`, `ListRecord` hanya title (FR-021 title bebas, FR-023 tanpa status), error kanonik; (2) `DrizzleListRepository`: createList memvalidasi chain 3 level Board→Milestone→Project via `loadAncestorStates` + `isEffectivelyOperational` (INV-LIFE-001; board tidak ada → RESOURCE_NOT_FOUND); restore via `evaluateRestore(local, [board, milestone, project])`; urutan version check → state machine A.3 → UPDATE `AND version = expected` (AC-020); mutation+Activity atomik; payload B.5 (`list.created{snapshot}`, `.updated{changes}`, `.archived/.restored/.deleted{previous_state}`).
+**Catatan:** Bug ditemukan & diperbaiki saat test negatif Milestone ARCHIVED: SELECT boards di `loadAncestorStates` awalnya tidak mengambil `milestone_id` sehingga chain terpotong — test menangkapnya, query diperbaiki. DoD FR-022/BR-013 terbukti eksplisit: archive dan delete List masing-masing diverifikasi row Card `SELECT *` identik before vs after (state/version/list_id utuh), tanpa activity card.
+
+<a id="cl-19"></a>
+### CL-19 — 2026-08-23 · goal 2.6.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.6.1 `⬜️/—/0/P0`, dependency `2.1, 2.4` → 2.1.1 `🔎/80%` commit `641ed22`, 2.4.1 `🔎/80%` commit `6f5416d` (suite 242 hijau). FR-021/022/023 + teks penuh TASK-2.6 dibaca dari disk.
+**Catatan:** Chain 3 level Board→Milestone→Project; archive/delete List wajib terbukti tidak cascade ke Card (assert row Card sebelum/sesudah).
 
 <a id="cl-18"></a>
 ### CL-18 — 2026-08-23 · goal 2.5.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint lifecycle Board
