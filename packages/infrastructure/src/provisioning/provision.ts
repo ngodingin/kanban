@@ -30,6 +30,10 @@ export interface ProvisionResult {
 
 export class ProjectProvisioningError extends Error {}
 
+export function newProjectId(): string {
+  return ulid();
+}
+
 export async function provisionProjectDatabase(input: ProvisionInput): Promise<ProvisionResult> {
   const databaseName = projectDatabaseName(input.projectId);
   let client: Client | undefined;

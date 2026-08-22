@@ -1,7 +1,24 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { ok } from "@kanban/contracts";
-import { createAuth, createGlobalClient, loadAppConfig, type SendMagicLinkData } from "@kanban/infrastructure";
+import {
+  BetterAuthIdentityResolver,
+  createAuth,
+  createGlobalClient,
+  loadAppConfig,
+  newProjectId,
+  provisionProjectWithMapping,
+  type SendMagicLinkData,
+} from "@kanban/infrastructure";
+import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
+
+function readTursoEnvFromProcess(): { org: string; group: string; apiToken: string } {
+  return {
+    org: process.env.TURSO_ORG ?? "",
+    group: process.env.TURSO_GROUP ?? "",
+    apiToken: process.env.TURSO_API_TOKEN ?? "",
+  };
+}
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
   app: Hono;
@@ -10,14 +27,22 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
 } {
   const app = new Hono().basePath("/api");
 
-  let ready: { config: ReturnType<typeof loadAppConfig>; auth: ReturnType<typeof createAuth> } | null = null;
+  let ready:
+    | {
+        config: ReturnType<typeof loadAppConfig>;
+        auth: ReturnType<typeof createAuth>;
+        globalClient: ReturnType<typeof createGlobalClient>;
+      }
+    | null = null;
   const ensure = () => {
     if (!ready) {
       const config = loadAppConfig();
+      const globalClient = createGlobalClient();
       ready = {
         config,
+        globalClient,
         auth: createAuth({
-          globalClient: createGlobalClient(),
+          globalClient,
           baseUrl: config.BETTER_AUTH_URL,
           secret: config.BETTER_AUTH_SECRET,
           trustedOrigins: [config.BETTER_AUTH_URL],
@@ -26,6 +51,34 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       };
     }
     return ready;
+  };
+
+  let projectDeps: ProjectRoutesDeps | null = null;
+  const getProjectDeps = (): ProjectRoutesDeps => {
+    let deps = projectDeps;
+    if (!deps) {
+      const r = ensure();
+      const resolver = new BetterAuthIdentityResolver(r.auth);
+      const globalClient = r.globalClient;
+      const turso = readTursoEnvFromProcess();
+      deps = {
+        resolveIdentity: (request) => resolver.resolveIdentity(request),
+        newProjectId,
+        createProject: async (input) => {
+          await provisionProjectWithMapping({
+            turso,
+            globalClient,
+            projectId: input.projectId,
+            projectName: input.projectName,
+            ownerUserId: input.creatorUserId,
+            creatorUserId: input.creatorUserId,
+            now: new Date().toISOString(),
+          });
+        },
+      };
+      projectDeps = deps;
+    }
+    return deps;
   };
 
   app.get("/v1/health", (c) => {
@@ -52,6 +105,8 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       );
     }
   });
+
+  app.route("/", createProjectsRouter(getProjectDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
 }
