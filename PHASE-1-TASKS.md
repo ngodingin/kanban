@@ -102,9 +102,10 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.5.1 | ✅ | [CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Seed idempotent tabel `permissions` (Global DB) dengan seluruh key kanonik D.1 (`project.read`, `project.update`, `milestone.*`, `board.*`, `list.*`, `card.*`, `member.*`, `permission_group.*`, `api_key.*`) — data statis, BUKAN migration schema baru. Jalankan sebagai bagian `migrate-global` (`packages/infrastructure/scripts/migrate-global.ts`) atau modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts`, idempotent (upsert by `key`) | [02-SPEC D.1](docs/02-SPEC.md) | — |
+| 1.5.2 | ⬜️ | [Review-CL-07](#review-cl-07) | 0 | P3 | Tambah `uniqueIndex` pada `permissions.key` (`packages/infrastructure/src/database/global-schema.ts`) + migration Drizzle baru (`drizzle-kit generate`); ubah `seedPermissionCatalog` (`permission-catalog.ts`) memakai `INSERT ... ON CONFLICT(key) DO NOTHING` (atau setara) alih-alih lookup-by-key manual, karena constraint DB sekarang menjamin keunikan | [03-ENG B.2](docs/03-ENGINEERING.md) (amandemen 2.2.2) | 1.5.1 |
 
-**Test:** Unit/integration — run seed dua kali berturut-turut menghasilkan jumlah row sama (idempotent, tidak duplikat); setiap key D.1 ada tepat satu row.
-**DoD:** Katalog permission lengkap sesuai D.1; re-run migrate-global tidak menghasilkan duplikat atau error constraint.
+**Test:** Unit/integration — run seed dua kali berturut-turut menghasilkan jumlah row sama (idempotent, tidak duplikat); setiap key D.1 ada tepat satu row; insert manual key duplikat langsung ke tabel (bypass service) ditolak oleh DB (`UNIQUE constraint failed`) untuk goal 1.5.2; migration baru diterapkan bersih di atas Global DB existing (idempotent, tidak error terhadap data yang sudah ada — 40 key existing tidak ada duplikat, dikonfirmasi QA-CL-10).
+**DoD:** Katalog permission lengkap sesuai D.1; re-run migrate-global tidak menghasilkan duplikat atau error constraint; untuk 1.5.2, keunikan `key` ditegakkan DB-level bukan cuma aplikasi.
 
 ---
 
@@ -138,7 +139,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.8.1 | 🔎 | [CL-34](#cl-34)<br>[CL-33](#cl-33) | 80 | P1 | `POST /api/v1/projects/:project_id/members/:membership_id/group-assignments` + `.../revoke` — assign scoped Group ke Membership pada tepat satu `scope_type`/`scope_id` (BR-042); scope_id divalidasi ada & berada di Project sama (BR-042B: untuk Phase 1 validasi terbatas pada `scope_type="project"`, karena Milestone/Board/List/Card belum ada — validasi scope non-project ditandai catatan untuk direvisit Phase 2/3 saat resource-nya ada); revoke mempertahankan riwayat (`revoked_at`, bukan delete) | [02-SPEC C.12](docs/02-SPEC.md), BR-042, BR-042B | 1.6, 1.7.1 |
-| 1.8.2 | ⬜️ | — | 0 | P1 | `POST /api/v1/projects/:project_id/members/:membership_id/permission-assignments` + `.../revoke` — sama seperti 1.8.1 tapi direct Permission (bukan Group), termasuk `card_read_visibility` khusus `card.read` (default `CREATED_BY_ME` jika tidak diberikan, BR-048) | [02-SPEC C.12](docs/02-SPEC.md), BR-042A, BR-047, BR-048 | 1.6, 1.7.1 |
+| 1.8.2 | 🔄 | [CL-35](#cl-35) | 0 | P1 | `POST /api/v1/projects/:project_id/members/:membership_id/permission-assignments` + `.../revoke` — sama seperti 1.8.1 tapi direct Permission (bukan Group), termasuk `card_read_visibility` khusus `card.read` (default `CREATED_BY_ME` jika tidak diberikan, BR-048) | [02-SPEC C.12](docs/02-SPEC.md), BR-042A, BR-047, BR-048 | 1.6, 1.7.1 |
 
 **Test:** Assignment ke Membership beda Project ditolak; assignment ganda aktif pada `(membership, group/permission, scope_type, scope_id)` yang sama ditolak (UNIQUE constraint aktif — `membership_group_assignments_active_unique`/`membership_permission_assignments_active_unique`); revoke tidak menghapus row, hanya set `revoked_at`; `card_read_visibility` di-set NULL utk permission selain `card.read`.
 **DoD:** Assignment additive (BR-038), riwayat utuh setelah revoke; Project-boundary check pada `membership_id` dan `scope_id` project-level.
@@ -184,12 +185,22 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 - ~~`[NEEDS-DECISION]` D.4 — formula otorisasi `card.comment.update` tidak ada (Review-CL-03 poin 1, sebagian)~~ → **DISELESAIKAN 2026-08-22 (manusia):** `card.comment.update` MUST scoped ke komentar milik actor sendiri, berlaku mutlak termasuk Owner (business invariant, bukan grant Group). Ditambahkan **BR-034A** + formula `can_comment_update` di D.4; SOT dinaikkan ke 2.2.0 melalui Review-CL-05. **Catatan:** ini menyelesaikan pertanyaan "apa yang dilakukan permission ini", TAPI **belum menyelesaikan** pertanyaan "siapa dapat permission ini secara default di D.2" (tetap backlog, lihat item di bawah).
 - ~~`[NEEDS-DECISION]` A.10 — apakah `card.restore` scoped ke aktor yang meng-archive (Review-CL-03 poin 1, sebagian)~~ → **DISELESAIKAN 2026-08-22 (manusia):** `card.restore` MUST blanket (Card manapun yang ARCHIVED dalam scope permission, bukan hanya oleh aktor yang sama) — menegaskan BR-045, ditambahkan **BR-045A**; SOT dinaikkan ke 2.2.1 melalui Review-CL-06. Sama seperti di atas: ini cuma mengunci arti permission-nya, bukan menjawab siapa dapat by default.
 - **Sisa terbuka dari Review-CL-03 poin 1** (setelah 2 sub-poin di atas diselesaikan): siapa dapat `card.restore`/`card.comment.update` secara default di baseline Permission Group, dan siapa dapat `member.read`/`permission_group.read`/`api_key.read` secara default untuk role selain Co-Owner — **sengaja TIDAK mendesak diisi**: manusia menilai Permission Group cuma paket default yang bisa diubah Owner kapan saja setelah TASK-1.7/1.8 CRUD tersedia (Owner bebas assign permission apapun ke siapa pun, langsung atau via Group) — bukan capability yang hilang dari sistem, cuma soal apa isi paket bawaannya.
+- ~~Review-CL-03 poin 2 — `permissions.key` tidak punya unique index~~ → **DISELESAIKAN 2026-08-22 (manusia setuju rekomendasi Review):** anotasi UNIQUE ditambahkan ke 03-ENG B.2; SOT dinaikkan ke 2.2.2 melalui Review-CL-07. Implementasi (migration + schema + `ON CONFLICT`) jadi goal baru **1.5.2** (⬜️, Dev).
+- **Masih terbuka:** Review-CL-03 poin 3 (kode error payload invalid, `INVALID_STATE` vs `VALIDATION_ERROR`) dan Review-CL-04 poin 3 (filter `GET /projects` di C.4 tidak terdefinisi) — belum diangkat lagi, tetap backlog non-blocking.
 
 ---
 
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="review-cl-07"></a>
+### Review-CL-07 — 2026-08-22 · amandemen 03-ENG (2.2.1 → 2.2.2): `permissions.key` UNIQUE; goal 1.5.2 dibuka untuk Dev
+**Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Backlog dari Review-CL-03 poin 2 (`permissions.key` tidak punya unique index, ditemukan QA-CL-10) diangkat kembali. Ini keputusan teknis murni (AGENTS.md §10 poin 3 — tidak menyentuh business invariant/authorization/lifecycle/API semantics, mudah diganti karena di balik abstraction service seed), sehingga sah diputuskan Review sendiri; manusia mengonfirmasi setuju (2026-08-22) setelah penjelasan risiko race condition pada seeding paralel.
+**Perubahan SOT:** `docs/03-ENGINEERING.md` B.2 — anotasi `permissions.key` menjadi `key(e.g. "card.move", UNIQUE)`. `docs/01-PRODUCT.md` §0.4: `SPEC_VERSION` 2.2.1 → **2.2.2** (patch) + changelog.
+**Tindak lanjut (implementasi, bukan tugas Review):** Goal baru **1.5.2** dibuka di TASK-1.5 (⬜️, dep 1.5.1) untuk Dev: tambah `uniqueIndex` di `global-schema.ts` + migration Drizzle baru, ubah `seedPermissionCatalog` memakai `ON CONFLICT DO NOTHING` alih-alih lookup-by-key manual. Prior `P3` (bukan blocker fase, murni hardening) — tidak menghalangi TASK-1.7–1.10.
+**Catatan:** Data yang sudah ada (40 key, semua environment) sudah dikonfirmasi unik oleh QA-CL-10 sebelumnya, jadi migration baru diharapkan bersih tanpa konflik data existing.
 
 <a id="review-cl-06"></a>
 ### Review-CL-06 — 2026-08-22 · amandemen 02-SPEC (2.2.0 → 2.2.1): BR-045A `card.restore` tidak scoped ke aktor archive
@@ -253,6 +264,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: HEAD `452dd0c`, working tree bersih; scope dikonfirmasi manusia untuk TASK-1.7–1.10 penuh (goal-per-goal sesuai dependency: 1.7.1 → 1.7.2 → 1.7.3 → 1.7.4 → 1.8.1 → 1.8.2 → 1.9.1 → 1.9.2 → 1.10.1 → 1.10.2). Dibaca ulang dari disk: 02-SPEC C.12/C.13, FR-005–011, BR-038–059, D.1–D.4, schema Global DB (global-schema.ts: permission_groups/group_permissions/membership_*_assignments/invitations/invitation_group_assignments), pola transaksi provision.ts, katalog D.1 (id ULID, lookup by key).
 **Catatan keputusan teknis interim (dicatat sejak awal, konsisten untuk seluruh scope):** authorization matrix Phase 1 mengikuti pola existing — mutasi Group/assignment/invitation/revoke = Owner-only; read (groups/members) = member aktif (setara View Project, member.read belum terisi D.2 — backlog Review-CL-03 item 1). Scope assignment Phase 1 wajib `scope_type="project"` dengan `scope_id=project_id` (BR-042B catatan revisit Phase 2/3). Revoke yang sudah revoked → idempotent (state dikembalikan apa adanya); revoke Owner Membership → INVALID_STATE 409 (invariant FR-002, bukan persoalan izin pemanggil). Entry ini mencakup transisi awal; tiap goal akan punya CL penyelesaian + commit masing-masing.
+
+<a id="cl-35"></a>
+### CL-35 — 2026-08-22 · goal 1.8.2 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: HEAD `82f90f8` (1.8.1 🔎), working tree bersih, row 1.8.2 `⬜️/0`; dependency 1.6 ✅ + 1.7.1 🔎 80% sisi Dev. Dibaca ulang: C.12 direct permission assignment endpoint, schema `membership_permission_assignments` (kolom card_read_visibility nullable; partial unique aktif; scope check).
+**Catatan keputusan teknis:** Pola identik 1.8.1: Phase 1 scope_type='project' & scope_id=project_id wajib; visibility hanya boleh pada permission key `card.read` — selain itu INVALID_STATE; tanpa field visibility → default CREATED_BY_ME (BR-048); duplikat aktif → 409 via UNIQUE dipetakan; revoke idempotent; membership revoked → INVALID_STATE.
 
 <a id="cl-34"></a>
 ### CL-34 — 2026-08-22 · goal 1.8.1 selesai sisi Dev (🔄 → 🔎 · 80%)

@@ -328,7 +328,7 @@ project_memberships
   UNIQUE(project_id, user_id)
 
 permissions          (global/static, tidak dimiliki Project)
-  id · key(e.g. "card.move") · description
+  id · key(e.g. "card.move", UNIQUE) · description
 
 permission_groups
   id · project_id(→projects.id) · name · description
