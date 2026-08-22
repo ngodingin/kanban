@@ -2,7 +2,7 @@ import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import { applyProjectMigrations } from "../database/migrate.ts";
-import { projectDatabases, projects } from "../database/global-schema.ts";
+import { projectDatabases, projectMemberships, projects } from "../database/global-schema.ts";
 import { activities, projectState } from "../database/project-schema.ts";
 import {
   createDatabase,
@@ -80,23 +80,49 @@ export interface ProvisionWithMappingInput extends ProvisionInput {
   ownerUserId: string;
 }
 
+export interface ProjectRegistrationInput {
+  projectId: string;
+  databaseId: string;
+  ownerUserId: string;
+  now: string;
+}
+
+export async function registerProjectWithOwnerMembership(
+  globalClient: Client,
+  input: ProjectRegistrationInput,
+): Promise<void> {
+  const db = drizzle(globalClient);
+  await db.transaction(async (tx) => {
+    await tx.insert(projects).values({
+      id: input.projectId,
+      ownerUserId: input.ownerUserId,
+      provisioningState: "READY",
+      createdAt: input.now,
+    }).run();
+    await tx.insert(projectDatabases).values({
+      projectId: input.projectId,
+      databaseId: input.databaseId,
+      createdAt: input.now,
+    }).run();
+    await tx.insert(projectMemberships).values({
+      id: ulid(),
+      projectId: input.projectId,
+      userId: input.ownerUserId,
+      createdAt: input.now,
+      revokedAt: null,
+    }).run();
+  });
+}
+
 export async function provisionProjectWithMapping(input: ProvisionWithMappingInput): Promise<ProvisionResult> {
   const result = await provisionProjectDatabase(input);
 
   try {
-    const db = drizzle(input.globalClient);
-    await db.transaction(async (tx) => {
-      await tx.insert(projects).values({
-        id: input.projectId,
-        ownerUserId: input.ownerUserId,
-        provisioningState: "READY",
-        createdAt: input.now,
-      }).run();
-      await tx.insert(projectDatabases).values({
-        projectId: input.projectId,
-        databaseId: result.databaseName,
-        createdAt: input.now,
-      }).run();
+    await registerProjectWithOwnerMembership(input.globalClient, {
+      projectId: input.projectId,
+      databaseId: result.databaseName,
+      ownerUserId: input.ownerUserId,
+      now: input.now,
     });
   } catch (error) {
     await deleteDatabase(input.turso, result.databaseName).catch(() => undefined);

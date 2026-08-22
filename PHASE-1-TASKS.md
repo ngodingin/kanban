@@ -63,7 +63,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.2.1 | ⬜️ | — | 0 | P0 | Tambahkan insert `project_memberships` (Owner = `creatorUserId`) ke dalam transaksi Global DB yang sama dengan `registerProject`/`recordProjectDatabaseMapping` di `provisionProjectWithMapping` (`packages/infrastructure/src/provisioning/provision.ts`), sehingga setiap Project baru selalu punya tepat satu Membership aktif untuk Owner sejak commit pertama | [02-SPEC B.1](docs/02-SPEC.md) FR-001, FR-002; [03-ENG B.2](docs/03-ENGINEERING.md) | — |
+| 1.2.1 | 🔎 | [CL-03](#cl-03)<br>[CL-04](#cl-04) | 80 | P0 | Tambahkan insert `project_memberships` (Owner = `creatorUserId`) ke dalam transaksi Global DB yang sama dengan `registerProject`/`recordProjectDatabaseMapping` di `provisionProjectWithMapping` (`packages/infrastructure/src/provisioning/provision.ts`), sehingga setiap Project baru selalu punya tepat satu Membership aktif untuk Owner sejak commit pertama | [02-SPEC B.1](docs/02-SPEC.md) FR-001, FR-002; [03-ENG B.2](docs/03-ENGINEERING.md) | — |
 
 **Test:** Integration — create Project → tepat 1 row `project_memberships` untuk `creatorUserId`, `revoked_at IS NULL`; simulasi kegagalan di tengah transaksi Global → tidak ada Project/mapping/membership yatim (rollback compensation existing di `provision.ts` tetap berlaku, diperluas untuk membership).
 **DoD:** FR-002 ("setiap Project punya tepat satu Owner") terbukti via test; tidak ada regresi pada rollback path 0.6.3.
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-04"></a>
+### CL-04 — 2026-08-22 · goal 1.2.1 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run packages/infrastructure/test/provision-owner-membership.test.ts` → 4/4 lulus; `pnpm exec vitest run` → 46/46 lulus (8 file); `pnpm lint` bersih; `pnpm typecheck` bersih. Implementasi: transaksi Global DB `provisionProjectWithMapping` diekstrak ke `registerProjectWithOwnerMembership` dan diperluas insert `project_memberships` (Owner, `revoked_at NULL`) atomik dengan `projects`+`project_databases`. Test: FR-002 (tepat 1 membership aktif Owner), rollback mid-tx via wrapper client (tidak ada Project/mapping/membership yatim), duplikat projectId ditolak tanpa membership ekstra, FK owner tidak dikenal ditolak tanpa row yatim. `smoke-rollback.ts` diperluas asersi orphan-membership utk skenario A/C/B.
+**Catatan:** Keputusan teknis tercatat di CL-03: membership Owner memakai `ownerUserId` agar konsisten registry FR-002 (`creatorUserId == ownerUserId` pada seluruh call site). Full-path provisioning tetap diverifikasi smoke script env-gated (`test:smoke-rollback`) karena butuh kredensial Turso nyata.
+
+<a id="cl-03"></a>
+### CL-03 — 2026-08-22 · goal 1.2.1 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.2.1 `⬜️/0`, dependency `—`; HEAD `e5c27e0` (goal 1.1.1 selesai sisi Dev). Reference dibaca: 02-SPEC B.1 FR-001/FR-002, 03-ENG B.2 (schema Global DB, `project_memberships` UNIQUE(project_id,user_id)); kode `provision.ts`, `turso.ts`, `global-store.ts`, smoke script terkait dibaca.
+**Catatan:** Rencana: insert membership Owner dalam transaksi Global yang sama dengan projects+project_databases; test vitest offline via helper registrasi + wrapper client untuk injeksi kegagalan mid-tx; asersi orphan-membership ditambahkan ke smoke-rollback. Keputusan teknis: membership Owner memakai `ownerUserId` (konsisten registry `projects.owner_user_id`, FR-002) — di seluruh call site existing `creatorUserId == ownerUserId`.
 
 <a id="cl-02"></a>
 ### CL-02 — 2026-08-22 · goal 1.1.1 selesai sisi Dev (🔄 → 🔎 · 80%)

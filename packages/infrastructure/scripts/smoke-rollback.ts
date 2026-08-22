@@ -65,6 +65,9 @@ try {
   const registryA = await globalClient.execute("SELECT COUNT(*) AS n FROM projects WHERE id = ?", [projectA]);
   if (Number(registryA.rows[0]?.n) !== 0) fail("A: baris projects yatim masih ada");
   else console.log("PASS A: registry projects di-rollback saat provisioning gagal");
+  const membershipsA = await globalClient.execute("SELECT COUNT(*) AS n FROM project_memberships WHERE project_id = ?", [projectA]);
+  if (Number(membershipsA.rows[0]?.n) !== 0) fail("A: membership yatim masih ada");
+  else console.log("PASS A: tidak ada membership yatim saat provisioning gagal di awal");
 
   const projectC = `proj_rollback_c_${stamp}`;
   dbNameC = projectDatabaseName(projectC);
@@ -89,6 +92,9 @@ try {
   const registryC = await globalClient.execute("SELECT COUNT(*) AS n FROM projects WHERE id = ?", [projectC]);
   if (Number(registryC.rows[0]?.n) !== 0) fail("C: baris projects yatim masih ada");
   else console.log("PASS C: registry projects di-rollback saat provisioning gagal di tengah");
+  const membershipsC = await globalClient.execute("SELECT COUNT(*) AS n FROM project_memberships WHERE project_id = ?", [projectC]);
+  if (Number(membershipsC.rows[0]?.n) !== 0) fail("C: membership yatim masih ada");
+  else console.log("PASS C: tidak ada membership yatim saat provisioning gagal di tengah");
   void pre;
 
   projectB = `proj_rollback_b_${stamp}`;
@@ -116,6 +122,9 @@ try {
       const maps = await globalClient.execute("SELECT COUNT(*) AS n FROM project_databases WHERE project_id = ?", [projectB]);
       if (Number(maps.rows[0]?.n) !== 0) fail("B: mapping yatim tidak boleh ada");
       else console.log("PASS B: tidak ada mapping yatim (registrasi+mapping atomik)");
+      const membershipsB = await globalClient.execute("SELECT COUNT(*) AS n FROM project_memberships WHERE project_id = ?", [projectB]);
+      if (Number(membershipsB.rows[0]?.n) !== 0) fail("B: membership yatim tidak boleh ada");
+      else console.log("PASS B: tidak ada membership yatim saat pencatatan mapping gagal");
     }
   }
 } catch (e) {
