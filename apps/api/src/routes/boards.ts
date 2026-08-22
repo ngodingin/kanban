@@ -141,5 +141,33 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
     });
   });
 
+  const lifecycleCommands = {
+    archive: (repository: DrizzleBoardRepository, projectId: string, input: { boardId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveBoard(projectId, input),
+    restore: (repository: DrizzleBoardRepository, projectId: string, input: { boardId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreBoard(projectId, input),
+    delete: (repository: DrizzleBoardRepository, projectId: string, input: { boardId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteBoard(projectId, input),
+  } as const;
+
+  for (const [action, command] of Object.entries(lifecycleCommands)) {
+    router.post(`/v1/projects/:project_id/boards/:board_id/${action}`, async (c) => {
+      return withErrorHandling(c, async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const ctx = await deps.openProjectContext(c.req.raw, projectId);
+        assertOwnerInterim(ctx);
+        const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+        const repository = new DrizzleBoardRepository(ctx.database);
+        const record = await command(repository, projectId, {
+          boardId: c.req.param("board_id"),
+          expectedVersion,
+          actorUserId: ctx.userId,
+        });
+        return { board: boardPayload(record) };
+      });
+    });
+  }
+
   return router;
 }

@@ -103,7 +103,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.5.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
 | 2.5.2 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15) | 80 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
-| 2.5.3 | ⬜️ | — | 0 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
+| 2.5.3 | 🔎 | [CL-18](#cl-18)<br>[CL-17](#cl-17) | 80 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
 
 **Test:** Create Board dengan `milestone_id` milik Project lain → ditolak (Project-boundary); create pada Milestone ARCHIVED → ditolak; restore Board ditolak jika Milestone masih ARCHIVED (INV-LIFE-002 urutan — restore Milestone dulu baru Board); lifecycle + version-conflict pattern sama seperti TASK-2.3.
 **DoD:** Endpoint sesuai C.6; Board tidak punya operasi move (INV-MOVE-001); archive/delete Board tidak menyentuh List/Card descendant.
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-18"></a>
+### CL-18 — 2026-08-23 · goal 2.5.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint lifecycle Board
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 39 file / **242** test lulus (7 test integration baru `apps/api/test/boards-lifecycle.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `POST .../boards/:board_id/{archive,restore,delete}` via helper `lifecycleCommands` di routes/boards.ts — Owner-only interim, `expected_version` wajib, envelope `{data:{board}}`.
+**Catatan:** Test mencakup Test TASK-2.5: restore Board saat Milestone masih ARCHIVED → INVALID_STATE 409, lalu setelah Milestone dipulihkan → sukses (urutan INV-LIFE-002 di level HTTP); archive/delete sukses lalu diulang → INVALID_STATE; version mismatch ketiga action → VERSION_CONFLICT (AC-020); expected_version hilang → VALIDATION_ERROR; TOKEN_EXPIRED / PERMISSION_DENIED / RESOURCE_NOT_FOUND.
+
+<a id="cl-17"></a>
+### CL-17 — 2026-08-23 · goal 2.5.3 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.5.3 `⬜️/—/0/P1`, dependency `2.4, 2.5.1` → keduanya `🔎/80%` (commit `6f5416d`, `d5447e1`; suite 235 hijau).
+**Catatan:** Pola lifecycleCommands sama seperti milestones.ts; restore Board divalidasi terhadap Milestone+Project (INV-LIFE-002).
 
 <a id="cl-16"></a>
 ### CL-16 — 2026-08-23 · goal 2.5.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Board
