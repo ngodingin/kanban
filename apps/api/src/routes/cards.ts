@@ -169,6 +169,42 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
     });
   });
 
+  router.post("/v1/projects/:project_id/cards/:card_id/move", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      // BR-044 — card.move permission terpisah dari card.update; interim Owner-only.
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      for (const key of Object.keys(body)) {
+        if (key !== "destination_list_id" && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dikenal pada payload move (C.8).`,
+            400,
+          );
+        }
+      }
+      const rawDestination = body.destination_list_id;
+      if (typeof rawDestination !== "string" || rawDestination.trim().length === 0) {
+        throw new PipelineError("VALIDATION_ERROR", "Field destination_list_id wajib string non-kosong.", 400);
+      }
+      const expectedVersion = readExpectedVersionField(body);
+      const repository = new DrizzleCardRepository(ctx.database, {
+        assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
+      });
+      // Seluruh validasi domain (urutan C.8, INV-MOVE, BR-018) di moveCard.
+      const record = await repository.moveCard(projectId, {
+        cardId: c.req.param("card_id"),
+        destinationListId: rawDestination,
+        expectedVersion,
+        actorUserId: ctx.userId,
+      });
+      return { card: cardPayload(record) };
+    });
+  });
+
   const lifecycleCommands = {
     archive: (repository: DrizzleCardRepository, projectId: string, input: { cardId: string; expectedVersion: number; actorUserId: string }) =>
       repository.archiveCard(projectId, input),

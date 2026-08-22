@@ -174,7 +174,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.11.1 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/cards/:card_id/move` — body `{destination_list_id, expected_version}` (C.8), Owner-only interim (Prinsip #2, `card.move` seam terpisah dari `card.update` dicatat utk Phase 4), delegasikan seluruh validasi ke `moveCard` (2.10) — route TIDAK menduplikasi validasi domain | [02-SPEC C.8](docs/02-SPEC.md) | 2.10 |
+| 2.11.1 | 🔎 | [CL-50](#cl-50)<br>[CL-49](#cl-49) | 80 | P0 | `POST /api/v1/projects/:project_id/cards/:card_id/move` — body `{destination_list_id, expected_version}` (C.8), Owner-only interim (Prinsip #2, `card.move` seam terpisah dari `card.update` dicatat utk Phase 4), delegasikan seluruh validasi ke `moveCard` (2.10) — route TIDAK menduplikasi validasi domain | [02-SPEC C.8](docs/02-SPEC.md) | 2.10 |
 
 **Test:** Integration end-to-end lewat HTTP — regresi seluruh skenario 2.10.1 lewat request nyata (bukan cuma unit domain), payload invalid (`destination_list_id` bukan string, dsb) → `VALIDATION_ERROR`.
 **DoD:** Endpoint sesuai kontrak C.8 persis (`destination_list_id`, bukan nama field lain); response envelope C.2.
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-50"></a>
+### CL-50 — 2026-08-23 · goal 2.11.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint move Card
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 49 file / **318** test lulus (5 test integration baru `apps/api/test/cards-move.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `POST /v1/projects/:project_id/cards/:card_id/move` di routes/cards.ts — body C.8 persis `{destination_list_id, expected_version}` (field asing ditolak VALIDATION_ERROR), Owner-only interim, seluruh validasi domain didelegasikan ke `moveCard` tanpa duplikasi; envelope `{data:{card}}`.
+**Catatan:** Regresi HTTP skenario 2.10: same-board sukses + Activity from/to diverifikasi; cross-Milestone → INVALID_DESTINATION **HTTP 422** sesuai mapping kontrak kanonik (bukan 409); version mismatch → VERSION_CONFLICT tanpa perubahan/activity baru; authz lengkap (403/401/404). Seam BR-044 `card.move` vs `card.update` tetap dicatat untuk Phase 4.
+
+<a id="cl-49"></a>
+### CL-49 — 2026-08-23 · goal 2.11.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.11.1 `⬜️/—/0/P0`, dependency `2.10` → 2.10.1 `🔎/80%` commit `1f5792a` (suite 313 hijau). C.8: body `{destination_list_id, expected_version}` persis.
+**Catatan:** Route hanya parse payload + Owner-only interim; seluruh validasi domain didelegasikan ke moveCard (tanpa duplikasi). Seam permission `card.move` terpisah dari `card.update` (BR-044) dicatat untuk Phase 4.
 
 <a id="cl-48"></a>
 ### CL-48 — 2026-08-23 · goal 2.10.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — domain command moveCard
