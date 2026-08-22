@@ -8,7 +8,7 @@ import {
   type BoardRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface BoardRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -108,6 +108,36 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
         );
       }
       return { board: boardPayload(record) };
+    });
+  });
+
+  router.patch("/v1/projects/:project_id/boards/:board_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const expectedVersion = readExpectedVersionField(body);
+      const allowedFields = ["title", "description"] as const;
+      for (const key of Object.keys(body)) {
+        if (!(allowedFields as readonly string[]).includes(key) && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dapat diubah via PATCH Board (C.15).`,
+            400,
+          );
+        }
+      }
+      const repository = new DrizzleBoardRepository(ctx.database);
+      const updated = await repository.updateBoard(projectId, {
+        boardId: c.req.param("board_id"),
+        expectedVersion,
+        actorUserId: ctx.userId,
+        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
+        ...(body.description === undefined ? {} : { description: readOptionalDescription(body) }),
+      });
+      return { board: boardPayload(updated) };
     });
   });
 

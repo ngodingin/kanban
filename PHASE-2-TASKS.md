@@ -102,7 +102,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.5.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
-| 2.5.2 | ⬜️ | — | 0 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
+| 2.5.2 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15) | 80 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
 | 2.5.3 | ⬜️ | — | 0 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
 
 **Test:** Create Board dengan `milestone_id` milik Project lain → ditolak (Project-boundary); create pada Milestone ARCHIVED → ditolak; restore Board ditolak jika Milestone masih ARCHIVED (INV-LIFE-002 urutan — restore Milestone dulu baru Board); lifecycle + version-conflict pattern sama seperti TASK-2.3.
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-16"></a>
+### CL-16 — 2026-08-23 · goal 2.5.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Board
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 38 file / **235** test lulus (5 test integration baru `apps/api/test/boards-patch.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `PATCH /v1/projects/:project_id/boards/:board_id` — Owner-only interim (PERMISSION_DENIED 403), hanya field `title/description` + `expected_version` wajib; field lain (`progress`, `wip_limit`, `status`, `milestone_id`) → VALIDATION_ERROR 400 (C.15 + FR-019); description eksplisit null menghapus nilai; Activity `board.updated{changes}`.
+**Catatan:** Test negatif: C.15/FR-019 protected fields ditolak, version mismatch → VERSION_CONFLICT tanpa perubahan (AC-020), non-Owner member → PERMISSION_DENIED, expected_version hilang → VALIDATION_ERROR, board tidak ada → RESOURCE_NOT_FOUND.
+
+<a id="cl-15"></a>
+### CL-15 — 2026-08-23 · goal 2.5.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.5.2 `⬜️/—/0/P1`, dependency `2.4, 2.5.1` → 2.4.1 `🔎/80%` commit `6f5416d`, 2.5.1 `🔎/80%` commit `d5447e1` (suite 230 hijau).
+**Catatan:** PATCH Board hanya title/description + expected_version; pola sama PATCH Milestone.
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-23 · goal 2.5.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET Board
