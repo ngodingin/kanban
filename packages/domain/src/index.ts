@@ -27,6 +27,7 @@ export {
   isEffectivelyOperational,
   evaluateRestore,
 } from "./lifecycle/effective-state.ts";
+export { AncestorNotActiveError } from "./lifecycle/lifecycle-errors.ts";
 
 export type {
   MilestoneRepository,
@@ -39,6 +40,19 @@ export {
   MilestoneNotFoundError,
   MilestoneVersionConflictError,
   MilestoneInvalidStateError,
-  AncestorNotActiveError,
   MilestoneValidationError,
 } from "./milestone/milestone-errors.ts";
+
+export type {
+  BoardRepository,
+  BoardRecord,
+  CreateBoardInput,
+  UpdateBoardInput,
+  BoardLifecycleInput,
+} from "./board/board-repository.ts";
+export {
+  BoardNotFoundError,
+  BoardVersionConflictError,
+  BoardInvalidStateError,
+  BoardValidationError,
+} from "./board/board-errors.ts";

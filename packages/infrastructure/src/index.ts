@@ -16,6 +16,7 @@ export {
 export { applyGlobalMigrations, applyProjectMigrations } from "./database/migrate.ts";
 export { DrizzleProjectRepository } from "./database/project-repository.ts";
 export { DrizzleMilestoneRepository } from "./database/milestone-repository.ts";
+export { DrizzleBoardRepository } from "./database/board-repository.ts";
 export {
   deriveProjectStatus,
   listProjectSummaries,

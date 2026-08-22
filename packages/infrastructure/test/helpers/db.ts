@@ -5,16 +5,16 @@ import { join } from "node:path";
 import { applyProjectMigrations } from "../../src/database/migrate.ts";
 
 export const PROJECT_TABLES = [
-  "project_state",
-  "milestones",
-  "boards",
-  "lists",
-  "cards",
-  "milestone_labels",
-  "board_labels",
-  "card_milestone_labels",
   "card_board_labels",
+  "card_milestone_labels",
+  "board_labels",
+  "milestone_labels",
+  "cards",
+  "lists",
+  "boards",
+  "milestones",
   "activities",
+  "project_state",
 ] as const;
 
 export interface TestDb {

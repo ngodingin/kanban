@@ -35,18 +35,6 @@ export class MilestoneInvalidStateError extends Error {
   }
 }
 
-/** INV-LIFE-001/002 — create/restore ditolak karena ancestor tidak ACTIVE. */
-export class AncestorNotActiveError extends Error {
-  readonly code = "INVALID_STATE";
-  constructor(
-    public readonly operation: string,
-    message: string,
-  ) {
-    super(message);
-    this.name = "AncestorNotActiveError";
-  }
-}
-
 /** FR-014 — payload domain-level tidak valid (progress range, title kosong, dsb). */
 export class MilestoneValidationError extends Error {
   readonly code = "VALIDATION_ERROR";

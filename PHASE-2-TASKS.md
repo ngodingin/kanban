@@ -90,7 +90,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.4.1 | ⬜️ | — | 0 | P0 | Domain command Board: `createBoard` (title/description, FR-018; tolak jika Milestone ATAU Project tidak ACTIVE — ancestor chain 2 level, pakai 2.1), `updateBoard`, `archiveBoard`, `restoreBoard` (ancestor: Milestone+Project keduanya ACTIVE), `deleteBoard`. Board TIDAK punya status/warna/ikon/WIP limit (FR-019). Pola sama TASK-2.2: version check → ancestor/state validasi → mutation+Activity atomik | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-018, FR-019; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.2 |
+| 2.4.1 | 🔎 | [CL-12](#cl-12)<br>[CL-11](#cl-11) | 80 | P0 | Domain command Board: `createBoard` (title/description, FR-018; tolak jika Milestone ATAU Project tidak ACTIVE — ancestor chain 2 level, pakai 2.1), `updateBoard`, `archiveBoard`, `restoreBoard` (ancestor: Milestone+Project keduanya ACTIVE), `deleteBoard`. Board TIDAK punya status/warna/ikon/WIP limit (FR-019). Pola sama TASK-2.2: version check → ancestor/state validasi → mutation+Activity atomik | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-018, FR-019; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.2 |
 
 **Test:** Unit — create ditolak jika Milestone ARCHIVED/DELETED (walau Project ACTIVE) DAN jika Project ARCHIVED/DELETED (walau Milestone local ACTIVE — INV-LIFE-001 "ada satu saja ancestor"); restore ditolak jika salah satu dari 2 ancestor tidak ACTIVE; `expected_version` salah → `VERSION_CONFLICT`; tidak ada field non-MVP (status/warna/ikon/WIP).
 **DoD:** Ancestor chain 2-level (Milestone→Project) tervalidasi benar via 2.1; atomik mutation+Activity; archive Board tidak mengubah List/Card descendant (BR-013).
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-12"></a>
+### CL-12 — 2026-08-23 · goal 2.4.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — domain command Board
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 36 file / **223** test lulus (15 test baru `packages/infrastructure/test/board-commands.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: (1) modul domain `board/` — interface `BoardRepository` (get/create/update/archive/restore/delete), `BoardRecord` + input types hanya title/description (FR-019 — tanpa status/warna/ikon/WIP), error classes bercode kanonik; (2) `DrizzleBoardRepository`: createBoard memvalidasi chain 2 level via utility 2.1 (`isEffectivelyOperational([milestoneState, projectState])` — INV-LIFE-001 "satu ancestor saja cukup untuk menolak"; milestone tidak ada → MilestoneNotFoundError RESOURCE_NOT_FOUND); restore via `evaluateRestore(local, [milestone, project])` (INV-LIFE-002) dengan pesan blocker spesifik per level; urutan wajib version check → state machine A.3 → UPDATE dijaga `AND version = expected` (AC-020); mutation+Activity atomik satu transaksi; payload Activity B.5 (`board.created{snapshot}`, `.updated{changes}`, `.archived/.restored/.deleted{previous_state}`). (3) `AncestorNotActiveError` dipindah ke `lifecycle/lifecycle-errors.ts` bersama agar Board/List/Card tidak bergantung modul milestone; helper test `truncateAll` diperbaiki urutan child-first (FK constraint).
+**Catatan:** Test mencakup seluruh Test goal: create ditolak saat Milestone ARCHIVED/DELETED walau Project ACTIVE; create ditolak saat Project ARCHIVED/DELETED walau Milestone ACTIVE; restore ditolak jika salah satu dari 2 ancestor non-ACTIVE (kedua arah); VERSION_CONFLICT tanpa perubahan/activity; struktur record tanpa field non-MVP; DoD BR-013 terbukti — archive Board tidak mengubah archived_at/deleted_at/updated_at/version List & Card descendant dan hanya menghasilkan Activity board.
+
+<a id="cl-11"></a>
+### CL-11 — 2026-08-23 · goal 2.4.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.4.1 `⬜️/—/0/P0`, dependency `2.1, 2.2` → 2.1.1 `🔎/80%` commit `641ed22`, 2.2.1 `🔎/80%` commit `e084866` (suite 208 hijau). Schema boards (milestone_id FK) + FR-018/FR-019 dibaca ulang dari disk.
+**Catatan:** AncestorNotActiveError dipindah ke modul lifecycle bersama agar Board/List/Card tidak bergantung pada modul milestone.
 
 <a id="cl-10"></a>
 ### CL-10 — 2026-08-23 · goal 2.3.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint lifecycle Milestone
