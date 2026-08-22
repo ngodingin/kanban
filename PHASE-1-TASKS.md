@@ -90,7 +90,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.4.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 | `POST /api/v1/projects/:project_id/archive` — otorisasi Owner-only interim, `expected_version` wajib, panggil `archiveProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), A.3 | 1.1, 1.3.3 |
 | 1.4.2 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15) | 80 | P0 | `POST /api/v1/projects/:project_id/restore` — hanya valid dari ARCHIVED (Project tidak punya ancestor lain sehingga INV-LIFE-002 trivially satisfied di level Project), otorisasi Owner-only interim, panggil `restoreProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), INV-LIFE-002 | 1.1, 1.3.3 |
-| 1.4.3 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/delete` — terminal, tidak dapat direstore setelahnya, otorisasi Owner-only interim, panggil `deleteProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), INV-LIFE-004 | 1.1, 1.3.3 |
+| 1.4.3 | 🔎 | [CL-18](#cl-18)<br>[CL-17](#cl-17) | 80 | P0 | `POST /api/v1/projects/:project_id/delete` — terminal, tidak dapat direstore setelahnya, otorisasi Owner-only interim, panggil `deleteProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), INV-LIFE-004 | 1.1, 1.3.3 |
 
 **Test:** Integration per operasi — happy path mengubah `project_state` + Activity sesuai; non-Owner ditolak `PERMISSION_DENIED`; version mismatch → `VERSION_CONFLICT` tanpa perubahan; restore dari DELETED ditolak; archive/restore/delete pada Project lain (beda Project boundary) tidak pernah menyentuh Project DB yang salah.
 **DoD:** Ketiga command diekspos sebagai domain command eksplisit (bukan generic PATCH, BR-061); lifecycle state machine A.3 dipatuhi; test lifecycle + Project-boundary hijau.
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-18"></a>
+### CL-18 — 2026-08-22 · goal 1.4.3 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm vitest run` → 15 file / 76 test lulus, termasuk `apps/api/test/projects-delete.test.ts` 4/4: positif A.3 delete dari ACTIVE + deleted_at terisi + Activity project.deleted; negatif INV-LIFE-004 restore setelah DELETED → INVALID_STATE (terminal); negatif AC-020 stale version → VERSION_CONFLICT tanpa perubahan; negatif authz/auth/delete-ulang. Lint bersih, typecheck lulus.
+**Catatan:** Delete bersifat soft (deleted_at) — penghapusan fisik DB Turso bukan bagian MVP (§2.2 non-MVP). Seluruh goal TASK-1.3 dan TASK-1.4 kini 🔎 80% menunggu verifikasi QA.
+
+<a id="cl-17"></a>
+### CL-17 — 2026-08-22 · goal 1.4.3 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.4.3 `⬜️/0`, dependency 1.1 ✅ sisi Dev (CL-02) + 1.3.3 ✅ sisi Dev (CL-10); HEAD `890d03d`, working tree bersih.
+**Catatan:** Delete terminal (INV-LIFE-004): setelah DELETED, restore ditolak domain; delete dari ACTIVE maupun ARCHIVED diizinkan (A.3). Fisik DB Turso tidak dihapus pada MVP — soft-delete via deleted_at sesuai implementasi 1.1.
 
 <a id="cl-16"></a>
 ### CL-16 — 2026-08-22 · goal 1.4.2 selesai sisi Dev (🔄 → 🔎 · 80%)

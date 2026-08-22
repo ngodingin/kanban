@@ -7,13 +7,11 @@ import { Hono } from "hono";
 import {
   applyGlobalMigrations,
   applyProjectMigrations,
-  DrizzleProjectRepository,
   newProjectId,
   registerProjectWithOwnerMembership,
   RequestPipeline,
   SqliteProjectDatabaseResolver,
 } from "@kanban/infrastructure";
-
 import type { ResolvedIdentity } from "@kanban/infrastructure";
 import { createProjectsRouter, type ProjectRoutesDeps } from "../src/routes/projects.ts";
 
@@ -27,7 +25,7 @@ let ctx: TestCtx;
 let idA1: string;
 
 beforeAll(async () => {
-  const dir = await mkdtemp(join(tmpdir(), "kanban-api-restore-"));
+  const dir = await mkdtemp(join(tmpdir(), "kanban-api-delete-"));
   const globalClient = createClient({ url: `file:${join(dir, "global.db")}` });
   await applyGlobalMigrations(globalClient);
   const now = new Date().toISOString();
@@ -77,7 +75,7 @@ beforeAll(async () => {
       resolveIdentity: async (request) => identityFor(request.headers.get("x-test-user")),
       newProjectId,
       createProject: async () => {
-        throw new Error("tidak dipakai di test restore");
+        throw new Error("tidak dipakai di test delete");
       },
       listProjects: async () => [],
       openProjectContext: async (request, projectId) => {
@@ -111,15 +109,8 @@ function makeApp(): Hono {
   return new Hono().route("/", createProjectsRouter(() => ctx.deps));
 }
 
-async function currentStateVersion(): Promise<number> {
-  const res = await makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
-    headers: { "x-test-user": "user-a" },
-  });
-  return (await res.json()).data.project.version;
-}
-
-function restore(body: unknown, user?: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${idA1}/restore`, {
+function del(body: unknown, user?: string) {
+  return makeApp().request(`http://localhost/api/v1/projects/${idA1}/delete`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -129,67 +120,60 @@ function restore(body: unknown, user?: string) {
   });
 }
 
-describe("POST /api/v1/projects/:project_id/restore — lifecycle ARCHIVED→ACTIVE (goal 1.4.2)", () => {
-  it("[INV-LIFE-002][C.4] restore pada project ACTIVE ditolak INVALID_STATE 409 (hanya valid dari ARCHIVED)", async () => {
-    const version = await currentStateVersion();
-    if (version !== 1) throw new Error(`fixture harus masih ACTIVE v1, dapat v${version}`);
-    const res = await restore({ expected_version: version }, "user-a");
-    if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
+describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 1.4.3)", () => {
+  it("[A.3][C.4] owner delete dari ACTIVE → 200, deleted_at terisi + Activity project.deleted", async () => {
+    const res = await del({ expected_version: 1 }, "user-a");
+    if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
-    if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
-  });
+    const p = json.data.project;
+    if (p.deletedAt === null || p.version !== 2) throw new Error(`state salah: ${JSON.stringify(p)}`);
 
-  it("[A.3][C.4][B.5] owner restore dari ARCHIVED → 200, archived_at null kembali, Activity project.restored dengan previous_state ARCHIVED", async () => {
     const mapping = await ctx.globalClient.execute({
       sql: "SELECT database_id FROM project_databases WHERE project_id = ?",
       args: [idA1],
     });
     const proj = createClient({ url: String(mapping.rows[0]!.database_id) });
-    let fixtureVersion: number;
     try {
-      const repo = new DrizzleProjectRepository(proj);
-      const archived = await repo.archiveProject({ projectId: idA1, expectedVersion: 1, actorUserId: "user-a" });
-      if (archived.archivedAt === null || archived.version !== 2) {
-        throw new Error(`fixture archive gagal: ${JSON.stringify(archived)}`);
-      }
-      fixtureVersion = archived.version;
+      const acts = await proj.execute(
+        "SELECT action FROM activities WHERE action = 'project.deleted'",
+      );
+      if (acts.rows.length !== 1) throw new Error(`Activity project.deleted tidak tercipta: ${JSON.stringify(acts.rows)}`);
     } finally {
       await proj.close();
     }
-
-    const res = await restore({ expected_version: fixtureVersion }, "user-a");
-    if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
-    const json = await res.json();
-    const p = json.data.project;
-    if (p.archivedAt !== null || p.version !== fixtureVersion + 1) throw new Error(`state salah: ${JSON.stringify(p)}`);
-
-    const verify = createClient({ url: String(mapping.rows[0]!.database_id) });
-    try {
-      const acts = await verify.execute({
-        sql: "SELECT action, data FROM activities WHERE action = 'project.restored'",
-      });
-      const row = acts.rows[0];
-      if (!row || !(row.data as string).includes("ARCHIVED")) {
-        throw new Error(`Activity project.restored tidak sesuai B.5: ${JSON.stringify(acts.rows)}`);
-      }
-    } finally {
-      await verify.close();
-    }
   });
 
-  it("[AC-020][INV-07] restore dengan expected_version stale → VERSION_CONFLICT 409", async () => {
-    const res = await restore({ expected_version: 1 }, "user-a");
+  it("[INV-LIFE-004] restore setelah DELETED ditolak INVALID_STATE (terminal)", async () => {
+    const res = await makeApp().request(`http://localhost/api/v1/projects/${idA1}/restore`, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-test-user": "user-a" },
+      body: JSON.stringify({ expected_version: 2 }),
+    });
+    if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
+    const json = await res.json();
+    if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
+  });
+
+  it("[AC-020][INV-07] delete dengan expected_version stale → VERSION_CONFLICT 409 tanpa perubahan state", async () => {
+    const res = await del({ expected_version: 1 }, "user-a");
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
+    const check = await makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
+      headers: { "x-test-user": "user-a" },
+    });
+    const p = (await check.json()).data.project;
+    if (p.version !== 2 || p.deletedAt === null) throw new Error(`state berubah diam-diam: ${JSON.stringify(p)}`);
   });
 
-  it("[C.4][interim-authz][C.2] non-owner → PERMISSION_DENIED 403; tanpa identitas → TOKEN_EXPIRED 401; tanpa expected_version → INVALID_STATE", async () => {
-    const forbidden = await restore({ expected_version: 4 }, "user-b");
+  it("[C.4][interim-authz][C.2] non-owner → PERMISSION_DENIED; anonim → TOKEN_EXPIRED; delete ulang → INVALID_STATE", async () => {
+    const forbidden = await del({ expected_version: 2 }, "user-b");
     if (forbidden.status !== 403) throw new Error(`status ${forbidden.status}, harusnya 403`);
-    const anon = await restore({ expected_version: 4 });
+    const anon = await del({ expected_version: 2 });
     if (anon.status !== 401) throw new Error(`status ${anon.status}, harusnya 401`);
-    const noVersion = await restore({}, "user-a");
-    if (noVersion.status !== 409) throw new Error(`status ${noVersion.status}, harusnya 409`);
+    const again = await del({ expected_version: 2 }, "user-a");
+    if (again.status !== 409) throw new Error(`status ${again.status}, harusnya 409 (sudah DELETED)`);
+    const json = await again.json();
+    if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
   });
 });

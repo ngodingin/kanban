@@ -232,5 +232,15 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
     }
   });
 
+  router.post("/v1/projects/:project_id/delete", async (c) => {
+    try {
+      return await handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
+        repository.deleteProject(input));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
   return router;
 }
