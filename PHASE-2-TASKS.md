@@ -114,7 +114,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.6.1 | ⚠️ | [CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[QA-CL-10](#qa-cl-10)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Domain command List: `createList` (title bebas tanpa semantic bawaan, FR-021; ancestor chain 3 level — Board+Milestone+Project ACTIVE), `updateList`, `archiveList`, `restoreList` (ancestor 3-level ACTIVE semua), `deleteList`. List TIDAK punya field status (FR-023). Archive/delete List MUST NOT mengubah local state/parent relation Card descendant (FR-022, BR-013) — Card jadi non-operational efektif via 2.1, bukan cascade. Ancestor check **untuk update/archive/restore/delete, bukan cuma create/restore** (INV-LIFE-001, sama seperti perbaikan 2.2.1/2.4.1). **Perbaikan wajib (Review-CL-02):** `updateList`/`archiveList`/`deleteList` saat ini tidak cek ancestor sama sekali | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-021–023; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.4 |
+| 2.6.1 | 🔎 | [CL-36](#cl-36)<br>[CL-35](#cl-35)<br>[CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[QA-CL-10](#qa-cl-10)<br>[Review-CL-02](#review-cl-02) | 80 | P0 | Domain command List: `createList` (title bebas tanpa semantic bawaan, FR-021; ancestor chain 3 level — Board+Milestone+Project ACTIVE), `updateList`, `archiveList`, `restoreList` (ancestor 3-level ACTIVE semua), `deleteList`. List TIDAK punya field status (FR-023). Archive/delete List MUST NOT mengubah local state/parent relation Card descendant (FR-022, BR-013) — Card jadi non-operational efektif via 2.1, bukan cascade. Ancestor check **untuk update/archive/restore/delete, bukan cuma create/restore** (INV-LIFE-001, sama seperti perbaikan 2.2.1/2.4.1). **Perbaikan wajib (Review-CL-02):** `updateList`/`archiveList`/`deleteList` saat ini tidak cek ancestor sama sekali | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-021–023; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.4 |
 
 **Test:** Create ditolak jika salah satu dari 3 ancestor (Board/Milestone/Project) tidak ACTIVE; archive List → Card descendant TIDAK berubah local state/version/parent (assert langsung ke row Card, bukan cuma response List); restore ditolak jika ancestor manapun belum ACTIVE. **[WAJIB, Review-CL-02]** `updateList`/`archiveList`/`deleteList` DITOLAK jika Board/Milestone/Project manapun ARCHIVED/DELETED walau List local ACTIVE.
 **DoD:** Ancestor chain 3-level benar **di seluruh command mutasi, bukan cuma create/restore**; archive/delete List terbukti TIDAK cascade ke Card (test eksplisit membaca row Card sebelum & sesudah).
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-36"></a>
+### CL-36 — 2026-08-23 · goal 2.6.1 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — ancestor check semua mutasi List
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 44 file / **289** test lulus (test baru `[Review-CL-02][INV-LIFE-001]`: Board di-archive lalu update/archive/delete List local ACTIVE ketiganya DITOLAK AncestorNotActiveError, row tak berubah, nol activity); `pnpm -r typecheck` Done; `pnpm lint` bersih. Fix: `commitMutation` list-repository memuat ancestor check chain Board→Milestone→Project via `isEffectivelyOperational` untuk SEMUA operasi; restore tetap `evaluateRestore`; signature `loadAncestorStates(tx, boardId)` disederhanakan.
+**Catatan:** Seluruh test list lama (16) tetap hijau — termasuk FR-022/BR-013 Card descendant utuh.
+
+<a id="cl-35"></a>
+### CL-35 — 2026-08-23 · goal 2.6.1 dibuka kembali untuk perbaikan (⚠️ → 🔄 · 60%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.6.1 `⚠️/60/P0` per Review-CL-02 + QA-CL-10 (pola bug sama). Fix terbukti di milestone (b992966) dan board (1f7dd0a) direplikasi ke list-repository; chain 3 level Board→Milestone→Project.
+**Catatan:** Setelah fix ini, 2.7.2/2.7.3 cukup ditambah skenario HTTP (per QA-CL-12/13).
 
 <a id="cl-34"></a>
 ### CL-34 — 2026-08-23 · goal 2.4.1 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — ancestor check semua mutasi Board

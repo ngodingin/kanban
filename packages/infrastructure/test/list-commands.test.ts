@@ -244,6 +244,31 @@ describe("update/archive/delete List — A.3 / AC-020 / FR-023 (goal 2.6.1)", ()
     expect(Number(activity.rows[0]!.entity_version)).toBe(2);
   });
 
+  it("[Review-CL-02][INV-LIFE-001] negatif: Board di-archive walau List local ACTIVE → update/archive/delete DITOLAK semua", async () => {
+    await seedProject();
+    await seedMilestone("ms_pa");
+    await seedBoard("bd_pa", "ms_pa");
+    await seedList("ls_pa", "bd_pa");
+    await db.client.execute({
+      sql: "UPDATE boards SET archived_at = ? WHERE id = 'bd_pa'",
+      args: [T0],
+    });
+
+    await expect(
+      repo.updateList(PROJECT, { listId: "ls_pa", expectedVersion: 1, actorUserId: OWNER, title: "Gagal" }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    await expect(
+      repo.archiveList(PROJECT, { listId: "ls_pa", expectedVersion: 1, actorUserId: OWNER }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    await expect(
+      repo.deleteList(PROJECT, { listId: "ls_pa", expectedVersion: 1, actorUserId: OWNER }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+
+    const row = await db.client.execute("SELECT title, version FROM lists WHERE id = 'ls_pa'");
+    expect(row.rows[0]).toMatchObject({ title: "L ls_pa", version: 1 });
+    expect(await activityCount()).toBe(0);
+  });
+
   it("negatif: list tidak ada → RESOURCE_NOT_FOUND", async () => {
     await seedProject();
     await expect(

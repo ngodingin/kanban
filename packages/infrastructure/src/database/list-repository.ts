@@ -57,7 +57,7 @@ export class DrizzleListRepository implements ListRepository {
     const now = new Date().toISOString();
     return runInWriteTransaction(this.client, async (tx) => {
       // INV-LIFE-001 — chain 3 level: Board → Milestone → Project semua ACTIVE.
-      const chain = await loadAncestorStates(tx, input.boardId, projectId);
+      const chain = await loadAncestorStates(tx, input.boardId);
       if (!isEffectivelyOperational([chain.boardState, ...chain.upperStates])) {
         throw new AncestorNotActiveError(
           "create",
@@ -122,6 +122,16 @@ export class DrizzleListRepository implements ListRepository {
         throw new ListInvalidStateError(operation, loaded.lifecycleBefore);
       }
 
+      // INV-LIFE-001 — entity non-operational (Board/Milestone/Project non-ACTIVE)
+      // MUST NOT menerima mutasi apapun, termasuk update/archive/delete.
+      const chain = await loadAncestorStates(tx, loaded.current.boardId);
+      if (!chain || !isEffectivelyOperational([chain.boardState, ...chain.upperStates])) {
+        throw new AncestorNotActiveError(
+          operation,
+          `Ancestor tidak ACTIVE — List tidak dapat menerima operasi ${operation} (INV-LIFE-001)`,
+        );
+      }
+
       const now = new Date().toISOString();
       const next: ListRecord = { ...loaded.current };
       let action: string;
@@ -146,7 +156,6 @@ export class DrizzleListRepository implements ListRepository {
         data = { previous_state: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 — local ARCHIVED sudah dicek; chain Board→Milestone→Project ACTIVE semua.
-        const chain = await loadAncestorStates(tx, loaded.current.boardId, projectId);
         const decision = evaluateRestore(loaded.lifecycleBefore, [chain.boardState, ...chain.upperStates]);
         if (!decision.allowed) {
           throw new AncestorNotActiveError(
@@ -199,8 +208,7 @@ function mapListRow(row: Record<string, unknown> | undefined): ListRecord | unde
  * Project. Board tidak ada → BoardNotFoundError; Milestone/Project hilang
  * diperlakukan DELETED (state korup → tolak operasi).
  */
-async function loadAncestorStates(tx: Tx, boardId: string, projectId: string): Promise<LoadedState> {
-  void projectId;
+async function loadAncestorStates(tx: Tx, boardId: string): Promise<LoadedState> {
   const boardRow = (
     await tx.execute("SELECT milestone_id, archived_at, deleted_at FROM boards WHERE id = ?", [boardId])
   ).rows[0];
