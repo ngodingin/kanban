@@ -2,6 +2,7 @@ import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import { applyProjectMigrations } from "../database/migrate.ts";
+import { runInDrizzleWriteTransaction } from "../database/transaction.ts";
 import {
   groupPermissions,
   permissionGroups,
@@ -61,7 +62,7 @@ export async function provisionProjectDatabase(input: ProvisionInput): Promise<P
     await applyProjectMigrations(client);
 
     const db = drizzle(client);
-    await db.transaction(async (tx) => {
+    await runInDrizzleWriteTransaction(db, async (tx) => {
       await tx.insert(projectState).values({
         projectId: input.projectId,
         name: input.projectName,
@@ -109,7 +110,7 @@ export async function registerProjectWithOwnerMembership(
   input: ProjectRegistrationInput,
 ): Promise<void> {
   const db = drizzle(globalClient);
-  await db.transaction(async (tx) => {
+  await runInDrizzleWriteTransaction(db, async (tx) => {
     await tx.insert(projects).values({
       id: input.projectId,
       ownerUserId: input.ownerUserId,

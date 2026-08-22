@@ -15,6 +15,7 @@ import {
   users,
 } from "./global-schema.ts";
 import { PipelineError } from "../pipeline/errors.ts";
+import { runInDrizzleWriteTransaction } from "./transaction.ts";
 
 // Semua operasi di modul ini bekerja pada tabel Global DB (authorization
 // plane), BUKAN Project DB — persistence tetap di balik boundary ini dan
@@ -165,7 +166,7 @@ export async function createPermissionGroup(globalClient: Client, input: CreateP
     }
   }
   const groupId = ulid();
-  await db.transaction(async (tx) => {
+  await runInDrizzleWriteTransaction(db, async (tx) => {
     await tx.insert(permissionGroups).values({
       id: groupId,
       projectId: input.projectId,
@@ -232,7 +233,7 @@ export async function updatePermissionGroup(globalClient: Client, input: UpdateP
       }
     }
   }
-  await db.transaction(async (tx) => {
+  await runInDrizzleWriteTransaction(db, async (tx) => {
     await tx.update(permissionGroups).set({
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.description !== undefined ? { description: input.description } : {}),
@@ -531,7 +532,7 @@ export async function createInvitation(
 
   const invitationId = ulid();
   const db = drizzle(globalClient);
-  await db.transaction(async (tx) => {
+  await runInDrizzleWriteTransaction(db, async (tx) => {
     await tx.insert(invitations).values({
       id: invitationId,
       projectId: input.projectId,
@@ -607,7 +608,7 @@ export async function acceptInvitation(
   }
 
   let membershipId = "";
-  await db.transaction(async (tx) => {
+  await runInDrizzleWriteTransaction(db, async (tx) => {
     if (existingMembership.length > 0) {
       // BR-054B: reactivate revoked membership
       const existing = existingMembership[0]!;
