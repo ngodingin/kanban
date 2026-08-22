@@ -26,8 +26,10 @@ export async function listProjectSummaries(
   databaseResolver: ProjectDatabaseResolver,
   clientFactory: { create(databaseId: string): Client | Promise<Client> },
   userId: string,
+  statusFilter?: readonly ProjectStatus[],
 ): Promise<ProjectSummary[]> {
   const memberships = await listActiveMemberships(globalClient, userId);
+  const allowed = statusFilter ? new Set(statusFilter) : null;
   const summaries: ProjectSummary[] = [];
   for (const membership of memberships) {
     const mapping = await resolveOrThrow(databaseResolver, membership.projectId);
@@ -40,10 +42,12 @@ export async function listProjectSummaries(
         404,
       );
     }
+    const status = deriveProjectStatus({ archivedAt: state.archivedAt, deletedAt: state.deletedAt });
+    if (allowed && !allowed.has(status)) continue;
     summaries.push({
       id: state.projectId,
       name: state.name,
-      status: deriveProjectStatus({ archivedAt: state.archivedAt, deletedAt: state.deletedAt }),
+      status,
     });
   }
   return summaries;

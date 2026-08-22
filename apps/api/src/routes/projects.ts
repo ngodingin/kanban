@@ -12,6 +12,7 @@ import {
   PipelineError,
   ResolveIdentityStep,
   type ProjectStateRecord,
+  type ProjectStatus,
   type ProjectSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
@@ -33,11 +34,30 @@ export interface ProjectRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
   newProjectId(): string;
   createProject(input: CreateProjectInput): Promise<void>;
-  listProjects(userId: string): Promise<ProjectSummary[]>;
+  listProjects(userId: string, statusFilter?: readonly ProjectStatus[]): Promise<ProjectSummary[]>;
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
 }
 
 const MAX_PROJECT_NAME_LENGTH = 255;
+
+const PROJECT_STATUS_VALUES: readonly ProjectStatus[] = ["ACTIVE", "ARCHIVED", "DELETED"];
+
+function readStatusFilter(raw: string | undefined): ProjectStatus[] | undefined {
+  if (raw === undefined || raw === "") return undefined;
+  const values = raw.split(",");
+  const parsed: ProjectStatus[] = [];
+  for (const value of values) {
+    if (!(PROJECT_STATUS_VALUES as readonly string[]).includes(value)) {
+      throw new PipelineError(
+        "VALIDATION_ERROR",
+        `Nilai status '${value}' tidak dikenal; gunakan subset ACTIVE,ARCHIVED,DELETED.`,
+        400,
+      );
+    }
+    parsed.push(value as ProjectStatus);
+  }
+  return parsed;
+}
 
 export function toApiErrorResponse(error: unknown): { status: number; body: ErrorEnvelope } {
   if (error instanceof PipelineError) {
@@ -154,7 +174,7 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
-      const items = await deps.listProjects(identity.userId);
+      const items = await deps.listProjects(identity.userId, readStatusFilter(c.req.query("status")));
       return c.json(ok({ projects: items }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);

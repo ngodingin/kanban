@@ -87,10 +87,10 @@ beforeAll(async () => {
       createProject: async () => {
         throw new Error("tidak dipakai di test list");
       },
-      listProjects: (userId) =>
+      listProjects: (userId, statusFilter) =>
         listProjectSummaries(globalClient, new SqliteProjectDatabaseResolver(globalClient), {
           create: (databaseId) => createClient({ url: databaseId }),
-        }, userId),
+        }, userId, statusFilter),
     },
   };
 });
@@ -157,5 +157,56 @@ describe("GET /api/v1/projects — list Project bermembership aktif (goal 1.3.2)
     if (res.status !== 401) throw new Error(`status ${res.status}`);
     const json = await res.json();
     if (json.error?.code !== "TOKEN_EXPIRED") throw new Error(`code ${json.error?.code}`);
+  });
+});
+
+describe("GET /api/v1/projects?status= — filter subset status (goal 1.3.5)", () => {
+  it("[C.4] positif: ?status=ACTIVE hanya mengembalikan project ACTIVE", async () => {
+    const res = await makeApp().request("http://localhost/api/v1/projects?status=ACTIVE", {
+      headers: { "x-test-user": "user-a" },
+    });
+    if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
+    const projects = (await res.json()).data.projects as Array<{ name: string; status: string }>;
+    if (projects.length !== 1 || projects[0]!.name !== "Proj A1" || projects[0]!.status !== "ACTIVE") {
+      throw new Error(`hasil filter ACTIVE salah: ${JSON.stringify(projects)}`);
+    }
+  });
+
+  it("[C.4] positif: ?status=ARCHIVED / DELETED / kombinasi comma-separated", async () => {
+    const archived = (await (await makeApp().request("http://localhost/api/v1/projects?status=ARCHIVED", {
+      headers: { "x-test-user": "user-a" },
+    })).json()).data.projects as Array<{ name: string }>;
+    if (archived.length !== 1 || archived[0]!.name !== "Proj A2") {
+      throw new Error(`hasil filter ARCHIVED salah: ${JSON.stringify(archived)}`);
+    }
+
+    const deleted = (await (await makeApp().request("http://localhost/api/v1/projects?status=DELETED", {
+      headers: { "x-test-user": "user-a" },
+    })).json()).data.projects as Array<{ name: string }>;
+    if (deleted.length !== 0) throw new Error(`hasil filter DELETED harusnya kosong: ${JSON.stringify(deleted)}`);
+
+    const both = (await (await makeApp().request("http://localhost/api/v1/projects?status=ACTIVE,ARCHIVED", {
+      headers: { "x-test-user": "user-a" },
+    })).json()).data.projects as Array<{ name: string }>;
+    if (both.length !== 2) throw new Error(`hasil filter gabungan salah: ${JSON.stringify(both)}`);
+  });
+
+  it("[C.12] negatif: nilai status tidak dikenal → VALIDATION_ERROR 400", async () => {
+    for (const query of ["?status=bogus", "?status=ACTIVE,archived"]) {
+      const res = await makeApp().request(`http://localhost/api/v1/projects${query}`, {
+        headers: { "x-test-user": "user-a" },
+      });
+      if (res.status !== 400) throw new Error(`${query}: status ${res.status}, harusnya 400`);
+      const json = await res.json();
+      if (json.error?.code !== "VALIDATION_ERROR") throw new Error(`${query}: code ${json.error?.code}`);
+    }
+  });
+
+  it("[C.4] tanpa param tetap mengembalikan semua status (default tidak berubah)", async () => {
+    const res = await makeApp().request("http://localhost/api/v1/projects", {
+      headers: { "x-test-user": "user-a" },
+    });
+    const projects = (await res.json()).data.projects as Array<{ name: string }>;
+    if (projects.length !== 2) throw new Error(`default berubah: ${JSON.stringify(projects)}`);
   });
 });

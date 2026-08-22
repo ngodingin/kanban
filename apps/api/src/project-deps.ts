@@ -60,7 +60,8 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
         now: new Date().toISOString(),
       });
     },
-    listProjects: (userId) => listProjectSummaries(globalClient, databaseResolver, projectClientFactory, userId),
+    listProjects: (userId, statusFilter) =>
+      listProjectSummaries(globalClient, databaseResolver, projectClientFactory, userId, statusFilter),
     openProjectContext: async (request, projectId) => {
       const pipeline = new RequestPipeline({
         identityResolver,
