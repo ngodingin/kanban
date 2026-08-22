@@ -9,10 +9,11 @@ import {
   readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
-import { buildBoardRoutesDeps, buildCardRoutesDeps, buildListRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
+import { buildBoardRoutesDeps, buildCardRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
 import { createBoardsRouter, type BoardRoutesDeps } from "./routes/boards.ts";
 import { createCardsRouter, type CardRoutesDeps } from "./routes/cards.ts";
 import { createListsRouter, type ListRoutesDeps } from "./routes/lists.ts";
+import { createMilestoneLabelsRouter, type MilestoneLabelRoutesDeps } from "./routes/labels.ts";
 import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/milestones.ts";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
@@ -140,6 +141,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return deps;
   };
 
+  let milestoneLabelDeps: MilestoneLabelRoutesDeps | null = null;
+  const getMilestoneLabelDeps = (): MilestoneLabelRoutesDeps => {
+    let deps = milestoneLabelDeps;
+    if (!deps) {
+      const r = ensure();
+      deps = buildMilestoneLabelRoutesDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
+      });
+      milestoneLabelDeps = deps;
+    }
+    return deps;
+  };
+
   app.get("/v1/health", (c) => {
     let env = "unknown";
     try {
@@ -170,6 +186,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createBoardsRouter(getBoardDeps));
   app.route("/", createListsRouter(getListDeps));
   app.route("/", createCardsRouter(getCardDeps));
+  app.route("/", createMilestoneLabelsRouter(getMilestoneLabelDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };

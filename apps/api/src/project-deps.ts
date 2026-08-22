@@ -28,6 +28,7 @@ import type { Client } from "@libsql/client";
 import type { BoardRoutesDeps } from "./routes/boards.ts";
 import type { CardRoutesDeps } from "./routes/cards.ts";
 import type { ListRoutesDeps } from "./routes/lists.ts";
+import type { MilestoneLabelRoutesDeps } from "./routes/labels.ts";
 import type { MilestoneRoutesDeps } from "./routes/milestones.ts";
 import type { ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import type { ProjectRoutesDeps } from "./routes/projects.ts";
@@ -139,6 +140,20 @@ export function buildCardRoutesDeps(input: BuildCardRoutesDepsInput): CardRoutes
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
     newCardId: newProjectId,
     assertAssigneeActiveMember: (projectId, userId) => requireActiveMember(globalClient, projectId, userId),
+  };
+}
+
+export interface BuildMilestoneLabelRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+  turso: TursoEnv | null;
+}
+
+export function buildMilestoneLabelRoutesDeps(input: BuildMilestoneLabelRoutesDepsInput): MilestoneLabelRoutesDeps {
+  const { identityResolver, globalClient, turso } = input;
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    newMilestoneLabelId: newProjectId,
   };
 }
 

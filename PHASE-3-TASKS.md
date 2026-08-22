@@ -96,7 +96,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 3.4.1 | ⬜️ | — | 0 | P0 | `GET /api/v1/projects/:project_id/milestones/:milestone_id/labels` + `POST .../labels` — pakai `RequestPipeline`, Owner-only interim untuk create (Prinsip #2), balikan `{data:{labels:[...]}}`/`{data:{label:{...}}}` konsisten C.2. | [02-SPEC C.11](docs/02-SPEC.md) | 3.3 |
+| 3.4.1 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P0 | `GET /api/v1/projects/:project_id/milestones/:milestone_id/labels` + `POST .../labels` — pakai `RequestPipeline`, Owner-only interim untuk create (Prinsip #2), balikan `{data:{labels:[...]}}`/`{data:{label:{...}}}` konsisten C.2. | [02-SPEC C.11](docs/02-SPEC.md) | 3.3 |
 | 3.4.2 | ⬜️ | — | 0 | P1 | `PATCH .../labels/:label_id` — field `name` saja (C.15), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR`. | [02-SPEC C.11](docs/02-SPEC.md), C.15, C.2 | 3.3, 3.4.1 |
 | 3.4.3 | ⬜️ | — | 0 | P1 | `POST .../labels/:label_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama Milestone (TASK-2.3). | [02-SPEC C.11](docs/02-SPEC.md), A.3 | 3.3, 3.4.1 |
 
@@ -199,6 +199,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-08"></a>
+### CL-08 — 2026-08-23 · goal 3.4.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint GET list + POST Milestone Label
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 53 file / **345** test lulus (4 test integration baru `apps/api/test/milestone-labels-create-get.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: router `apps/api/src/routes/labels.ts` — `GET /v1/projects/:p/milestones/:m/labels` (member via pipeline, default exclude deleted) + `POST .../labels` (Owner-only interim; body hanya `name`; field asing ditolak; VALIDATION_ERROR untuk name invalid); envelope `{data:{label}}`/`{data:{labels:[...]}}`; wiring `buildMilestoneLabelRoutesDeps` + mount index.ts.
+**Catatan:** Test: create pada Milestone ARCHIVED → INVALID_STATE 409; non-member 403 PROJECT_ACCESS_DENIED; milestone tidak ada → INVALID_STATE 409 (chain DELETED); Activity entity_type='milestone_label' diverifikasi.
+
+<a id="cl-07"></a>
+### CL-07 — 2026-08-23 · goal 3.4.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 3.4.1 `⬜️/—/0/P0`, dependency `3.3` → 3.3.1 `🔎/80%` commit 9528895 (suite 341 hijau). C.11 route Label terbaca.
+**Catatan:** Router labels.ts (nanti ditambah Board Label di TASK-3.6); wiring buildMilestoneLabelRoutesDeps.
 
 <a id="cl-06"></a>
 ### CL-06 — 2026-08-23 · goal 3.3.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — Milestone Label domain commands

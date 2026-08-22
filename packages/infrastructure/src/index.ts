@@ -72,6 +72,7 @@ export type {
   BoardRecord,
   CardRecord,
   ListRecord,
+  MilestoneLabelRecord,
   MilestoneRecord,
   ProjectRepository,
   ProjectStateRecord,
