@@ -26,6 +26,7 @@ import {
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
 import type { BoardRoutesDeps } from "./routes/boards.ts";
+import type { ListRoutesDeps } from "./routes/lists.ts";
 import type { MilestoneRoutesDeps } from "./routes/milestones.ts";
 import type { ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import type { ProjectRoutesDeps } from "./routes/projects.ts";
@@ -108,6 +109,20 @@ export function buildBoardRoutesDeps(input: BuildBoardRoutesDepsInput): BoardRou
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
     newBoardId: newProjectId,
+  };
+}
+
+export interface BuildListRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+  turso: TursoEnv | null;
+}
+
+export function buildListRoutesDeps(input: BuildListRoutesDepsInput): ListRoutesDeps {
+  const { identityResolver, globalClient, turso } = input;
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    newListId: newProjectId,
   };
 }
 

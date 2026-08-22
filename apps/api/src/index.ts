@@ -9,8 +9,9 @@ import {
   readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
-import { buildBoardRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
+import { buildBoardRoutesDeps, buildListRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
 import { createBoardsRouter, type BoardRoutesDeps } from "./routes/boards.ts";
+import { createListsRouter, type ListRoutesDeps } from "./routes/lists.ts";
 import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/milestones.ts";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
@@ -107,6 +108,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return deps;
   };
 
+  let listDeps: ListRoutesDeps | null = null;
+  const getListDeps = (): ListRoutesDeps => {
+    let deps = listDeps;
+    if (!deps) {
+      const r = ensure();
+      deps = buildListRoutesDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
+      });
+      listDeps = deps;
+    }
+    return deps;
+  };
+
   app.get("/v1/health", (c) => {
     let env = "unknown";
     try {
@@ -135,6 +151,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createProjectsRouter(getProjectDeps));
   app.route("/", createMilestonesRouter(getMilestoneDeps));
   app.route("/", createBoardsRouter(getBoardDeps));
+  app.route("/", createListsRouter(getListDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };

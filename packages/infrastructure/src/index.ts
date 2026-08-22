@@ -63,6 +63,7 @@ export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline
 export type { ProjectClientFactory } from "./pipeline/database-step.ts";
 export type {
   BoardRecord,
+  ListRecord,
   MilestoneRecord,
   ProjectRepository,
   ProjectStateRecord,

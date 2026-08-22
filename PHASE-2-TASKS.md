@@ -125,7 +125,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.7.1 | 🔄 | [CL-21](#cl-21) | 0 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
+| 2.7.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21) | 80 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
 | 2.7.2 | ⬜️ | — | 0 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
 | 2.7.3 | ⬜️ | — | 0 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
 
@@ -284,6 +284,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 **Verifikasi lintas-goal (seluruh batch TASK-2.1–2.6):** `pnpm -r typecheck` → 6/6 package Done, 0 error. `pnpm lint` → `eslint .`, 0 error. `pnpm exec vitest run` → **40 file / 258 test PASS**, tidak ada regresi. Model Dev batch ini adalah `big-pickle` (opencode) — platform/model belum dikenal tim ini sebelumnya; hasil kerja diverifikasi dengan skeptisisme penuh (baca kode + reproduksi tambahan sendiri untuk klaim boundary, bukan sekadar re-run test yang disediakan) mengikuti AGENTS.md §11.3.3 — tidak ditemukan penyimpangan SOT atau klaim CL yang tidak akurat.
 **Observasi arsitektur non-blocking (dicatat untuk Planning/Review, bukan blocker goal manapun):** `withErrorHandling`/`assertOwnerInterim` diduplikasi identik di `milestones.ts` dan `boards.ts` (akan berulang lagi di `lists.ts`/`cards.ts`, TASK-2.7/2.8) — kelas DRY-gap yang sama dengan Phase 1 Review-CL-10 Temuan 5 (goal 1.11.1). Layak jadi kandidat goal cleanup terpisah setelah TASK-2.8 selesai, bukan menghalangi goal manapun sekarang.
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-23 · goal 2.7.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET List
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 41 file / **262** test lulus (4 test integration baru `apps/api/test/lists-create-get.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: router `apps/api/src/routes/lists.ts` — `POST /v1/projects/:project_id/boards/:board_id/lists` (Owner-only interim; body title saja sesuai FR-021; VALIDATION_ERROR untuk title invalid) + `GET /v1/projects/:project_id/lists/:list_id` (member via pipeline, 404); envelope `{data:{list}}`; wiring `buildListRoutesDeps` + mount index.ts.
+**Catatan:** Test TASK-2.7: board Project lain maupun ID asing → RESOURCE_NOT_FOUND (boundary DB-per-project); non-member 403 PROJECT_ACCESS_DENIED; tanpa identitas 401 TOKEN_EXPIRED. DoD "List tidak punya operasi move" — tidak ada route move yang diekspos (INV-MOVE-001).
+
+<a id="cl-21"></a>
+### CL-21 — 2026-08-23 · scope TASK-2.7–2.11 dikonfirmasi; goal 2.7.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.7.1 `⬜️/—/0/P0`, dependency `2.6` → 2.6.1 `🔎/80%` commit `8940788` (suite 258 hijau, working tree bersih). Manusia mengonfirmasi scope baru TASK-2.7–2.11 (2.12 tidak termasuk). Referensi dibaca ulang dari disk: C.7/C.8, INV-MOVE-001–004 (02-SPEC A.5), BR-017/018/021/044/045A/061/062, FR-024–026, 03-ENG A.5 (app-level FK) & A.6.
+**Catatan:** Urutan goal: 2.7.x → 2.8.x → 2.9.x → 2.10.1 → 2.11.1. 2.10 invariant-critical sesuai §11.2.
 
 <a id="cl-20"></a>
 ### CL-20 — 2026-08-23 · goal 2.6.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — domain command List chain 3 level
