@@ -39,7 +39,7 @@ export interface ProjectRoutesDeps {
 
 const MAX_PROJECT_NAME_LENGTH = 255;
 
-function toApiErrorResponse(error: unknown): { status: number; body: ErrorEnvelope } {
+export function toApiErrorResponse(error: unknown): { status: number; body: ErrorEnvelope } {
   if (error instanceof PipelineError) {
     return toErrorResponse({ code: error.code, message: error.message, httpStatus: error.httpStatus });
   }

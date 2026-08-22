@@ -25,6 +25,15 @@ export {
   SqliteProjectDatabaseResolver,
   type ProjectDatabaseResolver,
 } from "./database/project-resolver.ts";
+export {
+  assertProjectOwner,
+  getProjectOwnerId,
+  hasActiveMembership,
+  listPermissionGroups,
+  requireActiveMember,
+  type PermissionGroupEntry,
+  type PermissionGroupSummary,
+} from "./database/project-admin.ts";
 export { PipelineError } from "./pipeline/errors.ts";
 export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
 export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline.ts";

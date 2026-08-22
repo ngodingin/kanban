@@ -9,8 +9,9 @@ import {
   readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
-import { buildProjectRoutesDeps } from "./project-deps.ts";
+import { buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
+import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
   app: Hono;
@@ -60,6 +61,20 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return deps;
   };
 
+  let adminDeps: ProjectAdminRoutesDeps | null = null;
+  const getProjectAdminDeps = (): ProjectAdminRoutesDeps => {
+    let deps = adminDeps;
+    if (!deps) {
+      const r = ensure();
+      deps = buildProjectAdminDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+      });
+      adminDeps = deps;
+    }
+    return deps;
+  };
+
   app.get("/v1/health", (c) => {
     let env = "unknown";
     try {
@@ -86,6 +101,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   });
 
   app.route("/", createProjectsRouter(getProjectDeps));
+  app.route("/", createProjectAdminRouter(getProjectAdminDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
 }
@@ -99,3 +115,5 @@ const { app: vercelApp } = createApiApp();
 const vercelHandler = handle(vercelApp);
 export const GET = vercelHandler;
 export const POST = vercelHandler;
+// PATCH dipakai endpoint admin (mis. PATCH /permission-groups/:group_id, C.12).
+export const PATCH = vercelHandler;

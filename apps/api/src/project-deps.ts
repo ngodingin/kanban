@@ -1,14 +1,17 @@
 import {
   createCachedProjectDbClientFactory,
+  listPermissionGroups,
   listProjectSummaries,
   newProjectId,
   provisionProjectWithMapping,
   RequestPipeline,
+  requireActiveMember,
   SqliteProjectDatabaseResolver,
   type IdentityResolver,
   type TursoEnv,
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
+import type { ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import type { ProjectRoutesDeps } from "./routes/projects.ts";
 
 export interface BuildProjectRoutesDepsInput {
@@ -59,6 +62,23 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
         ownerUserId: resolved.project.ownerUserId,
         database: resolved.database,
       };
+    },
+  };
+}
+
+// Deps untuk router admin Global-DB (permission groups, assignments,
+// invitations, members) — pola sama dengan buildProjectRoutesDeps agar
+// wiring produksi selalu dapat dilewati test (pelajaran QA-CL-04).
+export function buildProjectAdminDeps(input: {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+}): ProjectAdminRoutesDeps {
+  const { identityResolver, globalClient } = input;
+  return {
+    resolveIdentity: (request) => identityResolver.resolveIdentity(request),
+    listPermissionGroups: async (projectId, requesterUserId, opts) => {
+      await requireActiveMember(globalClient, projectId, requesterUserId);
+      return listPermissionGroups(globalClient, projectId, opts);
     },
   };
 }
