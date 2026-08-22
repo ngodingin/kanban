@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="review-cl-16"></a>
+### Review-CL-16 — 2026-08-23 · audit gate ke-2 sebelum Phase 2 dibuka: verifikasi 1.5.2/1.12.1 langsung ke Turso nyata
+**Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Lanjutan Review-CL-15 atas permintaan manusia (audit independen Phase 0+1 sebelum Phase 2 dimulai) — lihat detail lengkap & hasil di [PHASE-0-TASKS.md Review-CL-10](PHASE-0-TASKS.md#review-cl-10) (dicatat di sana karena mencakup kedua fase sekaligus). Ringkas untuk Phase 1: `pnpm exec vitest run` 30 file/157 test PASS (tidak berubah sejak Review-CL-15); `permissions_key_unique` (1.5.2) dikonfirmasi ada di Global DB Turso nyata via query `sqlite_master` (40 row, 0 duplikat — sebelumnya cuma diverifikasi lewat test lokal/CI); busy-retry (1.12.1) diuji dengan 2 `createPermissionGroup` konkuren terhadap Project Turso sungguhan (bukan file lokal seperti QA-CL-24/CL-65) → keduanya sukses, tidak ada `SQLITE_BUSY` bocor. Data uji dibersihkan manual, dikonfirmasi 0 sisa.
+**Verdict:** Tidak ada temuan baru, tidak ada regresi. 26/26 goal Phase 1 tetap valid — audit independen ke-5 (setelah Review-CL-04/10/12/15) untuk fase ini, kali ini dengan bukti langsung dari infra production-equivalent untuk 2 goal yang sebelumnya cuma diverifikasi lokal. Siap Phase 2.
+
 <a id="review-cl-15"></a>
 ### Review-CL-15 — 2026-08-22 · audit final closure Phase 1 (26/26 goal ✅): verifikasi 1.12.1 + Exit Criteria
 **Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)

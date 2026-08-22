@@ -229,6 +229,13 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
 
+<a id="review-cl-10"></a>
+### Review-CL-10 — 2026-08-23 · audit final gate sebelum Phase 2 dibuka (tanpa perubahan status)
+**Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Manusia meminta audit independen Phase 0+1 sebelum Phase 2 dimulai. Direproduksi dari nol (bukan membaca ulang Review-CL-08/09): `pnpm -r build`/`typecheck`/`lint` bersih; `pnpm exec vitest run` → **30 file/157 test PASS**. Smoke lokal (`test:smoke-migration`, `test:smoke-global-constraints`, `test:smoke-global-schema`) PASS. **Verifikasi live baru terhadap Turso nyata** (belum pernah dilakukan sebelumnya dengan cara ini): (1) `permissions_key_unique` (goal 1.5.2, Phase 1) dikonfirmasi benar-benar ada sebagai index di Global DB production-equivalent (`sqlite_master` query), 40 row, 0 duplikat; (2) busy-retry (`runInDrizzleWriteTransaction`, goal 1.12.1, Phase 1) diuji dengan 2 `createPermissionGroup` konkuren terhadap Project **sungguhan** di Turso (bukan file lokal seperti reproduksi Dev/QA sebelumnya) → keduanya `"OK"`, tidak ada `SQLITE_BUSY` bocor — membuktikan fix bertahan pada model konkurensi Turso (HTTP-based), bukan cuma pada quirk locking file lokal. Artifact uji (Project/Membership/Permission Group/Turso DB sementara) dibersihkan manual setelah `afterAll` bawaan gagal karena urutan FK; dikonfirmasi ulang 0 baris sisa.
+**Verdict:** Phase 0 (34/34) dan Phase 1 (26/26) tetap **genuinely tuntas** — tidak ada regresi, tidak ada temuan baru. Ini audit ke-3 untuk Phase 0 (setelah Review-CL-08/09) dan ke-5 untuk Phase 1 (setelah Review-CL-04/10/12/15), masing-masing mereproduksi bukti independen sendiri. Siap Phase 2.
+**Catatan:** Tidak ada perubahan Status/SOT dari entry ini.
+
 <a id="review-cl-09"></a>
 ### Review-CL-09 — 2026-08-22 · audit independen insiden CL-61 (bundle crash + migration bundling, 0.12.4)
 **Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
