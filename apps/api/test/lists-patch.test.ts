@@ -139,6 +139,22 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
     expect(noIdentity.status).toBe(401);
   });
 
+  it("[Review-CL-02][INV-LIFE-001] PATCH saat ancestor Board ARCHIVED → INVALID_STATE 409 tanpa perubahan", async () => {
+    const dbRow = await ctx.globalClient.execute({
+      sql: "SELECT d.database_id AS db FROM project_databases d WHERE d.project_id = ?",
+      args: [projectIdValue],
+    });
+    const projectDb = createClient({ url: String(dbRow.rows[0]!.db) });
+    try {
+      await projectDb.execute("UPDATE boards SET archived_at = '2026-08-21T00:00:00.000Z' WHERE id = 'bd_p'");
+    } finally {
+      await projectDb.close();
+    }
+    const res = await patch({ expected_version: 2, title: "Gagal" });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error?.code).toBe("INVALID_STATE");
+  });
+
   it("[C.7] list tidak ada → RESOURCE_NOT_FOUND 404", async () => {
     const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_none`, {
       method: "PATCH",
