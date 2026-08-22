@@ -2,6 +2,7 @@ import {
   assertProjectOwner,
   createCachedProjectDbClientFactory,
   createGroupAssignment,
+  createPermissionAssignment,
   createPermissionGroup,
   deletePermissionGroup,
   listPermissionGroups,
@@ -11,6 +12,7 @@ import {
   RequestPipeline,
   requireActiveMember,
   revokeGroupAssignment,
+  revokePermissionAssignment,
   SqliteProjectDatabaseResolver,
   updatePermissionGroup,
   type IdentityResolver,
@@ -113,5 +115,16 @@ export function buildProjectAdminDeps(input: {
       }),
     revokeGroupAssignment: (projectId, membershipId, assignmentId) =>
       revokeGroupAssignment(globalClient, { projectId, membershipId, assignmentId }),
+    createPermissionAssignment: async (projectId, membershipId, input) =>
+      createPermissionAssignment(globalClient, {
+        projectId,
+        membershipId,
+        permissionId: input.permissionId,
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+        ...(input.cardReadVisibility !== undefined ? { cardReadVisibility: input.cardReadVisibility } : {}),
+      }),
+    revokePermissionAssignment: (projectId, membershipId, assignmentId) =>
+      revokePermissionAssignment(globalClient, { projectId, membershipId, assignmentId }),
   };
 }

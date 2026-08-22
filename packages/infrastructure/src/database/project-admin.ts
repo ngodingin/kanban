@@ -5,6 +5,7 @@ import { ulid } from "ulid";
 import {
   groupPermissions,
   membershipGroupAssignments,
+  membershipPermissionAssignments,
   permissionGroups,
   permissions,
   projectMemberships,
@@ -358,4 +359,106 @@ export async function revokeGroupAssignment(
   await db.update(membershipGroupAssignments).set({ revokedAt: now })
     .where(eq(membershipGroupAssignments.id, input.assignmentId)).run();
   return { id: row.id, membershipId: row.membershipId, groupId: row.groupId, scopeType: row.scopeType, scopeId: row.scopeId, createdAt: row.createdAt, revokedAt: now };
+}
+
+function parseCardReadVisibility(raw: string | null | undefined): "CREATED_BY_ME" | "ASSIGNED_TO_ME" | "ALL" {
+  if (raw === undefined || raw === null) return "CREATED_BY_ME";
+  if (raw === "CREATED_BY_ME" || raw === "ASSIGNED_TO_ME" || raw === "ALL") return raw;
+  throw new PipelineError("INVALID_STATE", `Nilai card_read_visibility '${raw}' tidak valid.`, 409);
+}
+
+export interface PermissionAssignmentSummary {
+  id: string;
+  membershipId: string;
+  permissionId: string;
+  scopeType: string;
+  scopeId: string;
+  cardReadVisibility: string | null;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
+// Assign direct permission ke Membership — Phase 1 hanya scope project.
+// Visibility hanya valid untuk card.read (B.2/C.12); default CREATED_BY_ME
+// bila tidak dikirim (BR-048).
+export async function createPermissionAssignment(
+  globalClient: Client,
+  input: {
+    projectId: string;
+    membershipId: string;
+    permissionId: string;
+    scopeType: string;
+    scopeId: string;
+    cardReadVisibility?: string | null;
+  },
+): Promise<PermissionAssignmentSummary> {
+  const membership = await requireActiveMembershipRow(globalClient, input.projectId, input.membershipId);
+  if (membership.revokedAt !== null) {
+    throw new PipelineError("INVALID_STATE", "Membership sudah di-revoke — tidak dapat menerima assignment baru.", 409);
+  }
+  if (input.scopeType !== "project") {
+    throw new PipelineError("INVALID_STATE", `scope_type '${input.scopeType}' belum didukung di Phase 1 (hanya 'project').`, 409);
+  }
+  if (input.scopeId !== input.projectId) {
+    throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+  }
+  const permRows = await globalClient.execute({ sql: "SELECT key FROM permissions WHERE id = ?", args: [input.permissionId] });
+  if (permRows.rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Permission ${input.permissionId} tidak ditemukan.`, 404);
+  }
+  const permissionKey = String(permRows.rows[0]!.key);
+  const requested = input.cardReadVisibility;
+  if (requested !== undefined && requested !== null && permissionKey !== "card.read") {
+    throw new PipelineError("INVALID_STATE", `card_read_visibility hanya berlaku untuk permission 'card.read', bukan '${permissionKey}'.`, 409);
+  }
+  const cardReadVisibility = permissionKey === "card.read" ? parseCardReadVisibility(requested) : null;
+  const now = new Date().toISOString();
+  const id = ulid();
+  const db = drizzle(globalClient);
+  try {
+    await db.insert(membershipPermissionAssignments).values({
+      id,
+      membershipId: input.membershipId,
+      permissionId: input.permissionId,
+      scopeType: "project",
+      scopeId: input.scopeId,
+      cardReadVisibility,
+      createdAt: now,
+      revokedAt: null,
+    }).run();
+  } catch (error) {
+    mapUniqueViolation(error, "Assignment aktif dengan (membership, permission, scope) yang sama sudah ada.");
+  }
+  return {
+    id,
+    membershipId: input.membershipId,
+    permissionId: input.permissionId,
+    scopeType: "project",
+    scopeId: input.scopeId,
+    cardReadVisibility,
+    createdAt: now,
+    revokedAt: null,
+  };
+}
+
+// Revoke direct permission — mempertahankan riwayat; idempotent.
+export async function revokePermissionAssignment(
+  globalClient: Client,
+  input: { projectId: string; membershipId: string; assignmentId: string },
+): Promise<PermissionAssignmentSummary> {
+  await requireActiveMembershipRow(globalClient, input.projectId, input.membershipId);
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(membershipPermissionAssignments)
+    .where(sql`${membershipPermissionAssignments.id} = ${input.assignmentId} AND ${membershipPermissionAssignments.membershipId} = ${input.membershipId}`);
+  if (rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Permission assignment ${input.assignmentId} tidak ditemukan untuk Membership ini.`, 404);
+  }
+  const row = rows[0]!;
+  if (row.revokedAt !== null) {
+    return { id: row.id, membershipId: row.membershipId, permissionId: row.permissionId, scopeType: row.scopeType, scopeId: row.scopeId, cardReadVisibility: row.cardReadVisibility, createdAt: row.createdAt, revokedAt: row.revokedAt };
+  }
+  const now = new Date().toISOString();
+  await db.update(membershipPermissionAssignments).set({ revokedAt: now })
+    .where(eq(membershipPermissionAssignments.id, input.assignmentId)).run();
+  return { id: row.id, membershipId: row.membershipId, permissionId: row.permissionId, scopeType: row.scopeType, scopeId: row.scopeId, cardReadVisibility: row.cardReadVisibility, createdAt: row.createdAt, revokedAt: now };
 }

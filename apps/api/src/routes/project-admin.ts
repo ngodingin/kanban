@@ -5,6 +5,7 @@ import {
   PipelineError,
   ResolveIdentityStep,
   type GroupAssignmentSummary,
+  type PermissionAssignmentSummary,
   type PermissionGroupSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
@@ -54,6 +55,16 @@ export interface ProjectAdminRoutesDeps {
     membershipId: string,
     assignmentId: string,
   ): Promise<GroupAssignmentSummary>;
+  createPermissionAssignment(
+    projectId: string,
+    membershipId: string,
+    input: { permissionId: string; scopeType: string; scopeId: string; cardReadVisibility?: string | null },
+  ): Promise<PermissionAssignmentSummary>;
+  revokePermissionAssignment(
+    projectId: string,
+    membershipId: string,
+    assignmentId: string,
+  ): Promise<PermissionAssignmentSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -261,6 +272,70 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       // Authorization first (Implementation Rule 3): Owner-only interim.
       await deps.assertProjectOwner(projectId, identity.userId);
       const assignment = await deps.revokeGroupAssignment(
+        projectId,
+        c.req.param("membership_id"),
+        c.req.param("assignment_id"),
+      );
+      return c.json(ok({ assignment }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/members/:membership_id/permission-assignments", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const membershipId = c.req.param("membership_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const raw = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+      if (typeof raw !== "object" || raw === null) {
+        throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
+      }
+      const permissionId = raw.permission_id;
+      const scopeType = raw.scope_type;
+      const scopeId = raw.scope_id;
+      const visibility = raw.card_read_visibility;
+      if (typeof permissionId !== "string" || permissionId.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Field permission_id wajib string non-kosong.", 409);
+      }
+      if (typeof scopeType !== "string" || scopeType.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Field scope_type wajib string non-kosong.", 409);
+      }
+      if (typeof scopeId !== "string" || scopeId.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Field scope_id wajib string non-kosong.", 409);
+      }
+      if (visibility !== undefined && visibility !== null && typeof visibility !== "string") {
+        throw new PipelineError("INVALID_STATE", "card_read_visibility wajib string atau null.", 409);
+      }
+      const assignment = await deps.createPermissionAssignment(projectId, membershipId, {
+        permissionId,
+        scopeType,
+        scopeId,
+        ...(visibility !== undefined ? { cardReadVisibility: visibility as string | null } : {}),
+      });
+      return c.json(ok({ assignment }), 201);
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const assignment = await deps.revokePermissionAssignment(
         projectId,
         c.req.param("membership_id"),
         c.req.param("assignment_id"),
