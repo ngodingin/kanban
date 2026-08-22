@@ -88,7 +88,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.4.1 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/archive` — otorisasi Owner-only interim, `expected_version` wajib, panggil `archiveProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), A.3 | 1.1, 1.3.3 |
+| 1.4.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 | `POST /api/v1/projects/:project_id/archive` — otorisasi Owner-only interim, `expected_version` wajib, panggil `archiveProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), A.3 | 1.1, 1.3.3 |
 | 1.4.2 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/restore` — hanya valid dari ARCHIVED (Project tidak punya ancestor lain sehingga INV-LIFE-002 trivially satisfied di level Project), otorisasi Owner-only interim, panggil `restoreProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), INV-LIFE-002 | 1.1, 1.3.3 |
 | 1.4.3 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/delete` — terminal, tidak dapat direstore setelahnya, otorisasi Owner-only interim, panggil `deleteProject` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), INV-LIFE-004 | 1.1, 1.3.3 |
 
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-14"></a>
+### CL-14 — 2026-08-22 · goal 1.4.1 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm vitest run` → 13 file / 68 test lulus, termasuk `apps/api/test/projects-archive.test.ts` 5/5: positif A.3 archive ACTIVE→ARCHIVED + Activity project.archived berisi previous_state (B.5); negatif authz non-owner → PERMISSION_DENIED; negatif AC-020 stale version → VERSION_CONFLICT tanpa perubahan state; negatif A.3 archive ARCHIVED → INVALID_STATE; negatif payload/auth. Lint bersih, typecheck lulus.
+**Catatan:** Helper bersama `handleLifecycle` di route layer (validasi body, Owner-only interim, eksekusi command domain) — dipakai ulang restore/delete pada 1.4.2/1.4.3.
+
+<a id="cl-13"></a>
+### CL-13 — 2026-08-22 · goal 1.4.1 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.4.1 `⬜️/0`, dependency 1.1 ✅ sisi Dev (CL-02) + 1.3.3 ✅ sisi Dev (CL-10); HEAD `3e0f59e`, working tree bersih.
+**Catatan:** Tiga endpoint lifecycle (archive/restore/delete) berpola identik: POST + body `{expected_version}` + Owner-only interim → command domain. Dikerjakan berurutan per goal dengan commit terpisah; helper `runLifecycleCommand` dibagikan di route layer.
 
 <a id="cl-12"></a>
 ### CL-12 — 2026-08-22 · goal 1.3.4 selesai sisi Dev (🔄 → 🔎 · 80%)

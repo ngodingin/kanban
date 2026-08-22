@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import {
   apiError,
@@ -11,6 +11,7 @@ import {
   DrizzleProjectRepository,
   PipelineError,
   ResolveIdentityStep,
+  type ProjectStateRecord,
   type ProjectSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
@@ -80,15 +81,7 @@ function readExpectedVersionField(body: unknown): number {
   return raw;
 }
 
-function projectStatePayload(state: {
-  projectId: string;
-  name: string;
-  createdAt: string;
-  updatedAt: string;
-  archivedAt: string | null;
-  deletedAt: string | null;
-  version: number;
-}) {
+function projectStatePayload(state: ProjectStateRecord) {
   return {
     id: state.projectId,
     name: state.name,
@@ -98,6 +91,35 @@ function projectStatePayload(state: {
     deletedAt: state.deletedAt,
     version: state.version,
   };
+}
+
+type LifecycleCommand = (
+  repository: DrizzleProjectRepository,
+  input: { projectId: string; expectedVersion: number; actorUserId: string },
+) => Promise<ProjectStateRecord>;
+
+async function handleLifecycle(
+  c: Context,
+  deps: ProjectRoutesDeps,
+  projectId: string,
+  command: LifecycleCommand,
+): Promise<Response> {
+  const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+  const ctx = await deps.openProjectContext(c.req.raw, projectId);
+  if (ctx.ownerUserId !== ctx.userId) {
+    throw new PipelineError(
+      "PERMISSION_DENIED",
+      "Hanya Owner Project yang dapat melakukan operasi ini (interim Phase 1).",
+      403,
+    );
+  }
+  const repository = new DrizzleProjectRepository(ctx.database);
+  const state = await command(repository, {
+    projectId,
+    expectedVersion,
+    actorUserId: ctx.userId,
+  });
+  return c.json(ok({ project: projectStatePayload(state) }));
 }
 
 export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
@@ -184,6 +206,16 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         name,
       });
       return c.json(ok({ project: projectStatePayload(state) }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/archive", async (c) => {
+    try {
+      return await handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
+        repository.archiveProject(input));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);
