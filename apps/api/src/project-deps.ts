@@ -25,6 +25,7 @@ import {
   type TursoEnv,
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
+import type { ActivityRoutesDeps } from "./routes/activities.ts";
 import type { BoardRoutesDeps } from "./routes/boards.ts";
 import type { CardRoutesDeps } from "./routes/cards.ts";
 import type { ListRoutesDeps } from "./routes/lists.ts";
@@ -141,6 +142,17 @@ export function buildCardRoutesDeps(input: BuildCardRoutesDepsInput): CardRoutes
     newCardId: newProjectId,
     assertAssigneeActiveMember: (projectId, userId) => requireActiveMember(globalClient, projectId, userId),
   };
+}
+
+export interface BuildActivityRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+  turso: TursoEnv | null;
+}
+
+export function buildActivityRoutesDeps(input: BuildActivityRoutesDepsInput): ActivityRoutesDeps {
+  const { identityResolver, globalClient, turso } = input;
+  return buildProjectContextDeps(identityResolver, globalClient, turso);
 }
 
 export interface BuildMilestoneLabelRoutesDepsInput {

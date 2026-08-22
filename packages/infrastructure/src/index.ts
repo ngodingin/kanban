@@ -20,11 +20,17 @@ export { DrizzleBoardRepository } from "./database/board-repository.ts";
 export { DrizzleListRepository } from "./database/list-repository.ts";
 export { DrizzleCardRepository, type DrizzleCardRepositoryDeps } from "./database/card-repository.ts";
 export { DrizzleMilestoneLabelRepository } from "./database/milestone-label-repository.ts";
+export { DrizzleBoardLabelRepository } from "./database/board-label-repository.ts";
 export {
   cleanupAssigneesForRevokedMembership,
   unassignCardFromRevokedMember,
   type CleanupRevokedAssigneeResult,
 } from "./database/card-assignee-cleanup.ts";
+export {
+  listActivities,
+  type ActivityRecord,
+  type ListActivitiesFilters,
+} from "./database/activity-query.ts";
 export {
   deriveProjectStatus,
   listProjectSummaries,

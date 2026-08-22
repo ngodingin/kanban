@@ -183,6 +183,6 @@ export const activities = sqliteTable(
   },
   (t) => [
     index("activities_entity_idx").on(t.entityType, t.entityId),
-    check("activities_entity_type_check", sql`${t.entityType} IN ('project', 'milestone', 'board', 'list', 'card')`),
+    check("activities_entity_type_check", sql`${t.entityType} IN ('project', 'milestone', 'board', 'list', 'card', 'milestone_label', 'board_label')`),
   ],
 );
