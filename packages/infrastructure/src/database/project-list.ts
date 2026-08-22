@@ -24,14 +24,14 @@ export interface ProjectSummary {
 export async function listProjectSummaries(
   globalClient: Client,
   databaseResolver: ProjectDatabaseResolver,
-  clientFactory: { create(databaseId: string): Client },
+  clientFactory: { create(databaseId: string): Client | Promise<Client> },
   userId: string,
 ): Promise<ProjectSummary[]> {
   const memberships = await listActiveMemberships(globalClient, userId);
   const summaries: ProjectSummary[] = [];
   for (const membership of memberships) {
     const mapping = await resolveOrThrow(databaseResolver, membership.projectId);
-    const repository = new DrizzleProjectRepository(clientFactory.create(mapping.databaseId));
+    const repository = new DrizzleProjectRepository(await clientFactory.create(mapping.databaseId));
     const state = await repository.getProjectState(membership.projectId);
     if (!state) {
       throw new PipelineError(

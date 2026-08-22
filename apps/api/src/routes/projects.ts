@@ -104,7 +104,7 @@ async function handleLifecycle(
   projectId: string,
   command: LifecycleCommand,
 ): Promise<Response> {
-  const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+  // Authorization first (Implementation Rule 3), lihat QA-CL-06.
   const ctx = await deps.openProjectContext(c.req.raw, projectId);
   if (ctx.ownerUserId !== ctx.userId) {
     throw new PipelineError(
@@ -113,6 +113,7 @@ async function handleLifecycle(
       403,
     );
   }
+  const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
   const repository = new DrizzleProjectRepository(ctx.database);
   const state = await command(repository, {
     projectId,
@@ -187,9 +188,7 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
     try {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
-      const body = await c.req.json().catch(() => null);
-      const name = readProjectNameField(body);
-      const expectedVersion = readExpectedVersionField(body);
+      // Authorization first (Implementation Rule 3), lihat QA-CL-06.
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       if (ctx.ownerUserId !== ctx.userId) {
         throw new PipelineError(
@@ -198,6 +197,9 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
           403,
         );
       }
+      const body = await c.req.json().catch(() => null);
+      const name = readProjectNameField(body);
+      const expectedVersion = readExpectedVersionField(body);
       const repository = new DrizzleProjectRepository(ctx.database);
       const state = await repository.updateProjectName({
         projectId,

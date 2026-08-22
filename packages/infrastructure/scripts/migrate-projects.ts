@@ -1,34 +1,13 @@
-import { createClient, type Client } from "@libsql/client";
+import type { Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { projectDatabases } from "../src/database/global-schema.ts";
 import { createGlobalClient } from "../src/database/factory.ts";
 import { applyProjectMigrations } from "../src/database/migrate.ts";
-import { getDatabase, mintDatabaseToken, type TursoEnv } from "../src/provisioning/turso.ts";
-
-function urlIsFile(databaseId: string): boolean {
-  return databaseId.startsWith("file:");
-}
-
-// `project_databases.database_id` menyimpan NAMA database Turso (mis. "proj-xxx",
-// lihat provision.ts), bukan URL koneksi — resolusi hostname + JWT per-DB (A.4,
-// pola sama dengan provisioning 0.6.1) wajib dilakukan di sini, satu token
-// org-level TIDAK bisa dipakai langsung sebagai authToken libsql (temuan CL-06).
-async function resolveProjectClient(databaseId: string, turso: TursoEnv | null): Promise<Client> {
-  if (urlIsFile(databaseId)) return createClient({ url: databaseId });
-  if (!turso) throw new Error("TURSO_API_TOKEN/TURSO_GROUP wajib diisi untuk resolusi database Turso nyata (TURSO_GROUP berbeda per environment — production vs staging — tidak boleh diasumsikan)");
-  const { hostname } = await getDatabase(turso, databaseId);
-  const authToken = await mintDatabaseToken(turso, databaseId);
-  return createClient({ url: `https://${hostname}`, authToken });
-}
+import { readTursoEnvFromProcess, resolveProjectDbClient } from "../src/database/project-client.ts";
 
 export async function migrateProjectFanOut(): Promise<{ total: number; ok: number; failed: string[] }> {
   const global = createGlobalClient();
-  const apiToken = process.env.TURSO_API_TOKEN;
-  const group = process.env.TURSO_GROUP;
-  // TURSO_GROUP wajib eksplisit per environment (production = ngodingin-kanban,
-  // staging = ngodingin-kanban-stag) — TIDAK boleh ada fallback default di sini,
-  // karena fallback silently mengarahkan operasi ke group yang salah environment.
-  const turso: TursoEnv | null = apiToken && group ? { org: process.env.TURSO_ORG ?? "ngodingin-ai", group, apiToken } : null;
+  const turso = readTursoEnvFromProcess();
   try {
     const db = drizzle(global);
     const mappings = await db.select().from(projectDatabases).run();
@@ -38,7 +17,7 @@ export async function migrateProjectFanOut(): Promise<{ total: number; ok: numbe
     for (const row of mappings.rows) {
       const databaseId = String(row.database_id);
       try {
-        const client = await resolveProjectClient(databaseId, turso);
+        const client: Client = await resolveProjectDbClient(databaseId, turso);
         try {
           await applyProjectMigrations(client);
         } finally {

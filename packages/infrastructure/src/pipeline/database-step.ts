@@ -6,7 +6,7 @@ import {
 import { PipelineError } from "./errors.ts";
 
 export interface ProjectClientFactory {
-  create(databaseId: string): Client;
+  create(databaseId: string): Client | Promise<Client>;
 }
 
 export class ResolveDatabaseStep {
@@ -25,6 +25,6 @@ export class ResolveDatabaseStep {
     } catch {
       throw new PipelineError("RESOURCE_NOT_FOUND", `Project DB ${projectId} belum tersedia.`, 404);
     }
-    return this.clientFactory.create(mapping.databaseId);
+    return await this.clientFactory.create(mapping.databaseId);
   }
 }

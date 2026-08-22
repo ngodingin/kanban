@@ -30,12 +30,3 @@ export function createProjectClient(opts: { url: string; authToken: string }): C
   }
   return createClient({ url: opts.url, authToken: opts.authToken });
 }
-
-export function createDevProjectClientFromEnv(env: NodeJS.ProcessEnv = process.env): Client {
-  const url = env.TURSO_DB_URL;
-  const authToken = env.TURSO_DB_TOKEN;
-  if (!url || !authToken) {
-    throw new Error("Env Project DB tidak lengkap (TURSO_DB_URL, TURSO_DB_TOKEN)");
-  }
-  return createClient({ url, authToken });
-}

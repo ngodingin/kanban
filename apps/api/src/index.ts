@@ -4,25 +4,13 @@ import { ok } from "@kanban/contracts";
 import {
   BetterAuthIdentityResolver,
   createAuth,
-  createDevProjectClientFromEnv,
   createGlobalClient,
-  listProjectSummaries,
   loadAppConfig,
-  newProjectId,
-  provisionProjectWithMapping,
-  RequestPipeline,
-  SqliteProjectDatabaseResolver,
+  readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
+import { buildProjectRoutesDeps } from "./project-deps.ts";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
-
-function readTursoEnvFromProcess(): { org: string; group: string; apiToken: string } {
-  return {
-    org: process.env.TURSO_ORG ?? "",
-    group: process.env.TURSO_GROUP ?? "",
-    apiToken: process.env.TURSO_API_TOKEN ?? "",
-  };
-}
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
   app: Hono;
@@ -62,42 +50,11 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     let deps = projectDeps;
     if (!deps) {
       const r = ensure();
-      const resolver = new BetterAuthIdentityResolver(r.auth);
-      const globalClient = r.globalClient;
-      const turso = readTursoEnvFromProcess();
-      deps = {
-        resolveIdentity: (request) => resolver.resolveIdentity(request),
-        newProjectId,
-        createProject: async (input) => {
-          await provisionProjectWithMapping({
-            turso,
-            globalClient,
-            projectId: input.projectId,
-            projectName: input.projectName,
-            ownerUserId: input.creatorUserId,
-            creatorUserId: input.creatorUserId,
-            now: new Date().toISOString(),
-          });
-        },
-        listProjects: (userId) =>
-          listProjectSummaries(globalClient, new SqliteProjectDatabaseResolver(globalClient), {
-            create: () => createDevProjectClientFromEnv(),
-          }, userId),
-        openProjectContext: async (request, projectId) => {
-          const pipeline = new RequestPipeline({
-            identityResolver: resolver,
-            globalClient,
-            databaseResolver: new SqliteProjectDatabaseResolver(globalClient),
-            projectClientFactory: { create: () => createDevProjectClientFromEnv() },
-          });
-          const resolved = await pipeline.run(request, projectId);
-          return {
-            userId: resolved.identity.userId,
-            ownerUserId: resolved.project.ownerUserId,
-            database: resolved.database,
-          };
-        },
-      };
+      deps = buildProjectRoutesDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
+      });
       projectDeps = deps;
     }
     return deps;

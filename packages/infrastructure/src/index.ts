@@ -6,7 +6,13 @@ export {
   type SessionIdentity,
 } from "./auth/resolve-identity.ts";
 export { loadAppConfig, type AppConfig, type AppEnv } from "./config/env.ts";
-export { createDevProjectClientFromEnv, createGlobalClient, createProjectClient } from "./database/factory.ts";
+export { createGlobalClient, createProjectClient } from "./database/factory.ts";
+export {
+  createCachedProjectDbClientFactory,
+  readTursoEnvFromProcess,
+  resolveProjectDbClient,
+  type ProjectClientFactoryDeps,
+} from "./database/project-client.ts";
 export { applyGlobalMigrations, applyProjectMigrations } from "./database/migrate.ts";
 export { DrizzleProjectRepository } from "./database/project-repository.ts";
 export {
