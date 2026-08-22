@@ -33,7 +33,9 @@ export {
 } from "./database/activity-query.ts";
 export {
   addComment,
+  editComment,
   type CardCommentRecord,
+  type EditCommentRecord,
 } from "./database/card-comment.ts";
 export {
   deriveProjectStatus,

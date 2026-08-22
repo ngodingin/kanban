@@ -3,8 +3,10 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ok } from "@kanban/contracts";
 import {
   addComment,
+  editComment,
   PipelineError,
   type CardCommentRecord,
+  type EditCommentRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
 import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
@@ -21,6 +23,19 @@ function commentPayload(record: CardCommentRecord) {
     entityVersion: record.entityVersion,
     actorUserId: record.actorUserId,
     body: record.body,
+    commentActivityId: record.commentActivityId,
+    createdAt: record.createdAt,
+  };
+}
+
+function editedCommentPayload(record: EditCommentRecord) {
+  return {
+    id: record.id,
+    cardId: record.cardId,
+    entityVersion: record.entityVersion,
+    actorUserId: record.actorUserId,
+    before: record.before,
+    after: record.after,
     commentActivityId: record.commentActivityId,
     createdAt: record.createdAt,
   };
@@ -74,6 +89,24 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const created = await addComment(ctx.database, c.req.param("card_id"), body, ctx.userId);
       return { comment: commentPayload(created) };
     }, 201);
+  });
+
+  router.patch("/v1/projects/:project_id/cards/:card_id/comments/:activity_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readBodyField(await c.req.json().catch(() => null));
+      const edited = await editComment(
+        ctx.database,
+        c.req.param("card_id"),
+        c.req.param("activity_id"),
+        body,
+        ctx.userId,
+      );
+      return { comment: editedCommentPayload(edited) };
+    });
   });
 
   return router;

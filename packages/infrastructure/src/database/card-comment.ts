@@ -9,6 +9,7 @@ import {
   resolveLifecycleState,
   type LifecycleState,
 } from "@kanban/domain";
+import { PipelineError } from "../pipeline/errors.ts";
 import { runInWriteTransaction, type Tx } from "./transaction.ts";
 
 /**
@@ -125,6 +126,113 @@ export async function addComment(
       actorUserId,
       body: validatedBody,
       commentActivityId: id,
+      createdAt: now,
+    };
+  });
+}
+
+export interface EditCommentRecord {
+  id: string;
+  cardId: string;
+  entityVersion: number;
+  actorUserId: string;
+  before: string;
+  after: string;
+  commentActivityId: string;
+  createdAt: string;
+}
+
+const COMMENT_ACTIONS = new Set(["comment.added", "comment.edited"]);
+
+/**
+ * BR-031/032/034A — edit comment MUST menghasilkan Activity baru
+ * `comment.edited` tanpa mengubah Activity `comment.added`/`comment.edited`
+ * lama sama sekali. `:activity_id` (Prinsip #7) SELALU boleh merujuk
+ * `comment.added` original ATAU `comment.edited` manapun di rantai edit
+ * yang sama — keduanya menemukan `comment_activity_id` original yang sama.
+ */
+export async function editComment(
+  client: Client,
+  cardId: string,
+  commentActivityId: string,
+  newBody: unknown,
+  actorUserId: string,
+): Promise<EditCommentRecord> {
+  const validatedBody = validateBody(newBody);
+  return runInWriteTransaction(client, async (tx) => {
+    const activityRow = (
+      await tx.execute("SELECT id, entity_id, actor_user_id, action, data FROM activities WHERE id = ?", [
+        commentActivityId,
+      ])
+    ).rows[0];
+    if (
+      !activityRow ||
+      String(activityRow.entity_id) !== cardId ||
+      !COMMENT_ACTIONS.has(String(activityRow.action))
+    ) {
+      throw new PipelineError(
+        "RESOURCE_NOT_FOUND",
+        `Comment Activity ${commentActivityId} tidak ditemukan pada Card ${cardId}.`,
+        404,
+      );
+    }
+    // BR-034A — business invariant kepemilikan, berlaku mutlak termasuk
+    // Owner (bukan grant Group/direct yang di-bypass Owner, BR-037).
+    // Dibandingkan eksplisit, bukan diasumsikan dari model interim.
+    if (String(activityRow.actor_user_id) !== actorUserId) {
+      throw new PipelineError(
+        "PERMISSION_DENIED",
+        "Hanya pemilik comment yang dapat mengedit comment ini (BR-034A).",
+        403,
+      );
+    }
+
+    const rawData = activityRow.data;
+    const data = (typeof rawData === "string" ? JSON.parse(rawData) : rawData) as Record<string, unknown>;
+    const action = String(activityRow.action);
+    // Original selalu Activity comment.added — comment.edited menyimpan
+    // referensi baliknya sendiri di comment_activity_id; comment.added
+    // adalah originalnya sendiri. `:activity_id` per kontrak SELALU boleh
+    // berupa original (Prinsip #7) — row yang dirujuk BUKAN berarti state
+    // terkini kalau comment sudah pernah diedit sebelumnya, jadi teks
+    // "before" WAJIB diambil dari edit TERAKHIR pada rantai ini, bukan dari
+    // row yang direferensikan `:activity_id` secara langsung.
+    const originalId = action === "comment.added" ? String(activityRow.id) : String(data.comment_activity_id);
+    const latestRow = (
+      await tx.execute(
+        "SELECT action, data FROM activities WHERE entity_id = ? AND (id = ? OR json_extract(data, '$.comment_activity_id') = ?) ORDER BY created_at DESC, id DESC LIMIT 1",
+        [cardId, originalId, originalId],
+      )
+    ).rows[0]!;
+    const latestData = (
+      typeof latestRow.data === "string" ? JSON.parse(latestRow.data) : latestRow.data
+    ) as Record<string, unknown>;
+    const currentBody = String(latestRow.action) === "comment.added" ? String(latestData.body) : String(latestData.after);
+
+    const ctx = await loadCardAncestorContext(tx, cardId);
+    assertCardEffectivelyActive("comment.update", ctx);
+
+    const id = ulid();
+    const now = new Date().toISOString();
+    await tx.execute(
+      "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, 'comment.edited', ?, ?)",
+      [
+        id,
+        cardId,
+        ctx.cardVersion,
+        actorUserId,
+        JSON.stringify({ before: currentBody, after: validatedBody, comment_activity_id: originalId }),
+        now,
+      ],
+    );
+    return {
+      id,
+      cardId,
+      entityVersion: ctx.cardVersion,
+      actorUserId,
+      before: currentBody,
+      after: validatedBody,
+      commentActivityId: originalId,
       createdAt: now,
     };
   });
