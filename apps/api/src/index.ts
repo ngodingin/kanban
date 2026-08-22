@@ -9,10 +9,11 @@ import {
   readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
-import { buildActivityRoutesDeps, buildBoardRoutesDeps, buildCardRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
+import { buildActivityRoutesDeps, buildBoardRoutesDeps, buildCardRoutesDeps, buildCommentRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
 import { createActivitiesRouter, type ActivityRoutesDeps } from "./routes/activities.ts";
 import { createBoardsRouter, type BoardRoutesDeps } from "./routes/boards.ts";
 import { createCardsRouter, type CardRoutesDeps } from "./routes/cards.ts";
+import { createCommentsRouter, type CommentRoutesDeps } from "./routes/comments.ts";
 import { createListsRouter, type ListRoutesDeps } from "./routes/lists.ts";
 import { createMilestoneLabelsRouter, type MilestoneLabelRoutesDeps } from "./routes/labels.ts";
 import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/milestones.ts";
@@ -172,6 +173,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return deps;
   };
 
+  let commentDeps: CommentRoutesDeps | null = null;
+  const getCommentDeps = (): CommentRoutesDeps => {
+    let deps = commentDeps;
+    if (!deps) {
+      const r = ensure();
+      deps = buildCommentRoutesDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
+      });
+      commentDeps = deps;
+    }
+    return deps;
+  };
+
   app.get("/v1/health", (c) => {
     let env = "unknown";
     try {
@@ -204,6 +220,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createCardsRouter(getCardDeps));
   app.route("/", createMilestoneLabelsRouter(getMilestoneLabelDeps));
   app.route("/", createActivitiesRouter(getActivityDeps));
+  app.route("/", createCommentsRouter(getCommentDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };

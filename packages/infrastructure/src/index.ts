@@ -32,6 +32,10 @@ export {
   type ListActivitiesFilters,
 } from "./database/activity-query.ts";
 export {
+  addComment,
+  type CardCommentRecord,
+} from "./database/card-comment.ts";
+export {
   deriveProjectStatus,
   listProjectSummaries,
   type ProjectStatus,
