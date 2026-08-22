@@ -158,7 +158,15 @@ export const cardBoardLabels = sqliteTable(
   ],
 );
 
-export const activityEntityType = ["project", "milestone", "board", "list", "card"] as const;
+export const activityEntityType = [
+  "project",
+  "milestone",
+  "board",
+  "list",
+  "card",
+  "milestone_label",
+  "board_label",
+] as const;
 export type ActivityEntityType = (typeof activityEntityType)[number];
 
 export const activities = sqliteTable(

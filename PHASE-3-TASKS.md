@@ -74,7 +74,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 3.2.1 | ⬜️ | — | 0 | P0 | Perluas `activityEntityType` (`packages/infrastructure/src/database/project-schema.ts`) dari `["project","milestone","board","list","card"]` menjadi menambah `"milestone_label"`, `"board_label"` — otomatis mengubah CHECK constraint `activities_entity_type_check` yang di-generate Drizzle dari array tsb. Generate migration Drizzle baru (`drizzle-kit generate`, ikuti pola migration Project DB existing sejak Phase 0/1) — **bukan tabel baru**, hanya perluasan CHECK constraint pada tabel `activities` yang sudah ada. | [02-SPEC BR-025](docs/02-SPEC.md), [FR-035](docs/02-SPEC.md); [03-ENG B.3](docs/03-ENGINEERING.md) | — |
+| 3.2.1 | 🔎 | [CL-04](#cl-04)<br>[CL-03](#cl-03) | 80 | P0 | Perluas `activityEntityType` (`packages/infrastructure/src/database/project-schema.ts`) dari `["project","milestone","board","list","card"]` menjadi menambah `"milestone_label"`, `"board_label"` — otomatis mengubah CHECK constraint `activities_entity_type_check` yang di-generate Drizzle dari array tsb. Generate migration Drizzle baru (`drizzle-kit generate`, ikuti pola migration Project DB existing sejak Phase 0/1) — **bukan tabel baru**, hanya perluasan CHECK constraint pada tabel `activities` yang sudah ada. | [02-SPEC BR-025](docs/02-SPEC.md), [FR-035](docs/02-SPEC.md); [03-ENG B.3](docs/03-ENGINEERING.md) | — |
 
 **Test:** Integration — INSERT ke `activities` dengan `entity_type='milestone_label'` dan `'board_label'` BERHASIL (tidak lagi kena CHECK violation); `entity_type` selain 7 value yang diizinkan tetap DITOLAK database (regresi negatif, pastikan constraint tidak jadi longgar total).
 **DoD:** Migration diterapkan bersih di Turso project DB baru maupun existing (idempotent/forward-only, tidak ada data existing yang perlu di-backfill karena belum ada row Label Activity sebelum goal ini); `pnpm -r build`/typecheck hijau.
@@ -199,6 +199,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-04"></a>
+### CL-04 — 2026-08-23 · goal 3.2.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — migration entity_type +2 Label
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 51 file / **333** test lulus (3 test baru `activity-entity-type.test.ts`: INSERT milestone_label/board_label diterima; value di luar 7 tetap ditolak CHECK; data existing terbawa + index activities_entity_idx direkreasi); `pnpm -r typecheck` Done; `pnpm -r build` Done; `pnpm lint` bersih. Implementasi: `activityEntityType` += "milestone_label","board_label"; migration hand-written `0001_activity_entity_type_label.sql` (table-recreate activities, pola drizzle) + meta `_journal.json` idx 1 + `0001_snapshot.json` (check value baru).
+**Catatan:** drizzle-kit generate tidak mendeteksi perubahan CHECK constraint SQLite (keterbatasan diff) — migration ditulis manual mengikuti format journal/snapshot. Perbaikan tambahan: CHECK pada tabel `__new_activities` tidak boleh memakai kualifikasi `"activities"."entity_type"` (referensi lintas-tabel invalid saat create) — dipakai bentuk kolom saja, fungsi identik setelah RENAME.
+
+<a id="cl-03"></a>
+### CL-03 — 2026-08-23 · goal 3.2.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 3.2.1 `⬜️/—/0/P0`, dependency kosong. Pola migration diverifikasi: `drizzle.config.project.ts` → `drizzle/migrations-project` (0000_project_schema_v1 + meta), `applyProjectMigrations` memakai folder tsb; `activityEntityType` 5 value di project-schema.ts:161.
+**Catatan:** Rencana: perluas array +2 value, `db:generate:project`, verifikasi SQL migration yang dihasilkan, test integrasi CHECK constraint.
 
 <a id="cl-02"></a>
 ### CL-02 — 2026-08-23 · goal 3.1.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — 12 permission key Label
