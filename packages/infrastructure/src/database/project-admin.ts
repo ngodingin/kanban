@@ -246,3 +246,19 @@ export async function updatePermissionGroup(globalClient: Client, input: UpdateP
   const updated = await db.select().from(permissionGroups).where(eq(permissionGroups.id, input.groupId));
   return (await attachPermissions(globalClient, updated))[0]!;
 }
+
+// Soft-delete (BR-041): hanya set deleted_at — membership_group_assignments
+// TIDAK disentuh (riwayat utuh; member kehilangan grant karena group tidak
+// lagi aktif, bukan karena row assignment dihapus).
+export async function deletePermissionGroup(globalClient: Client, projectId: string, groupId: string): Promise<PermissionGroupSummary> {
+  const db = drizzle(globalClient);
+  const existing = await db.select().from(permissionGroups)
+    .where(sql`${permissionGroups.id} = ${groupId} AND ${permissionGroups.projectId} = ${projectId}`);
+  if (existing.length === 0 || existing[0]!.deletedAt !== null) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${groupId} tidak ditemukan di Project ini.`, 404);
+  }
+  const now = new Date().toISOString();
+  await db.update(permissionGroups).set({ deletedAt: now, updatedAt: now }).where(eq(permissionGroups.id, groupId)).run();
+  const updated = await db.select().from(permissionGroups).where(eq(permissionGroups.id, groupId));
+  return (await attachPermissions(globalClient, updated))[0]!;
+}

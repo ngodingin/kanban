@@ -126,7 +126,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 1.7.1 | 🔎 | [CL-26](#cl-26)<br>[CL-25](#cl-25) | 80 | P1 | `GET /api/v1/projects/:project_id/permission-groups` — list Group Project-scoped (exclude yang `deleted_at` bukan NULL kecuali diminta eksplisit) | [02-SPEC C.12](docs/02-SPEC.md), FR-009 | 1.6 |
 | 1.7.2 | 🔎 | [CL-28](#cl-28)<br>[CL-27](#cl-27) | 80 | P1 | `POST /api/v1/projects/:project_id/permission-groups` — create custom Group + assign permission set (referensi ke `permissions.id` katalog 1.5), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), FR-010, FR-011 | 1.5, 1.6 |
 | 1.7.3 | 🔎 | [CL-30](#cl-30)<br>[CL-29](#cl-29) | 80 | P1 | `PATCH /api/v1/projects/:project_id/permission-groups/:group_id` — ubah nama/description/permission assignment; perubahan permission langsung berlaku ke semua Membership ber-assignment (BR-040, live reference — tidak ada snapshot untuk di-invalidate), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), BR-040 | 1.7.1 |
-| 1.7.4 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | `POST /api/v1/projects/:project_id/permission-groups/:group_id/delete` — soft-delete (set `permission_groups.deleted_at`); Membership dengan assignment ke Group ini kehilangan permission yang di-grant Group tsb tanpa menghapus riwayat `membership_group_assignments` (BR-041); otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-041, D.1 `permission_group.delete` | 1.7.1 |
+| 1.7.4 | 🔎 | [CL-32](#cl-32)<br>[CL-31](#cl-31)<br>[Review-CL-02](#review-cl-02) | 80 | P2 | `POST /api/v1/projects/:project_id/permission-groups/:group_id/delete` — soft-delete (set `permission_groups.deleted_at`); Membership dengan assignment ke Group ini kehilangan permission yang di-grant Group tsb tanpa menghapus riwayat `membership_group_assignments` (BR-041); otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-041, D.1 `permission_group.delete` | 1.7.1 |
 
 **Test (1.7.1–1.7.4):** create custom Group + assign `card.read` tanpa `card_read_visibility` eksplisit → default `CREATED_BY_ME` (BR-048); assign visibility ke permission selain `card.read` ditolak (app-level invariant B.2); update Group oleh non-Owner → `PERMISSION_DENIED`; list tidak bocor lintas Project; delete Group tidak menghapus row `membership_group_assignments` (hanya `permission_groups.deleted_at` ter-set).
 **DoD:** CRUD+delete Group sesuai C.12 (2.1.0); Group Project-scoped (BR-039); soft-delete tidak menghapus riwayat assignment.
@@ -243,6 +243,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: HEAD `452dd0c`, working tree bersih; scope dikonfirmasi manusia untuk TASK-1.7–1.10 penuh (goal-per-goal sesuai dependency: 1.7.1 → 1.7.2 → 1.7.3 → 1.7.4 → 1.8.1 → 1.8.2 → 1.9.1 → 1.9.2 → 1.10.1 → 1.10.2). Dibaca ulang dari disk: 02-SPEC C.12/C.13, FR-005–011, BR-038–059, D.1–D.4, schema Global DB (global-schema.ts: permission_groups/group_permissions/membership_*_assignments/invitations/invitation_group_assignments), pola transaksi provision.ts, katalog D.1 (id ULID, lookup by key).
 **Catatan keputusan teknis interim (dicatat sejak awal, konsisten untuk seluruh scope):** authorization matrix Phase 1 mengikuti pola existing — mutasi Group/assignment/invitation/revoke = Owner-only; read (groups/members) = member aktif (setara View Project, member.read belum terisi D.2 — backlog Review-CL-03 item 1). Scope assignment Phase 1 wajib `scope_type="project"` dengan `scope_id=project_id` (BR-042B catatan revisit Phase 2/3). Revoke yang sudah revoked → idempotent (state dikembalikan apa adanya); revoke Owner Membership → INVALID_STATE 409 (invariant FR-002, bukan persoalan izin pemanggil). Entry ini mencakup transisi awal; tiap goal akan punya CL penyelesaian + commit masing-masing.
+
+<a id="cl-32"></a>
+### CL-32 — 2026-08-22 · goal 1.7.4 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 22 file / 112 test lulus, termasuk `apps/api/test/permission-groups-delete.test.ts` 5/5: soft-delete 200 + deleted_at ter-set + hilang dari default list & tampil via include_deleted; `membership_group_assignments` aktif tetap 1 row (BR-041 riwayat utuh); non-Owner → 403 dan group tidak jadi terhapus; re-delete → 404 RESOURCE_NOT_FOUND; group milik Project lain via path Project ini → 404 dan tetap utuh; unknown id → 404. `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan implementasi:** `deletePermissionGroup` hanya set deleted_at+updated_at — tidak menyentuh assignment (BR-041). TASK-1.7 lengkap sisi Dev: 1.7.1–1.7.4 🔎 80%.
+
+<a id="cl-31"></a>
+### CL-31 — 2026-08-22 · goal 1.7.4 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: HEAD `744a6b1` (1.7.3 🔎), working tree bersih, row 1.7.4 `⬜️/0`; dependency 1.7.1 🔎 80% sisi Dev (CL-26). Dibaca ulang: C.12 amandemen 2.1.0 (`POST /permission-groups/:group_id/delete` soft-delete), BR-041 (member kehilangan permission tanpa hapus riwayat assignment), D.1 key `permission_group.delete`.
+**Catatan keputusan teknis:** Delete pada group yang sudah soft-deleted / milik Project lain / tidak ada → RESOURCE_NOT_FOUND 404 (konsisten PATCH 1.7.3). Tidak ada body; authorization-first tetap berlaku.
 
 <a id="cl-30"></a>
 ### CL-30 — 2026-08-22 · goal 1.7.3 selesai sisi Dev (🔄 → 🔎 · 80%)

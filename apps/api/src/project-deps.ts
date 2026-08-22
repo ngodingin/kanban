@@ -2,6 +2,7 @@ import {
   assertProjectOwner,
   createCachedProjectDbClientFactory,
   createPermissionGroup,
+  deletePermissionGroup,
   listPermissionGroups,
   listProjectSummaries,
   newProjectId,
@@ -99,5 +100,6 @@ export function buildProjectAdminDeps(input: {
         ...(payload.description !== undefined ? { description: payload.description } : {}),
         ...(payload.permissions !== undefined ? { permissions: payload.permissions } : {}),
       }),
+    deletePermissionGroup: (projectId, groupId) => deletePermissionGroup(globalClient, projectId, groupId),
   };
 }

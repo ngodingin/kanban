@@ -42,6 +42,7 @@ export interface ProjectAdminRoutesDeps {
     groupId: string,
     input: UpdatePermissionGroupPayload,
   ): Promise<PermissionGroupSummary>;
+  deletePermissionGroup(projectId: string, groupId: string): Promise<PermissionGroupSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -180,6 +181,24 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       await deps.assertProjectOwner(projectId, identity.userId);
       const payload = readUpdateGroupBody(await c.req.json().catch(() => null));
       const group = await deps.updatePermissionGroup(projectId, groupId, payload);
+      return c.json(ok({ group }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/permission-groups/:group_id/delete", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const groupId = c.req.param("group_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const group = await deps.deletePermissionGroup(projectId, groupId);
       return c.json(ok({ group }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);

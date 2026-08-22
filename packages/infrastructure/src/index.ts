@@ -28,6 +28,7 @@ export {
 export {
   assertProjectOwner,
   createPermissionGroup,
+  deletePermissionGroup,
   getProjectOwnerId,
   hasActiveMembership,
   listPermissionGroups,
