@@ -20,6 +20,12 @@ export interface CreatePermissionGroupPayload {
   permissions: Array<{ permissionId: string; cardReadVisibility?: string | null }>;
 }
 
+export interface UpdatePermissionGroupPayload {
+  name?: string;
+  description?: string | null;
+  permissions?: Array<{ permissionId: string; cardReadVisibility?: string | null }>;
+}
+
 export interface ProjectAdminRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
   listPermissionGroups(
@@ -31,32 +37,20 @@ export interface ProjectAdminRoutesDeps {
   // "authorization first" sebelum validasi body (Implementation Rule 3).
   assertProjectOwner(projectId: string, requesterUserId: string): Promise<void>;
   createPermissionGroup(projectId: string, input: CreatePermissionGroupPayload): Promise<PermissionGroupSummary>;
+  updatePermissionGroup(
+    projectId: string,
+    groupId: string,
+    input: UpdatePermissionGroupPayload,
+  ): Promise<PermissionGroupSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
 
-function readCreateGroupBody(body: unknown): CreatePermissionGroupPayload {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
-  }
-  const raw = body as Record<string, unknown>;
-  const rawName = raw.name;
-  if (typeof rawName !== "string") throw new PipelineError("INVALID_STATE", "Field name wajib string.", 409);
-  const name = rawName.trim();
-  if (name.length === 0) throw new PipelineError("INVALID_STATE", "Field name tidak boleh kosong.", 409);
-  if (name.length > MAX_GROUP_NAME_LENGTH) {
-    throw new PipelineError("INVALID_STATE", `Field name maksimal ${MAX_GROUP_NAME_LENGTH} karakter.`, 409);
-  }
-  let description: string | null = null;
-  if (raw.description !== undefined && raw.description !== null) {
-    if (typeof raw.description !== "string") throw new PipelineError("INVALID_STATE", "Field description wajib string atau null.", 409);
-    description = raw.description.trim();
-  }
-  const VISIBILITIES = ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ALL"];
-  const rawPermissions = raw.permissions ?? [];
+function readPermissionEntries(rawPermissions: unknown): Array<{ permissionId: string; cardReadVisibility?: string | null }> {
   if (!Array.isArray(rawPermissions)) throw new PipelineError("INVALID_STATE", "Field permissions wajib array.", 409);
+  const VISIBILITIES = ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ALL"];
   const seen = new Set<string>();
-  const permissionList = rawPermissions.map((entry) => {
+  return rawPermissions.map((entry) => {
     if (typeof entry !== "object" || entry === null) {
       throw new PipelineError("INVALID_STATE", "Item permissions wajib objek.", 409);
     }
@@ -79,7 +73,61 @@ function readCreateGroupBody(body: unknown): CreatePermissionGroupPayload {
       cardReadVisibility: typeof visibility === "string" ? visibility : null,
     };
   });
-  return { name, description, permissions: permissionList };
+}
+
+function readCreateGroupBody(body: unknown): CreatePermissionGroupPayload {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
+  }
+  const raw = body as Record<string, unknown>;
+  const rawName = raw.name;
+  if (typeof rawName !== "string") throw new PipelineError("INVALID_STATE", "Field name wajib string.", 409);
+  const name = rawName.trim();
+  if (name.length === 0) throw new PipelineError("INVALID_STATE", "Field name tidak boleh kosong.", 409);
+  if (name.length > MAX_GROUP_NAME_LENGTH) {
+    throw new PipelineError("INVALID_STATE", `Field name maksimal ${MAX_GROUP_NAME_LENGTH} karakter.`, 409);
+  }
+  let description: string | null = null;
+  if (raw.description !== undefined && raw.description !== null) {
+    if (typeof raw.description !== "string") throw new PipelineError("INVALID_STATE", "Field description wajib string atau null.", 409);
+    description = raw.description.trim();
+  }
+  return { name, description, permissions: readPermissionEntries(raw.permissions ?? []) };
+}
+
+// Minimal satu field harus hadir; field tak dikenal ditolak agar client tidak
+// mengira field lain ikut berubah (C.15 semangat: PATCH terkontrol).
+function readUpdateGroupBody(body: unknown): UpdatePermissionGroupPayload {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+    throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
+  }
+  const raw = body as Record<string, unknown>;
+  const allowed = ["name", "description", "permissions"];
+  for (const key of Object.keys(raw)) {
+    if (!allowed.includes(key)) {
+      throw new PipelineError("INVALID_STATE", `Field tidak dikenal: ${key}`, 409);
+    }
+  }
+  const payload: UpdatePermissionGroupPayload = {};
+  if (raw.name !== undefined) {
+    if (typeof raw.name !== "string" || raw.name.trim().length === 0 || raw.name.trim().length > MAX_GROUP_NAME_LENGTH) {
+      throw new PipelineError("INVALID_STATE", "Field name wajib string 1..255 karakter.", 409);
+    }
+    payload.name = raw.name.trim();
+  }
+  if (raw.description !== undefined) {
+    if (raw.description !== null && typeof raw.description !== "string") {
+      throw new PipelineError("INVALID_STATE", "Field description wajib string atau null.", 409);
+    }
+    payload.description = raw.description === null ? null : (raw.description as string).trim();
+  }
+  if (raw.permissions !== undefined) {
+    payload.permissions = readPermissionEntries(raw.permissions);
+  }
+  if (payload.name === undefined && payload.description === undefined && payload.permissions === undefined) {
+    throw new PipelineError("INVALID_STATE", "Minimal satu field (name/description/permissions) wajib ada.", 409);
+  }
+  return payload;
 }
 
 export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps): Hono {
@@ -114,6 +162,25 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       const payload = readCreateGroupBody(await c.req.json().catch(() => null));
       const group = await deps.createPermissionGroup(projectId, payload);
       return c.json(ok({ group }), 201);
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.patch("/v1/projects/:project_id/permission-groups/:group_id", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const groupId = c.req.param("group_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const payload = readUpdateGroupBody(await c.req.json().catch(() => null));
+      const group = await deps.updatePermissionGroup(projectId, groupId, payload);
+      return c.json(ok({ group }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);

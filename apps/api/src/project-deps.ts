@@ -9,6 +9,7 @@ import {
   RequestPipeline,
   requireActiveMember,
   SqliteProjectDatabaseResolver,
+  updatePermissionGroup,
   type IdentityResolver,
   type TursoEnv,
 } from "@kanban/infrastructure";
@@ -89,6 +90,14 @@ export function buildProjectAdminDeps(input: {
         name: payload.name,
         description: payload.description,
         permissions: payload.permissions,
+      }),
+    updatePermissionGroup: async (projectId, groupId, payload) =>
+      updatePermissionGroup(globalClient, {
+        projectId,
+        groupId,
+        ...(payload.name !== undefined ? { name: payload.name } : {}),
+        ...(payload.description !== undefined ? { description: payload.description } : {}),
+        ...(payload.permissions !== undefined ? { permissions: payload.permissions } : {}),
       }),
   };
 }

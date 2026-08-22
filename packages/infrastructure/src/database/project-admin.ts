@@ -181,3 +181,68 @@ export async function createPermissionGroup(globalClient: Client, input: CreateP
   const created = await db.select().from(permissionGroups).where(eq(permissionGroups.id, groupId));
   return (await attachPermissions(globalClient, created))[0]!;
 }
+
+export interface UpdatePermissionGroupInput {
+  projectId: string;
+  groupId: string;
+  name?: string;
+  description?: string | null;
+  permissions?: Array<{ permissionId: string; cardReadVisibility?: string | null }>;
+}
+
+// PATCH group: name/description optional, permissions (jika ada) REPLACE set
+// penuh dalam satu transaksi. BR-040 live reference: assignment member hanya
+// menyimpan group_id sehingga perubahan set langsung berlaku tanpa invalidasi.
+export async function updatePermissionGroup(globalClient: Client, input: UpdatePermissionGroupInput): Promise<PermissionGroupSummary> {
+  const db = drizzle(globalClient);
+  const existing = await db.select().from(permissionGroups)
+    .where(sql`${permissionGroups.id} = ${input.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
+  // Group milik Project lain / tidak ada / sudah soft-delete → tidak ditemukan
+  // dari sudut pandang Project ini (boundary invariant #4).
+  if (existing.length === 0 || existing[0]!.deletedAt !== null) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${input.groupId} tidak ditemukan di Project ini.`, 404);
+  }
+  const now = new Date().toISOString();
+  if (input.permissions !== undefined) {
+    const requested: Array<{ permissionId: string; cardReadVisibility: CardReadVisibility | null }> =
+      input.permissions.map((entry) => ({
+        permissionId: entry.permissionId,
+        cardReadVisibility: normalizeVisibility(entry.cardReadVisibility),
+      }));
+    const permissionIds = [...new Set(requested.map((entry) => entry.permissionId))];
+    const known = permissionIds.length > 0
+      ? await db.select({ id: permissions.id, key: permissions.key }).from(permissions)
+        .where(inArray(permissions.id, permissionIds))
+      : [];
+    const keyById = new Map(known.map((row) => [row.id, row.key]));
+    for (const id of permissionIds) {
+      if (!keyById.has(id)) {
+        throw new PipelineError("INVALID_STATE", `permission_id tidak dikenal: ${id}`, 409);
+      }
+    }
+    for (const entry of requested) {
+      if (entry.cardReadVisibility != null && keyById.get(entry.permissionId) !== "card.read") {
+        throw new PipelineError("INVALID_STATE", "card_read_visibility hanya berlaku untuk permission card.read.", 409);
+      }
+    }
+    await db.transaction(async (tx) => {
+      await tx.update(permissionGroups).set({ updatedAt: now }).where(eq(permissionGroups.id, input.groupId)).run();
+      await tx.delete(groupPermissions).where(eq(groupPermissions.groupId, input.groupId)).run();
+      if (requested.length > 0) {
+        await tx.insert(groupPermissions).values(requested.map((entry) => ({
+          groupId: input.groupId,
+          permissionId: entry.permissionId,
+          cardReadVisibility: entry.cardReadVisibility ?? (keyById.get(entry.permissionId) === "card.read" ? "CREATED_BY_ME" : null),
+          createdAt: now,
+        }))).run();
+      }
+    });
+  }
+  await db.update(permissionGroups).set({
+    ...(input.name !== undefined ? { name: input.name } : {}),
+    ...(input.description !== undefined ? { description: input.description } : {}),
+    updatedAt: now,
+  }).where(eq(permissionGroups.id, input.groupId)).run();
+  const updated = await db.select().from(permissionGroups).where(eq(permissionGroups.id, input.groupId));
+  return (await attachPermissions(globalClient, updated))[0]!;
+}

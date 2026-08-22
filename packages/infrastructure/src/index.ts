@@ -32,9 +32,11 @@ export {
   hasActiveMembership,
   listPermissionGroups,
   requireActiveMember,
+  updatePermissionGroup,
   type CreatePermissionGroupInput,
   type PermissionGroupEntry,
   type PermissionGroupSummary,
+  type UpdatePermissionGroupInput,
 } from "./database/project-admin.ts";
 export { PipelineError } from "./pipeline/errors.ts";
 export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
