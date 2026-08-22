@@ -99,7 +99,7 @@ async function inviteUser(email: string): Promise<string> {
 
 describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
   it("[FR-007][C.13] Positif: accept atomik — membership + group assignments + accepted_at", async () => {
-    const invitationId = await inviteUser("baru@test.local");
+    const invitationId = await inviteUser("user-b@test.local");
     const res = await accept(invitationId, "user-b");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
@@ -127,10 +127,10 @@ describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
   });
 
   it("[C.13] negatif: accept kedua kali → INVITATION_ALREADY_USED", async () => {
-    const invitationId = await inviteUser("kedua@test.local");
+    const invitationId = await inviteUser("user-c@test.local");
     const first = await accept(invitationId, "user-c");
     if (first.status !== 200) throw new Error(`setup pertama gagal: ${first.status}: ${await first.text()}`);
-    const second = await accept(invitationId, "user-d");
+    const second = await accept(invitationId, "user-c");
     if (second.status !== 409 || (await second.json()).error.code !== "INVITATION_ALREADY_USED") {
       throw new Error(`harusnya 409 INVITATION_ALREADY_USED, dapat ${second.status}: ${await second.text()}`);
     }
@@ -139,7 +139,7 @@ describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
   it("[C.13] negatif: invitation expired → INVITATION_EXPIRED dan tidak ada efek samping", async () => {
     const group = await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "G-expired", permissions: [] });
     const invitationId = (await ctx.deps.createInvitation(ctx.projectIdA, "user-a", {
-      email: "telat@test.local",
+      email: "user-d@test.local",
       assignments: [{ groupId: group.id, scopeType: "project", scopeId: ctx.projectIdA }],
     })).id;
     // Simulasi kadaluarsa: mundurkan expires_at lewat SQL langsung.
@@ -159,7 +159,7 @@ describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
   });
 
   it("[C.13] negatif: revoked → INVALID_STATE; unknown id → RESOURCE_NOT_FOUND", async () => {
-    const invitationId = await inviteUser("dicabut@test.local");
+    const invitationId = await inviteUser("user-d@test.local");
     await ctx.globalClient.execute({
       sql: "UPDATE invitations SET revoked_at = ? WHERE id = ?",
       args: [new Date().toISOString(), invitationId],
@@ -175,7 +175,7 @@ describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
   });
 
   it("[INV-04][UNIQUE] negatif: pemanggil sudah member Project ini → INVALID_STATE tanpa duplikat", async () => {
-    const invitationId = await inviteUser("owner-lagi@test.local");
+    const invitationId = await inviteUser("user-a@test.local");
     const res = await accept(invitationId, "user-a");
     if (res.status !== 409 || (await res.json()).error.code !== "INVALID_STATE") {
       throw new Error(`harusnya 409 INVALID_STATE, dapat ${res.status}: ${await res.text()}`);
