@@ -2,7 +2,20 @@ import { createClient, type Client } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import { applyProjectMigrations } from "../database/migrate.ts";
-import { projectDatabases, projectMemberships, projects } from "../database/global-schema.ts";
+import {
+  groupPermissions,
+  permissionGroups,
+  permissions,
+  projectDatabases,
+  projectMemberships,
+  projects,
+} from "../database/global-schema.ts";
+import {
+  BASELINE_GROUP_DESCRIPTIONS,
+  BASELINE_GROUP_NAMES,
+  PERMISSION_CATALOG,
+  baselineGroupPermissionKeys,
+} from "../database/permission-catalog.ts";
 import { activities, projectState } from "../database/project-schema.ts";
 import {
   createDatabase,
@@ -115,6 +128,34 @@ export async function registerProjectWithOwnerMembership(
       createdAt: input.now,
       revokedAt: null,
     }).run();
+
+    const permissionRows = await tx.select({ id: permissions.id, key: permissions.key }).from(permissions);
+    const idByKey = new Map(permissionRows.map((row) => [row.key, row.id]));
+    for (const entry of PERMISSION_CATALOG) {
+      if (idByKey.has(entry.key)) continue;
+      const id = ulid();
+      await tx.insert(permissions).values({ id, key: entry.key, description: entry.description });
+      idByKey.set(entry.key, id);
+    }
+
+    for (const name of BASELINE_GROUP_NAMES) {
+      const groupId = ulid();
+      await tx.insert(permissionGroups).values({
+        id: groupId,
+        projectId: input.projectId,
+        name,
+        description: BASELINE_GROUP_DESCRIPTIONS[name],
+        createdAt: input.now,
+        updatedAt: input.now,
+      }).run();
+      const rows = baselineGroupPermissionKeys(name).map((key) => ({
+        groupId,
+        permissionId: idByKey.get(key)!,
+        cardReadVisibility: null,
+        createdAt: input.now,
+      }));
+      await tx.insert(groupPermissions).values(rows).run();
+    }
   });
 }
 

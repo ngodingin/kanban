@@ -51,6 +51,8 @@ afterEach(async () => {
     "membership_group_assignments",
     "invitation_group_assignments",
     "invitations",
+    "group_permissions",
+    "permission_groups",
     "project_memberships",
     "project_databases",
     "projects",

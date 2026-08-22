@@ -60,6 +60,66 @@ export function permissionCatalogKeys(): string[] {
   return PERMISSION_CATALOG.map((entry) => entry.key);
 }
 
+export const BASELINE_GROUP_NAMES = ["Co-Owner", "Manager", "Contributor", "Viewer"] as const;
+export type BaselineGroupName = (typeof BASELINE_GROUP_NAMES)[number];
+
+export const BASELINE_GROUP_DESCRIPTIONS: Record<BaselineGroupName, string> = {
+  "Co-Owner": "Akses penuh setara Owner kecuali ownership (BR-035/BR-036)",
+  Manager: "Kelola Milestone/Board/List/Card tanpa pengaturan Project",
+  Contributor: "Kerjakan Card dengan baca terbatas",
+  Viewer: "Hanya baca seluruh resource",
+};
+
+const RESOURCE_FULL_KEYS = (resource: string): string[] => [
+  `${resource}.read`,
+  `${resource}.create`,
+  `${resource}.update`,
+  `${resource}.archive`,
+  `${resource}.delete`,
+  `${resource}.restore`,
+];
+
+const CARD_CONTRIBUTOR_KEYS = [
+  "card.read",
+  "card.create",
+  "card.update",
+  "card.move",
+  "card.archive",
+  "card.delete",
+  "card.comment",
+];
+
+export function baselineGroupPermissionKeys(group: BaselineGroupName): string[] {
+  switch (group) {
+    case "Co-Owner":
+      return permissionCatalogKeys();
+    case "Manager":
+      return [
+        "project.read",
+        ...RESOURCE_FULL_KEYS("milestone"),
+        ...RESOURCE_FULL_KEYS("board"),
+        ...RESOURCE_FULL_KEYS("list"),
+        ...CARD_CONTRIBUTOR_KEYS,
+      ];
+    case "Contributor":
+      return [
+        "project.read",
+        "milestone.read",
+        "board.read",
+        "list.read",
+        "card.read",
+        "card.create",
+        "card.update",
+        "card.move",
+        "card.archive",
+        "card.delete",
+        "card.comment",
+      ];
+    case "Viewer":
+      return permissionCatalogKeys().filter((key) => key.endsWith(".read"));
+  }
+}
+
 export async function seedPermissionCatalog(client: Client): Promise<{ inserted: number }> {
   let inserted = 0;
   for (const entry of PERMISSION_CATALOG) {
