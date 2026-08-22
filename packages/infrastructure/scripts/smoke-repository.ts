@@ -30,12 +30,6 @@ try {
   if (!state || state.name !== "P1" || state.version !== 1) fail("getProjectState", "state tidak terbaca");
   else console.log("PASS: getProjectState membaca data domain (bukan objek Drizzle)");
 
-  const missing = await repo.getCard("cd_none");
-  if (missing !== undefined) fail("getCard", "card yang tidak ada harus undefined");
-  else console.log("PASS: getCard entity tak ditemukan -> undefined (bukan error)");
-
-  const drizzleFree = client instanceof Object;
-  void drizzleFree;
   const raw = await client.execute("SELECT name FROM project_state");
   if (raw.rows.length !== 1) fail("raw", "verifikasi data mentah gagal");
   else console.log("PASS: data di DB cocok dengan hasil repository (sumber tunggal)");

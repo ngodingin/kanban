@@ -1,0 +1,329 @@
+import type { Client } from "@libsql/client";
+import { ulid } from "ulid";
+import type {
+  CardLifecycleInput,
+  CardRecord,
+  CardRepository,
+  CreateCardInput,
+  LifecycleState,
+  UpdateCardInput,
+} from "@kanban/domain";
+import {
+  AncestorNotActiveError,
+  evaluateRestore,
+  isEffectivelyOperational,
+  resolveLifecycleState,
+  CardInvalidStateError,
+  CardNotFoundError,
+  CardValidationError,
+  CardVersionConflictError,
+} from "@kanban/domain";
+import { runInWriteTransaction, type Tx } from "./transaction.ts";
+
+type LifecycleOperation = "update" | "archive" | "restore" | "delete";
+
+/** State machine A.3 — interpretasi lifecycle tetap lewat effective-state (BR-012). */
+const LIFECYCLE_ALLOWED_FROM: Record<LifecycleOperation, readonly LifecycleState[]> = {
+  update: ["ACTIVE"],
+  archive: ["ACTIVE"],
+  restore: ["ARCHIVED"],
+  delete: ["ACTIVE", "ARCHIVED"],
+};
+
+export interface DrizzleCardRepositoryDeps {
+  /**
+   * App-level FK lintas DB (03-ENG A.5): assignee wajib member aktif Project.
+   * Produksi memakai requireActiveMember(globalClient, ...); test bisa inject.
+   */
+  assertAssigneeActiveMember(projectId: string, userId: string): Promise<void>;
+}
+
+interface LoadedCard {
+  current: CardRecord;
+  lifecycleBefore: LifecycleState;
+}
+
+export class DrizzleCardRepository implements CardRepository {
+  private readonly client: Client;
+  private readonly deps: DrizzleCardRepositoryDeps;
+
+  constructor(client: Client, deps: DrizzleCardRepositoryDeps) {
+    this.client = client;
+    this.deps = deps;
+  }
+
+  async getCard(projectId: string, cardId: string): Promise<CardRecord | undefined> {
+    void projectId;
+    const result = await this.client.execute(
+      "SELECT id, list_id, creator_user_id, assignee_user_id, title, subtitle, description, due_date, created_at, updated_at, archived_at, deleted_at, version FROM cards WHERE id = ?",
+      [cardId],
+    );
+    return mapCardRow(result.rows[0]);
+  }
+
+  async createCard(projectId: string, input: CreateCardInput): Promise<CardRecord> {
+    validateTitle(input.title);
+    if (input.assigneeUserId !== null) {
+      await this.deps.assertAssigneeActiveMember(projectId, input.assigneeUserId);
+    }
+    const now = new Date().toISOString();
+    return runInWriteTransaction(this.client, async (tx) => {
+      // INV-LIFE-001 — chain 4 level: List → Board → Milestone → Project semua ACTIVE.
+      const chain = await loadAncestorStates(tx, input.listId);
+      if (!chain || !isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
+        throw new AncestorNotActiveError(
+          "create",
+          `Ancestor tidak ACTIVE — Card tidak dapat dibuat di bawah List ${input.listId} (INV-LIFE-001)`,
+        );
+      }
+      await tx.execute(
+        "INSERT INTO cards (id, list_id, creator_user_id, assignee_user_id, title, subtitle, description, due_date, created_at, updated_at, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+        [input.id, input.listId, input.actorUserId, input.assigneeUserId, input.title, input.subtitle, input.description, input.dueDate, now, now],
+      );
+      // B.5 v1.0.2 — *.created membawa snapshot minimal denormalisasi.
+      await tx.execute(
+        "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, 1, ?, 'card.created', ?, ?)",
+        [
+          ulid(),
+          input.id,
+          input.actorUserId,
+          JSON.stringify({ snapshot: { title: input.title, creator_user_id: input.actorUserId } }),
+          now,
+        ],
+      );
+      return {
+        id: input.id,
+        listId: input.listId,
+        creatorUserId: input.actorUserId,
+        assigneeUserId: input.assigneeUserId,
+        title: input.title,
+        subtitle: input.subtitle,
+        description: input.description,
+        dueDate: input.dueDate,
+        createdAt: now,
+        updatedAt: now,
+        archivedAt: null,
+        deletedAt: null,
+        version: 1,
+      };
+    });
+  }
+
+  async updateCard(projectId: string, input: UpdateCardInput): Promise<CardRecord> {
+    return this.commitMutation(projectId, input, "update");
+  }
+
+  async archiveCard(projectId: string, input: CardLifecycleInput): Promise<CardRecord> {
+    return this.commitMutation(projectId, input, "archive");
+  }
+
+  async restoreCard(projectId: string, input: CardLifecycleInput): Promise<CardRecord> {
+    return this.commitMutation(projectId, input, "restore");
+  }
+
+  async deleteCard(projectId: string, input: CardLifecycleInput): Promise<CardRecord> {
+    return this.commitMutation(projectId, input, "delete");
+  }
+
+  /**
+   * Mutation inti Card CRUD (INV #7/#8/#9): version check (AC-020) → state
+   * machine A.3 → assignee/ancestor validation → UPDATE terjaga
+   * `AND version = expected` → Activity append dalam satu transaksi.
+   * BR-017/061/062 — `list_id` TIDAK pernah disentuh di sini (move = TASK-2.10).
+   * BR-045A — evaluasi murni dari state saat ini; tidak ada syarat aktor sama.
+   */
+  private async commitMutation(
+    projectId: string,
+    input: CardLifecycleInput | UpdateCardInput,
+    operation: LifecycleOperation,
+  ): Promise<CardRecord> {
+    return runInWriteTransaction(this.client, async (tx) => {
+      const loaded = await loadCardForUpdate(tx, input.cardId);
+      if (loaded.current.version !== input.expectedVersion) {
+        throw new CardVersionConflictError(input.expectedVersion, loaded.current.version);
+      }
+      if (!LIFECYCLE_ALLOWED_FROM[operation].includes(loaded.lifecycleBefore)) {
+        throw new CardInvalidStateError(operation, loaded.lifecycleBefore);
+      }
+      // INV-LIFE-001 — entity non-operational (ada ancestor non-ACTIVE)
+      // MUST NOT menerima mutasi apapun, termasuk update/archive/delete
+      // (restore divalidasi terpisah via evaluateRestore).
+      const chain = await loadAncestorStates(tx, loaded.current.listId);
+      if (!chain || !isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
+        throw new AncestorNotActiveError(
+          operation,
+          `Ancestor tidak ACTIVE — Card tidak dapat menerima operasi ${operation} (INV-LIFE-001)`,
+        );
+      }
+
+      const now = new Date().toISOString();
+      const next: CardRecord = { ...loaded.current };
+      let action: string;
+      let data: Record<string, unknown>;
+
+      if (operation === "update") {
+        const patch = input as UpdateCardInput;
+        const changes: Record<string, { before: unknown; after: unknown }> = {};
+        if (patch.title !== undefined) {
+          validateTitle(patch.title);
+          if (next.title !== patch.title) changes.title = { before: next.title, after: patch.title };
+          next.title = patch.title;
+        }
+        applyOptionalField(changes, next, "subtitle", patch.subtitle);
+        applyOptionalField(changes, next, "description", patch.description);
+        applyOptionalField(changes, next, "dueDate", patch.dueDate);
+        if (patch.assigneeUserId !== undefined && patch.assigneeUserId !== next.assigneeUserId) {
+          if (patch.assigneeUserId !== null) {
+            await this.deps.assertAssigneeActiveMember(projectId, patch.assigneeUserId);
+          }
+          changes.assignee_user_id = { before: next.assigneeUserId, after: patch.assigneeUserId };
+          next.assigneeUserId = patch.assigneeUserId;
+        }
+        if (Object.keys(changes).length === 0) {
+          throw new CardValidationError("Tidak ada field yang diubah");
+        }
+        action = "card.updated";
+        data = { changes };
+      } else if (operation === "archive") {
+        next.archivedAt = now;
+        action = "card.archived";
+        data = { previous_state: "ACTIVE" };
+      } else if (operation === "restore") {
+        // INV-LIFE-002/004 + BR-045A — local ARCHIVED sudah dicek; chain harus ACTIVE semua.
+        const decision = evaluateRestore(loaded.lifecycleBefore, [chain.listState, ...chain.upperStates]);
+        if (!decision.allowed) {
+          throw new AncestorNotActiveError(
+            "restore",
+            decision.reason === "ANCESTOR_NOT_ACTIVE"
+              ? `Restore ditolak: ancestor level ${decision.blockingAncestorIndex + 1} dalam state ${String(decision.ancestorState)} — pulihkan ancestor lebih dulu (INV-LIFE-002)`
+              : "Restore ditolak: entity DELETED bersifat terminal (INV-LIFE-004)",
+          );
+        }
+        next.archivedAt = null;
+        action = "card.restored";
+        data = { previous_state: "ARCHIVED" };
+      } else {
+        next.deletedAt = now;
+        action = "card.deleted";
+        data = { previous_state: loaded.lifecycleBefore };
+      }
+
+      const nextVersion = loaded.current.version + 1;
+      await tx.execute(
+        "UPDATE cards SET title = ?, subtitle = ?, description = ?, due_date = ?, assignee_user_id = ?, archived_at = ?, deleted_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?",
+        [
+          next.title,
+          next.subtitle,
+          next.description,
+          next.dueDate,
+          next.assigneeUserId,
+          next.archivedAt,
+          next.deletedAt,
+          now,
+          nextVersion,
+          input.cardId,
+          input.expectedVersion,
+        ],
+      );
+      await tx.execute(
+        "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, ?, ?, ?)",
+        [ulid(), input.cardId, nextVersion, input.actorUserId, action, JSON.stringify(data), now],
+      );
+
+      return { ...next, updatedAt: now, version: nextVersion };
+    });
+  }
+}
+
+function mapCardRow(row: Record<string, unknown> | undefined): CardRecord | undefined {
+  if (!row) return undefined;
+  return {
+    id: String(row.id),
+    listId: String(row.list_id),
+    creatorUserId: String(row.creator_user_id),
+    assigneeUserId: row.assignee_user_id === null ? null : String(row.assignee_user_id),
+    title: String(row.title),
+    subtitle: row.subtitle === null ? null : String(row.subtitle),
+    description: row.description === null ? null : String(row.description),
+    dueDate: row.due_date === null ? null : String(row.due_date),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+    archivedAt: row.archived_at === null ? null : String(row.archived_at),
+    deletedAt: row.deleted_at === null ? null : String(row.deleted_at),
+    version: Number(row.version),
+  };
+}
+
+async function loadAncestorStates(tx: Tx, listId: string): Promise<{
+  listState: LifecycleState;
+  upperStates: LifecycleState[];
+} | null> {
+  const listRow = (
+    await tx.execute("SELECT board_id, archived_at, deleted_at FROM lists WHERE id = ?", [listId])
+  ).rows[0];
+  if (!listRow) return null;
+
+  const stateOf = (row: Record<string, unknown>): LifecycleState =>
+    resolveLifecycleState({
+      archivedAt: row.archived_at === null ? null : String(row.archived_at),
+      deletedAt: row.deleted_at === null ? null : String(row.deleted_at),
+    });
+
+  const upperStates: LifecycleState[] = [];
+
+  const boardId = String(listRow.board_id);
+  const boardRow = (
+    await tx.execute("SELECT milestone_id, archived_at, deleted_at FROM boards WHERE id = ?", [boardId])
+  ).rows[0];
+  if (!boardRow) {
+    upperStates.push("DELETED");
+  } else {
+    upperStates.push(stateOf(boardRow));
+    const milestoneId =
+      boardRow.milestone_id === null || boardRow.milestone_id === undefined ? null : String(boardRow.milestone_id);
+    if (milestoneId !== null) {
+      const msRow = (
+        await tx.execute("SELECT archived_at, deleted_at FROM milestones WHERE id = ?", [milestoneId])
+      ).rows[0];
+      upperStates.push(msRow ? stateOf(msRow) : ("DELETED" as LifecycleState));
+    } else {
+      upperStates.push("DELETED");
+    }
+  }
+
+  const projRow = (await tx.execute("SELECT archived_at, deleted_at FROM project_state LIMIT 1")).rows[0];
+  upperStates.push(projRow ? stateOf(projRow) : ("DELETED" as LifecycleState));
+
+  const listState = resolveLifecycleState({
+    archivedAt: listRow.archived_at === null ? null : String(listRow.archived_at),
+    deletedAt: listRow.deleted_at === null ? null : String(listRow.deleted_at),
+  });
+  return { listState, upperStates };
+}
+
+async function loadCardForUpdate(tx: Tx, cardId: string): Promise<LoadedCard> {
+  const result = await tx.execute(
+    "SELECT id, list_id, creator_user_id, assignee_user_id, title, subtitle, description, due_date, created_at, updated_at, archived_at, deleted_at, version FROM cards WHERE id = ?",
+    [cardId],
+  );
+  const current = mapCardRow(result.rows[0]);
+  if (!current) throw new CardNotFoundError(cardId);
+  return { current, lifecycleBefore: resolveLifecycleState(current) };
+}
+
+function validateTitle(title: string): void {
+  if (typeof title !== "string" || title.trim().length === 0) {
+    throw new CardValidationError("Title Card wajib diisi");
+  }
+}
+
+function applyOptionalField<K extends "subtitle" | "description" | "dueDate">(
+  changes: Record<string, { before: unknown; after: unknown }>,
+  target: CardRecord,
+  key: K,
+  value: CardRecord[K] | undefined,
+): void {
+  if (value === undefined) return;
+  if (target[key] !== value) changes[key] = { before: target[key], after: value };
+  target[key] = value;
+}

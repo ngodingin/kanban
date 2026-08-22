@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import type {
-  CardRecord,
   ProjectLifecycleInput,
   ProjectLifecycleState,
   ProjectRepository,
@@ -16,7 +15,7 @@ import {
   ProjectVersionConflictError,
   resolveProjectLifecycle,
 } from "@kanban/domain";
-import { projectState, cards } from "./project-schema.ts";
+import { projectState } from "./project-schema.ts";
 import { runInWriteTransaction } from "./transaction.ts";
 
 type LifecycleOperation = "update" | "archive" | "restore" | "delete";
@@ -152,26 +151,5 @@ export class DrizzleProjectRepository implements ProjectRepository {
         version: nextVersion,
       };
     });
-  }
-
-  async getCard(id: string): Promise<CardRecord | undefined> {
-    const db = drizzle(this.client);
-    const row = await db.select().from(cards).where(eq(cards.id, id)).get();
-    if (!row) return undefined;
-    return {
-      id: row.id,
-      listId: row.listId,
-      creatorUserId: row.creatorUserId,
-      assigneeUserId: row.assigneeUserId,
-      title: row.title,
-      subtitle: row.subtitle,
-      description: row.description,
-      dueDate: row.dueDate,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      archivedAt: row.archivedAt,
-      deletedAt: row.deletedAt,
-      version: row.version,
-    };
   }
 }

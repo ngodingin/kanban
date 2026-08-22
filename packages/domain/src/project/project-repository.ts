@@ -8,22 +8,6 @@ export interface ProjectStateRecord {
   version: number;
 }
 
-export interface CardRecord {
-  id: string;
-  listId: string;
-  creatorUserId: string;
-  assigneeUserId: string | null;
-  title: string;
-  subtitle: string | null;
-  description: string | null;
-  dueDate: string | null;
-  createdAt: string;
-  updatedAt: string;
-  archivedAt: string | null;
-  deletedAt: string | null;
-  version: number;
-}
-
 export interface UpdateProjectNameInput {
   projectId: string;
   expectedVersion: number;
@@ -43,5 +27,4 @@ export interface ProjectRepository {
   archiveProject(input: ProjectLifecycleInput): Promise<ProjectStateRecord>;
   restoreProject(input: ProjectLifecycleInput): Promise<ProjectStateRecord>;
   deleteProject(input: ProjectLifecycleInput): Promise<ProjectStateRecord>;
-  getCard(id: string): Promise<CardRecord | undefined>;
 }

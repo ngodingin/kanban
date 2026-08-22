@@ -1,7 +1,6 @@
 export type {
   ProjectRepository,
   ProjectStateRecord,
-  CardRecord,
   UpdateProjectNameInput,
   ProjectLifecycleInput,
 } from "./project/project-repository.ts";
@@ -70,3 +69,17 @@ export {
   ListInvalidStateError,
   ListValidationError,
 } from "./list/list-errors.ts";
+
+export type {
+  CardRepository,
+  CardRecord,
+  CreateCardInput,
+  UpdateCardInput,
+  CardLifecycleInput,
+} from "./card/card-repository.ts";
+export {
+  CardNotFoundError,
+  CardVersionConflictError,
+  CardInvalidStateError,
+  CardValidationError,
+} from "./card/card-errors.ts";
