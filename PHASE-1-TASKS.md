@@ -52,7 +52,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.1.1 | ⬜️ | — | 0 | P0 | Perluas `ProjectRepository` (`packages/domain/src/project/project-repository.ts`) dan `DrizzleProjectRepository` (`packages/infrastructure/src/database/project-repository.ts`) dengan command `updateProjectName`, `archiveProject`, `restoreProject`, `deleteProject` — tiap command menerima `expectedVersion`, memvalidasi state saat ini (BR-011/012, INV-LIFE-003/004), menolak dengan konflik jika version tidak cocok (tanpa perubahan state/Activity), dan menulis mutation `project_state` + Activity (`project.updated`/`project.archived`/`project.restored`/`project.deleted`) atomik dalam satu `runInWriteTransaction` (`packages/infrastructure/src/database/transaction.ts`) pada Project DB yang sama | [02-SPEC A.3](docs/02-SPEC.md), [A.7](docs/02-SPEC.md), [A.8](docs/02-SPEC.md), BR-011–013, BR-019–028; [03-ENG A.6](docs/03-ENGINEERING.md) | — |
+| 1.1.1 | 🔎 | [CL-01](#cl-01)<br>[CL-02](#cl-02) | 80 | P0 | Perluas `ProjectRepository` (`packages/domain/src/project/project-repository.ts`) dan `DrizzleProjectRepository` (`packages/infrastructure/src/database/project-repository.ts`) dengan command `updateProjectName`, `archiveProject`, `restoreProject`, `deleteProject` — tiap command menerima `expectedVersion`, memvalidasi state saat ini (BR-011/012, INV-LIFE-003/004), menolak dengan konflik jika version tidak cocok (tanpa perubahan state/Activity), dan menulis mutation `project_state` + Activity (`project.updated`/`project.archived`/`project.restored`/`project.deleted`) atomik dalam satu `runInWriteTransaction` (`packages/infrastructure/src/database/transaction.ts`) pada Project DB yang sama | [02-SPEC A.3](docs/02-SPEC.md), [A.7](docs/02-SPEC.md), [A.8](docs/02-SPEC.md), BR-011–013, BR-019–028; [03-ENG A.6](docs/03-ENGINEERING.md) | — |
 
 **Test:** Unit — update/archive/restore/delete commit version+timestamp+Activity benar; `expected_version` salah → `VERSION_CONFLICT`, tidak ada perubahan state, tidak ada Activity baru (AC-020 pattern); restore ditolak jika current state DELETED (INV-LIFE-004); archive ditolak jika current state DELETED; delete dari ARCHIVED diizinkan (state machine A.3).
 **DoD:** Seluruh 4 command atomik (mutation+Activity 1 transaksi Project DB); tidak ada command yang bypass version check; Activity payload ikut konvensi B.5 (`changes`/`previous_state`).
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-02"></a>
+### CL-02 — 2026-08-22 · goal 1.1.1 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run packages/infrastructure/test/project-lifecycle-commands.test.ts` → 19/19 lulus; `pnpm exec vitest run` → 42/42 lulus (7 file, tanpa regresi); `pnpm lint` bersih; `pnpm typecheck` bersih seluruh workspace. Implementasi: `packages/domain/src/project/project-lifecycle.ts` (helper `resolveProjectLifecycle` BR-011/012 + error `RESOURCE_NOT_FOUND`/`VERSION_CONFLICT`/`INVALID_STATE`), interface `ProjectRepository` + implementasi `DrizzleProjectRepository` untuk `updateProjectName`/`archiveProject`/`restoreProject`/`deleteProject` — tiap command: load state dalam tx, version check (BR-021) sebelum validasi transisi (urutan A.6), mutation+Activity atomik via `runInWriteTransaction`, payload B.5 (`changes.name` utk updated, `previous_state` utk archived/restored/deleted). Test mencakup positif & negatif: AC-020 (version conflict tanpa side-effect utk keempat command), BR-022 stale writer, INV-LIFE-003 (update pada ARCHIVED), INV-LIFE-004 (archive/restore/delete pada DELETED ditolak), A.3 (delete dari ARCHIVED diizinkan), RESOURCE_NOT_FOUND.
+**Catatan:** Atomicity mutation+Activity terjamin struktural via satu `runInWriteTransaction` per command + rollback test existing (`transaction.test.ts`). DoD terpenuhi; siap QA.
+
+<a id="cl-01"></a>
+### CL-01 — 2026-08-22 · goal 1.1.1 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Discovery dari disk: row 1.1.1 terbaca `⬜️/0`, dependency `—`; `git status` clean di branch `stag`, HEAD `9ebcd02`. Baseline SOT 2.1.0 dibaca: AGENTS.md penuh, PHASE-1-TASKS.md penuh, 01-PRODUCT §0+§2.2, 02-SPEC A.3/A.7/A.8/A.16 + BR-011–013 + BR-019–028, 03-ENG A.4–A.7 + B.5, 04-DELIVERY C.3–C.4; kode existing `packages/domain/src/project/project-repository.ts`, `packages/infrastructure/src/database/{project-repository,transaction}.ts`, dan helper test dibaca.
+**Catatan:** Scope dikonfirmasi manusia untuk sesi ini: TASK-1.1 → TASK-1.4 berurutan goal-per-goal.
 
 <a id="review-cl-02"></a>
 ### Review-CL-02 — 2026-08-21 · amandemen 02-SPEC C.12 (2.0.8 → 2.1.0), buka goal 1.7.4/1.10.1/1.10.2
