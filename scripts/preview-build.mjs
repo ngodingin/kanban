@@ -36,6 +36,22 @@ const libsqlPkgDir = dirname(libsqlClientRequire.resolve("libsql"));
 const libsqlPrivateNodeModules = dirname(libsqlPkgDir);
 await cp(libsqlPrivateNodeModules, resolve(apiDir, "node_modules"), { recursive: true, dereference: true });
 
+// Migration SQL dibaca runtime (provisionProjectDatabase -> applyProjectMigrations,
+// dipanggil dari POST /projects) via `migrate.ts` -> `__dirname`-relatif fallback
+// (esbuild men-stub import.meta kosong di output CJS). File .sql-nya sendiri
+// TIDAK ikut ter-bundle esbuild (bukan kode JS) sehingga wajib disalin manual
+// bersebelahan dengan index.js, sinkron dengan offset yang dipakai migrate.ts.
+await cp(
+  resolve(import.meta.dirname, "../packages/infrastructure/drizzle/migrations"),
+  resolve(apiDir, "drizzle/migrations"),
+  { recursive: true },
+);
+await cp(
+  resolve(import.meta.dirname, "../packages/infrastructure/drizzle/migrations-project"),
+  resolve(apiDir, "drizzle/migrations-project"),
+  { recursive: true },
+);
+
 await cp(resolve(import.meta.dirname, "../apps/web/public"), staticDir, { recursive: true });
 
 await writeFile(
