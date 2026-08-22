@@ -150,6 +150,49 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
     }
   });
 
+  it("[Review-CL-02][INV-LIFE-001] archive/delete List saat Board ARCHIVED → INVALID_STATE (restore tidak terdampak)", async () => {
+    const dbRow = await ctx.globalClient.execute({
+      sql: "SELECT d.database_id AS db FROM project_databases d WHERE d.project_id = ?",
+      args: [projectIdValue],
+    });
+    const projectDb = createClient({ url: String(dbRow.rows[0]!.db) });
+    try {
+      // siapkan List local ACTIVE baru lalu archive Board-nya
+      await projectDb.execute({
+        sql: "INSERT INTO lists (id, board_id, title, created_at, updated_at, version) VALUES ('ls_rev', 'bd_l', 'Rev', datetime('now'), datetime('now'), 1)",
+      });
+      await projectDb.execute("UPDATE boards SET archived_at = '2026-08-21T00:00:00.000Z' WHERE id = 'bd_l'");
+    } finally {
+      await projectDb.close();
+    }
+
+    const archRes = await post("archive", "ls_rev", { expected_version: 1 });
+    expect(archRes.status).toBe(409);
+    expect((await archRes.json()).error?.code).toBe("INVALID_STATE");
+
+    const delRes = await post("delete", "ls_rev", { expected_version: 1 });
+    expect(delRes.status).toBe(409);
+    expect((await delRes.json()).error?.code).toBe("INVALID_STATE");
+
+    const projectDb2 = createClient({ url: String(dbRow.rows[0]!.db) });
+    try {
+      const r = await projectDb2.execute("SELECT title, version FROM lists WHERE id = 'ls_rev'");
+      expect(r.rows[0]).toMatchObject({ title: "Rev", version: 1 });
+    } finally {
+      await projectDb2.close();
+    }
+
+    // pulihkan Board → operasi kembali diizinkan (urutan INV-LIFE-001/002 benar)
+    const projectDb3 = createClient({ url: String(dbRow.rows[0]!.db) });
+    try {
+      await projectDb3.execute("UPDATE boards SET archived_at = NULL WHERE id = 'bd_l'");
+    } finally {
+      await projectDb3.close();
+    }
+    const delOk = await post("delete", "ls_rev", { expected_version: 1 });
+    expect(delOk.status).toBe(200);
+  });
+
   it("[C.7] expected_version hilang → VALIDATION_ERROR; non-Owner → PERMISSION_DENIED; tanpa identitas → TOKEN_EXPIRED; tidak ada → 404", async () => {
     const missingVersion = await post("archive", "ls_arc", {});
     expect(missingVersion.status).toBe(400);

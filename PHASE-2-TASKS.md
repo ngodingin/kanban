@@ -127,7 +127,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.7.1 | ✅ | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
 | 2.7.2 | 🔎 | [CL-38](#cl-38)<br>[CL-37](#cl-37)<br>[CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[QA-CL-12](#qa-cl-12) | 80 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
-| 2.7.3 | 🔄 | [CL-39](#cl-39)<br>[CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[QA-CL-13](#qa-cl-13) | 60 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
+| 2.7.3 | 🔎 | [CL-40](#cl-40)<br>[CL-39](#cl-39)<br>[CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[QA-CL-13](#qa-cl-13) | 80 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
 
 **Test:** Create List dengan `board_id` Project lain → ditolak; List tidak punya operasi move (INV-MOVE-001); pola version-conflict/lifecycle sama seperti task List sebelumnya.
 **DoD:** Endpoint sesuai C.7; List tidak punya field status; archive/delete List tidak mengubah `list_id` Card manapun.
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-40"></a>
+### CL-40 — 2026-08-23 · goal 2.7.3 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — propagasi fix ancestor-check ke archive/delete via HTTP
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 44 file / **291** test lulus (skenario baru di `apps/api/test/lists-lifecycle.test.ts`: Board di-archive langsung di DB lalu `archive` dan `delete` List local ACTIVE → INVALID_STATE 409, row tak berubah; setelah Board dipulihkan → delete sukses 200); `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan:** Sesuai QA-CL-13 — restore tidak terdampak (sudah memakai evaluateRestore); fix domain 2.6.1 terbukti terpropagasi untuk archive+delete.
+
+<a id="cl-39"></a>
+### CL-39 — 2026-08-23 · goal 2.7.3 perbaikan dimulai (⚠️ → 🔄 · 60%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.7.3 `⚠️/60/P1` per QA-CL-13 (pewarisan bug 2.6.1 untuk action archive+delete; restore tidak terdampak). Fix domain sudah landing di `f771f04`.
+**Catatan:** Cukup tambah skenario HTTP archive/delete saat ancestor non-ACTIVE lalu re-run.
 
 <a id="cl-38"></a>
 ### CL-38 — 2026-08-23 · goal 2.7.2 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — propagasi fix ancestor-check via HTTP
