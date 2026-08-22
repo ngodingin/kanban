@@ -122,7 +122,7 @@ Entity DELETED MUST NOT menerima mutation apa pun, termasuk restore. Entity MAY 
 - **BR-032** Edit comment MUST menghasilkan Activity baru (`comment.edited`) tanpa mengubah Activity `comment.added` lama.
 - **BR-033** Comment baru MUST ditolak pada Card berstatus DELETED atau ARCHIVED.
 - **BR-034** Race condition (Card dihapus tepat saat User lain menambah comment) MUST dicegah dengan validasi state Card **saat request diproses**, bukan berdasarkan state saat UI dibuka.
-- **BR-034A** `card.comment.update` MUST hanya mengizinkan actor mengedit Activity `comment_added`/`comment_edited` miliknya sendiri (`activity.actor_user_id == current_user_id`). Ini adalah **business invariant kepemilikan komentar**, bukan sekadar grant Permission Group — berlaku mutlak termasuk Owner (Owner tetap tunduk business invariant walau bypass grant Group/direct Permission per BR-037). Konsisten dengan BR-031 (comment tidak dapat dihapus siapa pun): mutasi terhadap komentar sengaja dibatasi ketat.
+- **BR-034A** `card.comment.update` MUST hanya mengizinkan actor mengedit Activity `comment.added`/`comment.edited` miliknya sendiri (`activity.actor_user_id == current_user_id`). Ini adalah **business invariant kepemilikan komentar**, bukan sekadar grant Permission Group — berlaku mutlak termasuk Owner (Owner tetap tunduk business invariant walau bypass grant Group/direct Permission per BR-037). Konsisten dengan BR-031 (comment tidak dapat dihapus siapa pun): mutasi terhadap komentar sengaja dibatasi ketat.
 
 ## A.10 Permission & Authorization
 
@@ -425,7 +425,7 @@ Activity tidak memiliki `PUT`/`PATCH`/`DELETE` dalam bentuk apa pun.
 POST   /api/v1/projects/:project_id/cards/:card_id/comments
 PATCH  /api/v1/projects/:project_id/cards/:card_id/comments/:activity_id
 ```
-Add: `{ "body": "Sudah saya cek." }` → Activity `comment_added`. Edit **tidak mengubah** Activity lama — menghasilkan Activity baru `comment_edited`. Tidak ada `DELETE`.
+Add: `{ "body": "Sudah saya cek." }` → Activity `comment.added`. Edit **tidak mengubah** Activity lama — menghasilkan Activity baru `comment.edited`. Tidak ada `DELETE`.
 
 ## C.11 Label
 ```http

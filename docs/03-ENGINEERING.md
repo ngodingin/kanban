@@ -428,7 +428,7 @@ activities
   data(JSON payload, lihat B.5) · created_at
 ```
 
-Comment **bukan** tabel terpisah — Comment adalah `activities` dengan `action = "comment_added"`/`"comment_edited"`.
+Comment **bukan** tabel terpisah — Comment adalah `activities` dengan `action = "comment.added"`/`"comment.edited"`.
 
 ## B.4 Rationale Keputusan Schema Penting
 
