@@ -110,11 +110,15 @@ export const projectMemberships = sqliteTable(
   (t) => [uniqueIndex("project_memberships_project_user_unique").on(t.projectId, t.userId)],
 );
 
-export const permissions = sqliteTable("permissions", {
-  id: text("id").primaryKey(),
-  key: text("key").notNull(),
-  description: text("description"),
-});
+export const permissions = sqliteTable(
+  "permissions",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    description: text("description"),
+  },
+  (t) => [uniqueIndex("permissions_key_unique").on(t.key)],
+);
 
 export const permissionGroups = sqliteTable(
   "permission_groups",

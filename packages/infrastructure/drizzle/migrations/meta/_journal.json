@@ -15,6 +15,13 @@
       "when": 1787317704209,
       "tag": "0001_scope_type_list_card",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1787394137460,
+      "tag": "0002_permissions_key_unique",
+      "breakpoints": true
     }
   ]
 }

@@ -71,3 +71,29 @@ describe("seedPermissionCatalog — katalog permission D.1 (goal 1.5.1)", () => 
     expect(dupes.rows.length).toBe(0);
   });
 });
+
+describe("unique index permissions.key — goal 1.5.2", () => {
+  it("[B.2] negatif: INSERT key duplikat ditolak DB (permissions_key_unique), bukan hanya oleh aplikasi", async () => {
+    const existing = await client.execute("SELECT key FROM permissions LIMIT 1");
+    const key = String(existing.rows[0]!.key);
+    await expect(
+      client.execute({
+        sql: "INSERT INTO permissions (id, key, description) VALUES (?, ?, ?)",
+        args: ["dup-id-bukan-ulid-asli", key, "duplikat"],
+      }),
+    ).rejects.toThrow();
+
+    const count = await client.execute({
+      sql: "SELECT COUNT(*) AS n FROM permissions WHERE key = ?",
+      args: [key],
+    });
+    expect(Number(count.rows[0]?.n)).toBe(1);
+  });
+
+  it("[D.1] rowsAffected ON CONFLICT DO NOTHING: seed ulang mengembalikan 0 tanpa menaikkan id baru", async () => {
+    const before = await client.execute("SELECT id FROM permissions ORDER BY id");
+    await seedPermissionCatalog(client);
+    const after = await client.execute("SELECT id FROM permissions ORDER BY id");
+    expect(after.rows.map((r) => String(r.id))).toEqual(before.rows.map((r) => String(r.id)));
+  });
+});

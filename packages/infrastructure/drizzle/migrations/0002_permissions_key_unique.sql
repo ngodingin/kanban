@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `permissions_key_unique` ON `permissions` (`key`);

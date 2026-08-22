@@ -123,16 +123,12 @@ export function baselineGroupPermissionKeys(group: BaselineGroupName): string[] 
 export async function seedPermissionCatalog(client: Client): Promise<{ inserted: number }> {
   let inserted = 0;
   for (const entry of PERMISSION_CATALOG) {
-    const existing = await client.execute({
-      sql: "SELECT id FROM permissions WHERE key = ? LIMIT 1",
-      args: [entry.key],
-    });
-    if (existing.rows.length > 0) continue;
-    await client.execute({
-      sql: "INSERT INTO permissions (id, key, description) VALUES (?, ?, ?)",
+    // Unique index permissions_key_unique menjamin keunikan; ON CONFLICT DO NOTHING membuat seed idempotent.
+    const result = await client.execute({
+      sql: "INSERT INTO permissions (id, key, description) VALUES (?, ?, ?) ON CONFLICT(key) DO NOTHING",
       args: [ulid(), entry.key, entry.description],
     });
-    inserted++;
+    inserted += result.rowsAffected;
   }
   return { inserted };
 }

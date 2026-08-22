@@ -103,7 +103,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.5.1 | ✅ | [CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Seed idempotent tabel `permissions` (Global DB) dengan seluruh key kanonik D.1 (`project.read`, `project.update`, `milestone.*`, `board.*`, `list.*`, `card.*`, `member.*`, `permission_group.*`, `api_key.*`) — data statis, BUKAN migration schema baru. Jalankan sebagai bagian `migrate-global` (`packages/infrastructure/scripts/migrate-global.ts`) atau modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts`, idempotent (upsert by `key`) | [02-SPEC D.1](docs/02-SPEC.md) | — |
-| 1.5.2 | 🔄 | [CL-45](#cl-45)<br>[Review-CL-07](#review-cl-07) | 0 | P3 | Tambah `uniqueIndex` pada `permissions.key` (`packages/infrastructure/src/database/global-schema.ts`) + migration Drizzle baru (`drizzle-kit generate`); ubah `seedPermissionCatalog` (`permission-catalog.ts`) memakai `INSERT ... ON CONFLICT(key) DO NOTHING` (atau setara) alih-alih lookup-by-key manual, karena constraint DB sekarang menjamin keunikan | [03-ENG B.2](docs/03-ENGINEERING.md) (amandemen 2.2.2) | 1.5.1 |
+| 1.5.2 | 🔎 | [CL-48](#cl-48)<br>[CL-45](#cl-45)<br>[Review-CL-07](#review-cl-07) | 80 | P3 | Tambah `uniqueIndex` pada `permissions.key` (`packages/infrastructure/src/database/global-schema.ts`) + migration Drizzle baru (`drizzle-kit generate`); ubah `seedPermissionCatalog` (`permission-catalog.ts`) memakai `INSERT ... ON CONFLICT(key) DO NOTHING` (atau setara) alih-alih lookup-by-key manual, karena constraint DB sekarang menjamin keunikan | [03-ENG B.2](docs/03-ENGINEERING.md) (amandemen 2.2.2) | 1.5.1 |
 
 **Test:** Unit/integration — run seed dua kali berturut-turut menghasilkan jumlah row sama (idempotent, tidak duplikat); setiap key D.1 ada tepat satu row; insert manual key duplikat langsung ke tabel (bypass service) ditolak oleh DB (`UNIQUE constraint failed`) untuk goal 1.5.2; migration baru diterapkan bersih di atas Global DB existing (idempotent, tidak error terhadap data yang sudah ada — 40 key existing tidak ada duplikat, dikonfirmasi QA-CL-10).
 **DoD:** Katalog permission lengkap sesuai D.1; re-run migrate-global tidak menghasilkan duplikat atau error constraint; untuk 1.5.2, keunikan `key` ditegakkan DB-level bukan cuma aplikasi.
@@ -196,6 +196,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-48"></a>
+### CL-48 — 2026-08-22 · goal 1.5.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — unique index permissions.key + seed ON CONFLICT
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 28 file / **146** test lulus; `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi sesuai Review-CL-07: (1) `global-schema.ts` menambah `uniqueIndex("permissions_key_unique").on(t.key)` pada tabel `permissions`; (2) migration Drizzle baru `drizzle/migrations/0002_permissions_key_unique.sql` di-generate via `drizzle-kit generate` (+snapshot/journal meta); (3) `seedPermissionCatalog` kini memakai `INSERT ... ON CONFLICT(key) DO NOTHING` dan menghitung `inserted` dari `rowsAffected` — lookup-by-key manual dihapus. Test baru di `permission-catalog.test.ts` describe `unique index permissions.key — goal 1.5.2`: negatif INSERT key duplikat ditolak DB-level (bukan hanya aplikasi) dan rowsAffected seed ulang = 0 tanpa id baru.
+**Catatan implementasi:** Perbaikan kecil tipe (`as const` untuk literal `"CREATED_BY_ME"` pada ternary provision.ts) ikut dalam commit ini karena ditemukan saat typecheck.
 
 <a id="cl-47"></a>
 ### CL-47 — 2026-08-22 · goal 1.6.1 selesai sisi Dev (🔄 → 🔎 · 60 → 80%) — baseline card.read visibility diperbaiki
