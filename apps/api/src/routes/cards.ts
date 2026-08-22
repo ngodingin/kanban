@@ -8,7 +8,7 @@ import {
   type CardRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface CardRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -131,6 +131,41 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         );
       }
       return { card: cardPayload(record) };
+    });
+  });
+
+  router.patch("/v1/projects/:project_id/cards/:card_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const expectedVersion = readExpectedVersionField(body);
+      const allowedFields = ["title", "subtitle", "description", "due_date", "assignee"] as const;
+      for (const key of Object.keys(body)) {
+        if (!(allowedFields as readonly string[]).includes(key) && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dapat diubah via PATCH Card${key === "list_id" ? " — move wajib via /cards/:id/move (BR-017)" : " (C.15)"}.`,
+            400,
+          );
+        }
+      }
+      const repository = new DrizzleCardRepository(ctx.database, {
+        assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
+      });
+      const updated = await repository.updateCard(projectId, {
+        cardId: c.req.param("card_id"),
+        expectedVersion,
+        actorUserId: ctx.userId,
+        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
+        subtitle: readOptionalString(body, "subtitle"),
+        description: readOptionalString(body, "description"),
+        dueDate: readOptionalString(body, "due_date"),
+        assigneeUserId: body.assignee === undefined ? undefined : readAssigneeField(body),
+      });
+      return { card: cardPayload(updated) };
     });
   });
 

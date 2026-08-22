@@ -151,7 +151,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.9.1 | 🔎 | [CL-42](#cl-42)<br>[CL-41](#cl-41) | 80 | P0 | `POST /api/v1/projects/:project_id/lists/:list_id/cards` + `GET .../cards/:card_id` — TANPA filter visibility (Prinsip #5, Phase 4 scope) | [02-SPEC C.8](docs/02-SPEC.md), FR-024 | 2.8 |
-| 2.9.2 | ⬜️ | — | 0 | P1 | `PATCH .../cards/:card_id` — `title`/`subtitle`/`description`/`due_date`/`assignee` saja (C.8 eksplisit), **TIDAK BOLEH** `list_id` | [02-SPEC C.8](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.8, 2.9.1 |
+| 2.9.2 | 🔎 | [CL-44](#cl-44)<br>[CL-43](#cl-43) | 80 | P1 | `PATCH .../cards/:card_id` — `title`/`subtitle`/`description`/`due_date`/`assignee` saja (C.8 eksplisit), **TIDAK BOLEH** `list_id` | [02-SPEC C.8](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.8, 2.9.1 |
 | 2.9.3 | ⬜️ | — | 0 | P1 | `POST .../cards/:card_id/{archive,restore,delete}` | [02-SPEC C.8](docs/02-SPEC.md), A.3, BR-045A | 2.8, 2.9.1 |
 
 **Test:** Create Card dengan `list_id` Project lain → ditolak; PATCH dengan `list_id` di body → diabaikan/ditolak (BR-017/061, uji eksplisit); assignee bukan member → ditolak dengan kode jelas; lifecycle + version-conflict pattern konsisten.
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-44"></a>
+### CL-44 — 2026-08-23 · goal 2.9.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Card
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 46 file / **300** test lulus (4 test integration baru `apps/api/test/cards-patch.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `PATCH /v1/projects/:project_id/cards/:card_id` — Owner-only interim; hanya title/subtitle/description/due_date/assignee + expected_version; `list_id` di body DITOLAK VALIDATION_ERROR dengan pesan eksplisit BR-017 (DoD: transport-level enforcement, diverifikasi row list_id tetap); assignee non-member → PERMISSION_DENIED 403.
+**Catatan:** Activity card.updated{changes} mencakup assignee_user_id before/after.
+
+<a id="cl-43"></a>
+### CL-43 — 2026-08-23 · goal 2.9.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.9.2 `⬜️/—/0/P1`, dependency `2.8, 2.9.1` → keduanya `🔎/80%` (commit `5c05da4`, `c3018a7`; suite 296 hijau). C.8: PATCH boleh title/subtitle/description/due_date/assignee; TIDAK boleh list_id (BR-017/061).
+**Catatan:** `list_id` di body → ditolak eksplisit VALIDATION_ERROR (pilihan konsisten dengan C.15 enforcement goal lain; Test mengizinkan "diabaikan/ditolak").
 
 <a id="cl-42"></a>
 ### CL-42 — 2026-08-23 · goal 2.9.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET Card
