@@ -14,3 +14,17 @@ export {
   ProjectVersionConflictError,
   ProjectInvalidStateError,
 } from "./project/project-lifecycle.ts";
+
+export type {
+  LifecycleState,
+  LifecycleTimestamps,
+  RestoreDecision,
+} from "./lifecycle/effective-state.ts";
+export {
+  resolveLifecycleState,
+  isActive,
+  isArchived,
+  isDeleted,
+  isEffectivelyOperational,
+  evaluateRestore,
+} from "./lifecycle/effective-state.ts";

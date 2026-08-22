@@ -1,13 +1,17 @@
 import type { ProjectStateRecord } from "./project-repository.ts";
+import { resolveLifecycleState, type LifecycleState } from "../lifecycle/effective-state.ts";
 
-export type ProjectLifecycleState = "ACTIVE" | "ARCHIVED" | "DELETED";
+/**
+ * Alias kompatibilitas Phase 1 — implementasi tunggal kini di
+ * `lifecycle/effective-state.ts` (TASK-2.1) dan dipakai bersama
+ * Milestone/Board/List/Card. Jangan tambahkan logika lifecycle di sini.
+ */
+export type ProjectLifecycleState = LifecycleState;
 
 export function resolveProjectLifecycle(
   record: Pick<ProjectStateRecord, "archivedAt" | "deletedAt">,
 ): ProjectLifecycleState {
-  if (record.deletedAt !== null) return "DELETED";
-  if (record.archivedAt !== null) return "ARCHIVED";
-  return "ACTIVE";
+  return resolveLifecycleState(record);
 }
 
 export class ProjectNotFoundError extends Error {

@@ -1,0 +1,30 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/wrap-envdev.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(pnpm exec *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit *)",
+      "Bash(find /var/home/arin -name \"pnpm\" -o -name \"pnpm.cjs\" 2>/dev/null | head -5)",
+      "Read(//var/home/arin/**)",
+      "Bash(/var/home/arin/.config/nvm/versions/node/v24.19.0/bin/pnpm exec *)",
+      "Bash(pnpm test *)",
+      "Bash(/var/home/arin/.config/nvm/versions/node/v24.19.0/bin/pnpm test *)",
+      "Bash(pnpm -r typecheck)",
+      "Bash(flatpak-spawn --host bash -lc \"pnpm -r typecheck 2>&1 | tail -40\")"
+    ]
+  }
+}
