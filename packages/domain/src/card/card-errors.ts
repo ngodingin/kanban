@@ -2,30 +2,34 @@ import type { LifecycleState } from "../lifecycle/effective-state.ts";
 
 export class CardNotFoundError extends Error {
   readonly code = "RESOURCE_NOT_FOUND";
-  constructor(public readonly cardId: string) {
+  readonly cardId: string;
+  constructor(cardId: string) {
     super(`Card ${cardId} tidak ditemukan`);
+    this.cardId = cardId;
     this.name = "CardNotFoundError";
   }
 }
 
 export class CardVersionConflictError extends Error {
   readonly code = "VERSION_CONFLICT";
-  constructor(
-    public readonly expectedVersion: number,
-    public readonly currentVersion: number,
-  ) {
+  readonly expectedVersion: number;
+  readonly currentVersion: number;
+  constructor(expectedVersion: number, currentVersion: number) {
     super(`Card version conflict: expected ${expectedVersion}, current ${currentVersion}`);
+    this.expectedVersion = expectedVersion;
+    this.currentVersion = currentVersion;
     this.name = "CardVersionConflictError";
   }
 }
 
 export class CardInvalidStateError extends Error {
   readonly code = "INVALID_STATE";
-  constructor(
-    public readonly operation: string,
-    public readonly currentState: LifecycleState,
-  ) {
+  readonly operation: string;
+  readonly currentState: LifecycleState;
+  constructor(operation: string, currentState: LifecycleState) {
     super(`Operasi ${operation} tidak diizinkan dari state ${currentState}`);
+    this.operation = operation;
+    this.currentState = currentState;
     this.name = "CardInvalidStateError";
   }
 }

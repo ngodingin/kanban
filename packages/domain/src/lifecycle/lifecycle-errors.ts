@@ -4,11 +4,10 @@
  */
 export class AncestorNotActiveError extends Error {
   readonly code = "INVALID_STATE";
-  constructor(
-    public readonly operation: string,
-    message: string,
-  ) {
+  readonly operation: string;
+  constructor(operation: string, message: string) {
     super(message);
+    this.operation = operation;
     this.name = "AncestorNotActiveError";
   }
 }
