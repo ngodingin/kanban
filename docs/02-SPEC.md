@@ -122,6 +122,7 @@ Entity DELETED MUST NOT menerima mutation apa pun, termasuk restore. Entity MAY 
 - **BR-032** Edit comment MUST menghasilkan Activity baru (`comment.edited`) tanpa mengubah Activity `comment.added` lama.
 - **BR-033** Comment baru MUST ditolak pada Card berstatus DELETED atau ARCHIVED.
 - **BR-034** Race condition (Card dihapus tepat saat User lain menambah comment) MUST dicegah dengan validasi state Card **saat request diproses**, bukan berdasarkan state saat UI dibuka.
+- **BR-034A** `card.comment.update` MUST hanya mengizinkan actor mengedit Activity `comment_added`/`comment_edited` miliknya sendiri (`activity.actor_user_id == current_user_id`). Ini adalah **business invariant kepemilikan komentar**, bukan sekadar grant Permission Group — berlaku mutlak termasuk Owner (Owner tetap tunduk business invariant walau bypass grant Group/direct Permission per BR-037). Konsisten dengan BR-031 (comment tidak dapat dihapus siapa pun): mutasi terhadap komentar sengaja dibatasi ketat.
 
 ## A.10 Permission & Authorization
 
@@ -553,4 +554,4 @@ resolve_permission(user, project, entity, action):
   7. Apply local + ancestor lifecycle restrictions (lifecycle wins)
   8. Return allow/deny
 ```
-Owner: bypass Group/direct restriction (dalam Project sendiri), tetap tunduk business invariant + lifecycle + concurrency. Co-Owner: tidak bypass. Comment: `can_comment = can_read_card AND has(card.comment) AND card.is_effectively_active`.
+Owner: bypass Group/direct restriction (dalam Project sendiri), tetap tunduk business invariant + lifecycle + concurrency. Co-Owner: tidak bypass. Comment: `can_comment = can_read_card AND has(card.comment) AND card.is_effectively_active`. Edit comment: `can_comment_update = has(card.comment.update) AND activity.actor_user_id == current_user_id AND card.is_effectively_active` — kepemilikan komentar (BR-034A) adalah business invariant, berlaku untuk seluruh actor termasuk Owner (bukan grant Group/direct yang di-bypass Owner).
