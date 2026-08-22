@@ -98,13 +98,13 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
     await milestoneRepo.archiveMilestone(PROJECT, { milestoneId: "ms_l", expectedVersion: 1, actorUserId: OWNER });
 
     await expect(
-      repo.updateMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_r2", expectedVersion: 1, actorUserId: OWNER, name: "X" }),
+      repo.updateMilestoneLabel(PROJECT, { labelId: "ml_r2", expectedVersion: 1, actorUserId: OWNER, name: "X" }),
     ).rejects.toBeInstanceOf(AncestorNotActiveError);
     await expect(
-      repo.archiveMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_r2", expectedVersion: 1, actorUserId: OWNER }),
+      repo.archiveMilestoneLabel(PROJECT, { labelId: "ml_r2", expectedVersion: 1, actorUserId: OWNER }),
     ).rejects.toBeInstanceOf(AncestorNotActiveError);
     await expect(
-      repo.deleteMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_r2", expectedVersion: 1, actorUserId: OWNER }),
+      repo.deleteMilestoneLabel(PROJECT, { labelId: "ml_r2", expectedVersion: 1, actorUserId: OWNER }),
     ).rejects.toBeInstanceOf(AncestorNotActiveError);
 
     const row = await project_client_query("SELECT name, version FROM milestone_labels WHERE id = 'ml_r2'", []);
@@ -130,12 +130,12 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
     await seedChain();
     await seedLabel("ml_ar", { archivedAt: T0 });
     await expect(
-      repo.updateMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_ar", expectedVersion: 1, actorUserId: OWNER, name: "Gagal" }),
+      repo.updateMilestoneLabel(PROJECT, { labelId: "ml_ar", expectedVersion: 1, actorUserId: OWNER, name: "Gagal" }),
     ).rejects.toBeInstanceOf(LabelInvalidStateError);
 
     await seedLabel("ml_de", { deletedAt: T0 });
     await expect(
-      repo.deleteMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_de", expectedVersion: 1, actorUserId: OWNER }),
+      repo.deleteMilestoneLabel(PROJECT, { labelId: "ml_de", expectedVersion: 1, actorUserId: OWNER }),
     ).rejects.toBeInstanceOf(LabelInvalidStateError);
   });
 
@@ -143,7 +143,7 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
     await seedChain();
     await seedLabel("ml_v");
     await expect(
-      repo.updateMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_v", expectedVersion: 99, actorUserId: OWNER, name: "Tabrak" }),
+      repo.updateMilestoneLabel(PROJECT, { labelId: "ml_v", expectedVersion: 99, actorUserId: OWNER, name: "Tabrak" }),
     ).rejects.toBeInstanceOf(LabelVersionConflictError);
     const row = await project_client_query("SELECT name, version FROM milestone_labels WHERE id = 'ml_v'", []);
     expect(row.rows[0]).toMatchObject({ name: "L ml_v", version: 1 });
@@ -153,7 +153,7 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
   it("[INV-LIFE-002] restore ARCHIVED saat ancestor ACTIVE → sukses; saat Project ARCHIVED → ditolak", async () => {
     await seedChain();
     await seedLabel("ml_ok", { archivedAt: T0 });
-    const restored = await repo.restoreMilestoneLabel(PROJECT, "ms_l", {
+    const restored = await repo.restoreMilestoneLabel(PROJECT, {
       labelId: "ml_ok",
       expectedVersion: 1,
       actorUserId: OWNER,
@@ -166,14 +166,14 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
     await seedChain({ projectArchivedAt: T0 });
     await seedLabel("ml_blk", { archivedAt: T0 });
     await expect(
-      repo.restoreMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_blk", expectedVersion: 1, actorUserId: OWNER }),
+      repo.restoreMilestoneLabel(PROJECT, { labelId: "ml_blk", expectedVersion: 1, actorUserId: OWNER }),
     ).rejects.toBeInstanceOf(AncestorNotActiveError);
   });
 
   it("[B.5] archive/delete menyimpan previous_state; patch kosong → VALIDATION_ERROR; label tidak ada → NOT_FOUND", async () => {
     await seedChain();
     await seedLabel("ml_ad");
-    await repo.archiveMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_ad", expectedVersion: 1, actorUserId: OWNER });
+    await repo.archiveMilestoneLabel(PROJECT, { labelId: "ml_ad", expectedVersion: 1, actorUserId: OWNER });
     const all = await labelActivities("ml_ad");
     expect(all).toHaveLength(1); // hanya archived — label di-seed langsung, bukan via create
     expect(all[0]!.action).toBe("milestone_label.archived");
@@ -181,11 +181,11 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
 
     await seedLabel("ml_e");
     await expect(
-      repo.updateMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_e", expectedVersion: 1, actorUserId: OWNER, name: "L ml_e" }),
+      repo.updateMilestoneLabel(PROJECT, { labelId: "ml_e", expectedVersion: 1, actorUserId: OWNER, name: "L ml_e" }),
     ).rejects.toBeInstanceOf(LabelValidationError);
 
     await expect(
-      repo.archiveMilestoneLabel(PROJECT, "ms_l", { labelId: "ml_none", expectedVersion: 1, actorUserId: OWNER }),
+      repo.archiveMilestoneLabel(PROJECT, { labelId: "ml_none", expectedVersion: 1, actorUserId: OWNER }),
     ).rejects.toBeInstanceOf(LabelNotFoundError);
   });
 });

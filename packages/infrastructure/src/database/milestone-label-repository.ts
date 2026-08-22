@@ -99,10 +99,8 @@ export class DrizzleMilestoneLabelRepository implements MilestoneLabelRepository
 
   async updateMilestoneLabel(
     projectId: string,
-    milestoneId: string,
     input: UpdateLabelInput,
   ): Promise<MilestoneLabelRecord> {
-    void milestoneId;
     return this.commitMutation(input.labelId, input.expectedVersion, input.actorUserId, "update", (label) => {
       const changes: Record<string, { before: unknown; after: unknown }> = {};
       if (input.name !== undefined) {
@@ -119,28 +117,22 @@ export class DrizzleMilestoneLabelRepository implements MilestoneLabelRepository
 
   async archiveMilestoneLabel(
     projectId: string,
-    milestoneId: string,
     input: LabelLifecycleInput,
   ): Promise<MilestoneLabelRecord> {
-    void milestoneId;
     return this.commitMutation(input.labelId, input.expectedVersion, input.actorUserId, "archive");
   }
 
   async restoreMilestoneLabel(
     projectId: string,
-    milestoneId: string,
     input: LabelLifecycleInput,
   ): Promise<MilestoneLabelRecord> {
-    void milestoneId;
     return this.commitMutation(input.labelId, input.expectedVersion, input.actorUserId, "restore");
   }
 
   async deleteMilestoneLabel(
     projectId: string,
-    milestoneId: string,
     input: LabelLifecycleInput,
   ): Promise<MilestoneLabelRecord> {
-    void milestoneId;
     return this.commitMutation(input.labelId, input.expectedVersion, input.actorUserId, "delete");
   }
 

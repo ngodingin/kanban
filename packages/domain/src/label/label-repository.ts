@@ -64,10 +64,11 @@ export interface MilestoneLabelRepository {
   ): Promise<MilestoneLabelRecord[]>;
 
   createMilestoneLabel(projectId: string, milestoneId: string, input: CreateLabelInput): Promise<MilestoneLabelRecord>;
-  updateMilestoneLabel(projectId: string, milestoneId: string, input: UpdateLabelInput): Promise<MilestoneLabelRecord>;
-  archiveMilestoneLabel(projectId: string, milestoneId: string, input: LabelLifecycleInput): Promise<MilestoneLabelRecord>;
-  restoreMilestoneLabel(projectId: string, milestoneId: string, input: LabelLifecycleInput): Promise<MilestoneLabelRecord>;
-  deleteMilestoneLabel(projectId: string, milestoneId: string, input: LabelLifecycleInput): Promise<MilestoneLabelRecord>;
+  /** Mutasi tidak menerima milestoneId — parent di-resolve dari row Label (sumber kebenaran). */
+  updateMilestoneLabel(projectId: string, input: UpdateLabelInput): Promise<MilestoneLabelRecord>;
+  archiveMilestoneLabel(projectId: string, input: LabelLifecycleInput): Promise<MilestoneLabelRecord>;
+  restoreMilestoneLabel(projectId: string, input: LabelLifecycleInput): Promise<MilestoneLabelRecord>;
+  deleteMilestoneLabel(projectId: string, input: LabelLifecycleInput): Promise<MilestoneLabelRecord>;
 }
 
 export interface BoardLabelRepository {

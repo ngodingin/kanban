@@ -121,7 +121,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
         throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
       }
       const repository = new DrizzleMilestoneLabelRepository(ctx.database);
-      const updated = await repository.updateMilestoneLabel(projectId, c.req.param("milestone_id"), {
+      const updated = await repository.updateMilestoneLabel(projectId, {
         labelId: c.req.param("label_id"),
         expectedVersion,
         actorUserId: ctx.userId,
@@ -130,6 +130,34 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       return { label: labelPayload(updated) };
     });
   });
+
+  const lifecycleCommands = {
+    archive: (repository: DrizzleMilestoneLabelRepository, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveMilestoneLabel("project", input),
+    restore: (repository: DrizzleMilestoneLabelRepository, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreMilestoneLabel("project", input),
+    delete: (repository: DrizzleMilestoneLabelRepository, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteMilestoneLabel("project", input),
+  } as const;
+
+  for (const [action, command] of Object.entries(lifecycleCommands)) {
+    router.post(`/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id/${action}`, async (c) => {
+      return withErrorHandling(c, async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const ctx = await deps.openProjectContext(c.req.raw, projectId);
+        assertOwnerInterim(ctx);
+        const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+        const repository = new DrizzleMilestoneLabelRepository(ctx.database);
+        const record = await command(repository, {
+          labelId: c.req.param("label_id"),
+          expectedVersion,
+          actorUserId: ctx.userId,
+        });
+        return { label: labelPayload(record) };
+      });
+    });
+  }
 
   return router;
 }
