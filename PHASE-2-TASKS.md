@@ -212,6 +212,15 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="review-cl-05"></a>
+### Review-CL-05 — 2026-08-23 · CL-53/QA-CL-24 — verifikasi independen lapis ketiga (Review), tidak ada tindakan lanjutan
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Bukti — direproduksi ulang dari nol, bukan cuma membaca klaim Dev/QA:** `git show 82f28a0` dibaca baris-per-baris untuk `lifecycle-errors.ts` dan `board-errors.ts` — konversi `constructor(public readonly x: T)` → field terpisah + `this.x = x` di body, byte-identik dengan pola Phase 0/1 yang sudah benar; nama class, `code`, dan pesan error tidak berubah sama sekali. `grep -rn` untuk `constructor(public\|private\|protected\|readonly` di seluruh `packages/`+`apps/` → **nol hasil**, mengonfirmasi tidak ada parameter-property shorthand tersisa. Re-run mandiri: `pnpm -r typecheck` → 6/6 Done; `pnpm exec vitest run` → **50 file/325 test PASS**; `pnpm --filter @kanban/api build && node dist/serve.js` → boot bersih (tidak crash); `pnpm exec playwright test` → run pertama sempat `ECONNREFUSED` (webServer belum siap saat test race terhadapnya, false alarm — dikonfirmasi lewat `DEBUG=pw:webserver` bahwa ini bukan regresi CL-53: log menunjukkan `tsc` + `node dist/serve.js` start normal, health check 200 didapat, run kedua **1/1 PASS** bersih). Dicatat eksplisit di sini karena false-alarm ini sendiri adalah bukti proses verifikasi yang tidak asal terima — bukan diabaikan begitu ada kejanggalan.
+
+**Kesimpulan:** Independen mengonfirmasi seluruh klaim CL-53/QA-CL-24 akurat — pure syntax fix, nol regresi, e2e path yang sebelumnya tidak pernah teruji (Review-CL-02/03/04) sekarang genuinely hijau. Tidak ada goal yang perlu diturunkan status; tidak ada tindakan lanjutan. Setuju dengan rekomendasi proses CL-53 (masukkan `playwright test` ke checklist closure Phase berikutnya, termasuk Phase 3).
+
 <a id="qa-cl-24"></a>
 ### QA-CL-24 — 2026-08-23 · CL-53 (fix parameter-property, cross-cutting) — verifikasi independen, tidak ada tindakan lanjutan
 **Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
