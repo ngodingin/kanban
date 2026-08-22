@@ -97,7 +97,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 3.4.1 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P0 | `GET /api/v1/projects/:project_id/milestones/:milestone_id/labels` + `POST .../labels` — pakai `RequestPipeline`, Owner-only interim untuk create (Prinsip #2), balikan `{data:{labels:[...]}}`/`{data:{label:{...}}}` konsisten C.2. | [02-SPEC C.11](docs/02-SPEC.md) | 3.3 |
-| 3.4.2 | ⬜️ | — | 0 | P1 | `PATCH .../labels/:label_id` — field `name` saja (C.15), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR`. | [02-SPEC C.11](docs/02-SPEC.md), C.15, C.2 | 3.3, 3.4.1 |
+| 3.4.2 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P1 | `PATCH .../labels/:label_id` — field `name` saja (C.15), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR`. | [02-SPEC C.11](docs/02-SPEC.md), C.15, C.2 | 3.3, 3.4.1 |
 | 3.4.3 | ⬜️ | — | 0 | P1 | `POST .../labels/:label_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama Milestone (TASK-2.3). | [02-SPEC C.11](docs/02-SPEC.md), A.3 | 3.3, 3.4.1 |
 
 **Test:** Integration — create tanpa identitas ditolak; create pada Milestone/Project non-ACTIVE ditolak; read tanpa membership → `PROJECT_ACCESS_DENIED`; mutasi oleh non-Owner → `PERMISSION_DENIED`; version mismatch → `VERSION_CONFLICT`; Project-boundary — Label Project lain tidak pernah bocor/tersentuh.
@@ -199,6 +199,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-10"></a>
+### CL-10 — 2026-08-23 · goal 3.4.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Milestone Label
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 54 file / **349** test lulus (4 test integration baru `apps/api/test/milestone-labels-patch.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `PATCH /v1/projects/:p/milestones/:m/labels/:label_id` — Owner-only interim; hanya field `name` + expected_version; field lain → VALIDATION_ERROR (C.15); Activity `milestone_label.updated{changes:{name:{before,after}}}` diverifikasi.
+**Catatan:** Test negatif: AC-020 tanpa perubahan; PERMISSION_DENIED non-Owner member; RESOURCE_NOT_FOUND.
+
+<a id="cl-09"></a>
+### CL-09 — 2026-08-23 · goal 3.4.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 3.4.2 `⬜️/—/0/P1`, dependency `3.3, 3.4.1` → keduanya `🔎/80%` (commit 9528895, 55a5f68; suite 345 hijau).
+**Catatan:** PATCH hanya field `name` + expected_version; pola sama PATCH List.
 
 <a id="cl-08"></a>
 ### CL-08 — 2026-08-23 · goal 3.4.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint GET list + POST Milestone Label

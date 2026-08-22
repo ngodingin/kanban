@@ -8,7 +8,7 @@ import {
   type MilestoneLabelRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface MilestoneLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -98,6 +98,37 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       });
       return { label: labelPayload(created) };
     }, 201);
+  });
+
+  router.patch("/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const expectedVersion = readExpectedVersionField(body);
+      for (const key of Object.keys(body)) {
+        if (key !== "name" && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dapat diubah via PATCH Label (C.15).`,
+            400,
+          );
+        }
+      }
+      if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim().length === 0)) {
+        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
+      }
+      const repository = new DrizzleMilestoneLabelRepository(ctx.database);
+      const updated = await repository.updateMilestoneLabel(projectId, c.req.param("milestone_id"), {
+        labelId: c.req.param("label_id"),
+        expectedVersion,
+        actorUserId: ctx.userId,
+        ...(body.name === undefined ? {} : { name: (body.name as string).trim() }),
+      });
+      return { label: labelPayload(updated) };
+    });
   });
 
   return router;
