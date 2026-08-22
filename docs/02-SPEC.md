@@ -151,6 +151,7 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 - **BR-043** Otorisasi MUST dievaluasi **per-operasi** — `card.read` MUST NOT diasumsikan memberi `card.update`, `card.move`, `card.delete`, dsb.
 - **BR-044** `card.move` adalah permission tersendiri, terpisah dari `card.update` — karena Move adalah state transition yang lebih consequential.
 - **BR-045** Creator & Assignee pada Card **bukan permission grant**. Menjadi creator/assignee TIDAK otomatis memberi hak update/delete — hak tetap berasal dari scoped Group/direct Permission.
+- **BR-045A** Domain command Card (`archive`/`restore`/`delete`/`update`/`move`) MUST dievaluasi murni dari grant permission + state Card saat ini, BUKAN dari riwayat siapa aktor sebelumnya. `card.restore` berlaku untuk Card manapun yang berstatus ARCHIVED terlepas dari siapa yang meng-archive-nya — bukan hanya oleh aktor yang sama. Ini menegaskan BR-045 (bukan aturan baru) dan mencegah Card terjebak permanen ARCHIVED apabila actor yang meng-archive kehilangan membership atau tidak tersedia.
 - **BR-046** Lifecycle entity selalu menang atas permission: walau User punya `card.delete`, jika Card DELETED, seluruh operasi mutasi tetap DENY.
 
 ## A.11 Card Visibility Scope
