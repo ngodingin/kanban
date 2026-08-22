@@ -10,6 +10,7 @@ import {
   loadAppConfig,
   newProjectId,
   provisionProjectWithMapping,
+  RequestPipeline,
   SqliteProjectDatabaseResolver,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
@@ -82,6 +83,16 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
           listProjectSummaries(globalClient, new SqliteProjectDatabaseResolver(globalClient), {
             create: () => createDevProjectClientFromEnv(),
           }, userId),
+        openProjectContext: async (request, projectId) => {
+          const pipeline = new RequestPipeline({
+            identityResolver: resolver,
+            globalClient,
+            databaseResolver: new SqliteProjectDatabaseResolver(globalClient),
+            projectClientFactory: { create: () => createDevProjectClientFromEnv() },
+          });
+          const ctx = await pipeline.run(request, projectId);
+          return { userId: ctx.identity.userId, database: ctx.database };
+        },
       };
       projectDeps = deps;
     }

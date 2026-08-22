@@ -76,7 +76,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.3.1 | 🔎 | [CL-06](#cl-06)<br>[CL-05](#cl-05) | 80 | P0 | `POST /api/v1/projects` — resolve identity (tanpa `RequestPipeline` project-step karena Project belum ada), generate `project_id` ULID, panggil `provisionProjectWithMapping` (1.2), balikan `{ data }` sesuai C.2/C.4. Baca `Idempotency-Key` (`extractIdempotencyKey`, `packages/contracts/src/http-mapping.ts`) — minimal: request tanpa header tetap jalan normal; request dengan header yang sama diproses ulang (dedupe store persisten dicatat sebagai catatan terbuka, bukan blocker Phase 1) | [02-SPEC C.4](docs/02-SPEC.md), FR-001; [C.3](docs/02-SPEC.md) | 1.1, 1.2 |
 | 1.3.2 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | `GET /api/v1/projects` — list seluruh Project yang membership User masih aktif (`project_memberships` Global DB), untuk masing-masing baca status ringkas dari `project_state` Project DB (bukan transaksi lintas-DB, sesuai [03-ENG A.4](docs/03-ENGINEERING.md)) | [02-SPEC C.4](docs/02-SPEC.md) | 1.2 |
-| 1.3.3 | ⬜️ | — | 0 | P0 | `GET /api/v1/projects/:project_id` — pakai `RequestPipeline` (`packages/infrastructure/src/pipeline/pipeline.ts`, hasil 0.9) untuk identity+membership+resolve DB, baca `project_state` via `ProjectRepository.getProjectState` | [02-SPEC C.4](docs/02-SPEC.md) | 1.1 |
+| 1.3.3 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P0 | `GET /api/v1/projects/:project_id` — pakai `RequestPipeline` (`packages/infrastructure/src/pipeline/pipeline.ts`, hasil 0.9) untuk identity+membership+resolve DB, baca `project_state` via `ProjectRepository.getProjectState` | [02-SPEC C.4](docs/02-SPEC.md) | 1.1 |
 | 1.3.4 | ⬜️ | — | 0 | P1 | `PATCH /api/v1/projects/:project_id` — hanya field `name` (Generic PATCH tetap dilarang mengubah `id/project_id/creator_user_id/created_at/version/archived_at/deleted_at`, [02-SPEC C.15](docs/02-SPEC.md)), wajib `expected_version`, otorisasi Owner-only interim (lihat "Prinsip Phase 1") sebelum panggil `updateProjectName` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), BR-035, BR-037 | 1.1, 1.3.3 |
 
 **Test:** Integration — create tanpa identitas ditolak; create menghasilkan `project_state` ACTIVE + Activity `project.created` + Owner Membership (regresi 1.2) via endpoint; list hanya mengembalikan Project dengan membership aktif User (tidak bocor Project lain — Project-boundary check); read Project tanpa membership → `PROJECT_ACCESS_DENIED`; update oleh non-Owner → `PERMISSION_DENIED`; update dengan `expected_version` salah → `VERSION_CONFLICT`; update field terlarang (mis. `version` di body) diabaikan/ditolak.
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-10"></a>
+### CL-10 — 2026-08-22 · goal 1.3.3 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm vitest run` → 11 file / 58 test lulus, termasuk `apps/api/test/projects-detail.test.ts` 4/4: positif member baca detail via RequestPipeline asli + `getProjectState`, negatif non-member → PROJECT_ACCESS_DENIED 403 tanpa data terungkap, negatif registry tak dikenal → RESOURCE_NOT_FOUND 404, negatif tanpa identitas → TOKEN_EXPIRED 401. `pnpm lint` bersih; `pnpm typecheck` lulus.
+**Catatan:** Route GET `/v1/projects/:project_id` memakai `openProjectContext(request, projectId)` yang di-wire ke `RequestPipeline` penuh (identity → project+membership → resolve DB). Response `{data:{project:{id,name,createdAt,updatedAt,archivedAt,deletedAt,version}}}` — penamaan field camelCase konsisten kodebase; C.4 tidak mengunci nama field detail.
+
+<a id="cl-09"></a>
+### CL-09 — 2026-08-22 · goal 1.3.3 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.3.3 `⬜️/0`, dependency 1.1 ✅ sisi Dev (CL-02); HEAD `0df3743`, working tree bersih. Goal memandu memakai `RequestPipeline` penuh (identity+membership+resolve DB) lalu `getProjectState`.
+**Catatan:** Deps route diperluas dengan `openProjectContext(request, projectId)` yang membungkus RequestPipeline; wiring dev menyusun pipeline dari komponen Phase 0. Response `{data:{project:{...state}}}`; project tanpa `project_state` → RESOURCE_NOT_FOUND 404.
 
 <a id="cl-08"></a>
 ### CL-08 — 2026-08-22 · goal 1.3.2 selesai sisi Dev (🔄 → 🔎 · 80%)

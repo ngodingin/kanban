@@ -8,11 +8,13 @@ import {
   type ErrorEnvelope,
 } from "@kanban/contracts";
 import {
+  DrizzleProjectRepository,
   PipelineError,
   ResolveIdentityStep,
   type ProjectSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
+import type { Client } from "@libsql/client";
 
 export interface CreateProjectInput {
   projectId: string;
@@ -20,11 +22,17 @@ export interface CreateProjectInput {
   creatorUserId: string;
 }
 
+export interface OpenProjectContext {
+  userId: string;
+  database: Client;
+}
+
 export interface ProjectRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
   newProjectId(): string;
   createProject(input: CreateProjectInput): Promise<void>;
   listProjects(userId: string): Promise<ProjectSummary[]>;
+  openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
 }
 
 const MAX_PROJECT_NAME_LENGTH = 255;
@@ -92,6 +100,36 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
       }).run(c.req.raw);
       const items = await deps.listProjects(identity.userId);
       return c.json(ok({ projects: items }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.get("/v1/projects/:project_id", async (c) => {
+    try {
+      const deps = getDeps();
+      const ctx = await deps.openProjectContext(c.req.raw, c.req.param("project_id"));
+      const repository = new DrizzleProjectRepository(ctx.database);
+      const state = await repository.getProjectState(c.req.param("project_id"));
+      if (!state) {
+        throw new PipelineError(
+          "RESOURCE_NOT_FOUND",
+          `project_state ${c.req.param("project_id")} tidak ditemukan.`,
+          404,
+        );
+      }
+      return c.json(ok({
+        project: {
+          id: state.projectId,
+          name: state.name,
+          createdAt: state.createdAt,
+          updatedAt: state.updatedAt,
+          archivedAt: state.archivedAt,
+          deletedAt: state.deletedAt,
+          version: state.version,
+        },
+      }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);
