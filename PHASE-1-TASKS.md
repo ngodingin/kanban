@@ -1,6 +1,6 @@
 # Phase 1 — Project · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.5.0 (lihat Closure Log Review-CL-02/05/06/07/08/09/10/11 untuk riwayat amandemen sejak generate).
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.5.1 (lihat Closure Log Review-CL-02/05/06/07/08/09/10/11/12/13 untuk riwayat amandemen sejak generate).
 > Scope batas: [04-DELIVERY C.1 "Phase 1"](docs/04-DELIVERY.md). Acuan utama: [02-SPEC](docs/02-SPEC.md) Part A (A.1–A.3, A.7, A.8, A.10, A.12, A.15, A.16), Part B (B.1–B.3), Part C (C.4, C.12, C.13), Part D; [03-ENGINEERING](docs/03-ENGINEERING.md) Part A (A.4–A.7), Part B (B.1–B.3).
 > **Konteks repo saat digenerate:** Phase 0 selesai (34/34 goal ✅, lihat [PHASE-0-TASKS.md](PHASE-0-TASKS.md)). Skeleton `apps/api`, `packages/{domain,infrastructure,contracts,shared}` sudah ada dan dipakai sebagai baseline path di bawah — lihat referensi file konkret per goal. Global DB schema (0.4) dan Project DB schema (0.5) SUDAH memuat seluruh tabel yang dibutuhkan Phase 1 (`project_memberships`, `permissions`, `permission_groups`, `group_permissions`, `membership_group_assignments`, `membership_permission_assignments`, `invitations`, `invitation_group_assignments`, `project_state`, `activities`); **Phase 1 tidak butuh migration Drizzle baru**, hanya query/domain-command/endpoint layer + (mungkin) data seed idempotent.
 >
@@ -184,6 +184,17 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 ---
 
+## TASK-1.12 — Concurrency robustness: busy-retry seragam untuk Global DB writes (Review-CL-12 Temuan Baru 1)  (dep: — , keputusan teknis murni AGENTS.md §10 poin 3, non-blocking correctness)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 1.12.1 | ⬜️ | [Review-CL-13](#review-cl-13) | 0 | P1 | Seragamkan seluruh `db.transaction()` di `packages/infrastructure/src/database/project-admin.ts` (4 pemanggilan: `createPermissionGroup`, `updatePermissionGroup`, `createInvitation`, `acceptInvitation`) dan `packages/infrastructure/src/provisioning/provision.ts` (2 pemanggilan: `provisionProjectDatabase`, `registerProjectWithOwnerMembership`) agar memakai pola retry `SQLITE_BUSY` yang sama seperti `runInWriteTransaction` (`packages/infrastructure/src/database/transaction.ts`, dipakai `project-repository.ts`/TASK-1.1) — boleh helper baru yang menerima callback Drizzle transaction (bukan raw `execute()` seperti `Tx` existing, karena kode di kedua file memakai Drizzle query builder), asalkan retry+delay konsisten dan `SQLITE_BUSY` tidak lagi bocor sebagai 500 mentah ke client | [03-ENG A.6](docs/03-ENGINEERING.md) (pola existing, bukan amandemen baru) | — |
+
+**Test:** Reproduksi 2 request konkuren pada operasi yang sama (mis. `acceptInvitation` untuk invitation+user sama, atau `createPermissionGroup` ganda) → salah satu tetap sukses, yang lain **TIDAK** menerima pesan driver mentah (`SQLITE_BUSY...`) — baik lewat retry-hingga-sukses, atau lewat mapping ke error domain yang bersih (bukan generic 500 `INVALID_STATE` berisi teks internal). Regresi: 29 file/154 test existing tetap PASS.
+**DoD:** Tidak ada `db.transaction()` tanpa busy-handling di kedua file; perilaku fungsional existing (BR-054A/B, atomicity 1.7.3, dst) tidak berubah — murni penguatan robustness.
+
+---
+
 ## Exit Criteria Phase 1 (syarat mulai Phase 2)
 - Project CRUD penuh (create/read/update/archive/restore/delete) via domain command, bukan generic PATCH untuk field terkontrol.
 - Setiap Project baru punya tepat satu Owner Membership sejak commit provisioning (FR-002).
@@ -208,12 +219,22 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 - ~~Review-CL-10 Temuan 4 — revoked member tidak bisa rejoin (constraint Phase 0)~~ → **DISELESAIKAN 2026-08-22:** **BR-054B** ditambahkan (A.12) — accept invitation REAKTIVASI Membership revoked, bukan menolak permanen; SOT dinaikkan ke 2.5.0 melalui Review-CL-11. Termasuk dalam scope goal 1.9.2 yang dibuka kembali.
 - ~~Review-CL-10 Temuan 3 — `updatePermissionGroup` tidak atomik penuh~~ → **DISELESAIKAN 2026-08-22 (rekomendasi kode, tanpa amandemen SOT):** goal 1.7.3 dibuka kembali ✅→⚠️ untuk Dev menggabungkan operasi ke satu transaksi.
 - ~~Review-CL-10 Temuan 5 — DRY try/catch 17× + observasi arsitektur~~ → **DITINDAKLANJUTI SEBAGIAN 2026-08-22:** wrapper error-handling dijadikan goal baru **1.11.1** (P3, non-blocking). Observasi pola DI ganda dan ukuran modul `project-admin.ts` TIDAK dijadikan goal (murni catatan arsitektur untuk pertimbangan fase mendatang, bukan cacat yang perlu diperbaiki sekarang).
+- ~~Review-CL-12 Temuan Baru 1 — `SQLITE_BUSY` bocor mentah, tidak ada busy-retry di `project-admin.ts`/`provision.ts`~~ → **DISELESAIKAN 2026-08-22 (manusia setuju rekomendasi Review):** goal baru **1.12.1** dibuka (P1) untuk Dev menyeragamkan pola retry seperti `runInWriteTransaction`. Keputusan teknis murni (AGENTS.md §10 poin 3) — tidak menyentuh SOT.
+- ~~Review-CL-12 Temuan Baru 2 — path `revoke Invitation` tidak cocok C.13~~ → **DISELESAIKAN 2026-08-22:** C.13 diamandemen mengikuti path implementasi (nested `/projects/:project_id/invitations/:invitation_id/revoke`); SOT dinaikkan ke 2.5.1 melalui Review-CL-13 (patch — koreksi dokumentasi, bukan perubahan perilaku).
 
 ---
 
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="review-cl-13"></a>
+### Review-CL-13 — 2026-08-22 · amandemen 02-SPEC (2.5.0 → 2.5.1): koreksi path revoke Invitation; goal 1.12.1 dibuka untuk busy-retry
+**Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Manusia menyetujui kedua rekomendasi Review-CL-12 ("ya sesuai dengan rekomendasi kamu").
+**Perubahan SOT:** `docs/02-SPEC.md` C.13 — path revoke diubah dari `POST /api/v1/invitations/:invitation_id/revoke` (flat) menjadi `POST /api/v1/projects/:project_id/invitations/:invitation_id/revoke` (nested, mengikuti implementasi `apps/api/src/routes/project-admin.ts` yang sudah benar & teruji) + kalimat penjelas kenapa cuma `accept` yang flat. `docs/01-PRODUCT.md` §0.4: `SPEC_VERSION` 2.5.0 → **2.5.1** (patch — koreksi dokumentasi mengikuti kode, tidak ada perubahan perilaku).
+**Tindak lanjut (implementasi, bukan tugas Review):** Goal baru **1.12.1** dibuka (TASK-1.12, baru) untuk Temuan Baru 1 Review-CL-12 (busy-retry seragam) — keputusan teknis murni (AGENTS.md §10 poin 3), tidak perlu amandemen SOT karena murni penguatan mekanisme existing (03-ENG A.6 sudah merekomendasikan `BEGIN IMMEDIATE`/retry, goal ini cuma menegakkannya konsisten di 2 file yang sebelumnya luput). Prior `P1` (severity tinggi — bocor ke seluruh Global DB write path — tapi tidak memblokir korektnya data, jadi tidak menghalangi goal lain).
+**Catatan:** Tidak ada goal existing yang perlu dibuka ulang untuk Temuan Baru 1 — ini gap infrastruktur cross-cutting yang sudah benar secara fungsional (data tidak korup, cuma error handling di bawah race yang kasar), bukan bug pada logika masing-masing goal (1.2.1/1.6.1/1.7.2/1.7.3/1.9.1/1.9.2 tetap valid ✅ untuk apa yang diklaim). Pola ini sama dengan bagaimana Review-CL-07 menangani gap `permissions.key` unique index — goal teknis baru, bukan reopen massal.
 
 <a id="review-cl-12"></a>
 ### Review-CL-12 — 2026-08-22 · audit closure Phase 1 (25/25 goal ✅): verifikasi perbaikan Review-CL-10/11 + 2 temuan baru

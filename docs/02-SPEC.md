@@ -467,7 +467,7 @@ Scoped direct Permission assignment:
 GET  /api/v1/projects/:project_id/invitations
 POST /api/v1/projects/:project_id/invitations
 POST /api/v1/invitations/:invitation_id/accept
-POST /api/v1/invitations/:invitation_id/revoke
+POST /api/v1/projects/:project_id/invitations/:invitation_id/revoke
 ```
 Create:
 ```json
@@ -477,7 +477,7 @@ Create:
 ```
 Setelah accept: `Invitation → Membership → scoped Permission Group assignments` otomatis, tanpa assignment kedua kali. Accept MUST menegakkan BR-054A (email match) dan BR-054B (reactivate Membership ter-revoke, bukan row baru).
 
-`GET /invitations` mengembalikan seluruh Invitation Project (termasuk yang sudah accepted/revoked/expired) untuk keperluan manajemen Owner — tidak ada endpoint terpisah untuk "pending only", client MAY filter dari `accepted_at`/`revoked_at`/`expires_at` pada response. `POST /invitations/:invitation_id/revoke` men-set `invitations.revoked_at`; invitation yang sudah accepted MUST NOT dapat di-revoke (`INVALID_STATE`).
+`GET /invitations` mengembalikan seluruh Invitation Project (termasuk yang sudah accepted/revoked/expired) untuk keperluan manajemen Owner — tidak ada endpoint terpisah untuk "pending only", client MAY filter dari `accepted_at`/`revoked_at`/`expires_at` pada response. `POST /invitations/:invitation_id/revoke` (nested di bawah `:project_id`, simetris dengan create/list — hanya `accept` yang flat karena dipanggil invitee tanpa konteks project) men-set `invitations.revoked_at`; invitation yang sudah accepted MUST NOT dapat di-revoke (`INVALID_STATE`).
 
 ## C.14 API Key & PAT
 ```http
