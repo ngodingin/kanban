@@ -75,7 +75,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.3.1 | 🔎 | [CL-06](#cl-06)<br>[CL-05](#cl-05) | 80 | P0 | `POST /api/v1/projects` — resolve identity (tanpa `RequestPipeline` project-step karena Project belum ada), generate `project_id` ULID, panggil `provisionProjectWithMapping` (1.2), balikan `{ data }` sesuai C.2/C.4. Baca `Idempotency-Key` (`extractIdempotencyKey`, `packages/contracts/src/http-mapping.ts`) — minimal: request tanpa header tetap jalan normal; request dengan header yang sama diproses ulang (dedupe store persisten dicatat sebagai catatan terbuka, bukan blocker Phase 1) | [02-SPEC C.4](docs/02-SPEC.md), FR-001; [C.3](docs/02-SPEC.md) | 1.1, 1.2 |
-| 1.3.2 | ⬜️ | — | 0 | P1 | `GET /api/v1/projects` — list seluruh Project yang membership User masih aktif (`project_memberships` Global DB), untuk masing-masing baca status ringkas dari `project_state` Project DB (bukan transaksi lintas-DB, sesuai [03-ENG A.4](docs/03-ENGINEERING.md)) | [02-SPEC C.4](docs/02-SPEC.md) | 1.2 |
+| 1.3.2 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | `GET /api/v1/projects` — list seluruh Project yang membership User masih aktif (`project_memberships` Global DB), untuk masing-masing baca status ringkas dari `project_state` Project DB (bukan transaksi lintas-DB, sesuai [03-ENG A.4](docs/03-ENGINEERING.md)) | [02-SPEC C.4](docs/02-SPEC.md) | 1.2 |
 | 1.3.3 | ⬜️ | — | 0 | P0 | `GET /api/v1/projects/:project_id` — pakai `RequestPipeline` (`packages/infrastructure/src/pipeline/pipeline.ts`, hasil 0.9) untuk identity+membership+resolve DB, baca `project_state` via `ProjectRepository.getProjectState` | [02-SPEC C.4](docs/02-SPEC.md) | 1.1 |
 | 1.3.4 | ⬜️ | — | 0 | P1 | `PATCH /api/v1/projects/:project_id` — hanya field `name` (Generic PATCH tetap dilarang mengubah `id/project_id/creator_user_id/created_at/version/archived_at/deleted_at`, [02-SPEC C.15](docs/02-SPEC.md)), wajib `expected_version`, otorisasi Owner-only interim (lihat "Prinsip Phase 1") sebelum panggil `updateProjectName` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), BR-035, BR-037 | 1.1, 1.3.3 |
 
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-08"></a>
+### CL-08 — 2026-08-22 · goal 1.3.2 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm vitest run` → 10 file / 54 test lulus, termasuk `apps/api/test/projects-list.test.ts` 3/3: positif list 2 project user-a dengan status ringkas benar (ACTIVE + ARCHIVED via command archive asli), negatif boundary INV-04 (project user-b tidak bocor; membership revoked di-exclude, diverifikasi ulang langsung ke `deps.listProjects`), negatif auth 401 TOKEN_EXPIRED. `pnpm lint` bersih; `pnpm typecheck` lulus.
+**Catatan:** Implementasi: `listActiveMemberships` di `global-reads.ts`; orkestrasi `listProjectSummaries` di `packages/infrastructure/src/database/project-list.ts` (membership Global → resolve mapping → baca `project_state` per Project DB, tanpa transaksi lintas-DB sesuai A.4; state hilang → RESOURCE_NOT_FOUND). Wiring dev: factory Project DB memakai `createDevProjectClientFromEnv` (TURSO_DB_URL/TURSO_DB_TOKEN) — akuisisi kredensial per-database (mint token) menyusul saat dibutuhkan deployment; catatan teknis, bukan perubahan kontrak.
+
+<a id="cl-07"></a>
+### CL-07 — 2026-08-22 · goal 1.3.2 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.3.2 `⬜️/0`, dependency 1.2 ✅ sisi Dev (CL-04); HEAD `9020380`, working tree bersih. Reference C.4 + 03-ENG A.4 dibaca ulang: list = Global DB (membership aktif) lalu baca ringkas per Project DB tanpa transaksi lintas-DB.
+**Catatan:** Query membership aktif baru (`listActiveMemberships`) akan ditambahkan di `global-reads.ts`; baca ringkas per-Project DB berurutan tanpa transaksi lintas-DB. Kegagalan baca satu Project DB menggagalkan request (500 INVALID_STATE) — tidak ada bentuk response "partial" di C.4, jadi tidak diarang.
 
 <a id="cl-06"></a>
 ### CL-06 — 2026-08-22 · goal 1.3.1 selesai sisi Dev (🔄 → 🔎 · 80%)

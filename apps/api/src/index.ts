@@ -4,10 +4,13 @@ import { ok } from "@kanban/contracts";
 import {
   BetterAuthIdentityResolver,
   createAuth,
+  createDevProjectClientFromEnv,
   createGlobalClient,
+  listProjectSummaries,
   loadAppConfig,
   newProjectId,
   provisionProjectWithMapping,
+  SqliteProjectDatabaseResolver,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
@@ -75,6 +78,10 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
             now: new Date().toISOString(),
           });
         },
+        listProjects: (userId) =>
+          listProjectSummaries(globalClient, new SqliteProjectDatabaseResolver(globalClient), {
+            create: () => createDevProjectClientFromEnv(),
+          }, userId),
       };
       projectDeps = deps;
     }

@@ -10,6 +10,7 @@ import {
 import {
   PipelineError,
   ResolveIdentityStep,
+  type ProjectSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
 
@@ -23,6 +24,7 @@ export interface ProjectRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
   newProjectId(): string;
   createProject(input: CreateProjectInput): Promise<void>;
+  listProjects(userId: string): Promise<ProjectSummary[]>;
 }
 
 const MAX_PROJECT_NAME_LENGTH = 255;
@@ -76,6 +78,20 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         creatorUserId: identity.userId,
       });
       return c.json(ok({ id: projectId, name, status: "ACTIVE", version: 1 }), 201);
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.get("/v1/projects", async (c) => {
+    try {
+      const deps = getDeps();
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      const items = await deps.listProjects(identity.userId);
+      return c.json(ok({ projects: items }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);

@@ -33,6 +33,31 @@ export async function getProject(client: Client, projectId: string): Promise<Pro
   };
 }
 
+export async function listActiveMemberships(client: Client, userId: string): Promise<ProjectMembershipRecord[]> {
+  const db = drizzle(client);
+  const rows = await db
+    .select()
+    .from(projectMemberships)
+    .where(and(eq(projectMemberships.userId, userId), isNull(projectMemberships.revokedAt)))
+    .run();
+  return rows.rows.map((row) => {
+    const r = row as unknown as {
+      id: string;
+      project_id: string;
+      user_id: string;
+      created_at: string;
+      revoked_at: string | null;
+    };
+    return {
+      id: r.id,
+      projectId: r.project_id,
+      userId: r.user_id,
+      createdAt: r.created_at,
+      revokedAt: r.revoked_at,
+    };
+  });
+}
+
 export async function getMembership(
   client: Client,
   input: { projectId: string; userId: string },
