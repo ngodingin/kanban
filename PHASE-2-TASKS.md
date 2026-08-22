@@ -79,7 +79,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.3.1 | 🔎 | [CL-06](#cl-06)<br>[CL-05](#cl-05) | 80 | P0 | `POST /api/v1/projects/:project_id/milestones` + `GET .../milestones/:milestone_id` — pakai `RequestPipeline` (identity+membership+resolve DB), Owner-only interim utk create (Prinsip #2), balikan `{data:{milestone:{...}}}` konsisten C.2 | [02-SPEC C.5](docs/02-SPEC.md), FR-014 | 2.2 |
 | 2.3.2 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | `PATCH /api/v1/projects/:project_id/milestones/:milestone_id` — field `title`/`description`/`progress`/`start_date`/`due_date` saja (C.15 generic PATCH tidak boleh ubah `id`/`version`/dst), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR` (bukan `INVALID_STATE`, konsisten SOT 2.3.0) | [02-SPEC C.5](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), [C.2](docs/02-SPEC.md) | 2.2, 2.3.1 |
-| 2.3.3 | ⬜️ | — | 0 | P1 | `POST .../milestones/:milestone_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama seperti Project (TASK-1.4) | [02-SPEC C.5](docs/02-SPEC.md), A.3 | 2.2, 2.3.1 |
+| 2.3.3 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P1 | `POST .../milestones/:milestone_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama seperti Project (TASK-1.4) | [02-SPEC C.5](docs/02-SPEC.md), A.3 | 2.2, 2.3.1 |
 
 **Test:** Integration — create tanpa identitas ditolak; create pada Project non-ACTIVE ditolak; read tanpa membership → `PROJECT_ACCESS_DENIED`; update/lifecycle oleh non-Owner → `PERMISSION_DENIED`; version mismatch → `VERSION_CONFLICT`; payload invalid (mis. `progress` bukan angka 0–100) → `VALIDATION_ERROR`; Project-boundary — Milestone Project lain tidak pernah bocor/tersentuh.
 **DoD:** Endpoint sesuai kontrak C.5; response envelope C.2; field domain-controlled tidak bisa diubah via PATCH; seluruh test di atas hijau.
@@ -210,6 +210,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-10"></a>
+### CL-10 — 2026-08-23 · goal 2.3.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint lifecycle Milestone
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 35 file / **208** test lulus (9 test integration baru `apps/api/test/milestones-lifecycle.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `POST .../milestones/:milestone_id/{archive,restore,delete}` via helper `lifecycleCommands` (pola `handleLifecycle` Project): Owner-only interim → PERMISSION_DENIED 403; `expected_version` wajib dari body → VALIDATION_ERROR 400 bila hilang/salah bentuk; response envelope `{data:{milestone}}`; Activity `previous_state` diverifikasi lewat command-level test CL-04 dan state transition di level HTTP.
+**Catatan:** Test mencakup: archive ACTIVE sukses lalu archive ulang ditolak INVALID_STATE; restore ARCHIVED saat Project ACTIVE sukses (INV-LIFE-002); restore DELETED ditolak (INV-LIFE-004); delete ACTIVE sukses lalu delete ulang ditolak; version mismatch pada ketiga action → VERSION_CONFLICT (AC-020); non-Owner member → PERMISSION_DENIED; tanpa identitas → TOKEN_EXPIRED; milestone tidak ada → RESOURCE_NOT_FOUND.
+
+<a id="cl-09"></a>
+### CL-09 — 2026-08-23 · goal 2.3.3 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.3.3 `⬜️/—/0/P1`, dependency `2.2, 2.3.1` → keduanya `🔎/80%` (commit `e084866`, `8bd1ba0`; suite 199 hijau). Pola `handleLifecycle` Project (TASK-1.4) dibaca ulang dari disk (routes/projects.ts).
+**Catatan:** Tiga endpoint lifecycle dengan pola handleLifecycle Milestone; restore lewat evaluateRestore (ancestor Project).
 
 <a id="cl-08"></a>
 ### CL-08 — 2026-08-23 · goal 2.3.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Milestone

@@ -128,8 +128,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
     });
   });
 
-  router.patch("/v1/projects/:project_id/milestones/:milestone_id", async (c) => {
-    return withErrorHandling(c, async () => {
+  router.patch("/v1/projects/:project_id/milestones/:milestone_id", async (c) => {    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -160,6 +159,34 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       return { milestone: milestonePayload(updated) };
     });
   });
+
+  const lifecycleCommands = {
+    archive: (repository: DrizzleMilestoneRepository, projectId: string, input: { milestoneId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveMilestone(projectId, input),
+    restore: (repository: DrizzleMilestoneRepository, projectId: string, input: { milestoneId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreMilestone(projectId, input),
+    delete: (repository: DrizzleMilestoneRepository, projectId: string, input: { milestoneId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteMilestone(projectId, input),
+  } as const;
+
+  for (const [action, command] of Object.entries(lifecycleCommands)) {
+    router.post(`/v1/projects/:project_id/milestones/:milestone_id/${action}`, async (c) => {
+      return withErrorHandling(c, async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const ctx = await deps.openProjectContext(c.req.raw, projectId);
+        assertOwnerInterim(ctx);
+        const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+        const repository = new DrizzleMilestoneRepository(ctx.database);
+        const record = await command(repository, projectId, {
+          milestoneId: c.req.param("milestone_id"),
+          expectedVersion,
+          actorUserId: ctx.userId,
+        });
+        return { milestone: milestonePayload(record) };
+      });
+    });
+  }
 
   return router;
 }
