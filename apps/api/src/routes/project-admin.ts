@@ -310,7 +310,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   );
 
   router.post("/v1/projects/:project_id/members/:membership_id/permission-assignments", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const membershipId = c.req.param("membership_id");
@@ -345,15 +345,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         scopeId,
         ...(visibility !== undefined ? { cardReadVisibility: visibility as string | null } : {}),
       });
-      return c.json(ok({ assignment }), 201);
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { assignment };
+    }, 201);
   });
 
   router.post("/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -366,15 +363,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         c.req.param("membership_id"),
         c.req.param("assignment_id"),
       );
-      return c.json(ok({ assignment }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { assignment };
+    });
   });
 
   router.post("/v1/projects/:project_id/invitations", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -406,15 +400,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         assignments,
         ...(raw.expires_at !== undefined ? { expiresAt: raw.expires_at as string | null } : {}),
       });
-      return c.json(ok({ invitation }), 201);
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { invitation };
+    }, 201);
   });
 
   router.get("/v1/projects/:project_id/members", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -434,15 +425,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         }
       }
       const members = await deps.listMembers(projectId, identity.userId, { ...(status !== undefined ? { status } : {}) });
-      return c.json(ok({ members }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { members };
+    });
   });
 
   router.post("/v1/projects/:project_id/members/:membership_id/revoke", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -452,11 +440,8 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       // = Owner-only (CL-25).
       await deps.assertProjectOwner(projectId, identity.userId);
       const membership = await deps.revokeMembership(projectId, c.req.param("membership_id"));
-      return c.json(ok({ membership }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { membership };
+    });
   });
 
   router.post("/v1/invitations/:invitation_id/accept", (c) =>
@@ -471,35 +456,27 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   );
 
   router.get("/v1/projects/:project_id/invitations", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
       const projectId = c.req.param("project_id");
       await deps.assertProjectOwner(projectId, identity.userId);
-      const result = await deps.listProjectInvitations(projectId);
-      return c.json(ok(result));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return await deps.listProjectInvitations(projectId);
+    });
   });
 
   router.post("/v1/projects/:project_id/invitations/:invitation_id/revoke", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
       const projectId = c.req.param("project_id");
       await deps.assertProjectOwner(projectId, identity.userId);
-      const result = await deps.revokeInvitation(projectId, c.req.param("invitation_id"));
-      return c.json(ok(result));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return await deps.revokeInvitation(projectId, c.req.param("invitation_id"));
+    });
   });
 
   return router;

@@ -123,7 +123,7 @@ async function handleLifecycle(
   deps: ProjectRoutesDeps,
   projectId: string,
   command: LifecycleCommand,
-): Promise<Response> {
+): Promise<{ project: ReturnType<typeof projectStatePayload> }> {
   // Authorization first (Implementation Rule 3), lihat QA-CL-06.
   const ctx = await deps.openProjectContext(c.req.raw, projectId);
   if (ctx.ownerUserId !== ctx.userId) {
@@ -140,14 +140,28 @@ async function handleLifecycle(
     expectedVersion,
     actorUserId: ctx.userId,
   });
-  return c.json(ok({ project: projectStatePayload(state) }));
+  return { project: projectStatePayload(state) };
+}
+
+async function withErrorHandling<T>(
+  c: Context,
+  handler: () => Promise<T>,
+  successStatus: ContentfulStatusCode = 200,
+): Promise<Response> {
+  try {
+    const result = await handler();
+    return c.json(ok(result), successStatus);
+  } catch (error) {
+    const mapped = toErrorResponse(error);
+    return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+  }
 }
 
 export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
   const router = new Hono().basePath("/api");
 
   router.post("/v1/projects", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const idempotencyKey = extractIdempotencyKey(c.req.raw.headers);
       void idempotencyKey;
@@ -161,29 +175,23 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         projectName: name,
         creatorUserId: identity.userId,
       });
-      return c.json(ok({ id: projectId, name, status: "ACTIVE", version: 1 }), 201);
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { id: projectId, name, status: "ACTIVE", version: 1 };
+    }, 201);
   });
 
   router.get("/v1/projects", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
       const items = await deps.listProjects(identity.userId, readStatusFilter(c.req.query("status")));
-      return c.json(ok({ projects: items }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { projects: items };
+    });
   });
 
   router.get("/v1/projects/:project_id", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const ctx = await deps.openProjectContext(c.req.raw, c.req.param("project_id"));
       const repository = new DrizzleProjectRepository(ctx.database);
@@ -195,17 +203,14 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
           404,
         );
       }
-      return c.json(ok({
+      return {
         project: projectStatePayload(state),
-      }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      };
+    });
   });
 
   router.patch("/v1/projects/:project_id", async (c) => {
-    try {
+    return withErrorHandling(c, async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       // Authorization first (Implementation Rule 3), lihat QA-CL-06.
@@ -227,41 +232,26 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         actorUserId: ctx.userId,
         name,
       });
-      return c.json(ok({ project: projectStatePayload(state) }));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+      return { project: projectStatePayload(state) };
+    });
   });
 
   router.post("/v1/projects/:project_id/archive", async (c) => {
-    try {
-      return await handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
-        repository.archiveProject(input));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+    return withErrorHandling(c, () =>
+      handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
+        repository.archiveProject(input)));
   });
 
   router.post("/v1/projects/:project_id/restore", async (c) => {
-    try {
-      return await handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
-        repository.restoreProject(input));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+    return withErrorHandling(c, () =>
+      handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
+        repository.restoreProject(input)));
   });
 
   router.post("/v1/projects/:project_id/delete", async (c) => {
-    try {
-      return await handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
-        repository.deleteProject(input));
-    } catch (error) {
-      const mapped = toApiErrorResponse(error);
-      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
-    }
+    return withErrorHandling(c, () =>
+      handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
+        repository.deleteProject(input)));
   });
 
   return router;
