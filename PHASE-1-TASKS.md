@@ -163,7 +163,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.10.1 | ⬜️ | [Review-CL-02](#review-cl-02)<br>[Review-CL-09](#review-cl-09) | 0 | P2 | `GET /api/v1/projects/:project_id/members` — list Membership Project (`member.read`); query param opsional `status` (comma-separated, subset `active,revoked`) membatasi hasil, tanpa param kembalikan keduanya | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0, 2.4.0), FR-008 | 1.2 |
+| 1.10.1 | 🔎 | [CL-42](#cl-42)<br>[CL-41](#cl-41)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-09](#review-cl-09) | 80 | P2 | `GET /api/v1/projects/:project_id/members` — list Membership Project (`member.read`); query param opsional `status` (comma-separated, subset `active,revoked`) membatasi hasil, tanpa param kembalikan keduanya | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0, 2.4.0), FR-008 | 1.2 |
 | 1.10.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | `POST /api/v1/projects/:project_id/members/:membership_id/revoke` (`member.remove`) — set `project_memberships.revoked_at`, TIDAK menghapus data historis (`creator_user_id`/`activity.actor_user_id` tetap utuh, BR-053); tidak mencabut `membership_group_assignments`/`membership_permission_assignments` satu-per-satu — assignment tetap ada sebagai riwayat, non-applicable begitu Membership induk revoked; Owner Membership MUST NOT dapat di-revoke (Project selalu punya tepat satu Owner, FR-002) | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-053, FR-002, FR-008 | 1.2, 1.10.1 |
 
 **Test:** List tidak bocor lintas Project; revoke Membership non-Owner sukses set `revoked_at` tanpa hapus row assignment; revoke Membership yang sudah revoked → idempotent atau ditolak (INVALID_STATE — bebas dipilih Dev asal konsisten, dicatat di CL); percobaan revoke Owner Membership ditolak.
@@ -288,6 +288,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: HEAD `452dd0c`, working tree bersih; scope dikonfirmasi manusia untuk TASK-1.7–1.10 penuh (goal-per-goal sesuai dependency: 1.7.1 → 1.7.2 → 1.7.3 → 1.7.4 → 1.8.1 → 1.8.2 → 1.9.1 → 1.9.2 → 1.10.1 → 1.10.2). Dibaca ulang dari disk: 02-SPEC C.12/C.13, FR-005–011, BR-038–059, D.1–D.4, schema Global DB (global-schema.ts: permission_groups/group_permissions/membership_*_assignments/invitations/invitation_group_assignments), pola transaksi provision.ts, katalog D.1 (id ULID, lookup by key).
 **Catatan keputusan teknis interim (dicatat sejak awal, konsisten untuk seluruh scope):** authorization matrix Phase 1 mengikuti pola existing — mutasi Group/assignment/invitation/revoke = Owner-only; read (groups/members) = member aktif (setara View Project, member.read belum terisi D.2 — backlog Review-CL-03 item 1). Scope assignment Phase 1 wajib `scope_type="project"` dengan `scope_id=project_id` (BR-042B catatan revisit Phase 2/3). Revoke yang sudah revoked → idempotent (state dikembalikan apa adanya); revoke Owner Membership → INVALID_STATE 409 (invariant FR-002, bukan persoalan izin pemanggil). Entry ini mencakup transisi awal; tiap goal akan punya CL penyelesaian + commit masing-masing.
+
+<a id="cl-42"></a>
+### CL-42 — 2026-08-22 · goal 1.10.1 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 27 file / 140 test lulus, termasuk `apps/api/test/members-list.test.ts` 4/4: tanpa `status` mengembalikan keduanya (3 aktif + 1 revoked) dengan email/name ter-join; `?status=active` hanya 3 aktif, `?status=revoked` hanya 1 revoked, `?status=active,revoked` keduanya; nilai tak dikenal → 409 INVALID_STATE; membership revoked ditolak 403 (member.read hanya aktif), member Project A tidak dapat list Project B (403), daftar Project B tidak berisi member A (boundary). `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan implementasi:** Deps interface kini mengekspos `requireActiveMember` eksplisit selain `assertProjectOwner` agar pola authorization-first seragam di semua route.
+
+<a id="cl-41"></a>
+### CL-41 — 2026-08-22 · goal 1.10.1 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: HEAD `8c390e5` (TASK-1.9 lengkap sisi Dev), working tree bersih, row 1.10.1 `⬜️/0`; dependency 1.2 ✅ (QA). Dibaca ulang: C.12 amandemen 2.1.0 (GET members), FR-008, matriks otorisasi interim CL-25 (read = active member).
+**Catatan keputusan teknis:** Sesuai teks task terkini (amandemen 2.4.0): query param opsional `status` comma-separated subset `active,revoked` membatasi hasil; **tanpa parameter mengembalikan keduanya** (aktif + revoked). Nilai `status` di luar `active,revoked` → INVALID_STATE 409. Otorisasi `requireActiveMember` (member.read). Join users untuk email/name.
 
 <a id="cl-40"></a>
 ### CL-40 — 2026-08-22 · goal 1.9.2 selesai sisi Dev (🔄 → 🔎 · 80%)

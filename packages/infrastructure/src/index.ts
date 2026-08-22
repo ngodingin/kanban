@@ -36,6 +36,7 @@ export {
   getProjectOwnerId,
   hasActiveMembership,
   listPermissionGroups,
+  listProjectMembers,
   requireActiveMember,
   revokeGroupAssignment,
   revokePermissionAssignment,
@@ -45,8 +46,8 @@ export {
   type GroupAssignmentSummary,
   type InvitationSummary,
   type PermissionAssignmentSummary,
-  type PermissionGroupEntry,
   type PermissionGroupSummary,
+  type ProjectMemberSummary,
   type UpdatePermissionGroupInput,
 } from "./database/project-admin.ts";
 export { PipelineError } from "./pipeline/errors.ts";

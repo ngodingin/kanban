@@ -9,6 +9,7 @@ import {
   type InvitationSummary,
   type PermissionAssignmentSummary,
   type PermissionGroupSummary,
+  type ProjectMemberSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
 import { toApiErrorResponse } from "./projects.ts";
@@ -40,6 +41,7 @@ export interface ProjectAdminRoutesDeps {
   // Otorisasi dieksplisitkan terpisah agar route dapat menegakkan
   // "authorization first" sebelum validasi body (Implementation Rule 3).
   assertProjectOwner(projectId: string, requesterUserId: string): Promise<void>;
+  requireActiveMember(projectId: string, requesterUserId: string): Promise<void>;
   createPermissionGroup(projectId: string, input: CreatePermissionGroupPayload): Promise<PermissionGroupSummary>;
   updatePermissionGroup(
     projectId: string,
@@ -77,6 +79,11 @@ export interface ProjectAdminRoutesDeps {
     },
   ): Promise<InvitationSummary>;
   acceptInvitation(invitationId: string, userId: string): Promise<AcceptInvitationResult>;
+  listMembers(
+    projectId: string,
+    requesterUserId: string,
+    opts: { status?: Array<"active" | "revoked"> },
+  ): Promise<ProjectMemberSummary[]>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -393,6 +400,34 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         ...(raw.expires_at !== undefined ? { expiresAt: raw.expires_at as string | null } : {}),
       });
       return c.json(ok({ invitation }), 201);
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.get("/v1/projects/:project_id/members", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): member.read interim —
+      // semua member aktif boleh melihat daftar membership.
+      await deps.requireActiveMember(projectId, identity.userId);
+      const statusParam = c.req.query("status");
+      let status: Array<"active" | "revoked"> | undefined;
+      if (statusParam !== undefined) {
+        status = statusParam.split(",").map((s) => s.trim()).filter((s) => s.length > 0) as Array<"active" | "revoked">;
+        for (const s of status) {
+          if (s !== "active" && s !== "revoked") {
+            throw new PipelineError("INVALID_STATE", `Nilai status '${s}' tidak valid (hanya 'active', 'revoked').`, 409);
+          }
+        }
+      }
+      const members = await deps.listMembers(projectId, identity.userId, { ...(status !== undefined ? { status } : {}) });
+      return c.json(ok({ members }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);

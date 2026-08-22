@@ -12,6 +12,7 @@ import {
   permissions,
   projectMemberships,
   projects,
+  users,
 } from "./global-schema.ts";
 import { PipelineError } from "../pipeline/errors.ts";
 
@@ -634,4 +635,43 @@ export async function acceptInvitation(
     acceptedAt: now,
     appliedGroupAssignments: groupRows.map((r) => ({ groupId: r.groupId, scopeType: r.scopeType, scopeId: r.scopeId })),
   };
+}
+
+export interface ProjectMemberSummary {
+  membershipId: string;
+  userId: string;
+  email: string;
+  name: string;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
+// List Membership Project (C.12 amandemen 2.1.0/2.4.0, FR-008).
+// status: subset "active"/"revoked"; tanpa parameter → keduanya.
+export async function listProjectMembers(
+  globalClient: Client,
+  projectId: string,
+  opts: { status?: Array<"active" | "revoked"> } = {},
+): Promise<ProjectMemberSummary[]> {
+  const statuses = opts.status ?? ["active", "revoked"];
+  const conditions = [sql`${projectMemberships.projectId} = ${projectId}`];
+  if (!statuses.includes("active")) {
+    conditions.push(sql`${projectMemberships.revokedAt} IS NOT NULL`);
+  } else if (!statuses.includes("revoked")) {
+    conditions.push(sql`${projectMemberships.revokedAt} IS NULL`);
+  }
+  const rows = await drizzle(globalClient)
+    .select({
+      membershipId: projectMemberships.id,
+      userId: projectMemberships.userId,
+      email: users.email,
+      name: users.name,
+      createdAt: projectMemberships.createdAt,
+      revokedAt: projectMemberships.revokedAt,
+    })
+    .from(projectMemberships)
+    .innerJoin(users, eq(users.id, projectMemberships.userId))
+    .where(sql.join(conditions, sql` AND `))
+    .orderBy(asc(projectMemberships.createdAt));
+  return rows;
 }

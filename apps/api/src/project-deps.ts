@@ -8,6 +8,7 @@ import {
   createPermissionGroup,
   deletePermissionGroup,
   listPermissionGroups,
+  listProjectMembers,
   listProjectSummaries,
   newProjectId,
   provisionProjectWithMapping,
@@ -86,6 +87,7 @@ export function buildProjectAdminDeps(input: {
   const { identityResolver, globalClient } = input;
   return {
     resolveIdentity: (request) => identityResolver.resolveIdentity(request),
+    requireActiveMember: (projectId, requesterUserId) => requireActiveMember(globalClient, projectId, requesterUserId),
     listPermissionGroups: async (projectId, requesterUserId, opts) => {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listPermissionGroups(globalClient, projectId, opts);
@@ -137,5 +139,9 @@ export function buildProjectAdminDeps(input: {
         ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
       }),
     acceptInvitation: (invitationId, userId) => acceptInvitation(globalClient, { invitationId, userId }),
+    listMembers: async (projectId, requesterUserId, opts) => {
+      await requireActiveMember(globalClient, projectId, requesterUserId);
+      return listProjectMembers(globalClient, projectId, opts);
+    },
   };
 }
