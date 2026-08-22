@@ -26,7 +26,7 @@ export {
   isEffectivelyOperational,
   evaluateRestore,
 } from "./lifecycle/effective-state.ts";
-export { AncestorNotActiveError } from "./lifecycle/lifecycle-errors.ts";
+export { AncestorNotActiveError, InvalidDestinationError } from "./lifecycle/lifecycle-errors.ts";
 
 export type {
   MilestoneRepository,
@@ -76,6 +76,7 @@ export type {
   CreateCardInput,
   UpdateCardInput,
   CardLifecycleInput,
+  MoveCardInput,
 } from "./card/card-repository.ts";
 export {
   CardNotFoundError,

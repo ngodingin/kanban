@@ -51,6 +51,14 @@ export interface CardLifecycleInput {
   actorUserId: string;
 }
 
+/** BR-017 — perpindahan Card HANYA via domain command move ini. */
+export interface MoveCardInput {
+  cardId: string;
+  destinationListId: string;
+  expectedVersion: number;
+  actorUserId: string;
+}
+
 export interface CardRepository {
   getCard(projectId: string, cardId: string): Promise<CardRecord | undefined>;
 
@@ -59,4 +67,5 @@ export interface CardRepository {
   archiveCard(projectId: string, input: CardLifecycleInput): Promise<CardRecord>;
   restoreCard(projectId: string, input: CardLifecycleInput): Promise<CardRecord>;
   deleteCard(projectId: string, input: CardLifecycleInput): Promise<CardRecord>;
+  moveCard(projectId: string, input: MoveCardInput): Promise<CardRecord>;
 }

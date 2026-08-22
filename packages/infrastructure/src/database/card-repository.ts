@@ -6,10 +6,12 @@ import type {
   CardRepository,
   CreateCardInput,
   LifecycleState,
+  MoveCardInput,
   UpdateCardInput,
 } from "@kanban/domain";
 import {
   AncestorNotActiveError,
+  InvalidDestinationError,
   ListNotFoundError,
   evaluateRestore,
   isEffectivelyOperational,
@@ -70,7 +72,7 @@ export class DrizzleCardRepository implements CardRepository {
     const now = new Date().toISOString();
     return runInWriteTransaction(this.client, async (tx) => {
       // INV-LIFE-001 — chain 4 level: List → Board → Milestone → Project semua ACTIVE.
-      const chain = await loadAncestorStates(tx, input.listId);
+      const chain = await loadListContext(tx, input.listId);
       if (!isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
         throw new AncestorNotActiveError(
           "create",
@@ -127,6 +129,78 @@ export class DrizzleCardRepository implements CardRepository {
   }
 
   /**
+   * Move Card (TASK-2.10) — satu transaksi (INV-MOVE-004). Urutan validasi
+   * wajib C.8: source ada & tidak DELETED → version check duluan (BR-021,
+   * INV-MOVE tidak dievaluasi saat stale) → local ACTIVE (INV-LIFE-003) →
+   * source chain operational (INV-LIFE-001) → destination valid (ada, sama
+   * Project via isolation, ancestor ACTIVE — INV-MOVE-001/002) → milestone
+   * equality (BR-018, business invariant murni) → UPDATE + Activity atomik.
+   */
+  async moveCard(projectId: string, input: MoveCardInput): Promise<CardRecord> {
+    return runInWriteTransaction(this.client, async (tx) => {
+      const loaded = await loadCardForUpdate(tx, input.cardId);
+      if (loaded.lifecycleBefore === "DELETED") {
+        throw new CardInvalidStateError("move", "DELETED");
+      }
+      if (loaded.current.version !== input.expectedVersion) {
+        throw new CardVersionConflictError(input.expectedVersion, loaded.current.version);
+      }
+      if (loaded.lifecycleBefore !== "ACTIVE") {
+        throw new CardInvalidStateError("move", loaded.lifecycleBefore);
+      }
+
+      const sourceChain = await loadListContext(tx, loaded.current.listId);
+      if (!isEffectivelyOperational([sourceChain.listState, ...sourceChain.upperStates])) {
+        throw new AncestorNotActiveError(
+          "move",
+          `Ancestor tidak ACTIVE — Card tidak dapat dipindahkan dari List ${loaded.current.listId} (INV-LIFE-001)`,
+        );
+      }
+
+      const destination = await loadDestination(tx, input.destinationListId);      if (!isEffectivelyOperational([destination.listState, ...destination.upperStates])) {
+        throw new InvalidDestinationError(
+          `Destination List ${input.destinationListId} tidak operasional — seluruh ancestor harus ACTIVE (INV-MOVE-002)`,
+        );
+      }
+
+      if (sourceChain.boardId !== destination.boardId && sourceChain.milestoneId !== destination.milestoneId) {
+        throw new InvalidDestinationError(
+          `Move antar Board hanya dalam Milestone sama: source ${sourceChain.milestoneId ?? "-"} vs destination ${destination.milestoneId ?? "-"} (BR-018)`,
+        );
+      }
+
+      const now = new Date().toISOString();
+      const nextVersion = loaded.current.version + 1;
+      await tx.execute(
+        "UPDATE cards SET list_id = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?",
+        [input.destinationListId, now, nextVersion, input.cardId, input.expectedVersion],
+      );
+      // B.5 v1.0.2 — card.moved membawa from/to denormalisasi (list+board).
+      await tx.execute(
+        "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, 'card.moved', ?, ?)",
+        [
+          ulid(),
+          input.cardId,
+          nextVersion,
+          input.actorUserId,
+          JSON.stringify({
+            from: { list_id: loaded.current.listId, list_title: sourceChain.title, board_id: sourceChain.boardId, board_title: sourceChain.boardTitle },
+            to: { list_id: input.destinationListId, list_title: destination.title, board_id: destination.boardId, board_title: destination.boardTitle },
+          }),
+          now,
+        ],
+      );
+
+      return {
+        ...loaded.current,
+        listId: input.destinationListId,
+        updatedAt: now,
+        version: nextVersion,
+      };
+    });
+  }
+
+  /**
    * Mutation inti Card CRUD (INV #7/#8/#9): version check (AC-020) → state
    * machine A.3 → assignee/ancestor validation → UPDATE terjaga
    * `AND version = expected` → Activity append dalam satu transaksi.
@@ -149,7 +223,7 @@ export class DrizzleCardRepository implements CardRepository {
       // INV-LIFE-001 — entity non-operational (ada ancestor non-ACTIVE)
       // MUST NOT menerima mutasi apapun, termasuk update/archive/delete
       // (restore divalidasi terpisah via evaluateRestore).
-      const chain = await loadAncestorStates(tx, loaded.current.listId);
+      const chain = await loadListContext(tx, loaded.current.listId);
       if (!isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
         throw new AncestorNotActiveError(
           operation,
@@ -255,12 +329,34 @@ function mapCardRow(row: Record<string, unknown> | undefined): CardRecord | unde
   };
 }
 
-async function loadAncestorStates(tx: Tx, listId: string): Promise<{
+interface ListContext {
+  title: string;
+  boardId: string;
+  boardTitle: string;
+  milestoneId: string | null;
   listState: LifecycleState;
   upperStates: LifecycleState[];
-}> {
+}
+
+/**
+ * Destination move TIDAK memakai ListNotFoundError — semua kegagalan
+ * validitas destination (ada/sama Project/ancestor ACTIVE) dipetakan
+ * INVALID_DESTINATION sesuai INV-MOVE-001/002.
+ */
+async function loadDestination(tx: Tx, listId: string): Promise<ListContext> {
+  try {
+    return await loadListContext(tx, listId);
+  } catch (error) {
+    if (error instanceof ListNotFoundError) {
+      throw new InvalidDestinationError(`Destination List ${listId} tidak ditemukan di Project ini (INV-MOVE-001/002)`);
+    }
+    throw error;
+  }
+}
+
+async function loadListContext(tx: Tx, listId: string): Promise<ListContext> {
   const listRow = (
-    await tx.execute("SELECT board_id, archived_at, deleted_at FROM lists WHERE id = ?", [listId])
+    await tx.execute("SELECT title, board_id, archived_at, deleted_at FROM lists WHERE id = ?", [listId])
   ).rows[0];
   if (!listRow) throw new ListNotFoundError(listId);
 
@@ -270,36 +366,42 @@ async function loadAncestorStates(tx: Tx, listId: string): Promise<{
       deletedAt: row.deleted_at === null ? null : String(row.deleted_at),
     });
 
-  const upperStates: LifecycleState[] = [];
-
-  const boardId = String(listRow.board_id);
   const boardRow = (
-    await tx.execute("SELECT milestone_id, archived_at, deleted_at FROM boards WHERE id = ?", [boardId])
+    await tx.execute("SELECT id, title, milestone_id, archived_at, deleted_at FROM boards WHERE id = ?", [
+      String(listRow.board_id),
+    ])
   ).rows[0];
-  if (!boardRow) {
-    upperStates.push("DELETED");
-  } else {
-    upperStates.push(stateOf(boardRow));
-    const milestoneId =
-      boardRow.milestone_id === null || boardRow.milestone_id === undefined ? null : String(boardRow.milestone_id);
-    if (milestoneId !== null) {
-      const msRow = (
-        await tx.execute("SELECT archived_at, deleted_at FROM milestones WHERE id = ?", [milestoneId])
-      ).rows[0];
-      upperStates.push(msRow ? stateOf(msRow) : ("DELETED" as LifecycleState));
-    } else {
-      upperStates.push("DELETED");
-    }
+  if (!boardRow) throw new ListNotFoundError(listId);
+
+  const milestoneRaw =
+    boardRow.milestone_id === null || boardRow.milestone_id === undefined ? null : String(boardRow.milestone_id);
+  let milestoneState: LifecycleState = "DELETED";
+  if (milestoneRaw !== null) {
+    const msRow = (
+      await tx.execute("SELECT archived_at, deleted_at FROM milestones WHERE id = ?", [milestoneRaw])
+    ).rows[0];
+    milestoneState = msRow ? stateOf(msRow) : "DELETED";
   }
 
   const projRow = (await tx.execute("SELECT archived_at, deleted_at FROM project_state LIMIT 1")).rows[0];
-  upperStates.push(projRow ? stateOf(projRow) : ("DELETED" as LifecycleState));
 
-  const listState = resolveLifecycleState({
-    archivedAt: listRow.archived_at === null ? null : String(listRow.archived_at),
-    deletedAt: listRow.deleted_at === null ? null : String(listRow.deleted_at),
-  });
-  return { listState, upperStates };
+  return {
+    title: String(listRow.title),
+    boardId: String(boardRow.id),
+    boardTitle: String(boardRow.title),
+    milestoneId: milestoneRaw,
+    listState: resolveLifecycleState({
+      archivedAt: listRow.archived_at === null ? null : String(listRow.archived_at),
+      deletedAt: listRow.deleted_at === null ? null : String(listRow.deleted_at),
+    }),
+    upperStates: [
+      stateOf(boardRow),
+      milestoneState,
+      projRow
+        ? stateOf(projRow)
+        : ("DELETED" as LifecycleState),
+    ],
+  };
 }
 
 async function loadCardForUpdate(tx: Tx, cardId: string): Promise<LoadedCard> {

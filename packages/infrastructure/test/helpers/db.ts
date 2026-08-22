@@ -37,7 +37,21 @@ export async function createTestProjectDb(): Promise<TestDb> {
     },
     async truncateAll() {
       for (const table of PROJECT_TABLES) {
-        await client.execute(`DELETE FROM ${table}`);
+        // Tahan SQLITE_BUSY singkat — lock sisa transaksi konkuren di test
+        // lain bisa belum terlepas saat afterEach berjalan.
+        for (let attempt = 0; ; attempt++) {
+          try {
+            await client.execute(`DELETE FROM ${table}`);
+            break;
+          } catch (error) {
+            const code = (error as { code?: string }).code ?? "";
+            if (code === "SQLITE_BUSY" && attempt < 10) {
+              await new Promise((resolve) => setTimeout(resolve, 50));
+              continue;
+            }
+            throw error;
+          }
+        }
       }
     },
   };
