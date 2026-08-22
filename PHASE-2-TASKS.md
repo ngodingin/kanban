@@ -126,7 +126,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.7.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21) | 80 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
-| 2.7.2 | ⬜️ | — | 0 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
+| 2.7.2 | 🔎 | [CL-24](#cl-24)<br>[CL-23](#cl-23) | 80 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
 | 2.7.3 | ⬜️ | — | 0 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
 
 **Test:** Create List dengan `board_id` Project lain → ditolak; List tidak punya operasi move (INV-MOVE-001); pola version-conflict/lifecycle sama seperti task List sebelumnya.
@@ -284,6 +284,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 **Verifikasi lintas-goal (seluruh batch TASK-2.1–2.6):** `pnpm -r typecheck` → 6/6 package Done, 0 error. `pnpm lint` → `eslint .`, 0 error. `pnpm exec vitest run` → **40 file / 258 test PASS**, tidak ada regresi. Model Dev batch ini adalah `big-pickle` (opencode) — platform/model belum dikenal tim ini sebelumnya; hasil kerja diverifikasi dengan skeptisisme penuh (baca kode + reproduksi tambahan sendiri untuk klaim boundary, bukan sekadar re-run test yang disediakan) mengikuti AGENTS.md §11.3.3 — tidak ditemukan penyimpangan SOT atau klaim CL yang tidak akurat.
 **Observasi arsitektur non-blocking (dicatat untuk Planning/Review, bukan blocker goal manapun):** `withErrorHandling`/`assertOwnerInterim` diduplikasi identik di `milestones.ts` dan `boards.ts` (akan berulang lagi di `lists.ts`/`cards.ts`, TASK-2.7/2.8) — kelas DRY-gap yang sama dengan Phase 1 Review-CL-10 Temuan 5 (goal 1.11.1). Layak jadi kandidat goal cleanup terpisah setelah TASK-2.8 selesai, bukan menghalangi goal manapun sekarang.
+
+<a id="cl-24"></a>
+### CL-24 — 2026-08-23 · goal 2.7.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH List
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 42 file / **267** test lulus (5 test integration baru `apps/api/test/lists-patch.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `PATCH /v1/projects/:project_id/lists/:list_id` — Owner-only interim, hanya field `title` + `expected_version` wajib; field lain (`board_id`, `status`, `position`, `wip_limit`) → VALIDATION_ERROR 400 (C.15/FR-023); Activity `list.updated{changes}`.
+**Catatan:** Test negatif: AC-020 version mismatch tanpa perubahan; PERMISSION_DENIED non-Owner member; TOKEN_EXPIRED; 404 list tidak ada.
+
+<a id="cl-23"></a>
+### CL-23 — 2026-08-23 · goal 2.7.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.7.2 `⬜️/—/0/P1`, dependency `2.6, 2.7.1` → 2.6.1 `🔎/80%` commit `8940788`, 2.7.1 `🔎/80%` commit `27a5121` (suite 262 hijau).
+**Catatan:** PATCH List hanya field title + expected_version.
 
 <a id="cl-22"></a>
 ### CL-22 — 2026-08-23 · goal 2.7.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET List

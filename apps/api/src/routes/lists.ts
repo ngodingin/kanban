@@ -8,7 +8,7 @@ import {
   type ListRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface ListRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -97,6 +97,34 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
         );
       }
       return { list: listPayload(record) };
+    });
+  });
+
+  router.patch("/v1/projects/:project_id/lists/:list_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const expectedVersion = readExpectedVersionField(body);
+      for (const key of Object.keys(body)) {
+        if (key !== "title" && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dapat diubah via PATCH List (C.15/FR-023).`,
+            400,
+          );
+        }
+      }
+      const repository = new DrizzleListRepository(ctx.database);
+      const updated = await repository.updateList(projectId, {
+        listId: c.req.param("list_id"),
+        expectedVersion,
+        actorUserId: ctx.userId,
+        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
+      });
+      return { list: listPayload(updated) };
     });
   });
 
