@@ -101,7 +101,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.5.1 | 🔎 | [CL-20](#cl-20)<br>[CL-19](#cl-19) | 80 | P0 | Seed idempotent tabel `permissions` (Global DB) dengan seluruh key kanonik D.1 (`project.read`, `project.update`, `milestone.*`, `board.*`, `list.*`, `card.*`, `member.*`, `permission_group.*`, `api_key.*`) — data statis, BUKAN migration schema baru. Jalankan sebagai bagian `migrate-global` (`packages/infrastructure/scripts/migrate-global.ts`) atau modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts`, idempotent (upsert by `key`) | [02-SPEC D.1](docs/02-SPEC.md) | — |
+| 1.5.1 | ✅ | [CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Seed idempotent tabel `permissions` (Global DB) dengan seluruh key kanonik D.1 (`project.read`, `project.update`, `milestone.*`, `board.*`, `list.*`, `card.*`, `member.*`, `permission_group.*`, `api_key.*`) — data statis, BUKAN migration schema baru. Jalankan sebagai bagian `migrate-global` (`packages/infrastructure/scripts/migrate-global.ts`) atau modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts`, idempotent (upsert by `key`) | [02-SPEC D.1](docs/02-SPEC.md) | — |
 
 **Test:** Unit/integration — run seed dua kali berturut-turut menghasilkan jumlah row sama (idempotent, tidak duplikat); setiap key D.1 ada tepat satu row.
 **DoD:** Katalog permission lengkap sesuai D.1; re-run migrate-global tidak menghasilkan duplikat atau error constraint.
@@ -112,7 +112,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.6.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21) | 80 | P1 | Saat `provisionProjectWithMapping` (1.2) commit, seed 4 baseline Permission Group **Co-Owner, Manager, Contributor, Viewer** (BUKAN Owner — Owner adalah ownership property BR-035, bukan Group) beserta `group_permissions` default sesuai matrix D.2, dalam transaksi Global DB yang sama. Baseline HARUS berupa data (row `permission_groups`+`group_permissions`), bukan `if role == ...` hard-coded (BR-039) | [02-SPEC D.2](docs/02-SPEC.md), BR-035, BR-036, BR-039 | 1.2, 1.5 |
+| 1.6.1 | ✅ | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[QA-CL-11](#qa-cl-11) | 100 | P1 | Saat `provisionProjectWithMapping` (1.2) commit, seed 4 baseline Permission Group **Co-Owner, Manager, Contributor, Viewer** (BUKAN Owner — Owner adalah ownership property BR-035, bukan Group) beserta `group_permissions` default sesuai matrix D.2, dalam transaksi Global DB yang sama. Baseline HARUS berupa data (row `permission_groups`+`group_permissions`), bukan `if role == ...` hard-coded (BR-039) | [02-SPEC D.2](docs/02-SPEC.md), BR-035, BR-036, BR-039 | 1.2, 1.5 |
 
 **Test:** Integration — create Project → tepat 4 `permission_groups` baru dengan nama baseline; `group_permissions` Co-Owner mencakup seluruh operasi Owner-level kecuali ownership itu sendiri, Manager mencakup Milestone/Board/List CRUD + Card, Contributor mencakup Card create/update/move/archive/delete/comment tanpa Manage Members/Permission Groups, Viewer hanya `*.read`; verifikasi tidak ada baseline group bernama "Owner".
 **DoD:** Baseline groups tersedia setiap Project baru sesuai D.2; konfigurasi disimpan sebagai data yang dapat diubah lewat 1.7 (bukan hard-coded).
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="qa-cl-11"></a>
+### QA-CL-11 — 2026-08-22 · goal 1.6.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Cocokkan `baselineGroupPermissionKeys()` langsung ke tabel matrix D.2 baris per baris: Co-Owner = seluruh 40 key (setiap baris matrix ✓ untuk Co-Owner sama dengan Owner) — benar. Manager = `project.read` + M/B/L penuh (Read+CRUD+Restore, matrix ✓ semua) + 7 Card ops (Read/Create/Update/Move/Archive/Delete/Comment, matrix ✓) — TIDAK dapat `project.update`/`member.*`/`permission_group.*`/`api_key.*` (matrix "—" utk Manager di baris-baris itu) — benar. Contributor = `project.read` + M/B/L read-only (matrix "—" utk CRUD) + 7 Card ops sama seperti Manager (matrix ✓ Contributor di baris Card) — benar. Viewer = seluruh key `*.read` (8 key) — cocok literal Test task-level goal ini sendiri ("Viewer hanya `*.read`"). Re-run `packages/infrastructure/test/baseline-groups.test.ts`: 5/5 PASS termasuk rollback atomik (INV-09, wrapper injeksi kegagalan pada `group_permissions`) dan cek eksplisit "tidak ada kolom `role`" (BR-039). Re-run penuh `pnpm exec vitest run`: 17 file/84 test PASS; `pnpm -r typecheck`/`pnpm lint` bersih. Re-run live `test:smoke-provision`/`test:smoke-rollback` (Turso nyata): tidak ada regresi dari transaksi yang lebih berat (seed katalog + 4 group + group_permissions sekaligus).
+**Catatan (non-blocking, untuk AI-Planning & Review):** D.2 sendiri **tidak mendefinisikan** siapa yang dapat `card.restore`/`card.comment.update` (baris Card matrix hanya menyebut 6 dari 9 key `card.*`) maupun `member.read`/`permission_group.read`/`api_key.read` untuk grup selain Co-Owner (baris "Manage X" tidak eksplisit memisahkan read vs write). Dev mengimplementasikan literal apa yang tertulis di matrix (CL-22) dan secara jujur mendokumentasikan gap-nya, bukan mengarang — ini konsisten §10 karena baseline group eksplisit "Konfigurable, Bukan Hard-coded" (D.2) dan mudah diubah via amandemen data, bukan kode. Direkomendasikan AI-Planning & Review melengkapi D.2 agar 9 key `card.*` dan 3 key `*.read` (member/pg/api_key) tercakup eksplisit. Tidak ada perubahan SOT oleh QA.
+
+<a id="qa-cl-10"></a>
+### QA-CL-10 — 2026-08-22 · goal 1.5.1 🔎 → ✅
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Hitung manual seluruh key D.1 dari `docs/02-SPEC.md` §D.1 (project 2 + milestone 6 + board 6 + list 6 + card 9 + member 4 + permission_group 4 + api_key 3 = 40) — cocok persis `PERMISSION_CATALOG` di `permission-catalog.ts` satu-per-satu (nama key & jumlah). Re-run `packages/infrastructure/test/permission-catalog.test.ts`: 3/3 PASS termasuk idempotency (re-run 2× berturut-turut, `inserted:0`, tidak ada duplikat via `GROUP BY key HAVING n>1`).
+**Catatan (non-blocking):** `seedPermissionCatalog` idempotent via lookup-by-key (read-then-insert), bukan `ON CONFLICT`, karena `permissions.key` tidak punya unique index di schema (batas eksplisit goal: "BUKAN migration baru"). Ini aman untuk pola pemakaian saat ini (`migrate-global.ts` dijalankan sekuensial per deploy, tidak concurrent), tapi rawan race condition bila suatu saat dijalankan paralel — dicatat sebagai kandidat amandemen (tambah unique index) untuk AI-Planning & Review, bukan blocker goal ini. Tidak ada perubahan SOT oleh QA.
 
 <a id="qa-cl-09"></a>
 ### QA-CL-09 — 2026-08-22 · goal 1.4.3 🔎 → ⚠️
