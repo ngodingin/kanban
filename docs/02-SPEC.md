@@ -547,6 +547,12 @@ Milestone / Board / List (pola sama):
 | Read | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Create/Update/Archive/Delete/Restore | ✓ | ✓ | ✓ | — | — |
 
+Milestone Label / Board Label (pola sama dengan Milestone/Board/List — definisi Label dikelola Manager+, bukan Contributor; assign/remove Label ke Card sendiri menumpang `card.update`, sudah tercakup baris Card di bawah):
+| Operation | Owner | Co-Owner | Manager | Contributor | Viewer |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Read | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Create/Update/Archive/Delete/Restore | ✓ | ✓ | ✓ | — | — |
+
 Card:
 | Operation | Owner | Co-Owner | Manager | Contributor | Viewer |
 |---|:-:|:-:|:-:|:-:|:-:|
