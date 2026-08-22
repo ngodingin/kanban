@@ -84,3 +84,20 @@ export {
   CardInvalidStateError,
   CardValidationError,
 } from "./card/card-errors.ts";
+
+export type { ListLabelsOptions } from "./label/label-repository.ts";
+export type {
+  MilestoneLabelRepository,
+  MilestoneLabelRecord,
+  BoardLabelRepository,
+  BoardLabelRecord,
+  CreateLabelInput,
+  UpdateLabelInput,
+  LabelLifecycleInput,
+} from "./label/label-repository.ts";
+export {
+  LabelNotFoundError,
+  LabelVersionConflictError,
+  LabelInvalidStateError,
+  LabelValidationError,
+} from "./label/label-errors.ts";
