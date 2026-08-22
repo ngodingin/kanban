@@ -421,7 +421,7 @@ card_board_labels       (junction, dengan lifecycle asosiasi)
   created_at · removed_at(NULL = active association)
 
 activities
-  id · entity_type("project"|"milestone"|"board"|"list"|"card") · entity_id
+  id · entity_type("project"|"milestone"|"board"|"list"|"card"|"milestone_label"|"board_label") · entity_id
   entity_version(versi entity setelah mutation ini)
   actor_user_id(→Global users.id, historical, tidak berubah)
   action(e.g. "card.moved", "comment.added")

@@ -109,7 +109,7 @@ Entity DELETED MUST NOT menerima mutation apa pun, termasuk restore. Entity MAY 
 ## A.8 Activity (Audit Trail)
 
 - **BR-024** Activity MUST immutable & append-only — tidak ada UPDATE/DELETE.
-- **BR-025** Setiap entity (Project, Milestone, Board, List, Card) MUST memiliki Activity sendiri. Untuk Project, state otoritatif (`name`, lifecycle, dan `version`) dan Activity-nya MUST berada di Project DB yang sama, serta MUST dimutasi dalam satu transaksi Project DB.
+- **BR-025** Setiap entity (Project, Milestone, Board, List, Card, Milestone Label, Board Label) MUST memiliki Activity sendiri. Untuk Project, state otoritatif (`name`, lifecycle, dan `version`) dan Activity-nya MUST berada di Project DB yang sama, serta MUST dimutasi dalam satu transaksi Project DB.
 - **BR-026** Activity MUST mencatat action spesifik (mis. `card.moved`, bukan generic `entity.status_changed`).
 - **BR-027** Operasi lifecycle parent MUST hanya menghasilkan Activity parent. Descendant tidak mendapat Activity lifecycle karena local state-nya tidak berubah.
 - **BR-028** Activity payload MUST menyimpan cukup konteks historis agar tetap bermakna walau entity yang direferensikan (mis. nama List lama) sudah dihapus.
@@ -261,7 +261,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-034** Sistem MUST NOT mengizinkan Label orphaned dipakai sebagai Label aktif baru.
 
 ## B.9 Activity
-- **FR-035** Sistem MUST mencatat Activity untuk setiap perubahan signifikan pada Project, Milestone, Board, List, Card.
+- **FR-035** Sistem MUST mencatat Activity untuk setiap perubahan signifikan pada Project, Milestone, Board, List, Card, Milestone Label, Board Label.
 - **FR-036** Activity MUST append-only & immutable — tidak ada endpoint UPDATE/DELETE.
 - **FR-037** Activity MUST menyimpan cukup konteks historis (mis. nama List sebelumnya) agar tetap bermakna walau entity terkait dihapus.
 - **FR-038** Operasi lifecycle parent MUST hanya menghasilkan Activity parent; tidak ada Activity descendant tanpa perubahan local state descendant.
