@@ -125,9 +125,9 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.7.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21) | 80 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
-| 2.7.2 | 🔎 | [CL-24](#cl-24)<br>[CL-23](#cl-23) | 80 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
-| 2.7.3 | 🔎 | [CL-26](#cl-26)<br>[CL-25](#cl-25) | 80 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
+| 2.7.1 | ✅ | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
+| 2.7.2 | ⚠️ | [CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[QA-CL-12](#qa-cl-12) | 60 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
+| 2.7.3 | ⚠️ | [CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[QA-CL-13](#qa-cl-13) | 60 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
 
 **Test:** Create List dengan `board_id` Project lain → ditolak; List tidak punya operasi move (INV-MOVE-001); pola version-conflict/lifecycle sama seperti task List sebelumnya.
 **DoD:** Endpoint sesuai C.7; List tidak punya field status; archive/delete List tidak mengubah `list_id` Card manapun.
@@ -138,7 +138,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.8.1 | ⬜️ | — | 0 | P0 | `createCard` (title/subtitle/description/due_date, FR-024; `creator_user_id` = actor saat ini, historical & tidak berubah — FR-025; ancestor chain 4 level List+Board+Milestone+Project ACTIVE). Validasi `assignee_user_id` (opsional, maks 1 — FR-026): jika diisi, MUST User dengan membership aktif di Project ini (03-ENG A.5 — app-level FK lintas DB ke Global `users`+`project_memberships`) | [02-SPEC A.3](docs/02-SPEC.md), [A.5](docs/03-ENGINEERING.md) (cross-DB integrity), BR-011–016, BR-019–028, FR-024–026; [03-ENG A.5](docs/03-ENGINEERING.md) | 2.1, 2.6 |
+| 2.8.1 | 🔄 | [CL-27](#cl-27) | 0 | P0 | `createCard` (title/subtitle/description/due_date, FR-024; `creator_user_id` = actor saat ini, historical & tidak berubah — FR-025; ancestor chain 4 level List+Board+Milestone+Project ACTIVE). Validasi `assignee_user_id` (opsional, maks 1 — FR-026): jika diisi, MUST User dengan membership aktif di Project ini (03-ENG A.5 — app-level FK lintas DB ke Global `users`+`project_memberships`) | [02-SPEC A.3](docs/02-SPEC.md), [A.5](docs/03-ENGINEERING.md) (cross-DB integrity), BR-011–016, BR-019–028, FR-024–026; [03-ENG A.5](docs/03-ENGINEERING.md) | 2.1, 2.6 |
 | 2.8.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | `updateCard` (title/subtitle/description/due_date/assignee — TIDAK `list_id`, BR-017/061/062), `archiveCard`, `restoreCard` (ancestor 4-level ACTIVE semua — BR-045A: blanket, bukan scoped ke aktor archive), `deleteCard`. Ganti assignee lewat `updateCard` tetap validasi membership aktif (FR-026). **WAJIB ancestor check (`isEffectivelyOperational`) di KEEMPAT command — update/archive/restore/delete — bukan cuma restore** (INV-LIFE-001: non-operational MUST NOT menerima mutasi apa pun jika ADA ancestor tidak ACTIVE; lihat Review-CL-02 — bug identik ditemukan di 2.2.1/2.4.1/2.6.1 karena teks goal asli cuma menyebut ancestor-check untuk create/restore, JANGAN ulangi pola yang sama di Card) | [02-SPEC A.3](docs/02-SPEC.md), BR-017, BR-045A, BR-061, BR-062, FR-026; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.8.1 |
 
 **Test:** Create ditolak jika salah satu 4 ancestor tidak ACTIVE; create/update dengan `assignee_user_id` bukan member aktif Project → ditolak; `creator_user_id` tidak pernah berubah lewat `updateCard` (BR-025, C.15); `list_id` tidak bisa diubah lewat `updateCard` (harus lewat 2.10 move); restore blanket — Card archived oleh User A berhasil di-restore User B yang beda (BR-045A, regresi test pattern sama seperti Project 1.4.2 tapi kali ini ancestor chain sungguhan, bukan trivial).
@@ -284,6 +284,30 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 **Verifikasi lintas-goal (seluruh batch TASK-2.1–2.6):** `pnpm -r typecheck` → 6/6 package Done, 0 error. `pnpm lint` → `eslint .`, 0 error. `pnpm exec vitest run` → **40 file / 258 test PASS**, tidak ada regresi. Model Dev batch ini adalah `big-pickle` (opencode) — platform/model belum dikenal tim ini sebelumnya; hasil kerja diverifikasi dengan skeptisisme penuh (baca kode + reproduksi tambahan sendiri untuk klaim boundary, bukan sekadar re-run test yang disediakan) mengikuti AGENTS.md §11.3.3 — tidak ditemukan penyimpangan SOT atau klaim CL yang tidak akurat.
 **Observasi arsitektur non-blocking (dicatat untuk Planning/Review, bukan blocker goal manapun):** `withErrorHandling`/`assertOwnerInterim` diduplikasi identik di `milestones.ts` dan `boards.ts` (akan berulang lagi di `lists.ts`/`cards.ts`, TASK-2.7/2.8) — kelas DRY-gap yang sama dengan Phase 1 Review-CL-10 Temuan 5 (goal 1.11.1). Layak jadi kandidat goal cleanup terpisah setelah TASK-2.8 selesai, bukan menghalangi goal manapun sekarang.
+
+<a id="cl-27"></a>
+### CL-27 — 2026-08-23 · goal 2.8.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.8.1 `⬜️/—/0/P0`, dependency `2.1, 2.6` → 2.1.1 `🔎/80%` commit `641ed22`, 2.6.1 `🔎/80%` commit `8940788` (suite 271 hijau). Referensi dibaca ulang dari disk: FR-024–026, C.8, BR-021, 03-ENG A.5; validator kandidat `requireActiveMember` (project-admin.ts) diverifikasi signature-nya.
+**Catatan:** Validator assignee di-inject ke DrizzleCardRepository (app-level FK lintas DB); creator_user_id = actor (FR-025).
+
+<a id="qa-cl-13"></a>
+### QA-CL-13 — 2026-08-23 · goal 2.7.3 🔎 → ⚠️ — archive/delete List warisi bug ancestor-check Review-CL-02 (restore tidak terdampak)
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/lists-lifecycle.test.ts` (4 test) hijau — tapi tidak menguji skenario ini sama sekali (celah sama, tidak diminta teks goal sebelum diperbaiki Review-CL-02). Endpoint `archive`/`delete` (`routes/lists.ts` lifecycleCommands) memanggil `archiveList`/`deleteList` di `list-repository.ts` — fungsi yang SAMA yang dikonfirmasi Review-CL-02 tidak memanggil `isEffectivelyOperational` sama sekali. `restore` memanggil `restoreList` yang memakai `evaluateRestore` dengan benar — TIDAK terdampak.
+**Kesimpulan:** ⚠️ REJECT untuk goal ini (archive+restore+delete dibundel satu goal, 2 dari 3 action rusak) — bukan bug baru, murni pewarisan Review-CL-02 yang belum sampai ke layer HTTP List. Tidak perlu re-audit terpisah setelah 2.6.1 diperbaiki — cukup re-run test existing + tambahan skenario ancestor-saat-mutasi begitu perbaikan repository (2.6.1) landing, karena endpoint ini hanya meneruskan panggilan tanpa logika sendiri.
+
+<a id="qa-cl-12"></a>
+### QA-CL-12 — 2026-08-23 · goal 2.7.2 🔎 → ⚠️ — PATCH List warisi bug ancestor-check Review-CL-02, dikonfirmasi live di layer HTTP
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/lists-patch.test.ts` (5 test) hijau — tidak menguji skenario "ancestor non-ACTIVE, local List ACTIVE" (celah yang sama seperti 2.6.1, goal text lama tidak memintanya). Direproduksi live via test throwaway (dihapus setelah run): seed Project→Milestone→Board→List lengkap ACTIVE, archive Project langsung di DB, lalu `PATCH /projects/:id/lists/:list_id` (title berubah) — **hasil 200 OK, title berubah, version naik ke 2** — seharusnya ditolak `INVALID_STATE`/`AncestorNotActiveError` per INV-LIFE-001. Root cause identik Review-CL-02: `PATCH` di `routes/lists.ts` memanggil `updateList` di `list-repository.ts`, fungsi yang sama yang dikonfirmasi Review tidak memanggil ancestor-check sama sekali.
+**Kesimpulan:** ⚠️ REJECT — bukan bug baru terpisah, murni pewarisan gap yang sama dari 2.6.1 (root cause di layer repository, endpoint HTTP cuma meneruskan panggilan). Tidak butuh perbaikan endpoint sendiri — begitu `updateList` diperbaiki (2.6.1), 2.7.2 otomatis ikut benar; QA re-run cukup re-test skenario ancestor-saat-update di level HTTP untuk konfirmasi propagasi, bukan audit ulang dari nol.
+
+<a id="qa-cl-11"></a>
+### QA-CL-11 — 2026-08-23 · goal 2.7.1 🔎 → ✅ — create+get List via pipeline, tidak terdampak bug Review-CL-02
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `apps/api/test/lists-create-get.test.ts` (4 test) dijalankan ulang — hijau. `POST` memanggil `createList` yang SUDAH benar memvalidasi ancestor chain 3-level sebelum insert (dikonfirmasi tidak terdampak temuan Review-CL-02 — hanya update/archive/delete yang bermasalah, create/restore sudah benar sejak awal). `GET` tanpa mutation, tidak relevan dengan bug ancestor-check. Owner-only interim untuk create, membership-only untuk read — konsisten pola Milestone/Board.
+**Kesimpulan:** ✅ ACCEPT — goal ini secara struktural tidak menyentuh jalur yang cacat.
 
 <a id="cl-26"></a>
 ### CL-26 — 2026-08-23 · goal 2.7.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint lifecycle List
