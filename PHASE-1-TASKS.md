@@ -101,7 +101,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.5.1 | ⬜️ | — | 0 | P0 | Seed idempotent tabel `permissions` (Global DB) dengan seluruh key kanonik D.1 (`project.read`, `project.update`, `milestone.*`, `board.*`, `list.*`, `card.*`, `member.*`, `permission_group.*`, `api_key.*`) — data statis, BUKAN migration schema baru. Jalankan sebagai bagian `migrate-global` (`packages/infrastructure/scripts/migrate-global.ts`) atau modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts`, idempotent (upsert by `key`) | [02-SPEC D.1](docs/02-SPEC.md) | — |
+| 1.5.1 | 🔎 | [CL-20](#cl-20)<br>[CL-19](#cl-19) | 80 | P0 | Seed idempotent tabel `permissions` (Global DB) dengan seluruh key kanonik D.1 (`project.read`, `project.update`, `milestone.*`, `board.*`, `list.*`, `card.*`, `member.*`, `permission_group.*`, `api_key.*`) — data statis, BUKAN migration schema baru. Jalankan sebagai bagian `migrate-global` (`packages/infrastructure/scripts/migrate-global.ts`) atau modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts`, idempotent (upsert by `key`) | [02-SPEC D.1](docs/02-SPEC.md) | — |
 
 **Test:** Unit/integration — run seed dua kali berturut-turut menghasilkan jumlah row sama (idempotent, tidak duplikat); setiap key D.1 ada tepat satu row.
 **DoD:** Katalog permission lengkap sesuai D.1; re-run migrate-global tidak menghasilkan duplikat atau error constraint.
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-20"></a>
+### CL-20 — 2026-08-22 · goal 1.5.1 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm vitest run` → 16 file / 79 test lulus, termasuk `packages/infrastructure/test/permission-catalog.test.ts` 3/3: katalog 40 key D.1 tanpa duplikat + deskripsi; seed pertama mengisi tepat satu row per key (set key = set row DB); re-run dua kali idempotent (inserted=0, COUNT tetap 40, GROUP BY key HAVING n>1 kosong). Lint bersih, typecheck lulus.
+**Catatan:** Idempotency via lookup-by-key karena schema `permissions` tidak punya unique index pada `key` (batas "bukan migration baru"); jika Planning ingin unique index, itu amandemen terpisah. Seed dipanggil dari `scripts/migrate-global.ts`.
+
+<a id="cl-19"></a>
+### CL-19 — 2026-08-22 · goal 1.5.1 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.5.1 `⬜️/0`, dependency —; HEAD `aa4da72`, working tree bersih. Dibaca ulang: 02-SPEC D.1 (40 key kanonik), schema `permissions` Global DB (id PK, key notNull, TANPA unique index pada key → idempotency ditegakkan di level aplikasi via lookup-by-key, bukan ON CONFLICT).
+**Catatan:** Modul seed terpisah `packages/infrastructure/src/database/permission-catalog.ts` + dipanggil dari `scripts/migrate-global.ts` setelah migrasi. Tanpa migration schema baru sesuai batas goal.
 
 <a id="cl-18"></a>
 ### CL-18 — 2026-08-22 · goal 1.4.3 selesai sisi Dev (🔄 → 🔎 · 80%)
