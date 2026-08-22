@@ -128,5 +128,33 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
     });
   });
 
+  const lifecycleCommands = {
+    archive: (repository: DrizzleListRepository, projectId: string, input: { listId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveList(projectId, input),
+    restore: (repository: DrizzleListRepository, projectId: string, input: { listId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreList(projectId, input),
+    delete: (repository: DrizzleListRepository, projectId: string, input: { listId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteList(projectId, input),
+  } as const;
+
+  for (const [action, command] of Object.entries(lifecycleCommands)) {
+    router.post(`/v1/projects/:project_id/lists/:list_id/${action}`, async (c) => {
+      return withErrorHandling(c, async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const ctx = await deps.openProjectContext(c.req.raw, projectId);
+        assertOwnerInterim(ctx);
+        const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+        const repository = new DrizzleListRepository(ctx.database);
+        const record = await command(repository, projectId, {
+          listId: c.req.param("list_id"),
+          expectedVersion,
+          actorUserId: ctx.userId,
+        });
+        return { list: listPayload(record) };
+      });
+    });
+  }
+
   return router;
 }
