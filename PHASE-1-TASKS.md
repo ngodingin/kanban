@@ -150,7 +150,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.9.1 | 🔄 | [CL-37](#cl-37) | 0 | P0 | `POST /api/v1/projects/:project_id/invitations` — wajib minimal satu `assignments` (group_id + scope), simpan reference ke Group (bukan snapshot, BR-052), `expires_at`, otorisasi Owner-only interim (Manage Members) | [02-SPEC C.13](docs/02-SPEC.md), BR-050, BR-051, BR-052, FR-005, FR-006 | 1.2, 1.7.1 |
+| 1.9.1 | 🔎 | [CL-38](#cl-38)<br>[CL-37](#cl-37) | 80 | P0 | `POST /api/v1/projects/:project_id/invitations` — wajib minimal satu `assignments` (group_id + scope), simpan reference ke Group (bukan snapshot, BR-052), `expires_at`, otorisasi Owner-only interim (Manage Members) | [02-SPEC C.13](docs/02-SPEC.md), BR-050, BR-051, BR-052, FR-005, FR-006 | 1.2, 1.7.1 |
 | 1.9.2 | ⬜️ | — | 0 | P0 | `POST /api/v1/invitations/:invitation_id/accept` — validasi belum expired/accepted/revoked (`INVITATION_EXPIRED`/`INVITATION_ALREADY_USED`), lalu atomik: create `project_memberships` + seluruh `membership_group_assignments` dari `invitation_group_assignments`, set `accepted_at` — dalam satu transaksi Global DB | [02-SPEC C.13](docs/02-SPEC.md), FR-007 | 1.9.1 |
 
 **Test:** Invitation expired → `INVITATION_EXPIRED`; accept dua kali → `INVITATION_ALREADY_USED`; accept sukses menghasilkan tepat 1 Membership baru + assignment sesuai `invitation_group_assignments` tanpa assignment kedua kali (idempotent terhadap retry); accept oleh email berbeda dari `invitations.email` ditolak.
@@ -276,6 +276,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: HEAD `452dd0c`, working tree bersih; scope dikonfirmasi manusia untuk TASK-1.7–1.10 penuh (goal-per-goal sesuai dependency: 1.7.1 → 1.7.2 → 1.7.3 → 1.7.4 → 1.8.1 → 1.8.2 → 1.9.1 → 1.9.2 → 1.10.1 → 1.10.2). Dibaca ulang dari disk: 02-SPEC C.12/C.13, FR-005–011, BR-038–059, D.1–D.4, schema Global DB (global-schema.ts: permission_groups/group_permissions/membership_*_assignments/invitations/invitation_group_assignments), pola transaksi provision.ts, katalog D.1 (id ULID, lookup by key).
 **Catatan keputusan teknis interim (dicatat sejak awal, konsisten untuk seluruh scope):** authorization matrix Phase 1 mengikuti pola existing — mutasi Group/assignment/invitation/revoke = Owner-only; read (groups/members) = member aktif (setara View Project, member.read belum terisi D.2 — backlog Review-CL-03 item 1). Scope assignment Phase 1 wajib `scope_type="project"` dengan `scope_id=project_id` (BR-042B catatan revisit Phase 2/3). Revoke yang sudah revoked → idempotent (state dikembalikan apa adanya); revoke Owner Membership → INVALID_STATE 409 (invariant FR-002, bukan persoalan izin pemanggil). Entry ini mencakup transisi awal; tiap goal akan punya CL penyelesaian + commit masing-masing.
+
+<a id="cl-38"></a>
+### CL-38 — 2026-08-22 · goal 1.9.1 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 25 file / 131 test lulus, termasuk `apps/api/test/invitations-create.test.ts` 5/5: create 2 assignment → 201 PENDING + default expiry tepat 7 hari (BR-052) + 2 row reference tersimpan (BR-050); tanpa/kosong assignments → 409 (BR-051); group lintas-Project/soft-deleted/tak dikenal → 404 DAN tidak ada invitation sisa (atomicity db.transaction); email invalid/expires_at lampau/bukan-ISO/scope milestone/scope_id salah → 409; non-Owner → 403. `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan implementasi:** Scope absen pada item assignment di-default ke project/project_id di route; validasi boundary tetap di infra. AC-020 optimistic locking tidak berlaku — Global DB tanpa kolom version.
 
 <a id="cl-37"></a>
 ### CL-37 — 2026-08-22 · goal 1.9.1 mulai dikerjakan (⬜️ → 🔄)

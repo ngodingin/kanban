@@ -4,6 +4,8 @@ import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import {
   groupPermissions,
+  invitationGroupAssignments,
+  invitations,
   membershipGroupAssignments,
   membershipPermissionAssignments,
   permissionGroups,
@@ -461,4 +463,100 @@ export async function revokePermissionAssignment(
   await db.update(membershipPermissionAssignments).set({ revokedAt: now })
     .where(eq(membershipPermissionAssignments.id, input.assignmentId)).run();
   return { id: row.id, membershipId: row.membershipId, permissionId: row.permissionId, scopeType: row.scopeType, scopeId: row.scopeId, cardReadVisibility: row.cardReadVisibility, createdAt: row.createdAt, revokedAt: now };
+}
+
+export interface InvitationSummary {
+  id: string;
+  projectId: string;
+  email: string;
+  invitedByUserId: string;
+  expiresAt: string;
+  createdAt: string;
+  status: "PENDING" | "ACCEPTED" | "REVOKED";
+  groupAssignments: Array<{ groupId: string; scopeType: string; scopeId: string }>;
+}
+
+// Create Invitation (C.13) — Group disimpan sebagai reference (BR-050),
+// minimal satu assignment (BR-051), default expiry 7 hari (BR-052).
+// Invitation + seluruh group reference di-commit atomik (Implementation Rule 8).
+export async function createInvitation(
+  globalClient: Client,
+  input: {
+    projectId: string;
+    invitedByUserId: string;
+    email: string;
+    assignments: Array<{ groupId: string; scopeType: string; scopeId: string }>;
+    expiresAt?: string | null;
+  },
+): Promise<InvitationSummary> {
+  const email = input.email.trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new PipelineError("INVALID_STATE", `Email '${input.email}' tidak valid.`, 409);
+  }
+  if (!Array.isArray(input.assignments) || input.assignments.length === 0) {
+    throw new PipelineError("INVALID_STATE", "Invitation wajib memiliki minimal satu assignment (BR-051).", 409);
+  }
+  const now = new Date().toISOString();
+  let expiresAt = input.expiresAt ?? undefined;
+  if (expiresAt !== undefined && expiresAt !== null) {
+    if (Number.isNaN(Date.parse(expiresAt))) {
+      throw new PipelineError("INVALID_STATE", `expires_at '${expiresAt}' bukan timestamp ISO yang valid.`, 409);
+    }
+    if (Date.parse(expiresAt) <= Date.parse(now)) {
+      throw new PipelineError("INVALID_STATE", "expires_at harus di masa depan.", 409);
+    }
+  } else {
+    const defaultExpiry = new Date(Date.parse(now) + 7 * 24 * 60 * 60 * 1000);
+    expiresAt = defaultExpiry.toISOString();
+  }
+
+  // Validasi setiap assignment: group harus ada & aktif di Project ini
+  // (BR-042B boundary), Phase 1 hanya scope project.
+  for (const assignment of input.assignments) {
+    if (assignment.scopeType !== "project") {
+      throw new PipelineError("INVALID_STATE", `scope_type '${assignment.scopeType}' belum didukung di Phase 1 (hanya 'project').`, 409);
+    }
+    if (assignment.scopeId !== input.projectId) {
+      throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+    }
+    const groupRows = await drizzle(globalClient).select().from(permissionGroups)
+      .where(sql`${permissionGroups.id} = ${assignment.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
+    if (groupRows.length === 0 || groupRows[0]!.deletedAt !== null) {
+      throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${assignment.groupId} tidak ditemukan (aktif) di Project ini.`, 404);
+    }
+  }
+
+  const invitationId = ulid();
+  const db = drizzle(globalClient);
+  await db.transaction(async (tx) => {
+    await tx.insert(invitations).values({
+      id: invitationId,
+      projectId: input.projectId,
+      email,
+      invitedByUserId: input.invitedByUserId,
+      expiresAt: expiresAt!,
+      acceptedAt: null,
+      revokedAt: null,
+      createdAt: now,
+    }).run();
+    for (const assignment of input.assignments) {
+      await tx.insert(invitationGroupAssignments).values({
+        id: ulid(),
+        invitationId,
+        groupId: assignment.groupId,
+        scopeType: "project",
+        scopeId: assignment.scopeId,
+      }).run();
+    }
+  });
+  return {
+    id: invitationId,
+    projectId: input.projectId,
+    email,
+    invitedByUserId: input.invitedByUserId,
+    expiresAt: expiresAt!,
+    createdAt: now,
+    status: "PENDING",
+    groupAssignments: input.assignments.map((a) => ({ groupId: a.groupId, scopeType: a.scopeType, scopeId: a.scopeId })),
+  };
 }

@@ -28,6 +28,7 @@ export {
 export {
   assertProjectOwner,
   createGroupAssignment,
+  createInvitation,
   createPermissionAssignment,
   createPermissionGroup,
   deletePermissionGroup,
@@ -40,6 +41,7 @@ export {
   updatePermissionGroup,
   type CreatePermissionGroupInput,
   type GroupAssignmentSummary,
+  type InvitationSummary,
   type PermissionAssignmentSummary,
   type PermissionGroupEntry,
   type PermissionGroupSummary,

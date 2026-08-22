@@ -5,6 +5,7 @@ import {
   PipelineError,
   ResolveIdentityStep,
   type GroupAssignmentSummary,
+  type InvitationSummary,
   type PermissionAssignmentSummary,
   type PermissionGroupSummary,
   type ResolvedIdentity,
@@ -65,6 +66,15 @@ export interface ProjectAdminRoutesDeps {
     membershipId: string,
     assignmentId: string,
   ): Promise<PermissionAssignmentSummary>;
+  createInvitation(
+    projectId: string,
+    invitedByUserId: string,
+    input: {
+      email: string;
+      assignments: Array<{ groupId: string; scopeType: string; scopeId: string }>;
+      expiresAt?: string | null;
+    },
+  ): Promise<InvitationSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -341,6 +351,46 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         c.req.param("assignment_id"),
       );
       return c.json(ok({ assignment }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/invitations", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const raw = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+      if (typeof raw !== "object" || raw === null) {
+        throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
+      }
+      if (raw.expires_at !== undefined && raw.expires_at !== null && typeof raw.expires_at !== "string") {
+        throw new PipelineError("INVALID_STATE", "expires_at wajib string atau null.", 409);
+      }
+      if (!Array.isArray(raw.assignments)) {
+        throw new PipelineError("INVALID_STATE", "Field assignments wajib array (minimal satu item — BR-051).", 409);
+      }
+      const assignments = raw.assignments.map((item) => {
+        const entry = item as Record<string, unknown>;
+        if (typeof entry.group_id !== "string" || entry.group_id.length === 0) {
+          throw new PipelineError("INVALID_STATE", "Setiap assignment wajib memiliki group_id string non-kosong.", 409);
+        }
+        const scopeType = typeof entry.scope_type === "string" ? entry.scope_type : "project";
+        const scopeId = typeof entry.scope_id === "string" ? entry.scope_id : projectId;
+        return { groupId: entry.group_id, scopeType, scopeId };
+      });
+      const invitation = await deps.createInvitation(projectId, identity.userId, {
+        email: typeof raw.email === "string" ? raw.email : "",
+        assignments,
+        ...(raw.expires_at !== undefined ? { expiresAt: raw.expires_at as string | null } : {}),
+      });
+      return c.json(ok({ invitation }), 201);
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);

@@ -2,6 +2,7 @@ import {
   assertProjectOwner,
   createCachedProjectDbClientFactory,
   createGroupAssignment,
+  createInvitation,
   createPermissionAssignment,
   createPermissionGroup,
   deletePermissionGroup,
@@ -126,5 +127,13 @@ export function buildProjectAdminDeps(input: {
       }),
     revokePermissionAssignment: (projectId, membershipId, assignmentId) =>
       revokePermissionAssignment(globalClient, { projectId, membershipId, assignmentId }),
+    createInvitation: async (projectId, invitedByUserId, input) =>
+      createInvitation(globalClient, {
+        projectId,
+        invitedByUserId,
+        email: input.email,
+        assignments: input.assignments,
+        ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
+      }),
   };
 }
