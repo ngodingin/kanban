@@ -4,6 +4,7 @@ import { ok } from "@kanban/contracts";
 import {
   PipelineError,
   ResolveIdentityStep,
+  type AcceptInvitationResult,
   type GroupAssignmentSummary,
   type InvitationSummary,
   type PermissionAssignmentSummary,
@@ -75,6 +76,7 @@ export interface ProjectAdminRoutesDeps {
       expiresAt?: string | null;
     },
   ): Promise<InvitationSummary>;
+  acceptInvitation(invitationId: string, userId: string): Promise<AcceptInvitationResult>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -391,6 +393,21 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         ...(raw.expires_at !== undefined ? { expiresAt: raw.expires_at as string | null } : {}),
       });
       return c.json(ok({ invitation }), 201);
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/invitations/:invitation_id/accept", async (c) => {
+    try {
+      const deps = getDeps();
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Accept tidak Owner-only — pemanggil adalah invitee yang terautentikasi.
+      const result = await deps.acceptInvitation(c.req.param("invitation_id"), identity.userId);
+      return c.json(ok(result));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);

@@ -560,3 +560,78 @@ export async function createInvitation(
     groupAssignments: input.assignments.map((a) => ({ groupId: a.groupId, scopeType: a.scopeType, scopeId: a.scopeId })),
   };
 }
+
+// Accept Invitation (C.13 / FR-007): validasi state, lalu atomik —
+// membership baru + seluruh group assignment dari invitation + accepted_at.
+export interface AcceptInvitationResult {
+  projectId: string;
+  membershipId: string;
+  userId: string;
+  acceptedAt: string;
+  appliedGroupAssignments: Array<{ groupId: string; scopeType: string; scopeId: string }>;
+}
+
+export async function acceptInvitation(
+  globalClient: Client,
+  input: { invitationId: string; userId: string },
+): Promise<AcceptInvitationResult> {
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(invitations).where(eq(invitations.id, input.invitationId));
+  if (rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Invitation ${input.invitationId} tidak ditemukan.`, 404);
+  }
+  const invitation = rows[0]!;
+  const now = new Date().toISOString();
+  if (invitation.revokedAt !== null) {
+    throw new PipelineError("INVALID_STATE", "Invitation sudah di-revoke.", 409);
+  }
+  if (invitation.acceptedAt !== null) {
+    throw new PipelineError("INVITATION_ALREADY_USED", "Invitation sudah pernah diterima.", 409);
+  }
+  if (Date.parse(invitation.expiresAt) <= Date.parse(now)) {
+    throw new PipelineError("INVITATION_EXPIRED", "Invitation sudah kedaluwarsa.", 409);
+  }
+  // Unique keras (project, user): user yang masih/pernah member tidak dapat
+  // menerima invitation lagi di Phase 1.
+  const existingMembership = await db.select().from(projectMemberships)
+    .where(sql`${projectMemberships.projectId} = ${invitation.projectId} AND ${projectMemberships.userId} = ${input.userId}`);
+  if (existingMembership.length > 0) {
+    const state = existingMembership[0]!.revokedAt !== null ? "pernah menjadi member (sudah di-revoke)" : "sudah menjadi member aktif";
+    throw new PipelineError("INVALID_STATE", `User ${state} pada Project ini.`, 409);
+  }
+  const groupRows = await db.select().from(invitationGroupAssignments)
+    .where(eq(invitationGroupAssignments.invitationId, invitation.id));
+  if (groupRows.length === 0) {
+    throw new PipelineError("INVITATION_EXPIRED", "Invitation tidak memiliki assignment yang valid.", 409);
+  }
+
+  const membershipId = ulid();
+  await db.transaction(async (tx) => {
+    await tx.insert(projectMemberships).values({
+      id: membershipId,
+      projectId: invitation.projectId,
+      userId: input.userId,
+      createdAt: now,
+      revokedAt: null,
+    }).run();
+    for (const row of groupRows) {
+      await tx.insert(membershipGroupAssignments).values({
+        id: ulid(),
+        membershipId,
+        groupId: row.groupId,
+        scopeType: row.scopeType,
+        scopeId: row.scopeId,
+        createdAt: now,
+        revokedAt: null,
+      }).run();
+    }
+    await tx.update(invitations).set({ acceptedAt: now }).where(eq(invitations.id, invitation.id)).run();
+  });
+  return {
+    projectId: invitation.projectId,
+    membershipId,
+    userId: input.userId,
+    acceptedAt: now,
+    appliedGroupAssignments: groupRows.map((r) => ({ groupId: r.groupId, scopeType: r.scopeType, scopeId: r.scopeId })),
+  };
+}

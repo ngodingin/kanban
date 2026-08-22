@@ -345,7 +345,7 @@ POST   /api/v1/projects/:project_id/archive
 POST   /api/v1/projects/:project_id/restore
 POST   /api/v1/projects/:project_id/delete
 ```
-`GET /projects` mengembalikan seluruh Project yang masih tercatat dapat diakses User, termasuk ARCHIVED/DELETED sesuai filter; setelah prune Project tidak lagi tersedia. `POST /projects` membuat registry, Owner Membership, Project DB, `project_state`, dan Activity `project.created` melalui provisioning F.2.
+`GET /projects` mengembalikan seluruh Project yang masih tercatat dapat diakses User; setelah prune Project tidak lagi tersedia. Query param opsional `status` (comma-separated, subset dari `ACTIVE,ARCHIVED,DELETED`) MAY membatasi hasil; tanpa param ini, response MUST mencakup seluruh status (ACTIVE, ARCHIVED, DELETED). `POST /projects` membuat registry, Owner Membership, Project DB, `project_state`, dan Activity `project.created` melalui provisioning F.2.
 `GET`/`PATCH` Project membaca/memutasi state domain pada `project_state` di Project DB; Global DB hanya dipakai untuk registry, owner, membership, dan resolusi database.
 Archive/restore/delete membawa version:
 ```json
@@ -446,7 +446,7 @@ POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments/:as
 POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments
 POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke
 ```
-`GET /members` mengembalikan seluruh Membership Project (termasuk yang `revoked_at` bukan NULL sesuai filter) — dipakai antara lain untuk menemukan `membership_id` sebelum membuat scoped assignment. `POST /members/:membership_id/revoke` mencabut otorisasi berjalan (`project_memberships.revoked_at`) tanpa menghapus data historis (BR-053) — `creator_user_id`/`activity.actor_user_id` yang merujuk User tersebut tetap utuh; tidak menghapus/revoke `membership_group_assignments`/`membership_permission_assignments` secara individual (assignment tetap ada sebagai riwayat, tetapi non-applicable begitu Membership induk revoked).
+`GET /members` mengembalikan seluruh Membership Project — dipakai antara lain untuk menemukan `membership_id` sebelum membuat scoped assignment. Query param opsional `status` (comma-separated, subset dari `active,revoked`) MAY membatasi hasil; tanpa param ini, response MUST mencakup keduanya (aktif dan revoked). `POST /members/:membership_id/revoke` mencabut otorisasi berjalan (`project_memberships.revoked_at`) tanpa menghapus data historis (BR-053) — `creator_user_id`/`activity.actor_user_id` yang merujuk User tersebut tetap utuh; tidak menghapus/revoke `membership_group_assignments`/`membership_permission_assignments` secara individual (assignment tetap ada sebagai riwayat, tetapi non-applicable begitu Membership induk revoked).
 
 `POST /permission-groups/:group_id/delete` adalah soft-delete (`permission_groups.deleted_at`, BR-041): Membership yang punya assignment ke Group tersebut kehilangan permission yang di-grant Group itu, tanpa menghapus riwayat `membership_group_assignments`.
 

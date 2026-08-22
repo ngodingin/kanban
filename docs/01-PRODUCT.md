@@ -57,7 +57,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 2.3.0
+SPEC_VERSION = 2.4.0
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 2.3.0
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **2.4.0** — Mendefinisikan filter yang sebelumnya cuma disebut samar ("sesuai filter") tanpa bentuk konkret di C.4 (`GET /projects`) dan C.12 (`GET /members`). Keduanya sekarang punya query param opsional `status` (comma-separated: `ACTIVE,ARCHIVED,DELETED` untuk Project; `active,revoked` untuk Membership); tanpa param, perilaku default TIDAK berubah (tetap mengembalikan semua, backward-compatible). Ditemukan saat review Phase 1 (Review-CL-04 poin 3); disetujui manusia 2026-08-22. Goal implementasi: `GET /projects` filter → goal baru 1.3.5 (PHASE-1-TASKS.md, dep 1.3.2 yang sudah ✅ — filter murni penambahan, bukan pembatalan goal lama); `GET /members` filter → langsung melekat ke goal 1.10.1 yang belum diimplementasikan. Minor — kapabilitas baru opsional, tidak breaking.
 - **2.3.0** — Menambah kode error kanonik **`VALIDATION_ERROR`** (HTTP 400, C.2) khusus untuk payload/transport request yang tidak valid secara bentuk (field hilang/tipe salah/body bukan JSON object) — sebelumnya numpang di `INVALID_STATE` (409, semestinya khusus konflik state domain), membingungkan konsumen API. Keputusan manusia 2026-08-22 (opsi "benerin sekarang" dari 2 alternatif yang diajukan Review — alternatif lain adalah menunda ke Phase 6). Berdampak pada implementasi Phase 1 yang sudah berjalan: goal 1.3.1/1.3.4/1.4.1/1.4.2/1.4.3 memakai helper validasi bersama yang saat ini melempar `INVALID_STATE` untuk payload invalid — kelimanya dibuka kembali dari `✅` untuk disesuaikan Dev + reverifikasi QA (bukan bug, tapi SOT yang berubah setelah goal tsb closed). Minor — menambah kode baru, tidak mengubah kode yang sudah ada.
 - **2.2.2** — Mengunci `permissions.key` (Global DB, 03-ENGINEERING B.2) sebagai UNIQUE. Keputusan teknis murni (AGENTS.md §10 poin 3, tidak menyentuh business invariant/authorization/lifecycle/API semantics) — data existing sudah dijamin unik (QA-CL-10), constraint ini cuma memindahkan penegakan dari level aplikasi (lookup-by-key) ke level database agar aman terhadap concurrent seeding di masa depan. Implementasi migration + update schema didelegasikan ke goal Dev (PHASE-1-TASKS.md 1.5.2).
 - **2.2.1** — Menegaskan **BR-045A**: domain command Card (archive/restore/delete/update/move) dievaluasi murni dari grant permission + state saat ini, bukan riwayat aktor — `card.restore` berlaku untuk Card manapun yang ARCHIVED, bukan hanya oleh aktor yang sama dengan yang meng-archive. Klarifikasi dari BR-045 yang sudah ada (bukan aturan baru), muncul dari diskusi Phase 1 soal siapa boleh restore Card. Patch — tidak mengubah semantik domain yang sudah berlaku, hanya mengunci interpretasi agar tidak diperdebatkan ulang saat Phase 2/5 diimplementasikan.

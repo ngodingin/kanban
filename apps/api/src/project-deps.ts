@@ -1,4 +1,5 @@
 import {
+  acceptInvitation,
   assertProjectOwner,
   createCachedProjectDbClientFactory,
   createGroupAssignment,
@@ -135,5 +136,6 @@ export function buildProjectAdminDeps(input: {
         assignments: input.assignments,
         ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
       }),
+    acceptInvitation: (invitationId, userId) => acceptInvitation(globalClient, { invitationId, userId }),
   };
 }

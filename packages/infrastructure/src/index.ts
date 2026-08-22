@@ -26,6 +26,7 @@ export {
   type ProjectDatabaseResolver,
 } from "./database/project-resolver.ts";
 export {
+  acceptInvitation,
   assertProjectOwner,
   createGroupAssignment,
   createInvitation,
@@ -39,6 +40,7 @@ export {
   revokeGroupAssignment,
   revokePermissionAssignment,
   updatePermissionGroup,
+  type AcceptInvitationResult,
   type CreatePermissionGroupInput,
   type GroupAssignmentSummary,
   type InvitationSummary,
