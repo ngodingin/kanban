@@ -7,6 +7,7 @@ import {
   type AcceptInvitationResult,
   type GroupAssignmentSummary,
   type InvitationSummary,
+  type InvitationListSummary,
   type PermissionAssignmentSummary,
   type PermissionGroupSummary,
   type ProjectMemberSummary,
@@ -16,14 +17,14 @@ import { toApiErrorResponse } from "./projects.ts";
 
 // Wrapper untuk mengurangi duplikasi try/catch di semua handler endpoint.
 async function withErrorHandling<T>(
-  c: any,
+  c: any, // eslint-disable-line @typescript-eslint/no-explicit-any
   handler: () => Promise<T>,
   successStatus: ContentfulStatusCode = 200,
 ): Promise<Response> {
   try {
     return c.json(ok(await handler()), successStatus);
   } catch (error) {
-    const mapped = toApiErrorResponse(error);
+    const mapped = toApiErrorResponse(error as any); // eslint-disable-line @typescript-eslint/no-explicit-any
     return c.json(mapped.body, mapped.status as ContentfulStatusCode);
   }
 }
@@ -99,8 +100,8 @@ export interface ProjectAdminRoutesDeps {
     opts: { status?: Array<"active" | "revoked"> },
   ): Promise<ProjectMemberSummary[]>;
   revokeMembership(projectId: string, membershipId: string): Promise<ProjectMemberSummary>;
-  listProjectInvitations(projectId: string): Promise<InvitationSummary[]>;
-  revokeInvitation(projectId: string, invitationId: string): Promise<InvitationSummary>;
+  listProjectInvitations(projectId: string): Promise<InvitationListSummary[]>;
+  revokeInvitation(projectId: string, invitationId: string): Promise<InvitationListSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;

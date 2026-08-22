@@ -48,6 +48,7 @@ export {
   type CreatePermissionGroupInput,
   type GroupAssignmentSummary,
   type InvitationSummary,
+  type InvitationListSummary,
   type PermissionAssignmentSummary,
   type PermissionGroupSummary,
   type ProjectMemberSummary,

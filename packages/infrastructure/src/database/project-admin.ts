@@ -726,7 +726,7 @@ export async function revokeMembership(
   };
 }
 
-export interface InvitationSummary {
+export interface InvitationListSummary {
   id: string;
   email: string;
   expiresAt: string;
@@ -740,7 +740,7 @@ export interface InvitationSummary {
 export async function listProjectInvitations(
   globalClient: Client,
   projectId: string,
-): Promise<InvitationSummary[]> {
+): Promise<InvitationListSummary[]> {
   const db = drizzle(globalClient);
   const rows = await db.select().from(invitations)
     .where(eq(invitations.projectId, projectId))
@@ -760,7 +760,7 @@ export async function listProjectInvitations(
 export async function revokeInvitation(
   globalClient: Client,
   input: { projectId: string; invitationId: string },
-): Promise<InvitationSummary> {
+): Promise<InvitationListSummary> {
   const db = drizzle(globalClient);
   const rows = await db.select().from(invitations)
     .where(sql`${invitations.id} = ${input.invitationId} AND ${invitations.projectId} = ${input.projectId}`);

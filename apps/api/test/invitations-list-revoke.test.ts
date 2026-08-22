@@ -129,14 +129,14 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
     if (invitations.length !== 3) throw new Error(`expected 3 invitations, got ${invitations.length}`);
 
     // Verify states
-    const states = invitations.map((i: any) => ({
+    const states = invitations.map((i: Record<string, unknown>) => ({
       id: i.id,
       acceptedAt: i.acceptedAt !== null ? "accepted" : i.revokedAt !== null ? "revoked" : "pending",
     }));
 
-    const accepted = states.find((s: any) => s.acceptedAt === "accepted");
-    const revoked = states.find((s: any) => s.acceptedAt === "revoked");
-    const pending = states.find((s: any) => s.acceptedAt === "pending");
+    const accepted = states.find((s: Record<string, unknown>) => s.acceptedAt === "accepted");
+    const revoked = states.find((s: Record<string, unknown>) => s.acceptedAt === "revoked");
+    const pending = states.find((s: Record<string, unknown>) => s.acceptedAt === "pending");
 
     if (!accepted) throw new Error("accepted invitation not found in list");
     if (!revoked) throw new Error("revoked invitation not found in list");
@@ -178,7 +178,7 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
 
   it("[C.13][BR-007/BR-009] Project boundary: list invitations tidak bocor lintas Project", async () => {
     // Create invitation di projectA
-    const invA = await createInvitation("boundary-test@test.local");
+    await createInvitation("boundary-test@test.local");
 
     // Create projectB dengan owner terpisah
     const projectIdB = `pg-b-${newProjectId()}`;
