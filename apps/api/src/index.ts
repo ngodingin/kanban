@@ -90,8 +90,12 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
             databaseResolver: new SqliteProjectDatabaseResolver(globalClient),
             projectClientFactory: { create: () => createDevProjectClientFromEnv() },
           });
-          const ctx = await pipeline.run(request, projectId);
-          return { userId: ctx.identity.userId, database: ctx.database };
+          const resolved = await pipeline.run(request, projectId);
+          return {
+            userId: resolved.identity.userId,
+            ownerUserId: resolved.project.ownerUserId,
+            database: resolved.database,
+          };
         },
       };
       projectDeps = deps;

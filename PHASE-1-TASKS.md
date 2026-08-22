@@ -77,7 +77,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 1.3.1 | 🔎 | [CL-06](#cl-06)<br>[CL-05](#cl-05) | 80 | P0 | `POST /api/v1/projects` — resolve identity (tanpa `RequestPipeline` project-step karena Project belum ada), generate `project_id` ULID, panggil `provisionProjectWithMapping` (1.2), balikan `{ data }` sesuai C.2/C.4. Baca `Idempotency-Key` (`extractIdempotencyKey`, `packages/contracts/src/http-mapping.ts`) — minimal: request tanpa header tetap jalan normal; request dengan header yang sama diproses ulang (dedupe store persisten dicatat sebagai catatan terbuka, bukan blocker Phase 1) | [02-SPEC C.4](docs/02-SPEC.md), FR-001; [C.3](docs/02-SPEC.md) | 1.1, 1.2 |
 | 1.3.2 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | `GET /api/v1/projects` — list seluruh Project yang membership User masih aktif (`project_memberships` Global DB), untuk masing-masing baca status ringkas dari `project_state` Project DB (bukan transaksi lintas-DB, sesuai [03-ENG A.4](docs/03-ENGINEERING.md)) | [02-SPEC C.4](docs/02-SPEC.md) | 1.2 |
 | 1.3.3 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P0 | `GET /api/v1/projects/:project_id` — pakai `RequestPipeline` (`packages/infrastructure/src/pipeline/pipeline.ts`, hasil 0.9) untuk identity+membership+resolve DB, baca `project_state` via `ProjectRepository.getProjectState` | [02-SPEC C.4](docs/02-SPEC.md) | 1.1 |
-| 1.3.4 | ⬜️ | — | 0 | P1 | `PATCH /api/v1/projects/:project_id` — hanya field `name` (Generic PATCH tetap dilarang mengubah `id/project_id/creator_user_id/created_at/version/archived_at/deleted_at`, [02-SPEC C.15](docs/02-SPEC.md)), wajib `expected_version`, otorisasi Owner-only interim (lihat "Prinsip Phase 1") sebelum panggil `updateProjectName` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), BR-035, BR-037 | 1.1, 1.3.3 |
+| 1.3.4 | 🔎 | [CL-12](#cl-12)<br>[CL-11](#cl-11) | 80 | P1 | `PATCH /api/v1/projects/:project_id` — hanya field `name` (Generic PATCH tetap dilarang mengubah `id/project_id/creator_user_id/created_at/version/archived_at/deleted_at`, [02-SPEC C.15](docs/02-SPEC.md)), wajib `expected_version`, otorisasi Owner-only interim (lihat "Prinsip Phase 1") sebelum panggil `updateProjectName` (1.1) | [02-SPEC C.4](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), BR-035, BR-037 | 1.1, 1.3.3 |
 
 **Test:** Integration — create tanpa identitas ditolak; create menghasilkan `project_state` ACTIVE + Activity `project.created` + Owner Membership (regresi 1.2) via endpoint; list hanya mengembalikan Project dengan membership aktif User (tidak bocor Project lain — Project-boundary check); read Project tanpa membership → `PROJECT_ACCESS_DENIED`; update oleh non-Owner → `PERMISSION_DENIED`; update dengan `expected_version` salah → `VERSION_CONFLICT`; update field terlarang (mis. `version` di body) diabaikan/ditolak.
 **DoD:** Endpoint sesuai kontrak C.4; response envelope C.2; tidak ada endpoint yang mengizinkan perubahan field domain-controlled via PATCH; seluruh test di atas hijau.
@@ -187,6 +187,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-12"></a>
+### CL-12 — 2026-08-22 · goal 1.3.4 selesai sisi Dev (🔄 → 🔎 · 80%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm vitest run` → 12 file / 63 test lulus, termasuk `apps/api/test/projects-patch.test.ts` 5/5: positif BR-035 owner rename → version+1 + Activity project.updated; negatif authz member non-owner → PERMISSION_DENIED 403; negatif optimistic locking AC-020/INV-07 stale expected_version → VERSION_CONFLICT 409 dan state tidak berubah; negatif payload C.15/C.2 ×4 → INVALID_STATE; negatif tanpa identitas → TOKEN_EXPIRED. Lint bersih, typecheck lulus.
+**Catatan:** Otorisasi interim: bandingkan `ctx.project.ownerUserId` vs `identity.userId` sebelum mutation — Phase 4 wajib ganti dengan permission resolver sungguhan (catatan eksplisit di kode route). PATCH hanya menerima `name` + `expected_version`; field lain diabaikan/ditolak via validator ketat.
+
+<a id="cl-11"></a>
+### CL-11 — 2026-08-22 · goal 1.3.4 mulai dikerjakan (⬜️ → 🔄)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 1.3.4 `⬜️/0`, dependency 1.1 ✅ sisi Dev (CL-02) + 1.3.3 ✅ sisi Dev (CL-10); HEAD `8602664`, working tree bersih.
+**Catatan:** Otorisasi Owner-only interim dievaluasi dari `projects.owner_user_id` (registry Global, sudah termuat di ctx pipeline) — Phase 1 belum punya role engine; catatan eksplisit agar Phase 4 mengganti dengan permission sungguhan. Body: `{name, expected_version}`; VERSION_CONFLICT/INVALID_STATE diteruskan apa adanya dari domain.
 
 <a id="cl-10"></a>
 ### CL-10 — 2026-08-22 · goal 1.3.3 selesai sisi Dev (🔄 → 🔎 · 80%)

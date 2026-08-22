@@ -24,6 +24,7 @@ export interface CreateProjectInput {
 
 export interface OpenProjectContext {
   userId: string;
+  ownerUserId: string;
   database: Client;
 }
 
@@ -49,11 +50,15 @@ function toApiErrorResponse(error: unknown): { status: number; body: ErrorEnvelo
   return { status: 500, body: apiError("INVALID_STATE", message) };
 }
 
-function readCreateProjectName(body: unknown): string {
+function readJsonObject(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON dengan field name.", 409);
+    throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
   }
-  const raw = (body as { name?: unknown }).name;
+  return body as Record<string, unknown>;
+}
+
+function readProjectNameField(body: unknown): string {
+  const raw = readJsonObject(body).name;
   if (typeof raw !== "string") {
     throw new PipelineError("INVALID_STATE", "Field name wajib string.", 409);
   }
@@ -67,6 +72,34 @@ function readCreateProjectName(body: unknown): string {
   return name;
 }
 
+function readExpectedVersionField(body: unknown): number {
+  const raw = readJsonObject(body).expected_version;
+  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 1) {
+    throw new PipelineError("INVALID_STATE", "Field expected_version wajib integer >= 1.", 409);
+  }
+  return raw;
+}
+
+function projectStatePayload(state: {
+  projectId: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+  deletedAt: string | null;
+  version: number;
+}) {
+  return {
+    id: state.projectId,
+    name: state.name,
+    createdAt: state.createdAt,
+    updatedAt: state.updatedAt,
+    archivedAt: state.archivedAt,
+    deletedAt: state.deletedAt,
+    version: state.version,
+  };
+}
+
 export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
   const router = new Hono().basePath("/api");
 
@@ -78,7 +111,7 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
-      const name = readCreateProjectName(await c.req.json().catch(() => null));
+      const name = readProjectNameField(await c.req.json().catch(() => null));
       const projectId = deps.newProjectId();
       await deps.createProject({
         projectId,
@@ -120,16 +153,37 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         );
       }
       return c.json(ok({
-        project: {
-          id: state.projectId,
-          name: state.name,
-          createdAt: state.createdAt,
-          updatedAt: state.updatedAt,
-          archivedAt: state.archivedAt,
-          deletedAt: state.deletedAt,
-          version: state.version,
-        },
+        project: projectStatePayload(state),
       }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.patch("/v1/projects/:project_id", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const body = await c.req.json().catch(() => null);
+      const name = readProjectNameField(body);
+      const expectedVersion = readExpectedVersionField(body);
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      if (ctx.ownerUserId !== ctx.userId) {
+        throw new PipelineError(
+          "PERMISSION_DENIED",
+          "Hanya Owner Project yang dapat mengubah nama (interim Phase 1).",
+          403,
+        );
+      }
+      const repository = new DrizzleProjectRepository(ctx.database);
+      const state = await repository.updateProjectName({
+        projectId,
+        expectedVersion,
+        actorUserId: ctx.userId,
+        name,
+      });
+      return c.json(ok({ project: projectStatePayload(state) }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);
