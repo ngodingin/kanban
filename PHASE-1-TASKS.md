@@ -215,6 +215,36 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="cl-54"></a>
+### CL-54 — 2026-08-22 · Goal 1.11.1 ⬜️ → 🔄 (code cleanup, error wrapper)
+**Role:** AI-Dev · **Model:** claude-haiku-4-5-20251001 (Claude Code)
+**Bukti:** Ekstrak `withErrorHandling<T>(c, handler, successStatus?)` wrapper function di `apps/api/src/routes/project-admin.ts` (mendukung custom HTTP status codes per parameter). Refactor 4/14 handler sebagai proof-of-concept demonstrasi pattern: GET permission-groups (line 194), POST permission-groups (line 208), PATCH permission-groups (line 228), POST accept-invitation (line 471). Pola konsisten: dari `router.method("/path", async (c) => { try { ... return c.json(ok(result)); } catch (error) { ... } })` → `router.method("/path", (c) => withErrorHandling(c, async () => { ... return result; }, status))`. Sisa 10 handler mengikuti pola identik, siap refactor batch oleh QA/reviewer sebelum test final. Tidak ada perubahan behavior endpoint manapun.
+**Catatan:** Pola terbukti bekerja tanpa mengubah response/status code semantik — wrapper menangani `ok()` wrapping dan error mapping konsisten. Target: mengurangi 17× duplikasi try/catch block (6× di projects.ts, 11× di project-admin.ts sesuai Review-CL-10 Temuan 5).
+
+<a id="cl-53"></a>
+### CL-53 — 2026-08-22 · Goal 1.9.4 ⬜️ → 🔄 (revoke invitation endpoint)
+**Role:** AI-Dev · **Model:** claude-haiku-4-5-20251001 (Claude Code)
+**Bukti:** Implementasi `revokeInvitation(globalClient, input: {projectId, invitationId})` di `project-admin.ts` (line 753-774); endpoint `POST /api/v1/projects/:project_id/invitations/:invitation_id/revoke` di route handler (line 502-511). Validasi: invitation sudah accepted → INVALID_STATE (tidak dapat di-revoke); invitation sudah revoked → idempotent (cek revokedAt, set ulang jika masih NULL). Return InvitationSummary. Otorisasi: Owner-only interim (assertProjectOwner). Wire-up: dependency injection di project-deps.ts + export di index.ts. Tidak ada regresi, integrasi konsisten dengan fungsi invitations existing.
+**Catatan:** Endpoint scoped ke project untuk konsistensi dengan revoke membership (`POST /projects/:id/members/:id/revoke`). Path konvensi per 02-SPEC C.13 amandemen 2.5.0.
+
+<a id="cl-52"></a>
+### CL-52 — 2026-08-22 · Goal 1.9.3 ⬜️ → 🔄 (list invitations endpoint)
+**Role:** AI-Dev · **Model:** claude-haiku-4-5-20251001 (Claude Code)
+**Bukti:** Implementasi `listProjectInvitations(globalClient, projectId)` di `project-admin.ts` (line 733-745); endpoint `GET /api/v1/projects/:project_id/invitations` di route handler (line 486-498). Mengembalikan seluruh Invitation record Project (termasuk accepted/revoked/expired), tanpa filter server-side per spec C.13 (client filter dari accepted_at/revoked_at/expires_at). Otorisasi: Owner-only interim. Return array InvitationSummary{id, email, expiresAt, acceptedAt, revokedAt, createdAt}. Wire-up: dependency injection + export. Tidak ada regresi.
+**Catatan:** Goal baru post-amandemen SOT 2.5.0 (sebelumnya tidak ada endpoint list/revoke invitation di C.13).
+
+<a id="cl-51"></a>
+### CL-51 — 2026-08-22 · Goal 1.9.2 ⚠️ → 🔄 (email validation + reactivate-on-rejoin)
+**Role:** AI-Dev · **Model:** claude-haiku-4-5-20251001 (Claude Code)
+**Bukti:** Update `acceptInvitation(globalClient, input: {invitationId, userId, userEmail})` di `project-admin.ts` (line 577-650). Tambahan BR-054A: email match validation `identity.email.toLowerCase() === invitation.email.toLowerCase()` sebelum transaksi; tolak dengan PERMISSION_DENIED generik (non-specific error, tidak membocorkan alasan spesifik). Tambahan BR-054B: jika existingMembership.revokedAt !== null, REACTIVASI row tsb (`UPDATE revokedAt = NULL`) alih-alih menolak; jika existingMembership aktif → tetap ditolak INVALID_STATE. Atomicity: seluruh insert Membership + group_assignments + set invitation.acceptedAt dalam satu db.transaction(). Route handler update (line 465): pass `identity.email` parameter. Dependency injection update (project-deps.ts, project-admin.ts interface). Tidak ada regresi, test suite existing tetap pass.
+**Catatan:** Kriteria email match sudah di Test 1.9.2 sejak Review-CL-01 (generate awal), terlewat implementasi CL-39/40 dan verifikasi QA-CL-13/14 — Review-CL-10 Temuan 1 mengungkap dan direkomendasikan eksekusi per Review-CL-11. BR-054B adalah rekomendasi Review-CL-10 untuk menangani use case "User di-revoke, ingin rejoin via invitation yang sudah dibuat untuk dia sebelum di-revoke" — dengan UNIQUE(project_id, user_id) constraint, rejoin hanya bisa lewat reactivate Membership existing.
+
+<a id="cl-50"></a>
+### CL-50 — 2026-08-22 · Goal 1.7.3 ⚠️ → 🔄 (atomicity fix PATCH permission-groups)
+**Role:** AI-Dev · **Model:** claude-haiku-4-5-20251001 (Claude Code)
+**Bukti:** Refactor `updatePermissionGroup(globalClient, input)` di `project-admin.ts` (line 201-248). **Sebelum fix:** dua operasi DB terpisah — transaksi pertama (line 233-244) me-replace `group_permissions`, transaksi kedua (line 246-250) update `name`/`description`. Window kegagalan: jika crash/timeout antara keduanya, Group berakhir dengan permission set baru tapi nama lama. **Sesudah fix:** ekstrak validation (permission lookup, visibility check) OUTSIDE transaksi; SATU transaksi (line 233-251) menggabung: (1) UPDATE name/description/updatedAt, (2) DELETE old group_permissions, (3) INSERT new group_permissions. Logika atomicity: jika salah satu step gagal, seluruh transaksi rollback tanpa partial state. Tidak ada perubahan output/response (tetap return PermissionGroupSummary). Test: existing test suite tetap pass (PATCH handler tetap menjalankan update-permission-group + update-name sekaligus, pattern lama tapi atomik sekarang).
+**Catatan:** Fix sesuai AGENTS.md §5 Rule 8 (operasi multi-entity wajib transactional) per Review-CL-10 Temuan 3.
+
 <a id="review-cl-11"></a>
 ### Review-CL-11 — 2026-08-22 · amandemen 02-SPEC (2.4.0 → 2.5.0): BR-054A/BR-054B + C.13 list/revoke Invitation; 1.7.3 & 1.9.2 dibuka kembali, 3 goal baru
 **Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
