@@ -429,11 +429,24 @@ Add: `{ "body": "Sudah saya cek." }` → Activity `comment_added`. Edit **tidak 
 
 ## C.11 Label
 ```http
-POST /api/v1/projects/:project_id/milestones/:milestone_id/labels     # Milestone Label
-POST /api/v1/projects/:project_id/boards/:board_id/labels             # Board Label
-POST /api/v1/projects/:project_id/cards/:card_id/labels               # Assign ke Card
+GET    /api/v1/projects/:project_id/milestones/:milestone_id/labels
+POST   /api/v1/projects/:project_id/milestones/:milestone_id/labels
+PATCH  /api/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id
+POST   /api/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id/archive
+POST   /api/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id/restore
+POST   /api/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id/delete
+GET    /api/v1/projects/:project_id/boards/:board_id/labels
+POST   /api/v1/projects/:project_id/boards/:board_id/labels
+PATCH  /api/v1/projects/:project_id/boards/:board_id/labels/:label_id
+POST   /api/v1/projects/:project_id/boards/:board_id/labels/:label_id/archive
+POST   /api/v1/projects/:project_id/boards/:board_id/labels/:label_id/restore
+POST   /api/v1/projects/:project_id/boards/:board_id/labels/:label_id/delete
+POST   /api/v1/projects/:project_id/cards/:card_id/labels              # Assign ke Card
+POST   /api/v1/projects/:project_id/cards/:card_id/labels/:label_id/remove
 ```
-Assign: `{ "label_id": "label_123" }`. Server menentukan scope Label & memvalidasi keabsahannya terhadap posisi Card saat ini.
+Milestone Label dan Board Label MUST memiliki lifecycle penuh (archive/restore/delete, `archived_at`/`deleted_at`/`version` — schema 03-ENG B.3) mengikuti pola domain-command yang sama seperti Milestone/Board/List (bukan generic PATCH untuk business transition, C.15). `GET .../labels` mengembalikan Label aktif (exclude soft-deleted kecuali diminta eksplisit, pola sama C.12 Permission Group). Label yang ARCHIVED/DELETED MUST NOT dapat di-assign ke Card baru (konsisten FR-034 — label non-aktif tidak boleh dipakai sebagai asosiasi baru).
+
+Assign ke Card: `{ "label_id": "label_123" }`. Server menentukan scope Label & memvalidasi keabsahannya terhadap posisi Card saat ini. `POST .../labels/:label_id/remove` men-set `removed_at` pada baris junction (`card_milestone_labels`/`card_board_labels`) — melengkapi FR-033 (riwayat asosiasi dipertahankan, bukan hapus fisik) dengan jalur pelepasan manual eksplisit, di luar orphaning otomatis saat Card pindah Board. Otorisasi assign/remove Label ke Card MENUMPANG `card.update` (bukan permission Label tersendiri — berbeda dari `card.comment`, karena label bukan konten dengan aturan integritas append-only khusus seperti Comment, murni atribut Card biasa).
 
 ## C.12 Permission & Membership
 ```http
@@ -510,6 +523,8 @@ milestone.read · milestone.create · milestone.update · milestone.archive · m
 board.read · board.create · board.update · board.archive · board.delete · board.restore
 list.read · list.create · list.update · list.archive · list.delete · list.restore
 card.read · card.create · card.update · card.move · card.archive · card.delete · card.restore · card.comment · card.comment.update
+milestone_label.read · milestone_label.create · milestone_label.update · milestone_label.archive · milestone_label.delete · milestone_label.restore
+board_label.read · board_label.create · board_label.update · board_label.archive · board_label.delete · board_label.restore
 member.read · member.invite · member.update · member.remove
 permission_group.read · permission_group.create · permission_group.update · permission_group.delete
 api_key.read · api_key.create · api_key.revoke
