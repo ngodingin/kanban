@@ -25,6 +25,8 @@ import {
   type TursoEnv,
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
+import { createClient } from "@libsql/client";
+import type { MilestoneRoutesDeps } from "./routes/milestones.ts";
 import type { ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import type { ProjectRoutesDeps } from "./routes/projects.ts";
 
@@ -70,6 +72,34 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
         globalClient,
         databaseResolver,
         projectClientFactory,
+      });
+      const resolved = await pipeline.run(request, projectId);
+      return {
+        userId: resolved.identity.userId,
+        ownerUserId: resolved.project.ownerUserId,
+        database: resolved.database,
+      };
+    },
+  };
+}
+
+export interface BuildMilestoneRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+}
+
+export function buildMilestoneRoutesDeps(input: BuildMilestoneRoutesDepsInput): MilestoneRoutesDeps {
+  const { identityResolver, globalClient } = input;
+  const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
+  return {
+    resolveIdentity: (request) => identityResolver.resolveIdentity(request),
+    newMilestoneId: newProjectId,
+    openProjectContext: async (request, projectId) => {
+      const pipeline = new RequestPipeline({
+        identityResolver,
+        globalClient,
+        databaseResolver,
+        projectClientFactory: { create: (databaseId) => createClient({ url: databaseId }) },
       });
       const resolved = await pipeline.run(request, projectId);
       return {

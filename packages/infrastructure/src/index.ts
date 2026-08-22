@@ -60,6 +60,7 @@ export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
 export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline.ts";
 export type { ProjectClientFactory } from "./pipeline/database-step.ts";
 export type {
+  MilestoneRecord,
   ProjectRepository,
   ProjectStateRecord,
 } from "@kanban/domain";

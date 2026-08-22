@@ -71,7 +71,7 @@ export function toApiErrorResponse(error: unknown): { status: number; body: Erro
   return { status: 500, body: apiError("INVALID_STATE", message) };
 }
 
-function readJsonObject(body: unknown): Record<string, unknown> {
+export function readJsonObject(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
   }
@@ -93,7 +93,7 @@ function readProjectNameField(body: unknown): string {
   return name;
 }
 
-function readExpectedVersionField(body: unknown): number {
+export function readExpectedVersionField(body: unknown): number {
   const raw = readJsonObject(body).expected_version;
   if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 1) {
     throw new PipelineError("VALIDATION_ERROR", "Field expected_version wajib integer >= 1.", 400);
