@@ -10,6 +10,7 @@ import type {
 } from "@kanban/domain";
 import {
   AncestorNotActiveError,
+  ListNotFoundError,
   evaluateRestore,
   isEffectivelyOperational,
   resolveLifecycleState,
@@ -70,7 +71,7 @@ export class DrizzleCardRepository implements CardRepository {
     return runInWriteTransaction(this.client, async (tx) => {
       // INV-LIFE-001 — chain 4 level: List → Board → Milestone → Project semua ACTIVE.
       const chain = await loadAncestorStates(tx, input.listId);
-      if (!chain || !isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
+      if (!isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
         throw new AncestorNotActiveError(
           "create",
           `Ancestor tidak ACTIVE — Card tidak dapat dibuat di bawah List ${input.listId} (INV-LIFE-001)`,
@@ -149,7 +150,7 @@ export class DrizzleCardRepository implements CardRepository {
       // MUST NOT menerima mutasi apapun, termasuk update/archive/delete
       // (restore divalidasi terpisah via evaluateRestore).
       const chain = await loadAncestorStates(tx, loaded.current.listId);
-      if (!chain || !isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
+      if (!isEffectivelyOperational([chain.listState, ...chain.upperStates])) {
         throw new AncestorNotActiveError(
           operation,
           `Ancestor tidak ACTIVE — Card tidak dapat menerima operasi ${operation} (INV-LIFE-001)`,
@@ -257,11 +258,11 @@ function mapCardRow(row: Record<string, unknown> | undefined): CardRecord | unde
 async function loadAncestorStates(tx: Tx, listId: string): Promise<{
   listState: LifecycleState;
   upperStates: LifecycleState[];
-} | null> {
+}> {
   const listRow = (
     await tx.execute("SELECT board_id, archived_at, deleted_at FROM lists WHERE id = ?", [listId])
   ).rows[0];
-  if (!listRow) return null;
+  if (!listRow) throw new ListNotFoundError(listId);
 
   const stateOf = (row: Record<string, unknown>): LifecycleState =>
     resolveLifecycleState({

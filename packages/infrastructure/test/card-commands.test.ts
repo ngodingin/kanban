@@ -5,6 +5,7 @@ import {
   CardNotFoundError,
   CardValidationError,
   CardVersionConflictError,
+  ListNotFoundError,
 } from "@kanban/domain";
 import { DrizzleCardRepository } from "../src/database/card-repository.ts";
 import { createTestProjectDb, type TestDb } from "./helpers/db.ts";
@@ -177,7 +178,7 @@ describe("createCard — INV-LIFE-001 chain 4 level / FR-024–026 / 03-ENG A.5 
         assigneeUserId: null,
         actorUserId: OWNER,
       }),
-    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    ).rejects.toBeInstanceOf(ListNotFoundError);
   });
 });
 

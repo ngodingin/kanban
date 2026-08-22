@@ -150,7 +150,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.9.1 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/lists/:list_id/cards` + `GET .../cards/:card_id` — TANPA filter visibility (Prinsip #5, Phase 4 scope) | [02-SPEC C.8](docs/02-SPEC.md), FR-024 | 2.8 |
+| 2.9.1 | 🔎 | [CL-42](#cl-42)<br>[CL-41](#cl-41) | 80 | P0 | `POST /api/v1/projects/:project_id/lists/:list_id/cards` + `GET .../cards/:card_id` — TANPA filter visibility (Prinsip #5, Phase 4 scope) | [02-SPEC C.8](docs/02-SPEC.md), FR-024 | 2.8 |
 | 2.9.2 | ⬜️ | — | 0 | P1 | `PATCH .../cards/:card_id` — `title`/`subtitle`/`description`/`due_date`/`assignee` saja (C.8 eksplisit), **TIDAK BOLEH** `list_id` | [02-SPEC C.8](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.8, 2.9.1 |
 | 2.9.3 | ⬜️ | — | 0 | P1 | `POST .../cards/:card_id/{archive,restore,delete}` | [02-SPEC C.8](docs/02-SPEC.md), A.3, BR-045A | 2.8, 2.9.1 |
 
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-42"></a>
+### CL-42 — 2026-08-23 · goal 2.9.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint POST+GET Card
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 45 file / **296** test lulus (5 test integration baru `apps/api/test/cards-create-get.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: router `apps/api/src/routes/cards.ts` — `POST /v1/projects/:project_id/lists/:list_id/cards` (Owner-only interim; body C.8 title/subtitle/description/due_date + assignee opsional; assignee non-member → PERMISSION_DENIED via validator 03-ENG A.5) + `GET .../cards/:card_id` (member, TANPA filter visibility sesuai Prinsip #5); wiring `buildCardRoutesDeps` menyuntik `requireActiveMember`.
+**Catatan:** Konsistensi 404: list tidak ada saat createCard kini melempar ListNotFoundError (pola sama milestone/board), bukan INVALID_STATE — test unit 2.8.1 disesuaikan.
+
+<a id="cl-41"></a>
+### CL-41 — 2026-08-23 · goal 2.9.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.9.1 `⬜️/—/0/P0`, dependency `2.8` → 2.8.1/2.8.2 `🔎/80%` commit `5c05da4` (suite 291 hijau). C.8 dibaca ulang: create body title/subtitle/description/due_date (+assignee opsional FR-026); GET TANPA filter visibility (Prinsip #5, Phase 4).
+**Catatan:** Router cards.ts; wiring buildCardRoutesDeps menyuntik requireActiveMember sebagai validator assignee.
 
 <a id="cl-40"></a>
 ### CL-40 — 2026-08-23 · goal 2.7.3 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — propagasi fix ancestor-check ke archive/delete via HTTP
