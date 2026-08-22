@@ -90,7 +90,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.4.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-06](#qa-cl-06)<br>[Review-CL-02](#review-cl-02) | 60 | P0 | Domain command Board: `createBoard` (title/description, FR-018; tolak jika Milestone ATAU Project tidak ACTIVE — ancestor chain 2 level, pakai 2.1), `updateBoard`, `archiveBoard`, `restoreBoard` (ancestor: Milestone+Project keduanya ACTIVE), `deleteBoard`. Board TIDAK punya status/warna/ikon/WIP limit (FR-019). Pola sama TASK-2.2 (termasuk perbaikan wajib yang sama): version check → ancestor check **untuk update/archive/restore/delete, bukan cuma create/restore** (INV-LIFE-001) → local-state validasi → mutation+Activity atomik. **Perbaikan wajib (Review-CL-02):** sama seperti 2.2.1 — `updateBoard`/`archiveBoard`/`deleteBoard` saat ini tidak cek ancestor sama sekali | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-018, FR-019; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.2 |
+| 2.4.1 | 🔎 | [CL-34](#cl-34)<br>[CL-33](#cl-33)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-06](#qa-cl-06)<br>[Review-CL-02](#review-cl-02) | 80 | P0 | Domain command Board: `createBoard` (title/description, FR-018; tolak jika Milestone ATAU Project tidak ACTIVE — ancestor chain 2 level, pakai 2.1), `updateBoard`, `archiveBoard`, `restoreBoard` (ancestor: Milestone+Project keduanya ACTIVE), `deleteBoard`. Board TIDAK punya status/warna/ikon/WIP limit (FR-019). Pola sama TASK-2.2 (termasuk perbaikan wajib yang sama): version check → ancestor check **untuk update/archive/restore/delete, bukan cuma create/restore** (INV-LIFE-001) → local-state validasi → mutation+Activity atomik. **Perbaikan wajib (Review-CL-02):** sama seperti 2.2.1 — `updateBoard`/`archiveBoard`/`deleteBoard` saat ini tidak cek ancestor sama sekali | [02-SPEC A.3](docs/02-SPEC.md), BR-011–016, BR-019–028, FR-018, FR-019; [03-ENG A.6](docs/03-ENGINEERING.md) | 2.1, 2.2 |
 
 **Test:** Unit — create ditolak jika Milestone ARCHIVED/DELETED (walau Project ACTIVE) DAN jika Project ARCHIVED/DELETED (walau Milestone local ACTIVE — INV-LIFE-001 "ada satu saja ancestor"); restore ditolak jika salah satu dari 2 ancestor tidak ACTIVE; `expected_version` salah → `VERSION_CONFLICT`; tidak ada field non-MVP (status/warna/ikon/WIP). **[WAJIB, Review-CL-02]** `updateBoard`/`archiveBoard`/`deleteBoard` DITOLAK jika Milestone ATAU Project ARCHIVED/DELETED walau Board local ACTIVE.
 **DoD:** Ancestor chain 2-level (Milestone→Project) tervalidasi benar via 2.1 **di seluruh command mutasi (update/archive/restore/delete), bukan cuma create/restore**; atomik mutation+Activity; archive Board tidak mengubah List/Card descendant (BR-013).
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-34"></a>
+### CL-34 — 2026-08-23 · goal 2.4.1 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — ancestor check semua mutasi Board
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 44 file / **288** test lulus (test baru `[Review-CL-02][INV-LIFE-001]`: Project di-archive lalu update/archive/delete Board local ACTIVE ketiganya DITOLAK AncestorNotActiveError, row tak berubah, nol activity); `pnpm -r typecheck` Done; `pnpm lint` bersih. Fix: `commitMutation` board-repository memuat ancestor check Milestone+Project via `isEffectivelyOperational` untuk SEMUA operasi; restore tetap `evaluateRestore` dengan chain yang sama.
+**Catatan:** Seluruh test board lama tetap hijau — tidak ada regresi. Pesan error menyebut blocker spesifik (Milestone vs Project).
+
+<a id="cl-33"></a>
+### CL-33 — 2026-08-23 · goal 2.4.1 dibuka kembali untuk perbaikan (⚠️ → 🔄 · 60%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.4.1 `⚠️/60/P0` per Review-CL-02 + QA-CL-06 (pola bug sama dengan 2.2.1). Fix yang sudah terbukti di milestone-repository (commit `b992966`) direplikasi ke board-repository.
+**Catatan:** Ancestor Board = Milestone+Project — keduanya harus ACTIVE untuk semua operasi.
 
 <a id="cl-32"></a>
 ### CL-32 — 2026-08-23 · goal 2.2.1 perbaikan selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — ancestor check semua mutasi Milestone

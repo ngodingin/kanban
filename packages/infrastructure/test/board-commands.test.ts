@@ -175,6 +175,30 @@ describe("update/archive/delete Board — state machine A.3 / AC-020 (goal 2.4.1
     expect(await activityCount()).toBe(0);
   });
 
+  it("[Review-CL-02][INV-LIFE-001] negatif: Project di-archive walau Board local ACTIVE → update/archive/delete DITOLAK semua", async () => {
+    await seedEntity("project_state", PROJECT);
+    await seedEntity("milestones", "ms_pa");
+    await seedEntity("boards", "bd_pa", { parentId: "ms_pa" });
+    await db.client.execute({
+      sql: "UPDATE project_state SET archived_at = ? WHERE project_id = ?",
+      args: [T0, PROJECT],
+    });
+
+    await expect(
+      repo.updateBoard(PROJECT, { boardId: "bd_pa", expectedVersion: 1, actorUserId: OWNER, title: "Gagal" }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    await expect(
+      repo.archiveBoard(PROJECT, { boardId: "bd_pa", expectedVersion: 1, actorUserId: OWNER }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    await expect(
+      repo.deleteBoard(PROJECT, { boardId: "bd_pa", expectedVersion: 1, actorUserId: OWNER }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+
+    const row = await db.client.execute("SELECT title, version FROM boards WHERE id = 'bd_pa'");
+    expect(row.rows[0]).toMatchObject({ title: "B bd_pa", version: 1 });
+    expect(await activityCount()).toBe(0);
+  });
+
   it("negatif: update dari ARCHIVED ditolak; delete dari DELETED ditolak (terminal)", async () => {
     await seedEntity("project_state", PROJECT);
     await seedEntity("milestones", "ms_a");

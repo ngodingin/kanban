@@ -139,6 +139,30 @@ export class DrizzleBoardRepository implements BoardRepository {
         throw new BoardInvalidStateError(operation, loaded.lifecycleBefore);
       }
 
+      // INV-LIFE-001 — entity non-operational (Milestone/Project non-ACTIVE)
+      // MUST NOT menerima mutasi apapun, termasuk update/archive/delete.
+      const project = await loadProjectState(tx, projectId);
+      const projectBefore = project ? resolveLifecycleState(project) : ("DELETED" as LifecycleState);
+      const milestoneRow = (
+        await tx.execute("SELECT archived_at, deleted_at FROM milestones WHERE id = ?", [loaded.current.milestoneId])
+      ).rows[0];
+      const milestoneBefore = milestoneRow
+        ? resolveLifecycleState({
+            archivedAt: milestoneRow.archived_at === null ? null : String(milestoneRow.archived_at),
+            deletedAt: milestoneRow.deleted_at === null ? null : String(milestoneRow.deleted_at),
+          })
+        : ("DELETED" as LifecycleState);
+      if (!isEffectivelyOperational([milestoneBefore, projectBefore])) {
+        const blocker =
+          milestoneBefore !== "ACTIVE"
+            ? `Milestone ${loaded.current.milestoneId} (${milestoneBefore})`
+            : `Project (${projectBefore})`;
+        throw new AncestorNotActiveError(
+          operation,
+          `Ancestor tidak ACTIVE: ${blocker} — Board tidak dapat menerima operasi ${operation} (INV-LIFE-001)`,
+        );
+      }
+
       const now = new Date().toISOString();
       const next: BoardRecord = { ...loaded.current };
       let action: string;
@@ -169,17 +193,6 @@ export class DrizzleBoardRepository implements BoardRepository {
         data = { previous_state: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 — local ARCHIVED sudah dicek; chain Milestone+Project harus ACTIVE.
-        const project = await loadProjectState(tx, projectId);
-        const projectBefore = project ? resolveLifecycleState(project) : ("DELETED" as LifecycleState);
-        const milestoneRow = (
-          await tx.execute("SELECT archived_at, deleted_at FROM milestones WHERE id = ?", [loaded.current.milestoneId])
-        ).rows[0];
-        const milestoneBefore = milestoneRow
-          ? resolveLifecycleState({
-              archivedAt: milestoneRow.archived_at === null ? null : String(milestoneRow.archived_at),
-              deletedAt: milestoneRow.deleted_at === null ? null : String(milestoneRow.deleted_at),
-            })
-          : ("DELETED" as LifecycleState);
         const decision = evaluateRestore(loaded.lifecycleBefore, [milestoneBefore, projectBefore]);
         if (!decision.allowed) {
           const blockerName =
