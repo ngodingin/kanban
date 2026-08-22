@@ -169,5 +169,35 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
     });
   });
 
+  const lifecycleCommands = {
+    archive: (repository: DrizzleCardRepository, projectId: string, input: { cardId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveCard(projectId, input),
+    restore: (repository: DrizzleCardRepository, projectId: string, input: { cardId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreCard(projectId, input),
+    delete: (repository: DrizzleCardRepository, projectId: string, input: { cardId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteCard(projectId, input),
+  } as const;
+
+  for (const [action, command] of Object.entries(lifecycleCommands)) {
+    router.post(`/v1/projects/:project_id/cards/:card_id/${action}`, async (c) => {
+      return withErrorHandling(c, async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const ctx = await deps.openProjectContext(c.req.raw, projectId);
+        assertOwnerInterim(ctx);
+        const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+        const repository = new DrizzleCardRepository(ctx.database, {
+          assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
+        });
+        const record = await command(repository, projectId, {
+          cardId: c.req.param("card_id"),
+          expectedVersion,
+          actorUserId: ctx.userId,
+        });
+        return { card: cardPayload(record) };
+      });
+    });
+  }
+
   return router;
 }

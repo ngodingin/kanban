@@ -152,7 +152,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 2.9.1 | 🔎 | [CL-42](#cl-42)<br>[CL-41](#cl-41) | 80 | P0 | `POST /api/v1/projects/:project_id/lists/:list_id/cards` + `GET .../cards/:card_id` — TANPA filter visibility (Prinsip #5, Phase 4 scope) | [02-SPEC C.8](docs/02-SPEC.md), FR-024 | 2.8 |
 | 2.9.2 | 🔎 | [CL-44](#cl-44)<br>[CL-43](#cl-43) | 80 | P1 | `PATCH .../cards/:card_id` — `title`/`subtitle`/`description`/`due_date`/`assignee` saja (C.8 eksplisit), **TIDAK BOLEH** `list_id` | [02-SPEC C.8](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.8, 2.9.1 |
-| 2.9.3 | ⬜️ | — | 0 | P1 | `POST .../cards/:card_id/{archive,restore,delete}` | [02-SPEC C.8](docs/02-SPEC.md), A.3, BR-045A | 2.8, 2.9.1 |
+| 2.9.3 | 🔎 | [CL-46](#cl-46)<br>[CL-45](#cl-45) | 80 | P1 | `POST .../cards/:card_id/{archive,restore,delete}` | [02-SPEC C.8](docs/02-SPEC.md), A.3, BR-045A | 2.8, 2.9.1 |
 
 **Test:** Create Card dengan `list_id` Project lain → ditolak; PATCH dengan `list_id` di body → diabaikan/ditolak (BR-017/061, uji eksplisit); assignee bukan member → ditolak dengan kode jelas; lifecycle + version-conflict pattern konsisten.
 **DoD:** Endpoint sesuai C.8 (minus move); generic PATCH tidak pernah bisa mindahkan Card (BR-017 ditegakkan transport-level, bukan cuma domain).
@@ -290,6 +290,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** big-pickle (opencode)
 **Bukti:** Freshness check dari disk: row 2.8.2 `⬜️` dengan teks goal yang sudah diamendemen Review-CL-02 (ancestor check WAJIB di keempat operasi update/archive/restore/delete). Dependency `2.8.1` terpenuhi (CL-28). Karena pekerjaan Card dikerjakan setelah Review-CL-02 diketahui, implementasi langsung mengikuti interpretasi terkoreksi.
 **Catatan:** Transisi ini dan CL-30 masuk commit yang sama dengan implementasinya.
+
+<a id="cl-46"></a>
+### CL-46 — 2026-08-23 · goal 2.9.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint lifecycle Card
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 47 file / **303** test lulus (3 test integration baru `apps/api/test/cards-lifecycle.test.ts`); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: `POST .../cards/:card_id/{archive,restore,delete}` via `lifecycleCommands` — Owner-only interim, expected_version wajib, envelope `{data:{card}}`.
+**Catatan:** Skenario mencakup: archive+restore sukses berurutan; ancestor List ARCHIVED → archive/delete DITOLAK INVALID_STATE walau local ACTIVE (Review-CL-02 terpropagasi ke Card HTTP); setelah List dipulihkan delete dari ARCHIVED sukses; AC-020 ketiga action; VALIDATION_ERROR/PERMISSION_DENIED/TOKEN_EXPIRED/404.
+
+<a id="cl-45"></a>
+### CL-45 — 2026-08-23 · goal 2.9.3 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 2.9.3 `⬜️/—/0/P1`, dependency `2.8, 2.9.1` → keduanya `🔎/80%` (commit `5c05da4`, `c3018a7`; suite 300 hijau). BR-045A sudah diimplementasi di domain layer (CL-30).
+**Catatan:** Pola lifecycleCommands sama; ancestor check semua operasi sudah di domain layer.
 
 <a id="cl-44"></a>
 ### CL-44 — 2026-08-23 · goal 2.9.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint PATCH Card
