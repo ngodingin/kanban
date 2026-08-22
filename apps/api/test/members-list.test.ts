@@ -132,10 +132,10 @@ describe("GET /members (goal 1.10.1)", () => {
     if (both.length !== 4) throw new Error(`kombinasi harusnya 4, dapat ${both.length}`);
   });
 
-  it("[C.12] negatif: nilai status tidak dikenal → INVALID_STATE 409", async () => {
+  it("[C.12] negatif: nilai status tidak dikenal → VALIDATION_ERROR 400", async () => {
     const res = await listMembers("user-a", "?status=archived");
-    if (res.status !== 409 || (await res.json()).error.code !== "INVALID_STATE") {
-      throw new Error(`harusnya 409 INVALID_STATE, dapat ${res.status}: ${await res.text()}`);
+    if (res.status !== 400 || (await res.json()).error.code !== "VALIDATION_ERROR") {
+      throw new Error(`harusnya 400 VALIDATION_ERROR, dapat ${res.status}: ${await res.text()}`);
     }
   });
 

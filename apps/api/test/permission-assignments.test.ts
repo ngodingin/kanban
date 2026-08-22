@@ -141,12 +141,12 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
     if ((await res.json()).data.assignment.cardReadVisibility !== "ALL") throw new Error("visibility ALL tidak tersimpan");
   });
 
-  it("[B.2] negatif: visibility pada non-card.read → INVALID_STATE 409", async () => {
+  it("[B.2] negatif: visibility pada non-card.read → VALIDATION_ERROR 400", async () => {
     for (const key of ["board.read", "list.read"]) {
       const permId = await permissionIdByKey(key);
       const res = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA, card_read_visibility: "ALL" }, "user-a");
-      if (res.status !== 409) throw new Error(`${key} harusnya 409, dapat ${res.status}`);
-      if ((await res.json()).error.code !== "INVALID_STATE") throw new Error(`kode salah untuk ${key}`);
+      if (res.status !== 400) throw new Error(`${key} harusnya 400, dapat ${res.status}`);
+      if ((await res.json()).error.code !== "VALIDATION_ERROR") throw new Error(`kode salah untuk ${key}`);
     }
   });
 

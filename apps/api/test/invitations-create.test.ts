@@ -126,11 +126,11 @@ describe("POST /invitations (goal 1.9.1)", () => {
     if (Number(rows.rows[0]!.n) !== 2) throw new Error("group references tidak tersimpan lengkap");
   });
 
-  it("[BR-051] negatif: tanpa assignments / array kosong → INVALID_STATE 409", async () => {
+  it("[BR-051] negatif: tanpa assignments / array kosong → VALIDATION_ERROR 400", async () => {
     for (const body of [{ email: "a@b.co" }, { email: "a@b.co", assignments: [] }]) {
       const res = await invite(body, "user-a");
-      if (res.status !== 409 || (await res.json()).error.code !== "INVALID_STATE") {
-        throw new Error(`body ${JSON.stringify(body)} harusnya 409 INVALID_STATE, dapat ${res.status}: ${await res.text()}`);
+      if (res.status !== 400 || (await res.json()).error.code !== "VALIDATION_ERROR") {
+        throw new Error(`body ${JSON.stringify(body)} harusnya 400 VALIDATION_ERROR, dapat ${res.status}: ${await res.text()}`);
       }
     }
   });
@@ -153,18 +153,25 @@ describe("POST /invitations (goal 1.9.1)", () => {
     }
   });
 
-  it("[C.13] negatif: email invalid / expires_at lampau / scope salah → INVALID_STATE 409", async () => {
+  it("[C.13] negatif: email invalid / expires_at bukan ISO → VALIDATION_ERROR 400; expires_at lampau / scope salah → INVALID_STATE 409", async () => {
     for (const body of [
       { email: "bukan-email", assignments: [{ group_id: groupId }] },
       { email: "", assignments: [{ group_id: groupId }] },
-      { email: "z@z.co", assignments: [{ group_id: groupId }], expires_at: "2020-01-01T00:00:00.000Z" },
       { email: "z@z.co", assignments: [{ group_id: groupId }], expires_at: "bukan-tanggal" },
+    ]) {
+      const res = await invite(body, "user-a");
+      if (res.status !== 400 || (await res.json()).error.code !== "VALIDATION_ERROR") {
+        throw new Error(`body ${JSON.stringify(body)} harusnya 400 VALIDATION_ERROR, dapat ${res.status}: ${await res.text()}`);
+      }
+    }
+    for (const body of [
+      { email: "z@z.co", assignments: [{ group_id: groupId }], expires_at: "2020-01-01T00:00:00.000Z" },
       { email: "z@z.co", assignments: [{ group_id: groupId, scope_type: "milestone", scope_id: "m1" }] },
       { email: "z@z.co", assignments: [{ group_id: groupId, scope_type: "project", scope_id: "proj-lain" }] },
     ]) {
       const res = await invite(body, "user-a");
       if (res.status !== 409 || (await res.json()).error.code !== "INVALID_STATE") {
-        throw new Error(`body ${JSON.stringify(body)} harusnya 409, dapat ${res.status}: ${await res.text()}`);
+        throw new Error(`body ${JSON.stringify(body)} harusnya 409 INVALID_STATE, dapat ${res.status}: ${await res.text()}`);
       }
     }
   });

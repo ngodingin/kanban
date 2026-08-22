@@ -143,7 +143,7 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
     }
   });
 
-  it("[B.2] negatif: card_read_visibility utk permission selain card.read ditolak INVALID_STATE", async () => {
+  it("[B.2] negatif: card_read_visibility utk permission selain card.read ditolak VALIDATION_ERROR", async () => {
     const projectRead = await permissionIdByKey(ctx.globalClient, "project.read");
     const res = await makeApp().request(`http://localhost/api/v1/projects/${ctx.projectIdA}/permission-groups`, {
       method: "POST",
@@ -153,9 +153,9 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
         permissions: [{ permission_id: projectRead, card_read_visibility: "ALL" }],
       }),
     });
-    if (res.status !== 409) throw new Error(`harusnya 409, dapat ${res.status}: ${await res.text()}`);
+    if (res.status !== 400) throw new Error(`harusnya 400, dapat ${res.status}: ${await res.text()}`);
     const json = await res.json();
-    if (json.error.code !== "INVALID_STATE") throw new Error(`kode salah: ${JSON.stringify(json)}`);
+    if (json.error.code !== "VALIDATION_ERROR") throw new Error(`kode salah: ${JSON.stringify(json)}`);
   });
 
   it("[Rule-3][D.2] negatif: non-Owner aktif ditolak 403 walau body invalid (authorization first)", async () => {
@@ -175,13 +175,13 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
       body: JSON.stringify({ name: "X", permissions: [{ permission_id: "perm-tidak-ada" }] }),
     });
-    if (res.status !== 409) throw new Error(`harusnya 409, dapat ${res.status}`);
+    if (res.status !== 400) throw new Error(`harusnya 400, dapat ${res.status}`);
     const resName = await makeApp().request(`http://localhost/api/v1/projects/${ctx.projectIdA}/permission-groups`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
       body: JSON.stringify({ name: "   " }),
     });
-    if (resName.status !== 409) throw new Error(`nama kosong harusnya 409, dapat ${resName.status}`);
+    if (resName.status !== 400) throw new Error(`nama kosong harusnya 400, dapat ${resName.status}`);
   });
 
   it("[INV-04][BR-039] boundary: group baru hanya muncul di Project pembuatnya", async () => {

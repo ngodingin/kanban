@@ -53,7 +53,7 @@ export function toApiErrorResponse(error: unknown): { status: number; body: Erro
 
 function readJsonObject(body: unknown): Record<string, unknown> {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
+    throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
   }
   return body as Record<string, unknown>;
 }
@@ -61,14 +61,14 @@ function readJsonObject(body: unknown): Record<string, unknown> {
 function readProjectNameField(body: unknown): string {
   const raw = readJsonObject(body).name;
   if (typeof raw !== "string") {
-    throw new PipelineError("INVALID_STATE", "Field name wajib string.", 409);
+    throw new PipelineError("VALIDATION_ERROR", "Field name wajib string.", 400);
   }
   const name = raw.trim();
   if (name.length === 0) {
-    throw new PipelineError("INVALID_STATE", "Field name tidak boleh kosong.", 409);
+    throw new PipelineError("VALIDATION_ERROR", "Field name tidak boleh kosong.", 400);
   }
   if (name.length > MAX_PROJECT_NAME_LENGTH) {
-    throw new PipelineError("INVALID_STATE", `Field name maksimal ${MAX_PROJECT_NAME_LENGTH} karakter.`, 409);
+    throw new PipelineError("VALIDATION_ERROR", `Field name maksimal ${MAX_PROJECT_NAME_LENGTH} karakter.`, 400);
   }
   return name;
 }
@@ -76,7 +76,7 @@ function readProjectNameField(body: unknown): string {
 function readExpectedVersionField(body: unknown): number {
   const raw = readJsonObject(body).expected_version;
   if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 1) {
-    throw new PipelineError("INVALID_STATE", "Field expected_version wajib integer >= 1.", 409);
+    throw new PipelineError("VALIDATION_ERROR", "Field expected_version wajib integer >= 1.", 400);
   }
   return raw;
 }

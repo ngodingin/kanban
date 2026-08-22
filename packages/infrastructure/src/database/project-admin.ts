@@ -134,7 +134,7 @@ function normalizeVisibility(value: unknown): CardReadVisibility | null {
   if (typeof value === "string" && (CARD_READ_VISIBILITIES as readonly string[]).includes(value)) {
     return value as CardReadVisibility;
   }
-  throw new PipelineError("INVALID_STATE", `card_read_visibility tidak valid: ${String(value)}`, 409);
+  throw new PipelineError("VALIDATION_ERROR", `card_read_visibility tidak valid: ${String(value)}`, 400);
 }
 
 // Validasi referensi katalog + invariant visibility (C.12): visibility hanya
@@ -156,12 +156,12 @@ export async function createPermissionGroup(globalClient: Client, input: CreateP
   const keyById = new Map(known.map((row) => [row.id, row.key]));
   for (const id of permissionIds) {
     if (!keyById.has(id)) {
-      throw new PipelineError("INVALID_STATE", `permission_id tidak dikenal: ${id}`, 409);
+      throw new PipelineError("VALIDATION_ERROR", `permission_id tidak dikenal: ${id}`, 400);
     }
   }
   for (const entry of requested) {
     if (entry.cardReadVisibility != null && keyById.get(entry.permissionId) !== "card.read") {
-      throw new PipelineError("INVALID_STATE", "card_read_visibility hanya berlaku untuk permission card.read.", 409);
+      throw new PipelineError("VALIDATION_ERROR", "card_read_visibility hanya berlaku untuk permission card.read.", 400);
     }
   }
   const groupId = ulid();
@@ -222,12 +222,12 @@ export async function updatePermissionGroup(globalClient: Client, input: UpdateP
     const keyById = new Map(known.map((row) => [row.id, row.key]));
     for (const id of permissionIds) {
       if (!keyById.has(id)) {
-        throw new PipelineError("INVALID_STATE", `permission_id tidak dikenal: ${id}`, 409);
+        throw new PipelineError("VALIDATION_ERROR", `permission_id tidak dikenal: ${id}`, 400);
       }
     }
     for (const entry of requested) {
       if (entry.cardReadVisibility != null && keyById.get(entry.permissionId) !== "card.read") {
-        throw new PipelineError("INVALID_STATE", "card_read_visibility hanya berlaku untuk permission card.read.", 409);
+        throw new PipelineError("VALIDATION_ERROR", "card_read_visibility hanya berlaku untuk permission card.read.", 400);
       }
     }
     await db.transaction(async (tx) => {
@@ -367,7 +367,7 @@ export async function revokeGroupAssignment(
 function parseCardReadVisibility(raw: string | null | undefined): "CREATED_BY_ME" | "ASSIGNED_TO_ME" | "ALL" {
   if (raw === undefined || raw === null) return "CREATED_BY_ME";
   if (raw === "CREATED_BY_ME" || raw === "ASSIGNED_TO_ME" || raw === "ALL") return raw;
-  throw new PipelineError("INVALID_STATE", `Nilai card_read_visibility '${raw}' tidak valid.`, 409);
+  throw new PipelineError("VALIDATION_ERROR", `Nilai card_read_visibility '${raw}' tidak valid.`, 400);
 }
 
 export interface PermissionAssignmentSummary {
@@ -412,7 +412,7 @@ export async function createPermissionAssignment(
   const permissionKey = String(permRows.rows[0]!.key);
   const requested = input.cardReadVisibility;
   if (requested !== undefined && requested !== null && permissionKey !== "card.read") {
-    throw new PipelineError("INVALID_STATE", `card_read_visibility hanya berlaku untuk permission 'card.read', bukan '${permissionKey}'.`, 409);
+    throw new PipelineError("VALIDATION_ERROR", `card_read_visibility hanya berlaku untuk permission 'card.read', bukan '${permissionKey}'.`, 400);
   }
   const cardReadVisibility = permissionKey === "card.read" ? parseCardReadVisibility(requested) : null;
   const now = new Date().toISOString();
@@ -492,16 +492,16 @@ export async function createInvitation(
 ): Promise<InvitationSummary> {
   const email = input.email.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new PipelineError("INVALID_STATE", `Email '${input.email}' tidak valid.`, 409);
+    throw new PipelineError("VALIDATION_ERROR", `Email '${input.email}' tidak valid.`, 400);
   }
   if (!Array.isArray(input.assignments) || input.assignments.length === 0) {
-    throw new PipelineError("INVALID_STATE", "Invitation wajib memiliki minimal satu assignment (BR-051).", 409);
+    throw new PipelineError("VALIDATION_ERROR", "Invitation wajib memiliki minimal satu assignment (BR-051).", 400);
   }
   const now = new Date().toISOString();
   let expiresAt = input.expiresAt ?? undefined;
   if (expiresAt !== undefined && expiresAt !== null) {
     if (Number.isNaN(Date.parse(expiresAt))) {
-      throw new PipelineError("INVALID_STATE", `expires_at '${expiresAt}' bukan timestamp ISO yang valid.`, 409);
+      throw new PipelineError("VALIDATION_ERROR", `expires_at '${expiresAt}' bukan timestamp ISO yang valid.`, 400);
     }
     if (Date.parse(expiresAt) <= Date.parse(now)) {
       throw new PipelineError("INVALID_STATE", "expires_at harus di masa depan.", 409);

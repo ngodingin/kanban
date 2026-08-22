@@ -176,7 +176,7 @@ describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal
     if (p.name !== "Nama Baru" || p.version !== 2) throw new Error(`state berubah diam-diam: ${JSON.stringify(p)}`);
   });
 
-  it("[C.15][C.2] payload invalid: expected_version hilang / bukan integer / name kosong → INVALID_STATE 409", async () => {
+  it("[C.15][C.2] payload invalid: expected_version hilang / bukan integer / name kosong → VALIDATION_ERROR 400", async () => {
     for (const [label, body] of [
       ["tanpa expected_version", { name: "X" }],
       ["expected_version nol", { name: "X", expected_version: 0 }],
@@ -184,9 +184,9 @@ describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal
       ["name kosong", { name: " ", expected_version: 2 }],
     ] as const) {
       const res = await patch(body as unknown, "user-a");
-      if (res.status !== 409) throw new Error(`${label}: status ${res.status}, harusnya 409`);
+      if (res.status !== 400) throw new Error(`${label}: status ${res.status}, harusnya 400`);
       const json = await res.json();
-      if (json.error?.code !== "INVALID_STATE") throw new Error(`${label}: code ${json.error?.code}`);
+      if (json.error?.code !== "VALIDATION_ERROR") throw new Error(`${label}: code ${json.error?.code}`);
     }
   });
 

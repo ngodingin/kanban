@@ -189,7 +189,7 @@ describe("PATCH /api/v1/projects/:project_id/permission-groups/:group_id (goal 1
     if (res.status !== 404) throw new Error(`harusnya 404, dapat ${res.status}`);
   });
 
-  it("[C.12] negatif: permission tak dikenal / duplikat / field asing / tanpa field → INVALID_STATE 409", async () => {
+  it("[C.12] negatif: permission tak dikenal / duplikat / field asing / tanpa field → VALIDATION_ERROR 400", async () => {
     const fresh = await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "Validasi", permissions: [] });
     for (const body of [
       { permissions: [{ permission_id: "perm-tidak-ada" }] },
@@ -201,7 +201,9 @@ describe("PATCH /api/v1/projects/:project_id/permission-groups/:group_id (goal 1
       {},
     ]) {
       const res = await patchGroup(ctx.projectIdA, fresh.id, body, "user-a");
-      if (res.status !== 409) throw new Error(`body ${JSON.stringify(body)} harusnya 409, dapat ${res.status}`);
+      if (res.status !== 400) throw new Error(`body ${JSON.stringify(body)} harusnya 400, dapat ${res.status}`);
+      const json = await res.json();
+      if (json.error.code !== "VALIDATION_ERROR") throw new Error(`kode salah untuk ${JSON.stringify(body)}: ${JSON.stringify(json)}`);
     }
   });
 });

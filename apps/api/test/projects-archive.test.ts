@@ -190,9 +190,11 @@ describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHI
     if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
   });
 
-  it("[C.2] tanpa expected_version → INVALID_STATE; tanpa identitas → TOKEN_EXPIRED", async () => {
+  it("[C.2] tanpa expected_version → VALIDATION_ERROR; tanpa identitas → TOKEN_EXPIRED", async () => {
     const noBody = await archive({}, "user-a");
-    if (noBody.status !== 409) throw new Error(`status ${noBody.status}, harusnya 409`);
+    if (noBody.status !== 400) throw new Error(`status ${noBody.status}, harusnya 400`);
+    const jsonNoBody = await noBody.json();
+    if (jsonNoBody.error?.code !== "VALIDATION_ERROR") throw new Error(`code ${jsonNoBody.error?.code}`);
     const anon = await archive({ expected_version: 99 });
     if (anon.status !== 401) throw new Error(`status ${anon.status}, harusnya 401`);
     const json = await anon.json();

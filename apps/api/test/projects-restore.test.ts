@@ -184,12 +184,12 @@ describe("POST /api/v1/projects/:project_id/restore — lifecycle ARCHIVED→ACT
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
   });
 
-  it("[C.4][interim-authz][C.2] non-owner → PERMISSION_DENIED 403; tanpa identitas → TOKEN_EXPIRED 401; tanpa expected_version → INVALID_STATE", async () => {
+  it("[C.4][interim-authz][C.2] non-owner → PERMISSION_DENIED 403; tanpa identitas → TOKEN_EXPIRED 401; tanpa expected_version → VALIDATION_ERROR", async () => {
     const forbidden = await restore({ expected_version: 4 }, "user-b");
     if (forbidden.status !== 403) throw new Error(`status ${forbidden.status}, harusnya 403`);
     const anon = await restore({ expected_version: 4 });
     if (anon.status !== 401) throw new Error(`status ${anon.status}, harusnya 401`);
     const noVersion = await restore({}, "user-a");
-    if (noVersion.status !== 409) throw new Error(`status ${noVersion.status}, harusnya 409`);
+    if (noVersion.status !== 400) throw new Error(`status ${noVersion.status}, harusnya 400`);
   });
 });

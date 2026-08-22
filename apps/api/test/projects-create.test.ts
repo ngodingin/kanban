@@ -156,7 +156,7 @@ describe("POST /api/v1/projects — endpoint provisioning (goal 1.3.1)", () => {
     if (typeof json.data !== "undefined") throw new Error("error envelope tidak boleh punya data");
   });
 
-  it("[C.2][C.5] POST payload invalid (bukan objek / name non-string / kosong / >255) ditolak INVALID_STATE tanpa efek provisioning", async () => {
+  it("[C.2][C.5] POST payload invalid (bukan objek / name non-string / kosong / >255) ditolak VALIDATION_ERROR tanpa efek provisioning", async () => {
     let provisionCalls = 0;
     const app = makeApp({
       ...ctx.deps,
@@ -173,9 +173,9 @@ describe("POST /api/v1/projects — endpoint provisioning (goal 1.3.1)", () => {
       ["name >255", { name: "a".repeat(256) }],
     ] as const) {
       const res = await post(app, body as unknown, { "x-test-user": "user-owner" });
-      if (res.status !== 409) throw new Error(`${label}: status ${res.status}, harusnya 409`);
+      if (res.status !== 400) throw new Error(`${label}: status ${res.status}, harusnya 400`);
       const json = await res.json();
-      if (json.error?.code !== "INVALID_STATE") throw new Error(`${label}: code ${json.error?.code}`);
+      if (json.error?.code !== "VALIDATION_ERROR") throw new Error(`${label}: code ${json.error?.code}`);
     }
     if (provisionCalls !== 0) throw new Error(`provisioning terpanggil ${provisionCalls}x untuk payload invalid`);
   });
