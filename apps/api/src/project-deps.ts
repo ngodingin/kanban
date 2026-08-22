@@ -1,6 +1,7 @@
 import {
   assertProjectOwner,
   createCachedProjectDbClientFactory,
+  createGroupAssignment,
   createPermissionGroup,
   deletePermissionGroup,
   listPermissionGroups,
@@ -9,6 +10,7 @@ import {
   provisionProjectWithMapping,
   RequestPipeline,
   requireActiveMember,
+  revokeGroupAssignment,
   SqliteProjectDatabaseResolver,
   updatePermissionGroup,
   type IdentityResolver,
@@ -101,5 +103,15 @@ export function buildProjectAdminDeps(input: {
         ...(payload.permissions !== undefined ? { permissions: payload.permissions } : {}),
       }),
     deletePermissionGroup: (projectId, groupId) => deletePermissionGroup(globalClient, projectId, groupId),
+    createGroupAssignment: async (projectId, membershipId, input) =>
+      createGroupAssignment(globalClient, {
+        projectId,
+        membershipId,
+        groupId: input.groupId,
+        scopeType: input.scopeType,
+        scopeId: input.scopeId,
+      }),
+    revokeGroupAssignment: (projectId, membershipId, assignmentId) =>
+      revokeGroupAssignment(globalClient, { projectId, membershipId, assignmentId }),
   };
 }

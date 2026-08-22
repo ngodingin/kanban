@@ -4,6 +4,7 @@ import { ok } from "@kanban/contracts";
 import {
   PipelineError,
   ResolveIdentityStep,
+  type GroupAssignmentSummary,
   type PermissionGroupSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
@@ -43,6 +44,16 @@ export interface ProjectAdminRoutesDeps {
     input: UpdatePermissionGroupPayload,
   ): Promise<PermissionGroupSummary>;
   deletePermissionGroup(projectId: string, groupId: string): Promise<PermissionGroupSummary>;
+  createGroupAssignment(
+    projectId: string,
+    membershipId: string,
+    input: { groupId: string; scopeType: string; scopeId: string },
+  ): Promise<GroupAssignmentSummary>;
+  revokeGroupAssignment(
+    projectId: string,
+    membershipId: string,
+    assignmentId: string,
+  ): Promise<GroupAssignmentSummary>;
 }
 
 const MAX_GROUP_NAME_LENGTH = 255;
@@ -200,6 +211,61 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       await deps.assertProjectOwner(projectId, identity.userId);
       const group = await deps.deletePermissionGroup(projectId, groupId);
       return c.json(ok({ group }));
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/members/:membership_id/group-assignments", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const membershipId = c.req.param("membership_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const raw = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+      if (typeof raw !== "object" || raw === null) {
+        throw new PipelineError("INVALID_STATE", "Body request wajib objek JSON.", 409);
+      }
+      const groupId = raw.group_id;
+      const scopeType = raw.scope_type;
+      const scopeId = raw.scope_id;
+      if (typeof groupId !== "string" || groupId.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Field group_id wajib string non-kosong.", 409);
+      }
+      if (typeof scopeType !== "string" || scopeType.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Field scope_type wajib string non-kosong.", 409);
+      }
+      if (typeof scopeId !== "string" || scopeId.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Field scope_id wajib string non-kosong.", 409);
+      }
+      const assignment = await deps.createGroupAssignment(projectId, membershipId, { groupId, scopeType, scopeId });
+      return c.json(ok({ assignment }), 201);
+    } catch (error) {
+      const mapped = toApiErrorResponse(error);
+      return c.json(mapped.body, mapped.status as ContentfulStatusCode);
+    }
+  });
+
+  router.post("/v1/projects/:project_id/members/:membership_id/group-assignments/:assignment_id/revoke", async (c) => {
+    try {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3): Owner-only interim.
+      await deps.assertProjectOwner(projectId, identity.userId);
+      const assignment = await deps.revokeGroupAssignment(
+        projectId,
+        c.req.param("membership_id"),
+        c.req.param("assignment_id"),
+      );
+      return c.json(ok({ assignment }));
     } catch (error) {
       const mapped = toApiErrorResponse(error);
       return c.json(mapped.body, mapped.status as ContentfulStatusCode);

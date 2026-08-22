@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import {
   groupPermissions,
+  membershipGroupAssignments,
   permissionGroups,
   permissions,
   projectMemberships,
@@ -261,4 +262,100 @@ export async function deletePermissionGroup(globalClient: Client, projectId: str
   await db.update(permissionGroups).set({ deletedAt: now, updatedAt: now }).where(eq(permissionGroups.id, groupId)).run();
   const updated = await db.select().from(permissionGroups).where(eq(permissionGroups.id, groupId));
   return (await attachPermissions(globalClient, updated))[0]!;
+}
+
+// ===== Scoped assignment endpoints (C.12) — 1.8.1 / 1.8.2 =====
+
+function mapUniqueViolation(error: unknown, message: string): never {
+  // Drizzle membungkus error driver di cause — periksa rantai penyebabnya.
+  let current: unknown = error;
+  for (let depth = 0; depth < 5 && current instanceof Error; depth += 1) {
+    if (current.message.includes("UNIQUE constraint failed")) {
+      throw new PipelineError("INVALID_STATE", message, 409);
+    }
+    current = (current as Error & { cause?: unknown }).cause;
+  }
+  throw error instanceof Error ? error : new Error(String(error));
+}
+
+async function requireActiveMembershipRow(globalClient: Client, projectId: string, membershipId: string) {
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(projectMemberships)
+    .where(sql`${projectMemberships.id} = ${membershipId} AND ${projectMemberships.projectId} = ${projectId}`);
+  if (rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Membership ${membershipId} tidak ditemukan di Project ini.`, 404);
+  }
+  return rows[0]!;
+}
+
+export interface GroupAssignmentSummary {
+  id: string;
+  membershipId: string;
+  groupId: string;
+  scopeType: string;
+  scopeId: string;
+  createdAt: string;
+  revokedAt: string | null;
+}
+
+// Assign scoped Group ke Membership — Phase 1 hanya scope project
+// (BR-042B catatan revisit Phase 2/3 saat resource non-project tersedia).
+export async function createGroupAssignment(
+  globalClient: Client,
+  input: { projectId: string; membershipId: string; groupId: string; scopeType: string; scopeId: string },
+): Promise<GroupAssignmentSummary> {
+  const membership = await requireActiveMembershipRow(globalClient, input.projectId, input.membershipId);
+  if (membership.revokedAt !== null) {
+    throw new PipelineError("INVALID_STATE", "Membership sudah di-revoke — tidak dapat menerima assignment baru.", 409);
+  }
+  if (input.scopeType !== "project") {
+    throw new PipelineError("INVALID_STATE", `scope_type '${input.scopeType}' belum didukung di Phase 1 (hanya 'project').`, 409);
+  }
+  if (input.scopeId !== input.projectId) {
+    throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+  }
+  const groupRows = await drizzle(globalClient).select().from(permissionGroups)
+    .where(sql`${permissionGroups.id} = ${input.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
+  if (groupRows.length === 0 || groupRows[0]!.deletedAt !== null) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${input.groupId} tidak ditemukan (aktif) di Project ini.`, 404);
+  }
+  const now = new Date().toISOString();
+  const id = ulid();
+  const db = drizzle(globalClient);
+  try {
+    await db.insert(membershipGroupAssignments).values({
+      id,
+      membershipId: input.membershipId,
+      groupId: input.groupId,
+      scopeType: "project",
+      scopeId: input.scopeId,
+      createdAt: now,
+      revokedAt: null,
+    }).run();
+  } catch (error) {
+    mapUniqueViolation(error, "Assignment aktif dengan (membership, group, scope) yang sama sudah ada.");
+  }
+  return { id, membershipId: input.membershipId, groupId: input.groupId, scopeType: "project", scopeId: input.scopeId, createdAt: now, revokedAt: null };
+}
+
+// Revoke mempertahankan riwayat (set revoked_at, bukan delete); idempotent.
+export async function revokeGroupAssignment(
+  globalClient: Client,
+  input: { projectId: string; membershipId: string; assignmentId: string },
+): Promise<GroupAssignmentSummary> {
+  await requireActiveMembershipRow(globalClient, input.projectId, input.membershipId);
+  const db = drizzle(globalClient);
+  const rows = await db.select().from(membershipGroupAssignments)
+    .where(sql`${membershipGroupAssignments.id} = ${input.assignmentId} AND ${membershipGroupAssignments.membershipId} = ${input.membershipId}`);
+  if (rows.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Group assignment ${input.assignmentId} tidak ditemukan untuk Membership ini.`, 404);
+  }
+  const row = rows[0]!;
+  if (row.revokedAt !== null) {
+    return { id: row.id, membershipId: row.membershipId, groupId: row.groupId, scopeType: row.scopeType, scopeId: row.scopeId, createdAt: row.createdAt, revokedAt: row.revokedAt };
+  }
+  const now = new Date().toISOString();
+  await db.update(membershipGroupAssignments).set({ revokedAt: now })
+    .where(eq(membershipGroupAssignments.id, input.assignmentId)).run();
+  return { id: row.id, membershipId: row.membershipId, groupId: row.groupId, scopeType: row.scopeType, scopeId: row.scopeId, createdAt: row.createdAt, revokedAt: now };
 }

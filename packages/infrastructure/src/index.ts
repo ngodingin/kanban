@@ -27,14 +27,17 @@ export {
 } from "./database/project-resolver.ts";
 export {
   assertProjectOwner,
+  createGroupAssignment,
   createPermissionGroup,
   deletePermissionGroup,
   getProjectOwnerId,
   hasActiveMembership,
   listPermissionGroups,
   requireActiveMember,
+  revokeGroupAssignment,
   updatePermissionGroup,
   type CreatePermissionGroupInput,
+  type GroupAssignmentSummary,
   type PermissionGroupEntry,
   type PermissionGroupSummary,
   type UpdatePermissionGroupInput,
