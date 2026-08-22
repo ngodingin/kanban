@@ -139,6 +139,18 @@ export class DrizzleMilestoneRepository implements MilestoneRepository {
       let action: string;
       let data: Record<string, unknown>;
 
+      // INV-LIFE-001 — entity non-operational (Project ancestor non-ACTIVE)
+      // MUST NOT menerima mutasi apapun, termasuk update/archive/delete
+      // (restore dievaluasi lebih spesifik via evaluateRestore di bawah).
+      const project = await loadProjectState(tx, projectId);
+      const projectBefore = project ? resolveLifecycleState(project) : ("DELETED" as LifecycleState);
+      if (!isEffectivelyOperational([projectBefore])) {
+        throw new AncestorNotActiveError(
+          operation,
+          `Project dalam state ${projectBefore} — Milestone tidak dapat menerima operasi ${operation} (INV-LIFE-001)`,
+        );
+      }
+
       if (operation === "update") {
         const patch = input as UpdateMilestoneInput;
         const changes: Record<string, { before: unknown; after: unknown }> = {};
@@ -161,8 +173,6 @@ export class DrizzleMilestoneRepository implements MilestoneRepository {
         data = { previous_state: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 — local ARCHIVED sudah dicek; ancestor Project harus ACTIVE.
-        const project = await loadProjectState(tx, projectId);
-        const projectBefore = project ? resolveLifecycleState(project) : ("DELETED" as LifecycleState);
         const decision = evaluateRestore(loaded.lifecycleBefore, [projectBefore]);
         if (!decision.allowed) {
           throw new AncestorNotActiveError(

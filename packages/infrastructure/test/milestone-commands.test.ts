@@ -7,6 +7,7 @@ import {
   MilestoneVersionConflictError,
 } from "@kanban/domain";
 import { DrizzleMilestoneRepository } from "../src/database/milestone-repository.ts";
+import { DrizzleProjectRepository } from "../src/database/project-repository.ts";
 import { createTestProjectDb, type TestDb } from "./helpers/db.ts";
 
 const T0 = "2026-08-01T00:00:00.000Z";
@@ -229,6 +230,36 @@ describe("updateMilestone — AC-020/A.3/B.5 (goal 2.2.1)", () => {
         title: "X",
       }),
     ).rejects.toBeInstanceOf(MilestoneNotFoundError);
+  });
+
+  it("[Review-CL-02][INV-LIFE-001] negatif: Project di-archive lalu update/archive/delete Milestone (local ACTIVE) → DITOLAK semua", async () => {
+    await seedProject();
+    await seedMilestone("ms_rev");
+    // archive Project lewat repository Phase 1
+    const projectRepo = new DrizzleProjectRepository(db.client);
+    await projectRepo.archiveProject({ projectId: PROJECT, expectedVersion: 1, actorUserId: OWNER });
+
+    await expect(
+      repo.updateMilestone(PROJECT, {
+        milestoneId: "ms_rev",
+        expectedVersion: 1,
+        actorUserId: OWNER,
+        title: "Gagal",
+      }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    await expect(
+      repo.archiveMilestone(PROJECT, { milestoneId: "ms_rev", expectedVersion: 1, actorUserId: OWNER }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+    await expect(
+      repo.deleteMilestone(PROJECT, { milestoneId: "ms_rev", expectedVersion: 1, actorUserId: OWNER }),
+    ).rejects.toBeInstanceOf(AncestorNotActiveError);
+
+    const row = await db.client.execute("SELECT title, version, archived_at FROM milestones WHERE id = 'ms_rev'");
+    expect(row.rows[0]).toMatchObject({ title: "MS ms_rev", version: 1, archived_at: null });
+    const msActivities = await db.client.execute(
+      "SELECT COUNT(*) AS n FROM activities WHERE entity_type = 'milestone'",
+    );
+    expect(Number(msActivities.rows[0]?.n)).toBe(0);
   });
 
   it("negatif: patch kosong (tanpa perubahan) → VALIDATION_ERROR", async () => {
