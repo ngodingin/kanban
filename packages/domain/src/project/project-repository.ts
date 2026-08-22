@@ -8,20 +8,6 @@ export interface ProjectStateRecord {
   version: number;
 }
 
-export interface MilestoneRecord {
-  id: string;
-  title: string;
-  description: string | null;
-  progress: number;
-  startDate: string | null;
-  dueDate: string | null;
-  createdAt: string;
-  updatedAt: string;
-  archivedAt: string | null;
-  deletedAt: string | null;
-  version: number;
-}
-
 export interface CardRecord {
   id: string;
   listId: string;
@@ -57,13 +43,5 @@ export interface ProjectRepository {
   archiveProject(input: ProjectLifecycleInput): Promise<ProjectStateRecord>;
   restoreProject(input: ProjectLifecycleInput): Promise<ProjectStateRecord>;
   deleteProject(input: ProjectLifecycleInput): Promise<ProjectStateRecord>;
-  createMilestone(input: {
-    id: string;
-    title: string;
-    description: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }): Promise<void>;
-  listMilestones(): Promise<MilestoneRecord[]>;
   getCard(id: string): Promise<CardRecord | undefined>;
 }

@@ -4,7 +4,6 @@ import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import type {
   CardRecord,
-  MilestoneRecord,
   ProjectLifecycleInput,
   ProjectLifecycleState,
   ProjectRepository,
@@ -17,7 +16,7 @@ import {
   ProjectVersionConflictError,
   resolveProjectLifecycle,
 } from "@kanban/domain";
-import { projectState, milestones, cards } from "./project-schema.ts";
+import { projectState, cards } from "./project-schema.ts";
 import { runInWriteTransaction } from "./transaction.ts";
 
 type LifecycleOperation = "update" | "archive" | "restore" | "delete";
@@ -153,43 +152,6 @@ export class DrizzleProjectRepository implements ProjectRepository {
         version: nextVersion,
       };
     });
-  }
-
-  async createMilestone(input: {
-    id: string;
-    title: string;
-    description: string | null;
-    createdAt: string;
-    updatedAt: string;
-  }): Promise<void> {
-    const db = drizzle(this.client);
-    await db.insert(milestones).values({
-      id: input.id,
-      title: input.title,
-      description: input.description,
-      progress: 0,
-      createdAt: input.createdAt,
-      updatedAt: input.updatedAt,
-      version: 1,
-    }).run();
-  }
-
-  async listMilestones(): Promise<MilestoneRecord[]> {
-    const db = drizzle(this.client);
-    const rows = await db.select().from(milestones).all();
-    return rows.map((row) => ({
-      id: row.id,
-      title: row.title,
-      description: row.description,
-      progress: row.progress,
-      startDate: row.startDate,
-      dueDate: row.dueDate,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-      archivedAt: row.archivedAt,
-      deletedAt: row.deletedAt,
-      version: row.version,
-    }));
   }
 
   async getCard(id: string): Promise<CardRecord | undefined> {

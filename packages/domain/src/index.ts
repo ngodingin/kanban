@@ -1,7 +1,6 @@
 export type {
   ProjectRepository,
   ProjectStateRecord,
-  MilestoneRecord,
   CardRecord,
   UpdateProjectNameInput,
   ProjectLifecycleInput,
@@ -28,3 +27,18 @@ export {
   isEffectivelyOperational,
   evaluateRestore,
 } from "./lifecycle/effective-state.ts";
+
+export type {
+  MilestoneRepository,
+  MilestoneRecord,
+  CreateMilestoneInput,
+  UpdateMilestoneInput,
+  MilestoneLifecycleInput,
+} from "./milestone/milestone-repository.ts";
+export {
+  MilestoneNotFoundError,
+  MilestoneVersionConflictError,
+  MilestoneInvalidStateError,
+  AncestorNotActiveError,
+  MilestoneValidationError,
+} from "./milestone/milestone-errors.ts";

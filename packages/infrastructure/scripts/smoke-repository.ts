@@ -30,33 +30,14 @@ try {
   if (!state || state.name !== "P1" || state.version !== 1) fail("getProjectState", "state tidak terbaca");
   else console.log("PASS: getProjectState membaca data domain (bukan objek Drizzle)");
 
-  await repo.createMilestone({
-    id: "ms_1",
-    title: "Milestone 1",
-    description: null,
-    createdAt: now,
-    updatedAt: now,
-  });
-  await repo.createMilestone({
-    id: "ms_2",
-    title: "Milestone 2",
-    description: "desc",
-    createdAt: now,
-    updatedAt: now,
-  });
-  const list = await repo.listMilestones();
-  if (list.length !== 2 || list[0]?.title !== "Milestone 1" || list[1]?.description !== "desc") {
-    fail("listMilestones", "daftar tidak sesuai");
-  } else console.log("PASS: createMilestone + listMilestones via repository");
-
   const missing = await repo.getCard("cd_none");
   if (missing !== undefined) fail("getCard", "card yang tidak ada harus undefined");
   else console.log("PASS: getCard entity tak ditemukan -> undefined (bukan error)");
 
   const drizzleFree = client instanceof Object;
   void drizzleFree;
-  const raw = await client.execute("SELECT title FROM milestones ORDER BY id");
-  if (raw.rows.length !== 2) fail("raw", "verifikasi data mentah gagal");
+  const raw = await client.execute("SELECT name FROM project_state");
+  if (raw.rows.length !== 1) fail("raw", "verifikasi data mentah gagal");
   else console.log("PASS: data di DB cocok dengan hasil repository (sumber tunggal)");
 
   const db = drizzle(client);
