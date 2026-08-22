@@ -4,8 +4,10 @@ import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient, type Client } from "@libsql/client";
 import { applyGlobalMigrations } from "../src/database/migrate.ts";
+import { registerProjectWithOwnerMembership } from "../src/provisioning/provision.ts";
 import {
   PERMISSION_CATALOG,
+  baselineGroupPermissionKeys,
   permissionCatalogKeys,
   seedPermissionCatalog,
 } from "../src/database/permission-catalog.ts";
@@ -36,13 +38,15 @@ describe("seedPermissionCatalog — katalog permission D.1 (goal 1.5.1)", () => 
       "list.create",
       "card.move",
       "card.comment.update",
+      "milestone_label.restore",
+      "board_label.create",
       "member.remove",
       "permission_group.update",
       "api_key.revoke",
     ]) {
       expect(keys).toContain(expected);
     }
-    expect(keys.length).toBe(40);
+    expect(keys.length).toBe(52);
     expect(PERMISSION_CATALOG.every((e) => e.description.length > 0)).toBe(true);
   });
 
@@ -95,5 +99,91 @@ describe("unique index permissions.key — goal 1.5.2", () => {
     await seedPermissionCatalog(client);
     const after = await client.execute("SELECT id FROM permissions ORDER BY id");
     expect(after.rows.map((r) => String(r.id))).toEqual(before.rows.map((r) => String(r.id)));
+  });
+});
+
+describe("baselineGroupPermissionKeys — Label keys (goal 3.1.1, D.2 baris Label)", () => {
+  const LABEL_KEYS = [
+    ...["read", "create", "update", "archive", "delete", "restore"].map((a) => `milestone_label.${a}`),
+    ...["read", "create", "update", "archive", "delete", "restore"].map((a) => `board_label.${a}`),
+  ];
+
+  it("[D.2][D.1] katalog memuat tepat 12 key Label baru dengan deskripsi terisi", () => {
+    const keys = permissionCatalogKeys();
+    for (const key of LABEL_KEYS) {
+      expect(keys, key).toContain(key);
+    }
+    const entries = PERMISSION_CATALOG.filter((e) => e.key.includes("_label."));
+    expect(entries).toHaveLength(12);
+    expect(entries.every((e) => e.description.length > 0)).toBe(true);
+  });
+
+  it("[D.2] Manager full lifecycle Label — seluruh 12 key baru ada", () => {
+    const manager = baselineGroupPermissionKeys("Manager");
+    for (const key of LABEL_KEYS) {
+      expect(manager, key).toContain(key);
+    }
+  });
+
+  it("[D.2] Contributor TIDAK mendapat satu pun key Label (assign/remove cukup lewat card.update)", () => {
+    const contributor = baselineGroupPermissionKeys("Contributor");
+    for (const key of LABEL_KEYS) {
+      expect(contributor, key).not.toContain(key);
+    }
+  });
+
+  it("[D.2] Co-Owner otomatis penuh dan Viewer otomatis .read tanpa perubahan case eksplisit", () => {
+    const coOwner = baselineGroupPermissionKeys("Co-Owner");
+    for (const key of LABEL_KEYS) {
+      expect(coOwner, key).toContain(key);
+    }
+    const viewer = baselineGroupPermissionKeys("Viewer");
+    for (const key of LABEL_KEYS.filter((k) => k.endsWith(".read"))) {
+      expect(viewer, key).toContain(key);
+    }
+    for (const key of LABEL_KEYS.filter((k) => !k.endsWith(".read"))) {
+      expect(viewer, key).not.toContain(key);
+    }
+  });
+});
+
+describe("[DoD 3.1.1] provisioning Project baru menghasilkan baseline Manager dengan Label lifecycle penuh", () => {
+  it("[D.2][end-to-end] group_permissions Manager memuat 12 key Label setelah registerProjectWithOwnerMembership", async () => {
+    const now = "2026-08-23T00:00:00.000Z";
+    await client.execute({
+      sql: "INSERT INTO users (id, email, email_verified, name, created_at, updated_at) VALUES ('user-prov', 'prov@test.local', 1, 'prov', ?, ?)",
+      args: [now, now],
+    });
+    const projectId = `prov-${Date.now()}`;
+    await registerProjectWithOwnerMembership(client, {
+      projectId,
+      databaseId: `file:${join(dir, `prov-${projectId}.db`)}`,
+      ownerUserId: "user-prov",
+      now,
+    });
+
+    const managerRows = await client.execute(
+      `SELECT p.key FROM group_permissions gp
+       JOIN permission_groups g ON g.id = gp.group_id
+       JOIN permissions p ON p.id = gp.permission_id
+       WHERE g.project_id = ? AND g.name = 'Manager'`,
+      [projectId],
+    );
+    const keys = managerRows.rows.map((r) => String(r.key));
+    for (const action of ["read", "create", "update", "archive", "delete", "restore"]) {
+      expect(keys).toContain(`milestone_label.${action}`);
+      expect(keys).toContain(`board_label.${action}`);
+    }
+
+    const contributorRows = await client.execute(
+      `SELECT p.key FROM group_permissions gp
+       JOIN permission_groups g ON g.id = gp.group_id
+       JOIN permissions p ON p.id = gp.permission_id
+       WHERE g.project_id = ? AND g.name = 'Contributor'`,
+      [projectId],
+    );
+    for (const row of contributorRows.rows) {
+      expect(String(row.key)).not.toContain("_label.");
+    }
   });
 });

@@ -41,6 +41,20 @@ export const PERMISSION_CATALOG: readonly PermissionCatalogEntry[] = [
   { key: "card.comment", description: "Menambah komentar pada Card" },
   { key: "card.comment.update", description: "Mengedit komentar pada Card" },
 
+  { key: "milestone_label.read", description: "Melihat Label Milestone" },
+  { key: "milestone_label.create", description: "Membuat Label Milestone" },
+  { key: "milestone_label.update", description: "Mengubah Label Milestone" },
+  { key: "milestone_label.archive", description: "Mengarsipkan Label Milestone" },
+  { key: "milestone_label.delete", description: "Menghapus Label Milestone" },
+  { key: "milestone_label.restore", description: "Me-restore Label Milestone dari ARCHIVED" },
+
+  { key: "board_label.read", description: "Melihat Label Board" },
+  { key: "board_label.create", description: "Membuat Label Board" },
+  { key: "board_label.update", description: "Mengubah Label Board" },
+  { key: "board_label.archive", description: "Mengarsipkan Label Board" },
+  { key: "board_label.delete", description: "Menghapus Label Board" },
+  { key: "board_label.restore", description: "Me-restore Label Board dari ARCHIVED" },
+
   { key: "member.read", description: "Melihat daftar anggota Project" },
   { key: "member.invite", description: "Mengundang anggota baru" },
   { key: "member.update", description: "Mengubah assignment anggota" },
@@ -99,6 +113,8 @@ export function baselineGroupPermissionKeys(group: BaselineGroupName): string[] 
         ...RESOURCE_FULL_KEYS("milestone"),
         ...RESOURCE_FULL_KEYS("board"),
         ...RESOURCE_FULL_KEYS("list"),
+        ...RESOURCE_FULL_KEYS("milestone_label"),
+        ...RESOURCE_FULL_KEYS("board_label"),
         ...CARD_CONTRIBUTOR_KEYS,
       ];
     case "Contributor":

@@ -63,7 +63,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 3.1.1 | ⬜️ | — | 0 | P0 | Tambah 12 entry ke `PERMISSION_CATALOG` (`packages/infrastructure/src/database/permission-catalog.ts`): `milestone_label.{read,create,update,archive,delete,restore}` dan `board_label.{read,create,update,archive,delete,restore}`, deskripsi Bahasa Indonesia mengikuti pola persis entry `milestone.*`/`board.*` yang sudah ada. Update `baselineGroupPermissionKeys` case `"Manager"`: tambah `...RESOURCE_FULL_KEYS("milestone_label")` dan `...RESOURCE_FULL_KEYS("board_label")` (D.2 baris Label — Manager full lifecycle). **Jangan ubah** case `"Contributor"` (D.2: tidak dapat grant eksplisit, sudah tercakup `card.update` untuk assign/remove ke Card). Co-Owner (`permissionCatalogKeys()`, semua key) dan Viewer (filter `.read`) otomatis ikut tanpa perubahan kode. | [02-SPEC D.1](docs/02-SPEC.md), [D.2](docs/02-SPEC.md) | — |
+| 3.1.1 | 🔎 | [CL-02](#cl-02)<br>[CL-01](#cl-01) | 80 | P0 | Tambah 12 entry ke `PERMISSION_CATALOG` (`packages/infrastructure/src/database/permission-catalog.ts`): `milestone_label.{read,create,update,archive,delete,restore}` dan `board_label.{read,create,update,archive,delete,restore}`, deskripsi Bahasa Indonesia mengikuti pola persis entry `milestone.*`/`board.*` yang sudah ada. Update `baselineGroupPermissionKeys` case `"Manager"`: tambah `...RESOURCE_FULL_KEYS("milestone_label")` dan `...RESOURCE_FULL_KEYS("board_label")` (D.2 baris Label — Manager full lifecycle). **Jangan ubah** case `"Contributor"` (D.2: tidak dapat grant eksplisit, sudah tercakup `card.update` untuk assign/remove ke Card). Co-Owner (`permissionCatalogKeys()`, semua key) dan Viewer (filter `.read`) otomatis ikut tanpa perubahan kode. | [02-SPEC D.1](docs/02-SPEC.md), [D.2](docs/02-SPEC.md) | — |
 
 **Test:** Unit — `seedPermissionCatalog` idempotent (jalan 2x, `permissions.key` tidak duplikat, constraint UNIQUE sejak 2.2.2 tetap terjaga); `baselineGroupPermissionKeys("Manager")` mengandung seluruh 12 key baru; `baselineGroupPermissionKeys("Contributor")` TIDAK mengandung satu pun key `milestone_label.*`/`board_label.*`; `baselineGroupPermissionKeys("Co-Owner")` dan `Viewer` otomatis mengandung key baru tanpa perubahan eksplisit ke case-nya.
 **DoD:** `permissionCatalogKeys()` mengembalikan 39 key total (27 lama + 12 baru); Project baru yang di-provision setelah goal ini menghasilkan baseline Manager group dengan Label lifecycle penuh, dibuktikan test provisioning end-to-end.
@@ -199,6 +199,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-02"></a>
+### CL-02 — 2026-08-23 · goal 3.1.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — 12 permission key Label
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 50 file / **330** test lulus (5 test baru/updated di `permission-catalog.test.ts`: katalog 52 key dengan 12 Label berdeskripsi; Manager memuat 12 key; Contributor nol key Label; Co-Owner penuh + Viewer hanya .read otomatis; end-to-end provisioning Project baru → group_permissions Manager memuat Label lifecycle penuh & Contributor bebas Label); `pnpm -r typecheck` Done; `pnpm lint` bersih. Implementasi: PERMISSION_CATALOG += 6×`milestone_label.*` + 6×`board_label.*` (deskripsi pola milestone.*/board.*); baselineGroupPermissionKeys("Manager") += RESOURCE_FULL_KEYS kedua resource; case Contributor/Co-Owner/Viewer tidak disentuh (otomatis).
+**Catatan:** Koreksi angka DoD: teks goal menulis "39 total (27 lama + 12)" — katalog aktual sebelum goal ini berisi **40** key (test Phase 1 menyatakan 40), sehingga total yang benar = **52**. Tidak ada perbedaan perilaku; murni aritmetika teks task vs state repo. Seed idempotent tetap terjaga (ON CONFLICT DO NOTHING).
+
+<a id="cl-01"></a>
+### CL-01 — 2026-08-23 · scope TASK-3.1–3.5 dikonfirmasi; goal 3.1.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Discovery dari disk: Phase 2 tutup 21/21 ✅ (QA-CL-23, Review-CL-04; fix CL-53 re-verified QA-CL-24), SOT 2.8.1, HEAD f5d3b1d working tree bersih. Manusia mengonfirmasi scope TASK-3.1–3.5 (7 goal). Baseline dibaca: AGENTS.md penuh (re-read atas permintaan), PHASE-3-TASKS.md penuh, 02-SPEC D.1/D.2; kode existing diverifikasi: `permission-catalog.ts` (27 key, RESOURCE_FULL_KEYS, baselineGroupPermissionKeys), `activityEntityType` 5 value di project-schema.ts.
+**Catatan:** Rencana 3.1.1: tambah 12 key Label setelah blok card.* (urut D.1), Manager += RESOURCE_FULL_KEYS untuk kedua resource label, Contributor/Co-Owner/Viewer tanpa perubahan eksplisit.
 
 ### Review-CL-01 — 2026-08-23 · generate task list Phase 3 (tanpa perubahan status implementasi)
 
