@@ -1,4 +1,4 @@
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ok } from "@kanban/contracts";
 import {
@@ -17,14 +17,14 @@ import { toApiErrorResponse } from "./projects.ts";
 
 // Wrapper untuk mengurangi duplikasi try/catch di semua handler endpoint.
 async function withErrorHandling<T>(
-  c: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  c: Context,
   handler: () => Promise<T>,
   successStatus: ContentfulStatusCode = 200,
 ): Promise<Response> {
   try {
     return c.json(ok(await handler()), successStatus);
   } catch (error) {
-    const mapped = toApiErrorResponse(error as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    const mapped = toApiErrorResponse(error);
     return c.json(mapped.body, mapped.status as ContentfulStatusCode);
   }
 }

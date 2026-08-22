@@ -152,7 +152,7 @@ async function withErrorHandling<T>(
     const result = await handler();
     return c.json(ok(result), successStatus);
   } catch (error) {
-    const mapped = toErrorResponse(error as any); // eslint-disable-line @typescript-eslint/no-explicit-any
+    const mapped = toApiErrorResponse(error);
     return c.json(mapped.body, mapped.status as ContentfulStatusCode);
   }
 }
