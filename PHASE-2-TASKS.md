@@ -125,7 +125,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.7.1 | ⬜️ | — | 0 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
+| 2.7.1 | 🔄 | [CL-21](#cl-21) | 0 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
 | 2.7.2 | ⬜️ | — | 0 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
 | 2.7.3 | ⬜️ | — | 0 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
 
@@ -204,6 +204,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 ## Flag terbuka (sesuai C.6.5)
 - Tidak ada `[NEEDS-DECISION]`/`[NEEDS-SPEC-AMENDMENT]` terbuka saat generate. Satu ambiguitas ditemukan (scope lifecycle Phase 2 vs Phase 5) — sudah diklarifikasi via keputusan manusia 2026-08-23, dicatat di Prinsip #1 dan Review-CL-01 di bawah, bukan amandemen SOT (murni klarifikasi urutan fase, tidak mengubah BR/FR manapun).
+- **Backlog non-blocking dari audit Review-CL-02** (dikonfirmasi ulang, keduanya sesuai penilaian QA — TIDAK memblokir goal manapun): (1) `withErrorHandling` kini terduplikasi di 4 file route (`projects.ts`, `project-admin.ts`, `milestones.ts`, `boards.ts`) — kelas masalah sama seperti Phase 1 Review-CL-10 Temuan 5/TASK-1.11; kandidat goal cleanup P3 kalau List/Card ikut menambah duplikat kelima/keenam. (2) `DrizzleMilestoneRepository.getMilestone(projectId, milestoneId)` — parameter `projectId` sengaja tidak dipakai (`void projectId`); dikonfirmasi BUKAN celah Project-boundary karena `milestones` tidak punya kolom `project_id` sama sekali (isolasi terjadi di level database per-Project, 03-ENG B.1) — parameter ini murni sisa bentuk interface, aman dibiarkan atau dihapus kapan saja tanpa risiko.
 
 ---
 
