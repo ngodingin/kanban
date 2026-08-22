@@ -170,6 +170,8 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 - **BR-052** Invitation SHOULD menyimpan **reference** ke Permission Group dan scope resource, bukan snapshot definisi permission — jika Group berubah sebelum/sesudah acceptance, Membership mendapat definisi Group yang berlaku saat itu.
 - **BR-053** Pencabutan membership MUST mencabut otorisasi berjalan, MUST NOT menghapus data historis (`creator_user_id`, `activity.actor_user_id` tetap utuh).
 - **BR-054** Jika Assignee kehilangan membership, sistem MUST men-set `assignee_user_id = NULL` & mencatat Activity `card.unassigned`. `creator_user_id` MUST NOT berubah.
+- **BR-054A** Accept Invitation MUST menolak jika email User yang menerima (ternormalisasi, konsisten `users.email`) tidak sama dengan `invitations.email` — mencegah privilege escalation lewat `invitation_id` yang bocor/diteruskan (invitation_id bukan token rahasia, dikirim ke pembuat undangan untuk diteruskan lewat email eksternal). Penolakan MUST NOT membocorkan alasan spesifik (mis. pakai kode generik, bukan pesan "email tidak cocok").
+- **BR-054B** Accept Invitation oleh User yang sebelumnya memiliki Membership ter-revoke pada Project yang sama MUST mengaktifkan ulang (reactivate) row Membership existing (set `revoked_at = NULL`) alih-alih ditolak permanen — `project_memberships` MUST tepat satu row per `(project_id, user_id)` selamanya (constraint schema, 03-ENG B.2), sehingga rejoin tidak dapat berupa row baru. Scoped Group assignment dari invitation MUST ditambahkan sebagai assignment baru; assignment lama yang sudah revoked (dari keanggotaan sebelumnya) TETAP revoked (riwayat utuh, BR-053) — TIDAK otomatis diaktifkan kembali.
 
 ## A.13 Credential (API Key & PAT)
 
@@ -462,8 +464,10 @@ Scoped direct Permission assignment:
 
 ## C.13 Invitation
 ```http
+GET  /api/v1/projects/:project_id/invitations
 POST /api/v1/projects/:project_id/invitations
 POST /api/v1/invitations/:invitation_id/accept
+POST /api/v1/invitations/:invitation_id/revoke
 ```
 Create:
 ```json
@@ -471,7 +475,9 @@ Create:
   { "group_id": "contributor", "scope_type": "milestone", "scope_id": "milestone_app_x" }
 ] }
 ```
-Setelah accept: `Invitation → Membership → scoped Permission Group assignments` otomatis, tanpa assignment kedua kali.
+Setelah accept: `Invitation → Membership → scoped Permission Group assignments` otomatis, tanpa assignment kedua kali. Accept MUST menegakkan BR-054A (email match) dan BR-054B (reactivate Membership ter-revoke, bukan row baru).
+
+`GET /invitations` mengembalikan seluruh Invitation Project (termasuk yang sudah accepted/revoked/expired) untuk keperluan manajemen Owner — tidak ada endpoint terpisah untuk "pending only", client MAY filter dari `accepted_at`/`revoked_at`/`expires_at` pada response. `POST /invitations/:invitation_id/revoke` men-set `invitations.revoked_at`; invitation yang sudah accepted MUST NOT dapat di-revoke (`INVALID_STATE`).
 
 ## C.14 API Key & PAT
 ```http

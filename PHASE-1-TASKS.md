@@ -1,6 +1,6 @@
 # Phase 1 — Project · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.4.0 (lihat Closure Log Review-CL-02/05/06/07/08/09 untuk riwayat amandemen sejak generate).
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.5.0 (lihat Closure Log Review-CL-02/05/06/07/08/09/10/11 untuk riwayat amandemen sejak generate).
 > Scope batas: [04-DELIVERY C.1 "Phase 1"](docs/04-DELIVERY.md). Acuan utama: [02-SPEC](docs/02-SPEC.md) Part A (A.1–A.3, A.7, A.8, A.10, A.12, A.15, A.16), Part B (B.1–B.3), Part C (C.4, C.12, C.13), Part D; [03-ENGINEERING](docs/03-ENGINEERING.md) Part A (A.4–A.7), Part B (B.1–B.3).
 > **Konteks repo saat digenerate:** Phase 0 selesai (34/34 goal ✅, lihat [PHASE-0-TASKS.md](PHASE-0-TASKS.md)). Skeleton `apps/api`, `packages/{domain,infrastructure,contracts,shared}` sudah ada dan dipakai sebagai baseline path di bawah — lihat referensi file konkret per goal. Global DB schema (0.4) dan Project DB schema (0.5) SUDAH memuat seluruh tabel yang dibutuhkan Phase 1 (`project_memberships`, `permissions`, `permission_groups`, `group_permissions`, `membership_group_assignments`, `membership_permission_assignments`, `invitations`, `invitation_group_assignments`, `project_state`, `activities`); **Phase 1 tidak butuh migration Drizzle baru**, hanya query/domain-command/endpoint layer + (mungkin) data seed idempotent.
 >
@@ -127,7 +127,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.7.1 | ✅ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P1 | `GET /api/v1/projects/:project_id/permission-groups` — list Group Project-scoped (exclude yang `deleted_at` bukan NULL kecuali diminta eksplisit) | [02-SPEC C.12](docs/02-SPEC.md), FR-009 | 1.6 |
 | 1.7.2 | ✅ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-28](#cl-28)<br>[CL-27](#cl-27)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P1 | `POST /api/v1/projects/:project_id/permission-groups` — create custom Group + assign permission set (referensi ke `permissions.id` katalog 1.5), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), FR-010, FR-011 | 1.5, 1.6 |
-| 1.7.3 | ✅ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-30](#cl-30)<br>[CL-29](#cl-29)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P1 | `PATCH /api/v1/projects/:project_id/permission-groups/:group_id` — ubah nama/description/permission assignment; perubahan permission langsung berlaku ke semua Membership ber-assignment (BR-040, live reference — tidak ada snapshot untuk di-invalidate), otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md), BR-040 | 1.7.1 |
+| 1.7.3 | ⚠️ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-30](#cl-30)<br>[CL-29](#cl-29)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14)<br>[Review-CL-10](#review-cl-10) | 80 | P1 | `PATCH /api/v1/projects/:project_id/permission-groups/:group_id` — ubah nama/description/permission assignment; perubahan permission langsung berlaku ke semua Membership ber-assignment (BR-040, live reference — tidak ada snapshot untuk di-invalidate), otorisasi Owner-only interim. **Perbaikan wajib (Review-CL-10 Temuan 3):** gabungkan update `name`/`description` dan replace `group_permissions` ke SATU `db.transaction()` — implementasi saat ini menjalankan dua operasi DB terpisah untuk satu request PATCH, ada window kegagalan parsial (permissions ter-update, name tidak, atau sebaliknya) | [02-SPEC C.12](docs/02-SPEC.md), BR-040; AGENTS.md §5 Rule 8 | 1.7.1 |
 | 1.7.4 | ✅ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-32](#cl-32)<br>[CL-31](#cl-31)<br>[Review-CL-02](#review-cl-02)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P2 | `POST /api/v1/projects/:project_id/permission-groups/:group_id/delete` — soft-delete (set `permission_groups.deleted_at`); Membership dengan assignment ke Group ini kehilangan permission yang di-grant Group tsb tanpa menghapus riwayat `membership_group_assignments` (BR-041); otorisasi Owner-only interim | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.1.0), BR-041, D.1 `permission_group.delete` | 1.7.1 |
 
 **Test (1.7.1–1.7.4):** create custom Group + assign `card.read` tanpa `card_read_visibility` eksplisit → default `CREATED_BY_ME` (BR-048); assign visibility ke permission selain `card.read` ditolak (app-level invariant B.2); update Group oleh non-Owner → `PERMISSION_DENIED`; list tidak bocor lintas Project; delete Group tidak menghapus row `membership_group_assignments` (hanya `permission_groups.deleted_at` ter-set).
@@ -152,10 +152,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 1.9.1 | ✅ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-38](#cl-38)<br>[CL-37](#cl-37)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P0 | `POST /api/v1/projects/:project_id/invitations` — wajib minimal satu `assignments` (group_id + scope), simpan reference ke Group (bukan snapshot, BR-052), `expires_at`, otorisasi Owner-only interim (Manage Members) | [02-SPEC C.13](docs/02-SPEC.md), BR-050, BR-051, BR-052, FR-005, FR-006 | 1.2, 1.7.1 |
-| 1.9.2 | ✅ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-40](#cl-40)<br>[CL-39](#cl-39)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P0 | `POST /api/v1/invitations/:invitation_id/accept` — validasi belum expired/accepted/revoked (`INVITATION_EXPIRED`/`INVITATION_ALREADY_USED`), lalu atomik: create `project_memberships` + seluruh `membership_group_assignments` dari `invitation_group_assignments`, set `accepted_at` — dalam satu transaksi Global DB | [02-SPEC C.13](docs/02-SPEC.md), FR-007 | 1.9.1 |
+| 1.9.2 | ⚠️ | [CL-46](#cl-46)<br> [CL-45](#cl-45)<br>[CL-40](#cl-40)<br>[CL-39](#cl-39)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14)<br>[Review-CL-10](#review-cl-10) | 80 | P0 | `POST /api/v1/invitations/:invitation_id/accept` — validasi belum expired/accepted/revoked (`INVITATION_EXPIRED`/`INVITATION_ALREADY_USED`), lalu atomik: create/reactivate `project_memberships` + seluruh `membership_group_assignments` dari `invitation_group_assignments`, set `accepted_at` — dalam satu transaksi Global DB. **Perbaikan wajib (amandemen 2.5.0):** (a) BR-054A — tolak jika `identity.email` (ternormalisasi) ≠ `invitations.email`, pesan error generik (tidak membocorkan alasan); (b) BR-054B — jika Membership existing untuk `(project_id, user_id)` berstatus revoked, REAKTIVASI row itu (`revoked_at = NULL`) alih-alih menolak — assignment lama tetap revoked, assignment baru dari invitation ditambahkan | [02-SPEC C.13](docs/02-SPEC.md) (amandemen 2.5.0), FR-007, BR-054A, BR-054B | 1.9.1 |
+| 1.9.3 | ⬜️ | [Review-CL-11](#review-cl-11) | 0 | P2 | `GET /api/v1/projects/:project_id/invitations` — list seluruh Invitation Project (termasuk accepted/revoked/expired, tanpa filter server-side — client filter dari `accepted_at`/`revoked_at`/`expires_at`), otorisasi Owner-only interim (Manage Members) | [02-SPEC C.13](docs/02-SPEC.md) (amandemen 2.5.0) | 1.9.1 |
+| 1.9.4 | ⬜️ | [Review-CL-11](#review-cl-11) | 0 | P2 | `POST /api/v1/invitations/:invitation_id/revoke` — set `invitations.revoked_at`; invitation yang sudah `accepted_at` MUST NOT dapat di-revoke (`INVALID_STATE`); revoke pada invitation sudah revoked → idempotent; otorisasi Owner-only interim | [02-SPEC C.13](docs/02-SPEC.md) (amandemen 2.5.0) | 1.9.1 |
 
-**Test:** Invitation expired → `INVITATION_EXPIRED`; accept dua kali → `INVITATION_ALREADY_USED`; accept sukses menghasilkan tepat 1 Membership baru + assignment sesuai `invitation_group_assignments` tanpa assignment kedua kali (idempotent terhadap retry); accept oleh email berbeda dari `invitations.email` ditolak.
-**DoD:** Alur invitation sesuai FR-005–007; tidak ada join bebas (BR-050); Membership+assignment ter-commit atomik.
+**Test:** Invitation expired → `INVITATION_EXPIRED`; accept dua kali → `INVITATION_ALREADY_USED`; accept sukses menghasilkan tepat 1 Membership baru + assignment sesuai `invitation_group_assignments` tanpa assignment kedua kali (idempotent terhadap retry); accept oleh email berbeda dari `invitations.email` ditolak (BR-054A — kriteria ini sudah ada sejak goal digenerate Review-CL-01, terlewat implementasi Dev CL-39/40 dan verifikasi QA-CL-13/14, ditemukan ulang Review-CL-10); (1.9.2 lanjutan) accept oleh User ber-Membership revoked sebelumnya → Membership REAKTIVASI (bukan ditolak, BR-054B), assignment baru ditambahkan, assignment lama tetap revoked; (1.9.3) list mengembalikan seluruh Invitation termasuk accepted/revoked/expired, tidak bocor lintas Project; (1.9.4) revoke invitation pending → `revoked_at` ter-set, accept setelahnya → ditolak; revoke invitation sudah accepted → `INVALID_STATE`; revoke invitation sudah revoked → idempotent.
+**DoD:** Alur invitation sesuai FR-005–007; tidak ada join bebas (BR-050); Membership+assignment ter-commit atomik; email match (BR-054A) dan reactivate-on-rejoin (BR-054B) ditegakkan; list dan revoke Invitation sesuai C.13 (2.5.0).
 
 ---
 
@@ -171,12 +173,23 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 ---
 
+## TASK-1.11 — Code quality cleanup (Review-CL-10 Temuan 5)  (dep: — , polish non-blocking)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 1.11.1 | ⬜️ | [Review-CL-11](#review-cl-11) | 0 | P3 | Ekstrak wrapper error-handling bersama (mis. `withErrorHandling(handler)`) untuk menggantikan blok `try{...}catch(error){const mapped=toApiErrorResponse(error);return c.json(...)}` yang berulang 17× di `apps/api/src/routes/projects.ts` (6×) dan `apps/api/src/routes/project-admin.ts` (11×) — refactor murni, tidak boleh mengubah perilaku/response endpoint manapun | AGENTS.md (kualitas kode, bukan rule SOT spesifik) | — |
+
+**Test:** Refactor murni — seluruh test existing (28 file/150 test) tetap PASS tanpa perubahan assertion; tidak ada endpoint yang response/status code-nya berubah.
+**DoD:** Duplikasi try/catch hilang dari kedua file route; behavior tidak berubah (dibuktikan test suite existing tetap hijau tanpa modifikasi).
+
+---
+
 ## Exit Criteria Phase 1 (syarat mulai Phase 2)
 - Project CRUD penuh (create/read/update/archive/restore/delete) via domain command, bukan generic PATCH untuk field terkontrol.
 - Setiap Project baru punya tepat satu Owner Membership sejak commit provisioning (FR-002).
 - Permission catalog D.1 ter-seed; 4 baseline Permission Group (Co-Owner/Manager/Contributor/Viewer) ter-seed otomatis per Project baru sesuai D.2, dapat di-CRUD + soft-delete.
 - Scoped Group/direct Permission assignment dapat dibuat & di-revoke dengan riwayat utuh.
-- Invitation create→accept menghasilkan Membership + assignment otomatis tanpa join bebas.
+- Invitation create→accept menghasilkan Membership + assignment otomatis tanpa join bebas; accept menegakkan email match (BR-054A) dan reactivate-on-rejoin (BR-054B); Invitation dapat di-list & di-revoke (C.13 2.5.0).
 - Seluruh endpoint yang dibuat terpetakan ke 02-SPEC Part C; tidak ada path yang diciptakan di luar kontrak.
 - Test Project-boundary, optimistic locking (AC-020 pattern), dan authorization (Owner vs non-Owner, minimal 1 positif + 1 negatif) hijau untuk seluruh goal.
 
@@ -189,13 +202,34 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 - ~~Review-CL-03 poin 2 — `permissions.key` tidak punya unique index~~ → **DISELESAIKAN 2026-08-22 (manusia setuju rekomendasi Review):** anotasi UNIQUE ditambahkan ke 03-ENG B.2; SOT dinaikkan ke 2.2.2 melalui Review-CL-07. Implementasi (migration + schema + `ON CONFLICT`) jadi goal baru **1.5.2** (⬜️, Dev).
 - ~~Review-CL-03 poin 3 — kode error payload invalid (`INVALID_STATE` vs `VALIDATION_ERROR`)~~ → **DISELESAIKAN 2026-08-22 (manusia memilih "benerin sekarang"):** kode kanonik baru `VALIDATION_ERROR` (400) ditambahkan ke 02-SPEC C.2; SOT dinaikkan ke 2.3.0 melalui Review-CL-08. Goal 1.3.1/1.3.4/1.4.1/1.4.2/1.4.3 dibuka kembali ✅→⚠️; goal 1.7.1–1.7.4/1.8.1–1.8.2 (masih 🔎) ditandai untuk disesuaikan sebelum QA meluluskan.
 - ~~Review-CL-04 poin 3 — filter `GET /projects` di C.4 tidak terdefinisi~~ → **DISELESAIKAN 2026-08-22 (manusia setuju rekomendasi Review):** query param `status` (comma-separated) didefinisikan untuk C.4 (`GET /projects`) dan C.12 (`GET /members`, gap serupa ditemukan sekaligus); SOT dinaikkan ke 2.4.0 melalui Review-CL-09. Goal baru **1.3.5** dibuka (⬜️); goal **1.10.1** (belum diimplementasikan) diperbarui deskripsinya langsung.
-- **Backlog Phase 1 tersisa:** tidak ada lagi item dari Review-CL-03/04 yang belum diputuskan — seluruh 6 temuan sudah diputuskan manusia (2 langsung diamandemen saat generate, 4 diangkat menyusul). Sisa murni implementasi goal yang sudah dibuka (1.5.2, 1.3.5, dan penyesuaian VALIDATION_ERROR di 1.3.1/1.3.4/1.4.1–1.4.3/1.7.1–1.7.4/1.8.1–1.8.2).
+- **Backlog Phase 1 tersisa dari Review-CL-03/04:** tidak ada lagi item yang belum diputuskan — seluruh 6 temuan sudah diputuskan manusia (2 langsung diamandemen saat generate, 4 diangkat menyusul). Sisa murni implementasi goal yang sudah dibuka (1.5.2, 1.3.5, dan penyesuaian VALIDATION_ERROR di 1.3.1/1.3.4/1.4.1–1.4.3/1.7.1–1.7.4/1.8.1–1.8.2).
+- ~~Review-CL-10 Temuan 1 — accept Invitation tidak verifikasi email~~ → **DISELESAIKAN 2026-08-22 (manusia setuju rekomendasi Review, sekaligus seluruh temuan lain):** **BR-054A** ditambahkan (A.12); SOT dinaikkan ke 2.5.0 melalui Review-CL-11. Goal 1.9.2 dibuka kembali ✅→⚠️.
+- ~~Review-CL-10 Temuan 2 — tidak ada endpoint list/revoke Invitation~~ → **DISELESAIKAN 2026-08-22:** `GET /invitations` + `POST /invitations/:invitation_id/revoke` ditambahkan ke C.13; SOT dinaikkan ke 2.5.0 melalui Review-CL-11. Goal baru **1.9.3**/**1.9.4** dibuka.
+- ~~Review-CL-10 Temuan 4 — revoked member tidak bisa rejoin (constraint Phase 0)~~ → **DISELESAIKAN 2026-08-22:** **BR-054B** ditambahkan (A.12) — accept invitation REAKTIVASI Membership revoked, bukan menolak permanen; SOT dinaikkan ke 2.5.0 melalui Review-CL-11. Termasuk dalam scope goal 1.9.2 yang dibuka kembali.
+- ~~Review-CL-10 Temuan 3 — `updatePermissionGroup` tidak atomik penuh~~ → **DISELESAIKAN 2026-08-22 (rekomendasi kode, tanpa amandemen SOT):** goal 1.7.3 dibuka kembali ✅→⚠️ untuk Dev menggabungkan operasi ke satu transaksi.
+- ~~Review-CL-10 Temuan 5 — DRY try/catch 17× + observasi arsitektur~~ → **DITINDAKLANJUTI SEBAGIAN 2026-08-22:** wrapper error-handling dijadikan goal baru **1.11.1** (P3, non-blocking). Observasi pola DI ganda dan ukuran modul `project-admin.ts` TIDAK dijadikan goal (murni catatan arsitektur untuk pertimbangan fase mendatang, bukan cacat yang perlu diperbaiki sekarang).
 
 ---
 
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="review-cl-11"></a>
+### Review-CL-11 — 2026-08-22 · amandemen 02-SPEC (2.4.0 → 2.5.0): BR-054A/BR-054B + C.13 list/revoke Invitation; 1.7.3 & 1.9.2 dibuka kembali, 3 goal baru
+**Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Manusia menyetujui seluruh temuan Review-CL-10 sekaligus ("sesuai rekomendasi kamu untuk semua temuan"). Sebelum eksekusi, freshness check menemukan koreksi penting pada Temuan 1: `git log -p -S "accept oleh email berbeda"` mengonfirmasi kriteria *"accept oleh email berbeda dari `invitations.email` ditolak"* **sudah tertulis di Test goal 1.9.2 sejak Review-CL-01** (generate awal task Phase 1) — bukan gap SOT yang baru ditemukan, melainkan kriteria eksplisit yang terlewat implementasi Dev (CL-39/CL-40) **dan** verifikasi QA (QA-CL-13/QA-CL-14). Dicatat di sini demi akurasi, tidak mengubah keputusan (tetap dieksekusi sesuai rekomendasi).
+**Perubahan SOT:**
+- `docs/02-SPEC.md` A.12 menambah **BR-054A** (accept Invitation MUST menolak jika email penerima ≠ `invitations.email`, penolakan tidak membocorkan alasan spesifik) dan **BR-054B** (accept Invitation oleh User ber-Membership revoked sebelumnya di Project sama MUST mereaktivasi row Membership existing — bukan ditolak permanen — karena `project_memberships` UNIQUE(project_id,user_id) sejak 0.4.1 membuat row baru mustahil; assignment baru ditambahkan, assignment lama tetap revoked/BR-053).
+- `docs/02-SPEC.md` C.13 menambah `GET /projects/:project_id/invitations` (list, termasuk accepted/revoked/expired) dan `POST /invitations/:invitation_id/revoke` (invitation accepted MUST NOT dapat di-revoke).
+- `docs/01-PRODUCT.md` §0.4: `SPEC_VERSION` 2.4.0 → **2.5.0** (minor — mengunci authorization semantics + kapabilitas baru, tidak breaking) + changelog.
+**Dampak goal:**
+- **1.9.2** (accept invitation) dibuka kembali `✅ → ⚠️/80%` untuk BR-054A (email match) + BR-054B (reactivate-on-rejoin) — kedua perbaikan berada di fungsi yang sama (`acceptInvitation`), satu goal.
+- **Goal baru 1.9.3** (`GET /invitations`) dan **1.9.4** (`POST .../revoke`) dibuka di TASK-1.9 (⬜️, dep 1.9.1).
+- **1.7.3** (PATCH permission-groups) dibuka kembali `✅ → ⚠️/80%` untuk Temuan 3 (atomicity `updatePermissionGroup`) — ini rekomendasi kode, tidak menyentuh SOT.
+- **Goal baru 1.11.1** dibuka (TASK-1.11, baru) untuk Temuan 5 (ekstrak wrapper error-handling, P3 non-blocking) — murni refactor, tidak boleh mengubah behavior/response endpoint manapun (ditegaskan di Test/DoD goal).
+- Temuan 5 (observasi pola DI ganda, ukuran modul `project-admin.ts`) **TIDAK** dijadikan goal — dicatat sebagai catatan arsitektur untuk pertimbangan fase mendatang (mis. Phase 4 yang akan menyentuh area sama), bukan cacat yang menghalangi Phase 1.
+**Catatan:** Prior 1.9.3/1.9.4 = P2 (melengkapi flow invitation, bukan blocker inti); 1.11.1 = P3. Total goal Phase 1 sekarang 25 (naik dari 21) — 2 dibuka kembali (⚠️), 3 baru (⬜️). Tidak ada goal lain yang terdampak.
 
 <a id="review-cl-10"></a>
 ### Review-CL-10 — 2026-08-22 · audit penuh Phase 1 (21/21 goal ✅): kesesuaian SOT, code review, SOLID, review SOT
