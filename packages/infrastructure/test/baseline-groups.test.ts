@@ -126,12 +126,21 @@ describe("baseline Permission Groups saat provisioning (goal 1.6.1)", () => {
     expect(viewer).not.toContain("card.create");
   });
 
-  it("[BR-039][BR-036] konfigurasi tersimpan sebagai data — tidak ada kolom role; visibility NULL mengikuti default D.3", async () => {
+  it("[BR-039][BR-036][BR-047][BR-048] konfigurasi tersimpan sebagai data — tidak ada kolom role; visibility hanya pada card.read dan default CREATED_BY_ME", async () => {
     const rows = await client.execute({
-      sql: "SELECT card_read_visibility FROM group_permissions gp JOIN permission_groups g ON g.id = gp.group_id WHERE g.project_id = ? AND g.name = 'Viewer' LIMIT 1",
+      sql: "SELECT p.key AS permission_key, gp.card_read_visibility FROM group_permissions gp JOIN permissions p ON p.id = gp.permission_id JOIN permission_groups g ON g.id = gp.group_id WHERE g.project_id = ?",
       args: ["proj_g1"],
     });
-    expect(rows.rows[0]?.card_read_visibility ?? null).toBeNull();
+    expect(rows.rows.length).toBeGreaterThan(0);
+    for (const row of rows.rows) {
+      if (row.permission_key === "card.read") {
+        // BR-047/BR-048: baseline seed tidak memberi visibility eksplisit -> service mengisi CREATED_BY_ME.
+        expect(row.card_read_visibility).toBe("CREATED_BY_ME");
+      } else {
+        // Visibility MUST NULL untuk permission selain card.read (03-ENG B.2).
+        expect(row.card_read_visibility ?? null).toBeNull();
+      }
+    }
 
     const columns = await client.execute("PRAGMA table_info(permission_groups)");
     const names = columns.rows.map((c) => String(c.name));

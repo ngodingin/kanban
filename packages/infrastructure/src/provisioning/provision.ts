@@ -151,7 +151,7 @@ export async function registerProjectWithOwnerMembership(
       const rows = baselineGroupPermissionKeys(name).map((key) => ({
         groupId,
         permissionId: idByKey.get(key)!,
-        cardReadVisibility: null,
+        cardReadVisibility: key === "card.read" ? "CREATED_BY_ME" : null,
         createdAt: input.now,
       }));
       await tx.insert(groupPermissions).values(rows).run();

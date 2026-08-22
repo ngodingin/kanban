@@ -114,7 +114,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 1.6.1 | 🔄 | [CL-45](#cl-45)<br>[CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[QA-CL-11](#qa-cl-11)<br>[Review-CL-04](#review-cl-04) | 60 | P1 | Saat `provisionProjectWithMapping` (1.2) commit, seed 4 baseline Permission Group **Co-Owner, Manager, Contributor, Viewer** (BUKAN Owner — Owner adalah ownership property BR-035, bukan Group) beserta `group_permissions` default sesuai matrix D.2, dalam transaksi Global DB yang sama. Baseline HARUS berupa data (row `permission_groups`+`group_permissions`), bukan `if role == ...` hard-coded (BR-039) | [02-SPEC D.2](docs/02-SPEC.md), BR-035, BR-036, BR-039 | 1.2, 1.5 |
+| 1.6.1 | 🔎 | [CL-47](#cl-47)<br>[CL-45](#cl-45)<br>[CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[QA-CL-11](#qa-cl-11)<br>[Review-CL-04](#review-cl-04) | 80 | P1 | Saat `provisionProjectWithMapping` (1.2) commit, seed 4 baseline Permission Group **Co-Owner, Manager, Contributor, Viewer** (BUKAN Owner — Owner adalah ownership property BR-035, bukan Group) beserta `group_permissions` default sesuai matrix D.2, dalam transaksi Global DB yang sama. Baseline HARUS berupa data (row `permission_groups`+`group_permissions`), bukan `if role == ...` hard-coded (BR-039) | [02-SPEC D.2](docs/02-SPEC.md), BR-035, BR-036, BR-039 | 1.2, 1.5 |
 
 **Test:** Integration — create Project → tepat 4 `permission_groups` baru dengan nama baseline; `group_permissions` Co-Owner mencakup seluruh operasi Owner-level kecuali ownership itu sendiri, Manager mencakup Milestone/Board/List CRUD + Card, Contributor mencakup Card create/update/move/archive/delete/comment tanpa Manage Members/Permission Groups, Viewer hanya `*.read`; verifikasi tidak ada baseline group bernama "Owner".
 **DoD:** Baseline groups tersedia setiap Project baru sesuai D.2; konfigurasi disimpan sebagai data yang dapat diubah lewat 1.7 (bukan hard-coded).
@@ -196,6 +196,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-47"></a>
+### CL-47 — 2026-08-22 · goal 1.6.1 selesai sisi Dev (🔄 → 🔎 · 60 → 80%) — baseline card.read visibility diperbaiki
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 28 file / 144 test lulus (termasuk `baseline-groups.test.ts` 5/5). Temuan Review-CL-04 Temuan 1 dieksekusi: `provision.ts` (`registerProjectWithOwnerMembership`) kini mengisi `cardReadVisibility: "CREATED_BY_ME"` untuk baris dengan `permission.key === "card.read"`, tetap `null` untuk key lain — sesuai 03-ENG B.2 + BR-047/BR-048. Test `[BR-039][BR-036][BR-047][BR-048]` ditulis ulang: meng-assert SEMUA baris group_permissions Project baseline (baris card.read → CREATED_BY_ME, non-card.read → NULL), menggantikan assertion lama yang salah menyatakan Viewer NULL.
+**Catatan implementasi:** Perubahan satu baris di provisioning seed; tidak ada perubahan skema atau API.
 
 <a id="cl-46"></a>
 ### CL-46 — 2026-08-22 · goals 1.3.1, 1.3.4, 1.4.1–1.4.3, 1.7.1–1.7.4, 1.8.1–1.8.2, 1.9.1–1.9.2, 1.10.1–1.10.2 selesai sisi Dev (🔄 → 🔎 · 80/80%) — migrasi VALIDATION_ERROR
