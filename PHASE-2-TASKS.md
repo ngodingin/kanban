@@ -212,6 +212,22 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="review-cl-04"></a>
+### Review-CL-04 — 2026-08-23 · audit closure final Phase 2 (21/21 goal ✅): verifikasi 2.12.1 + Exit Criteria menyeluruh
+**Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti — verifikasi 2.12.1, bukan baca ulang klaim QA-CL-23:** `pnpm -r build`/`typecheck`/`lint` bersih; `pnpm exec vitest run` → **50 file/325 test PASS**, nol regresi sepanjang fase. Baca `card-assignee-cleanup.ts` — atomik per-Card (guard `assignee_user_id = ? AND version = ?` mencegah Activity tanpa mutation sesuai), best-effort per-Card (kegagalan satu Card tidak menggulung yang lain), sesuai spek 2.12.1. **Kecurigaan diinvestigasi ulang (sesuai laporan Dev)**: parameter `projectDb` di `revokeMembership` opsional (`Client | null`) — bisa `null` kalau `resolveProjectDbClient` (lokal `project-deps.ts`) gagal resolve mapping `project_databases`. Dikonfirmasi: pada wiring produksi (`project-deps.ts:249`), `projectDb` SELALU di-resolve dan diberikan sebelum memanggil `revokeMembership` — path `null` hanya bisa terjadi jika `project_databases` tidak punya mapping untuk `project_id` yang sudah lolos cek eksistensi/otorisasi di route (praktiknya mustahil, karena mapping dibuat atomik saat provisioning, Phase 1 TASK-1.2). Ada test eksplisit `"[kompatibilitas] revokeMembership tanpa projectDb tetap jalan (perilaku Phase 1)"` — dikonfirmasi ini backward-compatibility yang disengaja (bukan celah tak disadari). Klaim Dev akurat.
+**Audit tambahan (spot-check cakupan fase, bukan cuma goal terakhir):** `grep isEffectivelyOperational/evaluateRestore` pada `card-repository.ts` mengonfirmasi ancestor-check ada di jalur create/update/archive/restore/delete Card SEKALIGUS (dibangun setelah perbaikan Review-CL-02, tidak mengulang bug yang sama) — regresi kelas Review-CL-02 TIDAK terjadi di Card. `grep` routes tidak menemukan endpoint Label/Comment/`GET /activities` mana pun — tidak ada scope creep (Prinsip #4). Seluruh 6 router (`projects`, `milestones`, `boards`, `lists`, `cards`, `project-admin`) terdaftar bersih di `apps/api/src/index.ts`.
+**Exit Criteria Phase 2 — dicek satu per satu:**
+- Milestone/Board/List/Card CRUD penuh + ancestor-chain di SETIAP command mutasi ✅ (setelah perbaikan Review-CL-02, dikonfirmasi ulang berlaku juga di Card).
+- Card move menegakkan INV-MOVE-001–004 + BR-017/018, test konkurensi hijau ✅ (diverifikasi 3× independen — Dev, QA, Review — Review-CL-03).
+- Card assignee otomatis NULL saat membership dicabut ✅ (2.12.1, cross-DB, atomik per-Card).
+- Activity atomik untuk setiap mutasi ✅ (dikonfirmasi konsisten di Milestone/Board/List/Card, konvensi B.5 diikuti).
+- Archive/delete parent tidak mengubah local state descendant ✅ (dibuktikan test langsung ke row descendant di setiap task terkait).
+- Tidak ada Label/Comment/`GET /activities` ✅ (dikonfirmasi tidak ada di routing).
+- Endpoint terpetakan ke C.5–C.8, tidak ada path di luar kontrak ✅.
+- Test Project-boundary/optimistic-locking/authorization hijau ✅ (325 test, termasuk regression test lintas-Project di beberapa goal).
+**Verdict:** Phase 2 **genuinely tuntas** — 21/21 goal ✅, didukung 3 putaran audit independen (Review-CL-02/03/04) yang masing-masing mereproduksi bukti sendiri, menemukan & menutup 1 bug correctness signifikan (ancestor-check, ditemukan sebagai kesalahan spesifikasi Review sendiri) dan 1 keputusan governance model-tiering (dicatat, bukan didiamkan). Tidak ada temuan baru dari audit final ini. Siap Phase 3.
+
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-23 · audit gelombang kedua Phase 2 (TASK-2.2 lanjutan–2.11): verifikasi perbaikan Review-CL-02 + keputusan governance model-tiering 2.10.1/2.11.1
 **Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)
