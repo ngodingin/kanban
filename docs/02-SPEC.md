@@ -404,6 +404,8 @@ POST   /api/v1/projects/:project_id/cards/:card_id/delete
 ```
 `PATCH` boleh mengubah: `title`, `subtitle`, `description`, `due_date`, `assignee`. **Tidak boleh** mengubah `list_id`.
 
+`GET`/response Card MUST menyertakan field `labels` (array `{id, name, scope: "milestone"|"board"}`), diturunkan dari asosiasi aktif (`removed_at IS NULL`) di `card_milestone_labels`/`card_board_labels` (C.11) — tanpa ini, hasil assign/remove Label (C.11) tidak dapat dibaca kembali oleh client.
+
 Move: `{ "destination_list_id": "list_456", "expected_version": 12 }`
 
 Server MUST memvalidasi: source Card, source List, destination List, kesamaan Project, destination ACTIVE, otorisasi, version, dan business invariant (`source_board.milestone_id == target_board.milestone_id`) sebelum eksekusi.
