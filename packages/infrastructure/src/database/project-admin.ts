@@ -616,6 +616,13 @@ export async function acceptInvitation(
       }
       membershipId = existing.id;
       await tx.update(projectMemberships).set({ revokedAt: null }).where(eq(projectMemberships.id, membershipId)).run();
+      // BR-053: revoke old active assignments before inserting new ones (preserve history)
+      await tx.update(membershipGroupAssignments).set({ revokedAt: now }).where(
+        sql`${membershipGroupAssignments.membershipId} = ${membershipId} AND ${membershipGroupAssignments.revokedAt} IS NULL`,
+      ).run();
+      await tx.update(membershipPermissionAssignments).set({ revokedAt: now }).where(
+        sql`${membershipPermissionAssignments.membershipId} = ${membershipId} AND ${membershipPermissionAssignments.revokedAt} IS NULL`,
+      ).run();
     } else {
       membershipId = ulid();
       await tx.insert(projectMemberships).values({
