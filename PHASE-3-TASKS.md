@@ -200,6 +200,16 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="cl-31"></a>
+### CL-31 — 2026-08-23 · fix regresi CL-53 di `label-errors.ts` (Review-CL-03 P0 blocker) — bukan reopening goal, seluruh 17/17 goal tetap ✅
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Diambil sebagai P0 blocker eksplisit dari Review-CL-03 (di bawah) sebelum menyentuh Phase 4. Direproduksi ulang independen (bukan percaya laporan): `pnpm --filter @kanban/api build && node apps/api/dist/serve.js` → crash identik `SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]` di `label-errors.ts:6`, persis seperti dilaporkan. Grep konfirmasi scope persis 3 constructor (`LabelNotFoundError`, `LabelVersionConflictError`, `LabelInvalidStateError`) — `LabelValidationError` tidak terpengaruh (constructor string biasa, bukan parameter-property).
+**Fix:** Pola identik CL-53 (Phase 2) — diubah ke field-eksplisit (`readonly x: T; constructor(x: T) { this.x = x; }`), bukan shorthand. Murni transformasi sintaks, tidak ada perubahan behavior/pesan error.
+**Verifikasi ulang (bukan klaim):** `pnpm -r typecheck` bersih 6/6; `pnpm --filter @kanban/api build && node apps/api/dist/serve.js` → boot sukses, `curl /api/v1/health` → 200 (sebelumnya crash instan); `pnpm exec vitest run` → **64 file/407 test PASS**, nol regresi; `pnpm exec playwright test` → **1/1 PASS** (sebelumnya webServer gagal start). `pnpm lint` bersih.
+**Kenapa tidak reopen goal:** Sama alasan CL-53 asli — Test/DoD 17/17 goal Phase 3 berbasis `vitest` (business-logic correctness), tidak pernah tersentuh bug packaging/runtime-invocation ini. Dicatat standalone, bukan mengubah Status/CL goal 3.3.1/3.5.1/3.7.1/3.7.2/3.9.1 manapun (tetap ✅).
+**Rekomendasi proses ditindaklanjuti:** Sesuai saran Review-CL-03, `pnpm exec playwright test` sudah dijalankan sebagai bagian verifikasi fix ini — direkomendasikan tetap masuk checklist closure Phase 4 ke depan (di luar kendali Dev untuk menjamin sesi lain mengikutinya, tapi dicatat di sini sebagai bukti sudah dijalankan minimal sekali di titik regresi ini).
+
+
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-23 · [CRITICAL] regresi CL-53 (parameter-property) di `label-errors.ts` — ditemukan saat audit pra-Phase-4
 
