@@ -144,6 +144,35 @@ describe("loadEffectivePermissionInputs — goal 4.2.1", () => {
     });
   });
 
+  it("[Bug ditemukan saat redo CL-25] Group YANG SAMA di-assign ke Membership ini di DUA scope berbeda → keduanya muncul terpisah, tidak tertimpa/tercampur", async () => {
+    // Skema mengizinkan ini: uniqueIndex membership_group_assignments_active_unique
+    // atas (membershipId, groupId, scopeType, scopeId) — BUKAN (membershipId,
+    // groupId) — jadi Group X boleh aktif di scope Milestone A DAN scope Board B
+    // sekaligus untuk Membership yang sama.
+    await insertMembership("m_multiscope");
+    await insertGroup("g_multiscope");
+    await insertGroupPermission("g_multiscope", "card.move");
+    await insertGroupPermission("g_multiscope", "list.delete");
+    await client.execute({
+      sql: "INSERT INTO membership_group_assignments (id, membership_id, group_id, scope_type, scope_id, created_at, revoked_at) VALUES (?, ?, ?, 'milestone', 'ms_x', ?, NULL)",
+      args: ["ga_ms", "m_multiscope", "g_multiscope", NOW],
+    });
+    await client.execute({
+      sql: "INSERT INTO membership_group_assignments (id, membership_id, group_id, scope_type, scope_id, created_at, revoked_at) VALUES (?, ?, ?, 'board', 'bd_y', ?, NULL)",
+      args: ["ga_bd", "m_multiscope", "g_multiscope", NOW],
+    });
+
+    const inputs = await loadEffectivePermissionInputs(client, "m_multiscope");
+    expect(inputs.groupAssignments).toHaveLength(2);
+    const byScope = new Map(inputs.groupAssignments.map((g) => [`${g.scopeType}:${g.scopeId}`, g]));
+    const msEntry = byScope.get("milestone:ms_x");
+    const bdEntry = byScope.get("board:bd_y");
+    expect(msEntry, "assignment scope milestone hilang").toBeDefined();
+    expect(bdEntry, "assignment scope board hilang").toBeDefined();
+    expect(msEntry!.permissions.map((p) => p.key).sort()).toEqual(["card.move", "list.delete"]);
+    expect(bdEntry!.permissions.map((p) => p.key).sort()).toEqual(["card.move", "list.delete"]);
+  });
+
   it("[DoD] Scoped ke SATU membership — assignment Membership lain tidak bocor", async () => {
     await insertMembership("m_other");
     await insertGroup("g_other");
