@@ -4,13 +4,13 @@
 > Scope batas: [04-DELIVERY C.1 "Phase 5"](docs/04-DELIVERY.md). Acuan utama: [02-SPEC](docs/02-SPEC.md) A.3, A.4, A.14; B.11; C.4–C.8; [03-ENGINEERING](docs/03-ENGINEERING.md) C.6 (Data Retention & Deletion), F.2 (Provisioning).
 > **Konteks repo saat digenerate:** Phase 0–4 selesai (semua ✅). **State machine lifecycle penuh (archive/restore/delete) dan ancestor-chain validation (INV-LIFE-001/002) SUDAH DIBANGUN sejak Phase 2/3** — `packages/domain/src/lifecycle/effective-state.ts` (`resolveLifecycleState`/`isEffectivelyOperational`/`evaluateRestore`) dipakai konsisten oleh Milestone/Board/List/Card/MilestoneLabel/BoardLabel repository. **Phase 5 TIDAK membangun ulang mekanisme ini** — sesuai catatan Prinsip Phase 2 #1 ("Phase 5 nanti MENGERASKAN mekanisme ini — retention 30 hari, internal prune — bukan membangunnya dari nol"). Satu-satunya kapabilitas yang GENUINELY belum ada: **retention 30 hari + internal prune** (BR-016, BR-016A, FR-047, 03-ENG C.6) — permanent physical removal subtree entity DELETED setelah 30 hari, bukan endpoint user-triggered.
 
-> **[CROSS-CUTTING, didelegasikan sebelum/bersamaan Phase 5]** 3 temuan P2 menumpuk dari audit sebelumnya, BUKAN blocker teknis (semua non-regresi, test tetap hijau) tapi WAJIB diselesaikan sebelum menambah lebih banyak kode di atasnya:
-> 1. **Review-CL-11** ([PHASE-0-TASKS.md](PHASE-0-TASKS.md)) — `turso.ts:databaseExists()` fragile string-match `"404"` → ganti `TursoApiError{status}` + cek numerik. **Relevan langsung untuk Phase 5**: TASK-5.3 (prune Project-level) MEMANGGIL `databaseExists`/`deleteDatabase` dari file yang sama — perbaiki DULU sebelum dipakai jalur baru yang lebih sering (prune berjalan reguler, bukan cuma saat create Project).
-> 2. **Review-CL-11** ([PHASE-0-TASKS.md](PHASE-0-TASKS.md)) — `INVALID_STATE` dipakai sebagai fallback 500 generik (`http-mapping.ts`/`routes/projects.ts`) — opsional, tambah kode kanonik `INTERNAL_ERROR` ke C.2 jika mau diperbaiki (butuh amandemen SOT kecil dulu, TIDAK blocking Phase 5).
-> 3. **Review-CL-19** ([PHASE-1-TASKS.md](PHASE-1-TASKS.md)) — `mapUniqueViolation` (`project-admin.ts`) fragile string-match `"UNIQUE constraint failed"` → ganti cek `.code`/`.cause.code === "SQLITE_CONSTRAINT_UNIQUE"`, pola sama `isBusy()` (CL-65).
-> 4. **Review-CL-05** ([PHASE-4-TASKS.md](PHASE-4-TASKS.md)) — `loadEffectivePermissionInputs` double-fetch per request (23 call site) — murni Phase 4, tidak menyentuh Phase 5, tapi didelegasikan bersamaan karena sama-sama P2 menumpuk.
+> **[CROSS-CUTTING, status per 2026-08-23]** 4 temuan P2 didelegasikan sebelum/bersamaan Phase 5 — **3 dari 4 SUDAH SELESAI**, dikonfirmasi independen (bukan cuma laporan) sebelum task ini mulai dikerjakan:
+> 1. ✅ **SELESAI** (`39ce17b`) — `turso.ts:67` `databaseExists()` sekarang `error instanceof TursoApiError && error.status === 404` (dikonfirmasi baca kode langsung — bukan string-match lagi). Prasyarat TASK-5.3 **terpenuhi**.
+> 2. **BELUM, opsional, TIDAK blocking Phase 5** (Review-CL-11, [PHASE-0-TASKS.md](PHASE-0-TASKS.md)) — `INVALID_STATE` dipakai sebagai fallback 500 generik (`http-mapping.ts`/`routes/projects.ts`) — butuh amandemen SOT kecil (kode kanonik baru `INTERNAL_ERROR`, C.2) sebelum bisa dikerjakan, murni kosmetik-semantik, tidak menghalangi goal Phase 5 manapun.
+> 3. ✅ **SELESAI** (`39ce17b`) — `mapUniqueViolation` (`project-admin.ts:288`) sekarang cek `.code === "SQLITE_CONSTRAINT_UNIQUE" || .code === "SQLITE_CONSTRAINT"` di rantai `.cause` (dikonfirmasi baca kode langsung), komentar eksplisit merujuk pelajaran `isBusy()` (CL-65).
+> 4. ✅ **SELESAI** (`b1e9bfd`, diverifikasi independen `45f6e66`) — `loadEffectivePermissionInputs` double-fetch (Review-CL-05, [PHASE-4-TASKS.md](PHASE-4-TASKS.md)) — `RealPermissionResolver` sekarang mengoper `inputs` mentahnya lewat `OpenProjectContext.permissionInputs` ke `createEntityPermissionResolver` (`preloadedInputs`, 2 call site, seluruhnya ter-wire), 1× fetch per request bukan 2×. Regression test membuktikan via penghitungan call sungguhan, bukan asersi tidak langsung.
 >
-> Keempatnya BUKAN goal baru (tidak reopen goal manapun, Test/DoD asli tetap valid) — dikerjakan AI-Dev sebagai commit cross-cutting sebelum/bersamaan goal Phase 5 pertama, didokumentasikan via CL biasa merujuk Review-CL terkait. **Goal 5.3.x (prune Project-level) secara eksplisit depend pada perbaikan #1 selesai lebih dulu** (lihat Dependency TASK-5.3).
+> **TASK-5.3 (prune Project-level) tidak lagi punya prasyarat outstanding — unblocked.** Item #2 boleh dikerjakan kapan saja, tidak terkait dependency Phase 5 manapun.
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
 
@@ -79,7 +79,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 ---
 
-## TASK-5.3 — Prune Project-level (deprovision Turso DB)  (dep: 5.1, fix turso.ts cross-cutting)
+## TASK-5.3 — Prune Project-level (deprovision Turso DB)  (dep: 5.1 — prasyarat turso.ts fix ✅ terpenuhi per `39ce17b`)
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
@@ -104,6 +104,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+### Review-CL-02 — 2026-08-23 · koreksi status cross-cutting notice — turso.ts & mapUniqueViolation SUDAH selesai (`39ce17b`), sebelumnya keliru ditandai "belum"
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+Saya sempat menyatakan fix `turso.ts` (Review-CL-11) dan `mapUniqueViolation` (Review-CL-19) "belum landing" — keliru, berdasarkan pengecekan yang stale (predates `39ce17b`). Dikoreksi setelah verifikasi independen: `git merge-base --is-ancestor 39ce17b HEAD` dikonfirmasi, DAN kode aktual dibaca langsung — `turso.ts:67` (`error instanceof TursoApiError && error.status === 404`) dan `project-admin.ts:288` (`.code === "SQLITE_CONSTRAINT_UNIQUE" || .code === "SQLITE_CONSTRAINT"`) keduanya sudah benar persis seperti direkomendasikan. Header file (baris 7–13) diperbarui untuk mencerminkan status akurat: 3 dari 4 item cross-cutting selesai, item #2 (`INVALID_STATE`-as-500) tetap optional/non-blocking. **TASK-5.3 dependency dikonfirmasi terpenuhi** — Phase 5 genuinely unblocked untuk mulai dikerjakan.
 
 ### Review-CL-01 — 2026-08-23 · generate task list Phase 5 (tanpa perubahan status implementasi)
 
