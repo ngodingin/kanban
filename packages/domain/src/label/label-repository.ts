@@ -79,8 +79,9 @@ export interface BoardLabelRepository {
   ): Promise<BoardLabelRecord[]>;
 
   createBoardLabel(projectId: string, boardId: string, input: CreateLabelInput): Promise<BoardLabelRecord>;
-  updateBoardLabel(projectId: string, boardId: string, input: UpdateLabelInput): Promise<BoardLabelRecord>;
-  archiveBoardLabel(projectId: string, boardId: string, input: LabelLifecycleInput): Promise<BoardLabelRecord>;
-  restoreBoardLabel(projectId: string, boardId: string, input: LabelLifecycleInput): Promise<BoardLabelRecord>;
-  deleteBoardLabel(projectId: string, boardId: string, input: LabelLifecycleInput): Promise<BoardLabelRecord>;
+  /** Mutasi tidak menerima boardId — parent di-resolve dari row Label (sumber kebenaran). */
+  updateBoardLabel(projectId: string, input: UpdateLabelInput): Promise<BoardLabelRecord>;
+  archiveBoardLabel(projectId: string, input: LabelLifecycleInput): Promise<BoardLabelRecord>;
+  restoreBoardLabel(projectId: string, input: LabelLifecycleInput): Promise<BoardLabelRecord>;
+  deleteBoardLabel(projectId: string, input: LabelLifecycleInput): Promise<BoardLabelRecord>;
 }
