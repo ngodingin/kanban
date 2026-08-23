@@ -189,7 +189,7 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 ## A.15 API Design Constraint
 
 - **BR-061** Business transition (Card move serta archive/restore/delete) MUST NOT diimplementasikan sebagai arbitrary field update via generic PATCH.
-- **BR-062** Generic PATCH MUST NOT mengizinkan perubahan field yang dikendalikan domain: `id`, `project_id`, `creator_user_id`, `created_at`, `version`, `archived_at`, `deleted_at`, serta relasi hierarki (mis. `list_id`).
+- **BR-062** Generic PATCH MUST NOT mengizinkan perubahan field yang dikendalikan domain: `id`, `projectId`, `creatorUserId`, `createdAt`, `version`, `archivedAt`, `deletedAt`, serta relasi hierarki (mis. `listId`).
 
 ## A.16 Sepuluh Invariant Inti (Jantung Aplikasi)
 
@@ -335,6 +335,18 @@ INTERNAL_ERROR
 ```
 `VALIDATION_ERROR` (HTTP 400) MUST dipakai untuk payload/transport request yang tidak valid secara bentuk (field wajib hilang, tipe salah, body bukan JSON object) — kesalahan di sisi pengirim sebelum sistem sempat mengevaluasi state domain apa pun. `INVALID_STATE` (HTTP 409) tetap khusus untuk payload yang valid bentuknya tetapi tidak dapat diproses karena konflik state domain saat ini. `INTERNAL_ERROR` (HTTP 500) MUST dipakai KHUSUS untuk kegagalan tak terduga/infrastruktur (mis. config tidak lengkap, exception tak tertangani, dependency eksternal gagal) — MUST NOT dipakai untuk apa pun yang punya kode kanonik lain yang lebih spesifik yang applicable. Ketiga kode ini TIDAK boleh saling menggantikan — `INVALID_STATE` MUST NOT dipasangkan dengan HTTP 500 atau dipakai untuk kegagalan yang bukan konflik state domain; kasus semacam itu WAJIB `INTERNAL_ERROR`.
 
+`VALIDATION_ERROR` MUST mengumpulkan SELURUH field yang gagal validasi dalam satu response (bukan fail-fast berhenti di field pertama), via `details` array: `{ "error": { "code": "VALIDATION_ERROR", "message": "...", "details": [{ "field": "title", "reason": "wajib string non-kosong" }] } }`. `details` opsional untuk kode error lain (tidak applicable di luar validasi bentuk payload).
+
+### C.2.1 Konvensi Struktur Data (WAJIB, amandemen 3.0.0)
+
+**Field JSON (request body DAN response body) MUST `camelCase`** — SATU konvensi konsisten di seluruh permukaan API, tanpa kecuali. Ini BERBEDA dari nama kolom database (`03-ENG` Part B, `snake_case` — konvensi SQL internal) — jangan tertukar: field JSON API != nama kolom database, walau implementasi MAY memetakan keduanya 1:1 tanpa transformasi eksplisit selama field JSON yang terekspos ke client tetap `camelCase`. Contoh: kolom `start_date` (database) diekspos sebagai field `startDate` (API); kolom `deleted_at` diekspos sebagai `deletedAt`.
+
+Query parameter (`?status=...&entity_type=...`) MAY tetap `snake_case`/lowercase — konvensi URL berbeda dari konvensi JSON body, TIDAK terpengaruh aturan ini.
+
+**Field lifecycle universal** — setiap entity dengan lifecycle (Project, Milestone, Board, List, Card, Milestone Label, Board Label) response-nya MUST menyertakan minimal: `id` (string, ULID), `createdAt` (string, ISO 8601), `updatedAt` (string, ISO 8601), `archivedAt` (string ISO 8601 atau `null`), `deletedAt` (string ISO 8601 atau `null`), `version` (integer). Field domain-spesifik (title, description, dst) ditambahkan di atas field universal ini, tidak menggantikannya.
+
+**Mutation command yang butuh `expected_version`** (`PATCH`, archive/restore/delete/move) MUST menerima field `expectedVersion` (integer) — bukan `expected_version`.
+
 ## C.3 Idempotency
 
 Untuk mutation yang berpotensi diulang akibat network retry, gunakan `Idempotency-Key: <client-generated-key>`, terutama untuk `POST` yang membuat resource atau menjalankan domain command berisiko (create, move, archive, delete).
@@ -353,7 +365,7 @@ POST   /api/v1/projects/:project_id/delete
 `GET`/`PATCH` Project membaca/memutasi state domain pada `project_state` di Project DB; Global DB hanya dipakai untuk registry, owner, membership, dan resolusi database.
 Archive/restore/delete membawa version:
 ```json
-{ "expected_version": 4 }
+{ "expectedVersion": 4 }
 ```
 Restore hanya valid dari ARCHIVED; DELETED selalu menolak.
 
@@ -369,9 +381,9 @@ POST   /api/v1/projects/:project_id/milestones/:milestone_id/delete
 ```
 Create:
 ```json
-{ "title": "MVP", "description": "...", "progress": 0, "start_date": "2026-08-17", "due_date": "2026-09-30" }
+{ "title": "MVP", "description": "...", "progress": 0, "startDate": "2026-08-17", "dueDate": "2026-09-30" }
 ```
-Update (`PATCH`) dan seluruh domain command wajib membawa `expected_version`. Archive/delete Milestone hanya mengubah Milestone; Board/List/Card descendant mempertahankan local state.
+Update (`PATCH`) dan seluruh domain command wajib membawa `expectedVersion`. Archive/delete Milestone hanya mengubah Milestone; Board/List/Card descendant mempertahankan local state.
 
 `GET /milestones` (list, tanpa Owner-only restriction — pola sama GET Milestone tunggal) mengembalikan seluruh Milestone Project (termasuk ARCHIVED/DELETED, tanpa filter server-side — client filter dari `archivedAt`/`deletedAt` seperti pola `GET /invitations`).
 
@@ -414,13 +426,13 @@ POST   /api/v1/projects/:project_id/cards/:card_id/archive
 POST   /api/v1/projects/:project_id/cards/:card_id/restore
 POST   /api/v1/projects/:project_id/cards/:card_id/delete
 ```
-`PATCH` boleh mengubah: `title`, `subtitle`, `description`, `due_date`, `assignee`. **Tidak boleh** mengubah `list_id`.
+`PATCH` boleh mengubah: `title`, `subtitle`, `description`, `dueDate`, `assignee`. **Tidak boleh** mengubah `listId`.
 
 `GET`/response Card MUST menyertakan field `labels` (array `{id, name, scope: "milestone"|"board"}`), diturunkan dari asosiasi aktif (`removed_at IS NULL`) di `card_milestone_labels`/`card_board_labels` (C.11) — tanpa ini, hasil assign/remove Label (C.11) tidak dapat dibaca kembali oleh client.
 
 `GET /cards` (list under List) mengembalikan seluruh Card List tsb (termasuk ARCHIVED/DELETED, field `labels` sama seperti GET tunggal). Card visibility scope (`ALL`/`CREATED_BY_ME`/`ASSIGNED_TO_ME`, A.11/D.3) MUST diterapkan pada endpoint ini DAN pada `GET /cards/:card_id` — keduanya adalah `card.read`. Sampai permission resolution engine (Phase 4) berjalan, kedua endpoint MAY mengembalikan Card apa adanya untuk member aktif tanpa filter visibility (pola interim yang sama seperti Phase 2, lihat Prinsip Phase 2 #5) — filter visibility WAJIB ditegakkan begitu Phase 4 closed, bukan opsional selamanya.
 
-Move: `{ "destination_list_id": "list_456", "expected_version": 12 }`
+Move: `{ "destinationListId": "list_456", "expectedVersion": 12 }`
 
 Server MUST memvalidasi: source Card, source List, destination List, kesamaan Project, destination ACTIVE, otorisasi, version, dan business invariant (`source_board.milestone_id == target_board.milestone_id`) sebelum eksekusi.
 
@@ -462,7 +474,7 @@ POST   /api/v1/projects/:project_id/cards/:card_id/labels/:label_id/remove
 ```
 Milestone Label dan Board Label MUST memiliki lifecycle penuh (archive/restore/delete, `archived_at`/`deleted_at`/`version` — schema 03-ENG B.3) mengikuti pola domain-command yang sama seperti Milestone/Board/List (bukan generic PATCH untuk business transition, C.15). `GET .../labels` mengembalikan Label aktif (exclude soft-deleted kecuali diminta eksplisit, pola sama C.12 Permission Group). Label yang ARCHIVED/DELETED MUST NOT dapat di-assign ke Card baru (konsisten FR-034 — label non-aktif tidak boleh dipakai sebagai asosiasi baru).
 
-Assign ke Card: `{ "label_id": "label_123" }`. Server menentukan scope Label & memvalidasi keabsahannya terhadap posisi Card saat ini. `POST .../labels/:label_id/remove` men-set `removed_at` pada baris junction (`card_milestone_labels`/`card_board_labels`) — melengkapi FR-033 (riwayat asosiasi dipertahankan, bukan hapus fisik) dengan jalur pelepasan manual eksplisit, di luar orphaning otomatis saat Card pindah Board. Otorisasi assign/remove Label ke Card MENUMPANG `card.update` (bukan permission Label tersendiri — berbeda dari `card.comment`, karena label bukan konten dengan aturan integritas append-only khusus seperti Comment, murni atribut Card biasa).
+Assign ke Card: `{ "labelId": "label_123" }`. Server menentukan scope Label & memvalidasi keabsahannya terhadap posisi Card saat ini. `POST .../labels/:label_id/remove` men-set `removed_at` pada baris junction (`card_milestone_labels`/`card_board_labels`) — melengkapi FR-033 (riwayat asosiasi dipertahankan, bukan hapus fisik) dengan jalur pelepasan manual eksplisit, di luar orphaning otomatis saat Card pindah Board. Otorisasi assign/remove Label ke Card MENUMPANG `card.update` (bukan permission Label tersendiri — berbeda dari `card.comment`, karena label bukan konten dengan aturan integritas append-only khusus seperti Comment, murni atribut Card biasa).
 
 ## C.12 Permission & Membership
 ```http
@@ -484,15 +496,15 @@ POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignment
 
 Scoped Group assignment:
 ```json
-{ "group_id": "group_123", "scope_type": "milestone", "scope_id": "milestone_app_x" }
+{ "groupId": "group_123", "scopeType": "milestone", "scopeId": "milestone_app_x" }
 ```
 Scoped direct Permission assignment:
 ```json
-{ "permission_id": "perm_card_read", "scope_type": "milestone", "scope_id": "milestone_app_x", "card_read_visibility": "ALL" }
+{ "permissionId": "perm_card_read", "scopeType": "milestone", "scopeId": "milestone_app_x", "cardReadVisibility": "ALL" }
 ```
-`card_read_visibility` hanya berlaku untuk `card.read`; jika tidak diberikan default `CREATED_BY_ME`. Assignment bersifat additive dan revoke mempertahankan riwayat.
+`cardReadVisibility` hanya berlaku untuk `card.read`; jika tidak diberikan default `CREATED_BY_ME`. Assignment bersifat additive dan revoke mempertahankan riwayat.
 
-`GET .../members/:membership_id/assignments` mengembalikan seluruh scoped Group assignment DAN scoped direct Permission assignment milik Membership tsb (aktif dan revoked, tanpa filter server-side — pola sama `GET /invitations`), sebagai satu response `{ group_assignments: [...], permission_assignments: [...] }`. Tanpa endpoint ini tidak ada cara membaca kembali apa yang sudah di-grant ke sebuah Membership — `GET /members` sendiri hanya mengembalikan metadata Membership (`membershipId`, `userId`, `email`, `name`, `createdAt`, `revokedAt`), bukan assignment-nya.
+`GET .../members/:membership_id/assignments` mengembalikan seluruh scoped Group assignment DAN scoped direct Permission assignment milik Membership tsb (aktif dan revoked, tanpa filter server-side — pola sama `GET /invitations`), sebagai satu response `{ groupAssignments: [...], permissionAssignments: [...] }`. Tanpa endpoint ini tidak ada cara membaca kembali apa yang sudah di-grant ke sebuah Membership — `GET /members` sendiri hanya mengembalikan metadata Membership (`membershipId`, `userId`, `email`, `name`, `createdAt`, `revokedAt`), bukan assignment-nya.
 
 ## C.13 Invitation
 ```http
@@ -504,7 +516,7 @@ POST /api/v1/projects/:project_id/invitations/:invitation_id/revoke
 Create:
 ```json
 { "email": "eko@example.com", "assignments": [
-  { "group_id": "contributor", "scope_type": "milestone", "scope_id": "milestone_app_x" }
+  { "groupId": "contributor", "scopeType": "milestone", "scopeId": "milestone_app_x" }
 ] }
 ```
 Setelah accept: `Invitation → Membership → scoped Permission Group assignments` otomatis, tanpa assignment kedua kali. Accept MUST menegakkan BR-054A (email match) dan BR-054B (reactivate Membership ter-revoke, bukan row baru).
@@ -526,7 +538,7 @@ Response secret hanya diberikan sekali saat creation. Tidak ada update secret �
 
 ## C.15 Generic PATCH — Batasan Wajib
 
-Generic `PATCH` MUST NOT menerima field yang merepresentasikan business transition atau field yang dikendalikan domain: `id`, `project_id`, `creator_user_id`, `created_at`, `version`, `archived_at`, `deleted_at`, `list_id` (atau relasi hierarki lain). Field ini hanya berubah lewat domain command yang menjalankan validasi permission, state, & business invariant.
+Generic `PATCH` MUST NOT menerima field yang merepresentasikan business transition atau field yang dikendalikan domain: `id`, `projectId`, `creatorUserId`, `createdAt`, `version`, `archivedAt`, `deletedAt`, `listId` (atau relasi hierarki lain). Field ini hanya berubah lewat domain command yang menjalankan validasi permission, state, & business invariant.
 
 ## C.16 Rekap Prinsip API
 

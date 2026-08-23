@@ -448,9 +448,10 @@ Comment **bukan** tabel terpisah — Comment adalah `activities` dengan `action 
 Payload MUST menyimpan cukup **konteks historis**, bukan hanya ID mentah — entity yang direferensikan bisa dihapus kemudian (BR-028).
 
 **Aturan umum (MUST):**
-- Semua nama/judul yang direferensikan (list_title, label_name, dsb) MUST **di-denormalisasi** ke dalam payload saat Activity ditulis, agar tetap terbaca walau entity aslinya kelak dihapus/diubah.
+- Semua nama/judul yang direferensikan (`listTitle`, `labelName`, dsb) MUST **di-denormalisasi** ke dalam payload saat Activity ditulis, agar tetap terbaca walau entity aslinya kelak dihapus/diubah.
 - Payload bersifat **additive & extensible** — konsumen MUST toleran terhadap key yang tidak dikenal (jangan validasi strict yang menolak field ekstra). Ini menjaga backward compatibility saat action baru/field baru ditambah.
 - Perubahan field generik memakai bentuk `changes` map: `{ "changes": { "<field>": { "before": <v>, "after": <v> } } }`.
+- Field KEY (nama) di payload MUST `camelCase` (amandemen 3.0.0, konsisten `C.2.1`) — payload ini terekspos ke client via `GET /activities` (`C.9`), sama seperti response body lain. Enum VALUE (mis. `"membership_revoked"` untuk `reason`, action name dot-notation `"card.moved"`) TIDAK terpengaruh aturan ini — hanya nama field yang WAJIB camelCase, bukan isi string value-nya.
 
 **Bentuk baku per action family (minimal, boleh diperluas):**
 
@@ -458,28 +459,28 @@ Payload MUST menyimpan cukup **konteks historis**, bukan hanya ID mentah — ent
 |---|---|
 | `*.created` | `{}` atau `{ "snapshot": { <field inti minimal> } }` (snapshot opsional) |
 | `*.updated` | `{ "changes": { "title": { "before": "...", "after": "..." } } }` |
-| `card.moved` | `{ "from": { "list_id": "...", "list_title": "...", "board_id": "...", "board_title": "..." }, "to": { ...sama... } }` |
-| `card.assigned` | `{ "assignee_user_id": "..." }` |
-| `card.unassigned` | `{ "previous_assignee_user_id": "...", "reason": "manual" \| "membership_revoked" }` |
-| `*.archived` / `*.deleted` / `*.restored` | `{}` atau `{ "previous_state": "ACTIVE"\|"ARCHIVED" }`; tidak ada `cascade` karena descendant tidak berubah |
-| `label.added` / `label.removed` | `{ "label_id": "...", "label_scope": "board"\|"milestone", "label_name": "..." }` |
+| `card.moved` | `{ "from": { "listId": "...", "listTitle": "...", "boardId": "...", "boardTitle": "..." }, "to": { ...sama... } }` |
+| `card.assigned` | `{ "assigneeUserId": "..." }` |
+| `card.unassigned` | `{ "previousAssigneeUserId": "...", "reason": "manual" \| "membership_revoked" }` |
+| `*.archived` / `*.deleted` / `*.restored` | `{}` atau `{ "previousState": "ACTIVE"\|"ARCHIVED" }`; tidak ada `cascade` karena descendant tidak berubah |
+| `label.added` / `label.removed` | `{ "labelId": "...", "labelScope": "board"\|"milestone", "labelName": "..." }` |
 | `comment.added` | `{ "body": "..." }` |
-| `comment.edited` | `{ "before": "...", "after": "..." }` |
+| `comment.edited` | `{ "before": "...", "after": "...", "commentActivityId": "..." }` |
 
 Contoh konkret:
 ```json
 // card.moved
-{ "from": { "list_id": "list_a", "list_title": "Todo",  "board_id": "brd_1", "board_title": "Sprint" },
-  "to":   { "list_id": "list_b", "list_title": "Review","board_id": "brd_1", "board_title": "Sprint" } }
+{ "from": { "listId": "list_a", "listTitle": "Todo",  "boardId": "brd_1", "boardTitle": "Sprint" },
+  "to":   { "listId": "list_b", "listTitle": "Review","boardId": "brd_1", "boardTitle": "Sprint" } }
 
 // board.deleted; descendant tidak mendapat Activity lifecycle
-{ "previous_state": "ACTIVE" }
+{ "previousState": "ACTIVE" }
 
 // label.removed (Board Label jadi orphaned karena Card pindah Board)
-{ "label_id": "lbl_9", "label_scope": "board", "label_name": "Bug" }
+{ "labelId": "lbl_9", "labelScope": "board", "labelName": "Bug" }
 
 // comment.edited
-{ "before": "Sudah selesai.", "after": "Sudah selesai di API v2." }
+{ "before": "Sudah selesai.", "after": "Sudah selesai di API v2.", "commentActivityId": "act_1" }
 ```
 
 > Konvensi ini dikunci sebagai baku minimum. Action baru MAY menambah bentuk payload sendiri asalkan mengikuti aturan umum di atas (denormalisasi konteks + additive). Struktur payload TIDAK divalidasi sebagai skema kaku di storage (kolom JSON), tetapi service MUST menulis sesuai bentuk di atas untuk konsistensi audit.
