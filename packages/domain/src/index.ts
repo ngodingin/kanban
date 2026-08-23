@@ -105,6 +105,7 @@ export { resolveEffectivePermissions, hasPermission, resolveCardVisibilityFilter
 export type {
   PermissionScopeType,
   CardReadVisibility,
+  GroupPermissionEntry,
   ScopedGroupAssignmentInput,
   ScopedDirectPermissionInput,
   PermissionHierarchyInput,

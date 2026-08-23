@@ -3,6 +3,7 @@ import {
   hasPermission,
   resolveCardVisibilityFilter,
   resolveEffectivePermissions,
+  type CardReadVisibility,
   type PermissionHierarchyInput,
   type ResolveEffectivePermissionsInput,
   type ScopedDirectPermissionInput,
@@ -35,19 +36,27 @@ const H_FULL: PermissionHierarchyInput = {
   cardId: CD_A,
 };
 
-const group = (permissionKeys: readonly string[], scopeType: ScopedGroupAssignmentInput["scopeType"], scopeId: string): ScopedGroupAssignmentInput => ({
-  groupId: `grp_${scopeType}_${scopeId}`,
-  permissionKeys,
-  scopeType,
-  scopeId,
-});
+type GroupEntry = ScopedGroupAssignmentInput["permissions"][number];
+
+const group = (
+  permissions: readonly GroupEntry[],
+  scopeType: ScopedGroupAssignmentInput["scopeType"],
+  scopeId: string,
+): ScopedGroupAssignmentInput => ({ scopeType, scopeId, permissions });
+
+const keys = (...keys: string[]): GroupEntry[] => keys.map((key) => ({ key }));
 
 const direct = (
   permissionKey: string,
   scopeType: ScopedDirectPermissionInput["scopeType"],
   scopeId: string,
-  cardReadVisibility?: ScopedDirectPermissionInput["cardReadVisibility"],
-): ScopedDirectPermissionInput => ({ permissionKey, scopeType, scopeId, ...(cardReadVisibility ? { cardReadVisibility } : {}) });
+  cardReadVisibility?: CardReadVisibility,
+): ScopedDirectPermissionInput => ({
+  permissionKey,
+  scopeType,
+  scopeId,
+  ...(cardReadVisibility ? { cardReadVisibility } : {}),
+});
 
 const resolve = (over: Partial<ResolveEffectivePermissionsInput>) =>
   resolveEffectivePermissions({
@@ -61,7 +70,7 @@ const resolve = (over: Partial<ResolveEffectivePermissionsInput>) =>
 
 describe("resolveEffectivePermissions — Owner bypass grant (BR-037, goal 4.1.1)", () => {
   it("[BR-037][properti] Owner granted SELURUH katalog + visibility ALL, termasuk dengan assignment kosong", () => {
-    for (const groups of [[], [group(["card.read"], "project", PROJECT)], [group(["milestone.create"], "milestone", MS_B)]]) {
+    for (const groups of [[], [group(keys("card.read"), "project", PROJECT)], [group(keys("milestone.create"), "milestone", MS_B)]]) {
       const effective = resolve({ isOwner: true, groupAssignments: groups });
       expect(effective.grantedKeys.size).toBe(ALL_KEYS.length);
       for (const key of ALL_KEYS) expect(effective.grantedKeys.has(key)).toBe(true);
@@ -86,7 +95,7 @@ describe("resolveEffectivePermissions — union additive tanpa DENY (BR-038, goa
       ["card", CD_A],
     ] as const) {
       const effective = resolve({
-        groupAssignments: [group(["card.move"], scopeType, scopeId), group(["milestone.create"], scopeType, scopeId)],
+        groupAssignments: [group(keys("card.move"), scopeType, scopeId), group(keys("milestone.create"), scopeType, scopeId)],
         hierarchy: H_FULL,
       });
       expect(effective.grantedKeys.has("card.move"), scopeType).toBe(true);
@@ -96,7 +105,7 @@ describe("resolveEffectivePermissions — union additive tanpa DENY (BR-038, goa
   });
 
   it("[BR-043] per-operasi: hanya key yang di-grant yang muncul, tidak ada efek silang antar key", () => {
-    const effective = resolve({ groupAssignments: [group(["card.read"], "project", PROJECT)] });
+    const effective = resolve({ groupAssignments: [group(keys("card.read"), "project", PROJECT)] });
     expect(effective.grantedKeys.has("card.read")).toBe(true);
     expect(effective.grantedKeys.has("card.update")).toBe(false);
     expect(effective.grantedKeys.has("card.move")).toBe(false);
@@ -113,7 +122,7 @@ describe("resolveEffectivePermissions — scope matching hierarchy saat ini (BR-
       { projectId: PROJECT, milestoneId: MS_A, boardId: BD_A, listId: LS_A, cardId: CD_A },
     ];
     for (const hierarchy of hierarchies) {
-      const effective = resolve({ groupAssignments: [group(["board.update"], "project", PROJECT)], hierarchy });
+      const effective = resolve({ groupAssignments: [group(keys("board.update"), "project", PROJECT)], hierarchy });
       expect(effective.grantedKeys.has("board.update")).toBe(true);
     }
   });
@@ -121,7 +130,7 @@ describe("resolveEffectivePermissions — scope matching hierarchy saat ini (BR-
   it("[BR-042][negatif eksplisit] Grant scope Milestone A TIDAK berlaku untuk entity di Milestone B (Project sama)", () => {
     const underB: PermissionHierarchyInput = { projectId: PROJECT, milestoneId: MS_B };
     for (const hierarchy of [underB, { projectId: PROJECT }, H_FULL]) {
-      const effective = resolve({ groupAssignments: [group(["card.move"], "milestone", MS_A)], hierarchy });
+      const effective = resolve({ groupAssignments: [group(keys("card.move"), "milestone", MS_A)], hierarchy });
       if (hierarchy.milestoneId !== MS_A) {
         expect(effective.grantedKeys.size, JSON.stringify(hierarchy)).toBe(0);
       } else {
@@ -130,29 +139,29 @@ describe("resolveEffectivePermissions — scope matching hierarchy saat ini (BR-
     }
   });
 
-  it("[BR-042][properti] Scope Board/List/Card match persis level-nya; salah satu level beda → tidak applicable", () => {
+  it("[BR-042][properti] Scope Board/List/Card match persis level-nya; level beda/null → tidak applicable", () => {
     const cases = [
       { scopeType: "board", scopeId: BD_A, hit: H_FULL, miss: { ...H_FULL, boardId: "bd_other" } },
       { scopeType: "list", scopeId: LS_A, hit: H_FULL, miss: { ...H_FULL, listId: null } },
       { scopeType: "card", scopeId: CD_A, hit: H_FULL, miss: { ...H_FULL, cardId: "cd_other" } },
     ] as const;
     for (const c of cases) {
-      const hit = resolve({ groupAssignments: [group(["card.move"], c.scopeType, c.scopeId)], hierarchy: c.hit });
+      const hit = resolve({ groupAssignments: [group(keys("card.move"), c.scopeType, c.scopeId)], hierarchy: c.hit });
       expect(hit.grantedKeys.size, c.scopeType).toBe(1);
-      const miss = resolve({ groupAssignments: [group(["card.move"], c.scopeType, c.scopeId)], hierarchy: c.miss });
+      const miss = resolve({ groupAssignments: [group(keys("card.move"), c.scopeType, c.scopeId)], hierarchy: c.miss });
       expect(miss.grantedKeys.size, c.scopeType).toBe(0);
     }
   });
 
   it("[BR-042A] Direct Permission menambah union tanpa mengubah Group grant; scope salah → tidak menambah apa pun", () => {
     const mixed = resolve({
-      groupAssignments: [group(["card.read"], "project", PROJECT)],
+      groupAssignments: [group(keys("card.read"), "project", PROJECT)],
       directAssignments: [direct("milestone.create", "milestone", MS_A)],
     });
     expect(mixed.grantedKeys.size).toBe(2);
 
     const wrongScope = resolve({
-      groupAssignments: [group(["card.read"], "project", PROJECT)],
+      groupAssignments: [group(keys("card.read"), "project", PROJECT)],
       directAssignments: [direct("milestone.create", "milestone", MS_B)],
     });
     expect(wrongScope.grantedKeys.has("card.read")).toBe(true);
@@ -160,35 +169,66 @@ describe("resolveEffectivePermissions — scope matching hierarchy saat ini (BR-
   });
 });
 
-describe("resolveEffectivePermissions — cardReadVisibility (BR-047/048/049, D.3, goal 4.1.1)", () => {
-  it("[BR-048] 2 grant card.read applicable visibility beda → TERLUAS menang (ALL > ASSIGNED_TO_ME > CREATED_BY_ME)", () => {
-    const pairs = [
+describe("resolveEffectivePermissions — cardReadVisibility dari KEDUA sumber grant (BR-040/BR-047/BR-048, Review-CL-02, goal 4.1.1)", () => {
+  it("[BR-048][Review-CL-02] visibility MILIK Group applicable ikut dinilai walau tanpa direct card.read", () => {
+    const cases = [
+      { groupVis: "ASSIGNED_TO_ME", extraDirect: null, expected: "ASSIGNED_TO_ME" },
+      { groupVis: "CREATED_BY_ME", extraDirect: null, expected: "CREATED_BY_ME" },
+      { groupVis: "ALL", extraDirect: null, expected: "ALL" },
+      { groupVis: undefined, extraDirect: "milestone.create", expected: "CREATED_BY_ME" },
+    ] as const;
+    for (const c of cases) {
+      const effective = resolve({
+        groupAssignments: [
+          group([...(c.groupVis ? [{ key: "card.read", cardReadVisibility: c.groupVis }] : [{ key: "card.read" }])], "project", PROJECT),
+        ],
+        directAssignments: c.extraDirect ? [direct(c.extraDirect, "project", PROJECT)] : [],
+      });
+      expect(effective.cardReadVisibility, JSON.stringify(c)).toBe(c.expected);
+      expect(effective.grantedKeys.has("card.read")).toBe(true);
+    }
+  });
+
+  it("[BR-040] Dua Group applicable visibility beda → yang terluas menang (union lintas Group)", () => {
+    const effective = resolve({
+      groupAssignments: [
+        group([{ key: "card.read", cardReadVisibility: "CREATED_BY_ME" }], "project", PROJECT),
+        group([{ key: "card.move" }, { key: "card.read", cardReadVisibility: "ALL" }], "milestone", MS_A),
+      ],
+    });
+    expect(effective.cardReadVisibility).toBe("ALL");
+    expect(effective.grantedKeys.has("card.move")).toBe(true);
+  });
+
+  it("[BR-048] Pair campuran Group+direct visibility beda → terluas menang (properti 4 kombinasi)", () => {
+    const combos = [
       ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ASSIGNED_TO_ME"],
       ["ASSIGNED_TO_ME", "ALL", "ALL"],
       ["CREATED_BY_ME", "ALL", "ALL"],
       ["ALL", "CREATED_BY_ME", "ALL"],
     ] as const;
-    for (const [v1, v2, widest] of pairs) {
+    for (const [gv, dv, widest] of combos) {
       const effective = resolve({
-        groupAssignments: [group(["milestone.create"], "project", PROJECT)],
-        directAssignments: [direct("card.read", "project", PROJECT, v1), direct("card.read", "milestone", MS_A, v2)],
+        groupAssignments: [group([{ key: "card.read", cardReadVisibility: gv }, { key: "member.invite" }], "project", PROJECT)],
+        directAssignments: [direct("card.read", "milestone", MS_A, dv)],
       });
-      expect(effective.cardReadVisibility, `${v1} vs ${v2}`).toBe(widest);
+      expect(effective.cardReadVisibility, `${gv} vs ${dv}`).toBe(widest);
       expect(effective.grantedKeys.has("card.read")).toBe(true);
-      expect(effective.grantedKeys.has("milestone.create")).toBe(true);
+      expect(effective.grantedKeys.has("member.invite")).toBe(true);
     }
   });
 
-  it("[BR-049] card.read visibility dari scope TIDAK applicable → tidak memengaruhi visibility (default tetap)", () => {
+  it("[BR-049] visibility dari grant TIDAK applicable (Group maupun direct) → tidak memengaruhi default", () => {
     const effective = resolve({
-      directAssignments: [direct("card.read", "milestone", MS_B, "ALL")],
+      groupAssignments: [group([{ key: "card.read", cardReadVisibility: "ALL" }], "milestone", MS_B)],
+      directAssignments: [direct("card.read", "board", "bd_other", "ASSIGNED_TO_ME")],
     });
     expect(effective.grantedKeys.size).toBe(0);
     expect(effective.cardReadVisibility).toBe("CREATED_BY_ME");
   });
 
-  it("[D.3] card.read via Group tanpa direct grant → key granted tapi visibility tetap CREATED_BY_ME (Group tidak membawa visibility)", () => {
-    const effective = resolve({ groupAssignments: [group(["card.read"], "project", PROJECT)] });
+  it("[D.3] card.read applicable TANPA visibility eksplisit sama sekali → default CREATED_BY_ME", () => {
+    const effective = resolve({ groupAssignments: [group(keys("card.read"), "project", PROJECT)] });
     expect(effective.grantedKeys.has("card.read")).toBe(true);
     expect(effective.cardReadVisibility).toBe("CREATED_BY_ME");
   });
@@ -198,7 +238,7 @@ describe("resolveEffectivePermissions — kemurnian fungsi (DoD, goal 4.1.1)", (
   it("[DoD] Deterministik: input sama → hasil ekuivalen; input tidak dimutasi", () => {
     const input: ResolveEffectivePermissionsInput = {
       allPermissionKeys: ALL_KEYS,
-      groupAssignments: [group(["card.read", "card.move"], "milestone", MS_A)],
+      groupAssignments: [group([{ key: "card.read", cardReadVisibility: "ASSIGNED_TO_ME" }, { key: "card.move" }], "milestone", MS_A)],
       directAssignments: [direct("card.read", "board", BD_A, "ASSIGNED_TO_ME")],
       hierarchy: H_FULL,
       isOwner: false,
@@ -207,13 +247,13 @@ describe("resolveEffectivePermissions — kemurnian fungsi (DoD, goal 4.1.1)", (
     const b = resolveEffectivePermissions(input);
     expect([...a.grantedKeys].sort()).toEqual([...b.grantedKeys].sort());
     expect(a.cardReadVisibility).toBe(b.cardReadVisibility);
-    expect(input.groupAssignments[0]!.permissionKeys).toHaveLength(2);
+    expect(input.groupAssignments[0]!.permissions).toHaveLength(2);
   });
 });
 
 describe("hasPermission — helper call site (goal 4.1.2)", () => {
   it("[BR-043] true hanya untuk key yang di-grant; false untuk key lain dan set kosong", () => {
-    const effective = resolve({ groupAssignments: [group(["card.read"], "project", PROJECT)] });
+    const effective = resolve({ groupAssignments: [group(keys("card.read"), "project", PROJECT)] });
     expect(hasPermission(effective, "card.read")).toBe(true);
     expect(hasPermission(effective, "card.update")).toBe(false);
 
@@ -250,9 +290,11 @@ describe("resolveCardVisibilityFilter — D.3/BR-047 (goal 4.1.2)", () => {
     expect(cards.filter(filter)).toEqual([cards[0], cards[1], cards[3]]);
   });
 
-  it("[BR-048] ALL → semua Card tanpa kecuali", () => {
+  it("[BR-048] ALL → semua Card tanpa kecuali (termasuk sumber Group)", () => {
     const filter = resolveCardVisibilityFilter(
-      resolve({ directAssignments: [direct("card.read", "project", PROJECT, "ALL")] }),
+      resolve({
+        groupAssignments: [group([{ key: "card.read", cardReadVisibility: "ALL" }], "project", PROJECT)],
+      }),
       ME,
     );
     expect(cards.filter(filter)).toHaveLength(cards.length);

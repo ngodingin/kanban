@@ -11,12 +11,17 @@ export type PermissionScopeType = "project" | "milestone" | "board" | "list" | "
 
 export type CardReadVisibility = "CREATED_BY_ME" | "ASSIGNED_TO_ME" | "ALL";
 
+/** Satu permission di dalam Group — visibility MILIK PER-ENTRY dari group_permissions.card_read_visibility (BR-040, koreksi Review-CL-02). */
+export interface GroupPermissionEntry {
+  readonly key: string;
+  readonly cardReadVisibility?: CardReadVisibility;
+}
+
 /** Assignment Group aktif milik SATU Membership — permission per Group sudah di-resolve pemanggil dari group_permissions (live, BR-040). */
 export interface ScopedGroupAssignmentInput {
-  readonly groupId: string;
-  readonly permissionKeys: readonly string[];
   readonly scopeType: PermissionScopeType;
   readonly scopeId: string;
+  readonly permissions: readonly GroupPermissionEntry[];
 }
 
 /** Direct Permission assignment aktif (BR-042A). Hanya jalur inilah yang membawa cardReadVisibility (D.3). */
@@ -81,34 +86,29 @@ export function resolveEffectivePermissions(input: ResolveEffectivePermissionsIn
   let visibility: CardReadVisibility | null = null;
 
   const collect = (
-    keys: readonly string[],
+    entries: readonly GroupPermissionEntry[],
     applicable: boolean,
-    cardReadVisibility: CardReadVisibility | undefined,
-    isCardRead: boolean,
   ): void => {
     if (!applicable) return;
-    for (const key of keys) grantedKeys.add(key);
-    // BR-048/BR-049: hanya grant `card.read` applicable yang memengaruhi visibility.
-    if (isCardRead && cardReadVisibility !== undefined) {
-      if (visibility === null || VISIBILITY_WIDTH[cardReadVisibility] > VISIBILITY_WIDTH[visibility]) {
-        visibility = cardReadVisibility;
+    for (const entry of entries) {
+      grantedKeys.add(entry.key);
+      // BR-048/BR-049: visibility terluas menang dari KEDUA sumber (Group + direct), hanya untuk card.read.
+      if (entry.key === "card.read" && entry.cardReadVisibility !== undefined) {
+        if (visibility === null || VISIBILITY_WIDTH[entry.cardReadVisibility] > VISIBILITY_WIDTH[visibility]) {
+          visibility = entry.cardReadVisibility;
+        }
       }
     }
   };
 
   for (const assignment of input.groupAssignments) {
     const applicable = scopeMatchesHierarchy(assignment.scopeType, assignment.scopeId, input.hierarchy);
-    collect(assignment.permissionKeys, applicable, undefined, assignment.permissionKeys.includes("card.read"));
+    collect(assignment.permissions, applicable);
   }
 
   for (const assignment of input.directAssignments) {
     const applicable = scopeMatchesHierarchy(assignment.scopeType, assignment.scopeId, input.hierarchy);
-    collect(
-      [assignment.permissionKey],
-      applicable,
-      assignment.cardReadVisibility,
-      assignment.permissionKey === "card.read",
-    );
+    collect([{ key: assignment.permissionKey, cardReadVisibility: assignment.cardReadVisibility }], applicable);
   }
 
   return {
