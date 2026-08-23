@@ -276,9 +276,13 @@ export async function deletePermissionGroup(globalClient: Client, projectId: str
 
 function mapUniqueViolation(error: unknown, message: string): never {
   // Drizzle membungkus error driver di cause — periksa rantai penyebabnya.
+  // Cek .code terstruktur (SQLITE_CONSTRAINT_UNIQUE/SQLITE_CONSTRAINT), BUKAN
+  // substring .message — pelajaran isBusy() (CL-65): pesan driver bisa
+  // berubah antar versi/mode koneksi, code konstan lebih reliable.
   let current: unknown = error;
   for (let depth = 0; depth < 5 && current instanceof Error; depth += 1) {
-    if (current.message.includes("UNIQUE constraint failed")) {
+    const code = (current as Error & { code?: unknown }).code;
+    if (code === "SQLITE_CONSTRAINT_UNIQUE" || code === "SQLITE_CONSTRAINT") {
       throw new PipelineError("INVALID_STATE", message, 409);
     }
     current = (current as Error & { cause?: unknown }).cause;

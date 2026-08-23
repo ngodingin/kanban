@@ -11,6 +11,20 @@ export interface CreatedDatabase {
   hostname: string;
 }
 
+/**
+ * Status HTTP terstruktur (bukan cuma di-embed ke pesan) — dipakai caller
+ * yang perlu membedakan kelas error (mis. 404 "tidak ada" vs error lain)
+ * tanpa string-matching rapuh terhadap `.message` (pelajaran CL-65).
+ */
+export class TursoApiError extends Error {
+  readonly status: number;
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+    this.name = "TursoApiError";
+  }
+}
+
 async function api<T>(env: TursoEnv, path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     ...init,
@@ -20,7 +34,7 @@ async function api<T>(env: TursoEnv, path: string, init?: RequestInit): Promise<
       ...init?.headers,
     },
   });
-  if (!res.ok) throw new Error(`Turso API ${res.status} ${path}: ${await res.text()}`);
+  if (!res.ok) throw new TursoApiError(res.status, `Turso API ${res.status} ${path}: ${await res.text()}`);
   return (await res.json()) as T;
 }
 
@@ -50,7 +64,7 @@ export async function databaseExists(env: TursoEnv, name: string): Promise<boole
     await api<{ database?: unknown }>(env, `/organizations/${env.org}/databases/${name}`);
     return true;
   } catch (error) {
-    if (String(error).includes("404")) return false;
+    if (error instanceof TursoApiError && error.status === 404) return false;
     throw error;
   }
 }

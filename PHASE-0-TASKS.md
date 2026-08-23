@@ -229,6 +229,13 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
 
+<a id="cl-62"></a>
+### CL-62 — 2026-08-23 · fix Review-CL-11 temuan (1): `databaseExists()` string-match rapuh → `.status` terstruktur — bukan reopening goal
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Diambil sebagai fix cross-cutting P2 (pola sama CL-65) dari Review-CL-11. Ditambah `TursoApiError extends Error { status: number }` (`turso.ts`) — dilempar `api()` dengan `res.status` asli, bukan cuma di-embed ke string pesan. `databaseExists()` diubah dari `String(error).includes("404")` ke `error instanceof TursoApiError && error.status === 404`.
+**Test (baru, `packages/infrastructure/test/turso-database-exists.test.ts`, mock `fetch` — bukan hanya trust logika):** 404 sungguhan → `false`; **regresi eksplisit bug lama**: nama DB mengandung literal `"404"` (`proj-404-abc`) TAPI response sungguhan 500 → TIDAK dibungkam jadi `false` (versi lama akan salah return `false` di sini karena path ikut ter-embed ke pesan error, cocok `.includes("404")`) — fix tetap `throw`; 403 tetap throw; 200 → `true`. `pnpm exec vitest run` → **70 file/432 test PASS**, nol regresi; `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih.
+**Catatan:** Tidak menyentuh goal manapun (fungsi ini dipakai smoke script `smoke-rollback.ts`, tidak ada goal Phase 0 yang men-assert perilaku spesifik ini — Test/DoD asli goal terkait tetap valid).
+
 <a id="review-cl-11"></a>
 ### Review-CL-11 — 2026-08-23 · 2 temuan code-quality (no-hardcode) — audit lanjutan pasca-goal 1.9.1/2.3.4/2.5.4/2.7.4/2.9.4
 

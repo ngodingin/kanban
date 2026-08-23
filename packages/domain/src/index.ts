@@ -101,3 +101,13 @@ export {
   LabelInvalidStateError,
   LabelValidationError,
 } from "./label/label-errors.ts";
+export { resolveEffectivePermissions } from "./permission/permission-engine.ts";
+export type {
+  PermissionScopeType,
+  CardReadVisibility,
+  ScopedGroupAssignmentInput,
+  ScopedDirectPermissionInput,
+  PermissionHierarchyInput,
+  EffectivePermissions,
+  ResolveEffectivePermissionsInput,
+} from "./permission/permission-engine.ts";

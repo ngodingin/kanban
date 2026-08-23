@@ -228,6 +228,13 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="cl-68"></a>
+### CL-68 — 2026-08-23 · fix Review-CL-19: `mapUniqueViolation` string-match rapuh → cek `.code` terstruktur — bukan reopening goal
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Diambil sebagai fix cross-cutting P2 (pola sama CL-65) dari Review-CL-19. `mapUniqueViolation` (`project-admin.ts`, dipakai `createGroupAssignment`/`createPermissionAssignment`, TASK-1.8) diubah dari `current.message.includes("UNIQUE constraint failed")` ke cek `current.code === "SQLITE_CONSTRAINT_UNIQUE" || current.code === "SQLITE_CONSTRAINT"` di sepanjang rantai `.cause` (maks 5 level, tidak berubah) — persis pola `isBusy()` (`transaction.ts`).
+**Verifikasi:** `apps/api/test/group-assignments.test.ts` + `permission-assignments.test.ts` (14 test, meng-assert reject assignment duplikat aktif via jalur ini) dijalankan ulang → tetap hijau, membuktikan deteksi `.code` bekerja benar terhadap UNIQUE constraint sungguhan (bukan cuma lolos karena kebetulan `.message` masih cocok seperti sebelumnya). `pnpm exec vitest run` → **70 file/432 test PASS**, nol regresi; `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih.
+**Catatan:** Bukan bug aktif sebelumnya (fungsi sudah benar hari ini secara kebetulan) — murni penguatan robustness terhadap kemungkinan pesan driver berubah antar versi/mode koneksi (Turso remote vs lokal), sesuai rasional CL-65. Tidak reopen goal 1.8.1/1.8.2 (✅, Test/DoD asli tetap valid).
+
 <a id="review-cl-19"></a>
 ### Review-CL-19 — 2026-08-23 · `mapUniqueViolation` (project-admin.ts) memakai pola fragile yang sama seperti `isBusy()` (CL-65)
 
