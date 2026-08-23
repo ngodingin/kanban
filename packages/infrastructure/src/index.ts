@@ -85,6 +85,8 @@ export {
   type ProjectMemberSummary,
   type UpdatePermissionGroupInput,
 } from "./database/project-admin.ts";
+export { loadEffectivePermissionInputs } from "./database/permission-resolution.ts";
+export type { EffectivePermissionInputs } from "./database/permission-resolution.ts";
 export { PipelineError } from "./pipeline/errors.ts";
 export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
 export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline.ts";
