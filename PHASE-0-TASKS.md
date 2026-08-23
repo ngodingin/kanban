@@ -224,6 +224,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 ---
 
+## TASK-0.14 — Magic Link `POST /api/auth/sign-in/magic-link` mengembalikan 500 di production DAN staging  (dep: 0.8.4)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 0.14.1 | ⬜️ | — | 0 | P1 | Ditemukan saat verifikasi TASK-0.13 (2026-08-23, di luar scope task itu, dicatat terpisah): `POST /api/auth/sign-in/magic-link` mengembalikan `500` di KEDUA environment (production `kanban.ngodingin.xyz` dan staging `kanban-ngodingin.vercel.app`) — bukan regresi dari fix TASK-0.13 (sudah begini sebelum dan sesudah). Observasi awal: row baru genuinely muncul di `auth_verifications` pada Global DB yang benar per environment (`kanban-global`/`kanban-global-stag`) tepat saat request dikirim — DB write BUKAN penyebab 500. Dugaan awal (BELUM dikonfirmasi): gagal di tahap `sendMagicLink()` → Resend API (`auth.ts`, `defaultSendMagicLink`) — baik karena `AUTH_RESEND_KEY` tidak valid/tidak di-set di environment Vercel yang benar, key salah scope (Resend key sending-only vs full-access, sudah pernah jadi topik konfigurasi `.env` lokal sebelumnya — mungkin analog di Vercel), atau `MAIL_FROM`/domain pengirim belum diverifikasi di Resend. **Goal ini WAJIB diagnosis dulu (baca Vercel function log production/staging untuk pesan error asli) sebelum memutuskan fix** — jangan tebak akar penyebab tanpa bukti log, konsisten AGENTS.md §10. | [03-ENG A.14](docs/03-ENGINEERING.md) (Magic Link, BR terkait TASK-0.8.4); C.2 (Credential Types) | 0.8.4 |
+| 0.14.2 | ⬜️ | — | 0 | P1 | Fix sesuai akar penyebab yang dikonfirmasi 0.14.1 (config env Vercel, atau kode `auth.ts`/`defaultSendMagicLink`, tergantung diagnosis) + regression test yang mereproduksi kegagalan asli sebelum fix (pola sama `full-app-routing.test.ts`, TASK-0.13 — jangan cuma percaya "sudah diperbaiki" tanpa reproduksi before/after). | [03-ENG A.14](docs/03-ENGINEERING.md) | 0.14.1 |
+
+**Test:** `POST /api/auth/sign-in/magic-link` dengan email valid, di KEDUA environment (production via HTTP langsung, staging via `VERCEL_AUTOMATION_BYPASS_SECRET`) → response sukses (BUKAN 500) + email genuinely terkirim (verifikasi lewat Resend dashboard/log, bukan cuma response code) + row `auth_verifications` benar di Global DB environment yang sesuai (regresi test — pastikan fix tidak merusak DB-write yang sudah benar). Response TIDAK membocorkan keberadaan email (pola sama existing, BR terkait 0.8.4).
+**DoD:** Akar penyebab terdiagnosis dengan bukti (log Vercel function asli, bukan dugaan), fix diverifikasi live di KEDUA environment (bukan cuma lokal), regression test mencegah kelas bug ini terulang.
+
+---
+
 ## Exit Criteria Phase 0 (syarat mulai Phase 1)
 - Repo terstruktur sesuai A.7; build/typecheck/test/CI hijau.
 - Keputusan POC (0.2) tercatat: Turso GO/NO-GO + provisioning sync/async.
@@ -272,6 +284,13 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 **Dibuktikan (bukan cuma diklaim), pola `git stash` sama seperti CL-25/CL-30 sebelumnya:** `git stash` ke-10 file route (SEBELUM fix) → `node scripts/preview-build.mjs` → `require()` bundle → `app.routes` menunjukkan `POST /api/api/v1/projects` (prefix dobel, PERSIS Review-CL-12) → request nyata ke `/api/v1/projects` → **404 `"404 Not Found"`** (reproduksi identik bug asli). `git stash pop` (fix dikembalikan) → rebuild → `app.routes` 0 entry mengandung `/api/api/` dari 81 total → request yang sama sekarang MATCHED (500 karena config, bukan lagi 404 unmatched).
 **Verifikasi:** `pnpm exec vitest run` → **82 file/500 test PASS** (5 baru dari `full-app-routing.test.ts` + 495 existing hijau, termasuk 49 file yang path request-nya diperbaiki). `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. DoD grep `grep -rn 'new Hono().basePath("/api")' apps/api/src/routes` → **0 hasil** (dikonfirmasi).
 **Belum selesai (Status `🔎`/80%, BUKAN `✅`):** DoD 0.13.2 eksplisit mensyaratkan **"staging (`kanban-ngodingin.vercel.app`, lewat Vercel SSO) dikonfirmasi SELURUH route reachable via curl/browser sungguhan; baru setelah itu `stag` boleh di-push ulang ke `main`"** — ini di luar jangkauan sesi ini (Vercel Deployment Protection SSO memblokir sandbox, dan token bypass yang dicoba sesi Ops sebelumnya — QA-CL-52 — belum berhasil baik sebagai token API Vercel maupun protection-bypass secret). Fix kode + regression test lokal sudah genuinely benar dan terbukti (bukan klaim kosong), tapi verifikasi HTTP staging sungguhan — pelajaran eksplisit dari insiden ini sendiri (kegagalan verifikasi staging adalah PENYEBAB bug ini lolos ke production pertama kali) — WAJIB dilakukan manusia/sesi dengan akses bypass yang benar sebelum `stag` di-push ulang ke `main`. Dicatat di sini supaya tidak terlewat.
+
+<a id="review-cl-14"></a>
+### Review-CL-14 — 2026-08-23 · TASK-0.14 dibuka — Magic Link 500 di production & staging, ditemukan saat verifikasi TASK-0.13
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+Saat verifikasi staging TASK-0.13 (Review-CL-13), sesi yang melapor menemukan `POST /api/auth/sign-in/magic-link` mengembalikan `500` di production DAN staging — di luar scope TASK-0.13 (bukan regresi dari fix prefix `/api`, sudah begini sebelumnya), sengaja TIDAK diselidiki saat itu (fokus dulu menutup TASK-0.13 yang sedang berjalan). Manusia memutuskan dicatat sebagai goal terpisah sekarang: **TASK-0.14** dibuka (2 goal: 0.14.1 diagnosis akar penyebab dengan bukti log, 0.14.2 fix + regression test). **Prior P1** (bukan P0) — tidak ada user/UI nyata yang terdampak hari ini (Phase 7 belum ada), tapi penting karena Magic Link adalah satu-satunya metode login MVP (03-ENG A.14) dan harus berfungsi sebelum Phase 7 butuh dipakai sungguhan.
 
 <a id="review-cl-13"></a>
 ### Review-CL-13 — 2026-08-23 · TASK-0.13 ✅ — verifikasi independen penuh, termasuk staging HTTP sungguhan
