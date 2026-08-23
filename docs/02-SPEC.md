@@ -168,6 +168,7 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 - **BR-050** Membership Project MUST melalui invitation — tidak ada join bebas.
 - **BR-051** Invitation MUST menentukan minimal satu Permission Group beserta hierarchy scope assignment-nya sejak dibuat.
 - **BR-052** Invitation SHOULD menyimpan **reference** ke Permission Group dan scope resource, bukan snapshot definisi permission — jika Group berubah sebelum/sesudah acceptance, Membership mendapat definisi Group yang berlaku saat itu.
+- **BR-052A** Invitation MAY menentukan `expires_at` eksplisit (harus di masa depan); jika tidak diberikan, sistem MUST men-default ke **3 hari** dari waktu pembuatan.
 - **BR-053** Pencabutan membership MUST mencabut otorisasi berjalan, MUST NOT menghapus data historis (`creator_user_id`, `activity.actor_user_id` tetap utuh).
 - **BR-054** Jika Assignee kehilangan membership, sistem MUST men-set `assignee_user_id = NULL` & mencatat Activity `card.unassigned`. `creator_user_id` MUST NOT berubah.
 - **BR-054A** Accept Invitation MUST menolak jika email User yang menerima (ternormalisasi, konsisten `users.email`) tidak sama dengan `invitations.email` — mencegah privilege escalation lewat `invitation_id` yang bocor/diteruskan (invitation_id bukan token rahasia, dikirim ke pembuat undangan untuk diteruskan lewat email eksternal). Penolakan MUST NOT membocorkan alasan spesifik (mis. pakai kode generik, bukan pesan "email tidak cocok").
