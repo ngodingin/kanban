@@ -228,6 +228,22 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="review-cl-17"></a>
+### Review-CL-17 — 2026-08-23 · [NEEDS-DECISION] default expiry Invitation 7 hari dicitasi ke BR-052 yang salah — ditemukan saat audit pra-Phase-4
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Bukti:** `createInvitation` (`packages/infrastructure/src/database/project-admin.ts:513-516`, diperkenalkan goal 1.9.1) men-default `expires_at` ke **7 hari** dari `now` saat field ini tidak diberikan di request (`expires_at` bersifat opsional di payload, tidak wajib). Closure Log Dev goal 1.9.1 (baris 684 file ini) dan CL lain (678, 540) mengutip ini sebagai **"BR-052 (default expiry 7 hari)"**, seolah SOT sudah mengunci angka ini. Dicek ulang teks `BR-052` aktual di [02-SPEC.md:170](docs/02-SPEC.md): *"Invitation SHOULD menyimpan reference ke Permission Group dan scope resource, bukan snapshot definisi permission..."* — BR-052 sama sekali TIDAK menyebut durasi expiry apa pun. Digrep seluruh `docs/`: tidak ada BR/FR mana pun yang menetapkan durasi default expiry Invitation — angka **7 hari murni diciptakan Dev**, bertentangan dengan Implementation Rule #1 AGENTS.md ("Jangan mengarang perilaku domain... tidak dispesifikasi → jangan bikin aturan bisnis baru diam-diam"), dan sitasi BR-052 yang salah membuatnya TAMPAK sudah di-otorisasi SOT padahal tidak — inilah yang membuatnya lolos QA-CL-13/14 dan Review-CL-08/10/11/12/13/14/15/16 (delapan putaran audit sebelumnya) tanpa terdeteksi.
+
+**Bukan bug fungsional** — `expires_at` tetap client-overridable (`{email, assignments[], expires_at?}`, `readOptionalStringField`), test (`invitations-create.test.ts`) hijau, tidak ada pelanggaran invariant. Murni masalah **provenance**: sebuah default domain diciptakan diam-diam lalu diberi nomor BR yang tidak sesuai isinya.
+
+**Opsi untuk keputusan manusia (§10 — menyentuh business invariant/API semantics, bukan keputusan teknis murni karena ini nilai default yang terlihat & mempengaruhi perilaku Invitation bagi seluruh Project):**
+1. **Kunci 7 hari sebagai BR baru eksplisit** (mis. `BR-052A`) di 02-SPEC A.12, dengan sitasi kode dikoreksi dari `BR-052` → `BR-052A` — 7 hari tetap dipakai, cuma diberi otorisasi SOT yang genuine.
+2. **Ubah nilai default** (mis. sesuai kebiasaan tim/durasi lain) lalu kunci sebagai BR baru — bila 7 hari bukan angka yang diinginkan.
+3. **Hapus default, wajibkan `expires_at`** di payload create — Invitation tanpa expiry eksplisit ditolak `VALIDATION_ERROR`, menghapus kebutuhan akan default sama sekali.
+
+**Rekomendasi:** Opsi 1 (kunci 7 hari sebagai BR-052A) — nilai yang sudah berjalan sejak Phase 1 closed, tidak ada laporan masalah operasional, mengubah sekarang (opsi 2/3) berarti reopening goal 1.9.1/1.9.2 yang sudah ✅ tanpa manfaat fungsional jelas. Menunggu keputusan manusia sebelum SOT diamandemen — belum ada edit ke `02-SPEC.md` untuk temuan ini.
+
 <a id="review-cl-16"></a>
 ### Review-CL-16 — 2026-08-23 · audit gate ke-2 sebelum Phase 2 dibuka: verifikasi 1.5.2/1.12.1 langsung ke Turso nyata
 **Role:** AI-Planning & Review · **Model:** claude-sonnet-5 (Claude Code)

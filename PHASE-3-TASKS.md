@@ -200,6 +200,23 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="review-cl-03"></a>
+### Review-CL-03 — 2026-08-23 · [CRITICAL] regresi CL-53 (parameter-property) di `label-errors.ts` — ditemukan saat audit pra-Phase-4
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Bukti:** Saat melakukan review menyeluruh (SOT compliance/SOLID/code review/no-hardcode) atas seluruh fase closed sebelum generate PHASE-4-TASKS.md, `perl` multi-line scan untuk pola `constructor(\n  public|private|protected readonly ...)` menemukan `packages/domain/src/label/label-errors.ts` — ketiga class-nya (`LabelNotFoundError`, `LabelVersionConflictError`, `LabelInvalidStateError`) memakai TS constructor parameter-property shorthand, PERSIS pola yang menyebabkan `node dist/serve.js` crash dan sudah diperbaiki di 5 file lain lewat CL-53 (Phase 2, commit `82f28a0`, 2026-08-23 04:50). Grep single-line saya sendiri di Review-CL-05 (Phase 2) melewatkan file ini karena pola grep tidak menangani signature constructor multi-baris — false negative pada verifikasi sebelumnya, bukan file ini belum ada saat itu.
+
+**Timeline dikonfirmasi via `git log`:** `label-errors.ts` dibuat commit `9528895` (goal 3.3.1, Milestone Label domain commands) pada **2026-08-23 05:52:26** — SEKITAR 1 JAM SETELAH CL-53 (`82f28a0`, 04:50:18) landed di repo yang sama, dengan CL-53 sendiri secara eksplisit mendokumentasikan pola ini sebagai penyebab crash dan merekomendasikan `playwright test` masuk checklist closure fase berikutnya (Phase 3).
+
+**Direproduksi live:** `pnpm --filter @kanban/api build && node apps/api/dist/serve.js` → crash identik: `SyntaxError [ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX]` persis di `label-errors.ts:6`. Blast radius: SELURUH server gagal boot via plain-Node (bukan cuma endpoint Label) karena ini kegagalan module-load-time, bukan runtime — mempengaruhi `pnpm --filter @kanban/api start` (dev lokal) dan seluruh suite `playwright test` (e2e), identik dengan dampak CL-53 asli.
+
+**Kenapa lolos seluruh audit Phase 3:** QA-CL-01..08 dan Review-CL-02 (audit closure final Phase 3, saya sendiri) TIDAK satu pun menjalankan `playwright test`/boot `node dist/serve.js` — persis gap proses yang direkomendasikan CL-53 untuk dicegah di fase berikutnya, tapi rekomendasi itu tidak diikuti. **Saya mengakui ini sebagai kelalaian saya sendiri di Review-CL-02**, bukan cuma Dev/QA — audit closure final seharusnya menjalankan checklist itu.
+
+**Tindak lanjut:** BUKAN reopening goal 3.3.1/3.5.1/3.7.1/3.7.2/3.9.1 (Test/DoD asli berbasis vitest tetap benar dan tetap hijau, sama seperti alasan CL-53 tidak reopen goal Phase 2) — ini adalah fix cross-cutting berikutnya, pola identik CL-53: ubah ketiga constructor `label-errors.ts` dari parameter-property shorthand ke field-eksplisit (`constructor(x: T) { this.x = x; }`). **AI-Planning & Review DILARANG mengubah kode** (§3) — fix ini didelegasikan ke AI-Dev sesi berikutnya, prioritas **P0** (memblokir `pnpm start`/e2e untuk SELURUH API, bukan cuma Label). Rekomendasi eksplisit: masukkan `playwright test`/`node dist/serve.js` boot check ke **setiap** closure Task/Phase berikutnya, bukan cuma dicatat sebagai rekomendasi yang mudah terlewat lagi — pertimbangkan menambah ke `pnpm -r build` script atau CI gate alih-alih bergantung pada disiplin manual audit.
+
+**Temuan tambahan (SOLID/DRY, severity sedang, bukan bug):** `assertOwnerInterim` (fungsi identik byte-per-byte — cek `ctx.ownerUserId !== ctx.userId` → `PERMISSION_DENIED`) diduplikasi **7 kali** di `apps/api/src/routes/{milestones,boards,lists,comments,labels,card-labels,cards}.ts`, bukan satu helper bersama seperti `readJsonObject`/`readExpectedVersionField` yang sudah benar disentralisasi di `routes/projects.ts` dan diimpor lintas file. Bukan bug (seluruh 7 salinan identik, tidak ada divergensi) tapi liability maintenance nyata: Phase 4 (permission resolution engine sungguhan) HARUS mengganti seluruh 7 call site ini secara seragam untuk berhenti jadi Owner-only interim — satu titik perubahan akan jauh lebih aman daripada 7. Rekomendasi: pindahkan ke `routes/projects.ts` (atau modul helper baru) sebagai bagian goal awal Phase 4, bukan tugas Phase 3 (tidak reopen goal apa pun, murni observasi untuk perencanaan Phase 4).
+
 <a id="review-cl-02"></a>
 ### Review-CL-02 — 2026-08-23 · audit closure final Phase 3 (17/17 goal ✅)
 
