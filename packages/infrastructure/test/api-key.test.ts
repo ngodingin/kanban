@@ -179,10 +179,10 @@ describe("ApiKeyIdentityResolver + Composite — goal 4.7.2", () => {
     expect(await composite.resolveIdentity(fakeRequest())).toBeNull();
     expect(called).toBe(true);
 
-    // PAT prefix belum diimplementasikan → tetap fallback (TASK-4.8 menyusul)
+    // Prefix pat_ kini di-route ke PAT resolver (TASK-4.8) — fallback TIDAK dipanggil
     called = false;
-    await composite.resolveIdentity(fakeRequest("pat_something"));
-    expect(called).toBe(true);
+    expect(await composite.resolveIdentity(fakeRequest("pat_something"))).toBeNull();
+    expect(called).toBe(false);
   });
 
   it("[PipelineError instance] penolakan AC-021 adalah error domain terpetakan", async () => {

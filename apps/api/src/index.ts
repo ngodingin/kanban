@@ -6,6 +6,9 @@ import {
   CompositeIdentityResolver,
   assertPermissionKey,
   createApiKey,
+  createPersonalAccessToken,
+  listPersonalAccessTokens,
+  revokePersonalAccessToken,
   listApiKeys,
   revokeApiKey,
   createAuth,
@@ -26,6 +29,7 @@ import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/miles
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import { createApiKeysRouter, type ApiKeysRoutesDeps } from "./routes/api-keys.ts";
+import { createPersonalAccessTokensRouter, type PersonalAccessTokensRoutesDeps } from "./routes/personal-access-tokens.ts";
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
   app: Hono;
@@ -86,6 +90,28 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         turso: readTursoEnvFromProcess(),
       });
       adminDeps = deps;
+    }
+    return deps;
+  };
+
+  let patDeps: PersonalAccessTokensRoutesDeps | null = null;
+  const getPatDeps = (): PersonalAccessTokensRoutesDeps => {
+    let deps = patDeps;
+    if (!deps) {
+      const r = ensure();
+      const identityResolver = new CompositeIdentityResolver({
+        globalClient: r.globalClient,
+        fallback: new BetterAuthIdentityResolver(r.auth),
+      });
+      deps = {
+        resolveIdentity: (request) => identityResolver.resolveIdentity(request),
+        createPersonalAccessToken: (input) =>
+          createPersonalAccessToken(r.globalClient, input),
+        revokePersonalAccessToken: (userId, tokenId) =>
+          revokePersonalAccessToken(r.globalClient, { userId, tokenId }),
+        listPersonalAccessTokens: (userId) => listPersonalAccessTokens(r.globalClient, userId),
+      };
+      patDeps = deps;
     }
     return deps;
   };
@@ -284,6 +310,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createCommentsRouter(getCommentDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
   app.route("/", createApiKeysRouter(getApiKeysDeps));
+  app.route("/", createPersonalAccessTokensRouter(getPatDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
 }

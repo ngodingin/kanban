@@ -1,6 +1,7 @@
 import type { IdentityResolver, ResolvedIdentity } from "./resolve-identity.ts";
 import type { Client } from "@libsql/client";
 import { ApiKeyIdentityResolver } from "./api-key-identity-resolver.ts";
+import { PersonalAccessTokenIdentityResolver } from "./pat-identity-resolver.ts";
 
 function bearerToken(request: Request): string | null {
   const header = request.headers.get("authorization");
@@ -17,10 +18,12 @@ function bearerToken(request: Request): string | null {
  */
 export class CompositeIdentityResolver implements IdentityResolver {
   private readonly apiKeyResolver: ApiKeyIdentityResolver;
+  private readonly patResolver: PersonalAccessTokenIdentityResolver;
   private readonly fallback: IdentityResolver;
 
   constructor(input: { globalClient: Client; fallback: IdentityResolver }) {
     this.apiKeyResolver = new ApiKeyIdentityResolver(input.globalClient);
+    this.patResolver = new PersonalAccessTokenIdentityResolver(input.globalClient);
     this.fallback = input.fallback;
   }
 
@@ -30,8 +33,7 @@ export class CompositeIdentityResolver implements IdentityResolver {
       return this.apiKeyResolver.resolveIdentity(request);
     }
     if (token !== null && token.startsWith("pat_")) {
-      // PAT resolver menyusul di TASK-4.8 — untuk sekarang jatuh ke fallback.
-      return this.fallback.resolveIdentity(request);
+      return this.patResolver.resolveIdentity(request);
     }
     return this.fallback.resolveIdentity(request);
   }
