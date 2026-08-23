@@ -13,8 +13,8 @@ import { buildProjectAdminDeps } from "../src/project-deps.ts";
 import { createProjectAdminRouter } from "../src/routes/project-admin.ts";
 
 // Goal 1.9.1 — POST /api/v1/projects/:project_id/invitations (C.13)
-// BR-050 Group by reference · BR-051 ≥1 assignment · BR-052 default expiry
-// 7 hari · Owner-only interim · insert atomik invitation + group refs.
+// BR-050 Group by reference · BR-051 ≥1 assignment · BR-052A default expiry
+// 3 hari · Owner-only interim · insert atomik invitation + group refs.
 
 interface TestCtx {
   globalClient: Client;
@@ -108,7 +108,7 @@ describe("POST /invitations (goal 1.9.1)", () => {
     });
   });
 
-  it("[BR-050][BR-052][C.13] Positif: 2 assignment valid → 201 PENDING, default expiry ±7 hari, reference tersimpan", async () => {
+  it("[BR-050][BR-052A][C.13] Positif: 2 assignment valid → 201 PENDING, default expiry ±3 hari, reference tersimpan", async () => {
     const g2 = (await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "Inv-G4", permissions: [] })).id;
     const res = await invite({ email: "eko@example.com", assignments: [{ group_id: groupId }, { group_id: g2 }] }, "user-a");
     if (res.status !== 201) throw new Error(`status ${res.status}: ${await res.text()}`);
@@ -118,7 +118,7 @@ describe("POST /invitations (goal 1.9.1)", () => {
       throw new Error(`payload salah: ${JSON.stringify(inv)}`);
     }
     const deltaDays = (Date.parse(inv.expiresAt) - Date.parse(inv.createdAt)) / (24 * 60 * 60 * 1000);
-    if (Math.abs(deltaDays - 7) > 0.01) throw new Error(`default expiry bukan 7 hari: ${deltaDays}`);
+    if (Math.abs(deltaDays - 3) > 0.01) throw new Error(`default expiry bukan 3 hari (BR-052A): ${deltaDays}`);
     const rows = await ctx.globalClient.execute({
       sql: "SELECT COUNT(*) AS n FROM invitation_group_assignments WHERE invitation_id = ?",
       args: [inv.id],

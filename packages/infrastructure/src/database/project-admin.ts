@@ -482,7 +482,7 @@ export interface InvitationSummary {
 }
 
 // Create Invitation (C.13) — Group disimpan sebagai reference (BR-050),
-// minimal satu assignment (BR-051), default expiry 7 hari (BR-052).
+// minimal satu assignment (BR-051), default expiry 3 hari (BR-052A).
 // Invitation + seluruh group reference di-commit atomik (Implementation Rule 8).
 export async function createInvitation(
   globalClient: Client,
@@ -511,7 +511,7 @@ export async function createInvitation(
       throw new PipelineError("INVALID_STATE", "expires_at harus di masa depan.", 409);
     }
   } else {
-    const defaultExpiry = new Date(Date.parse(now) + 7 * 24 * 60 * 60 * 1000);
+    const defaultExpiry = new Date(Date.parse(now) + 3 * 24 * 60 * 60 * 1000);
     expiresAt = defaultExpiry.toISOString();
   }
 
