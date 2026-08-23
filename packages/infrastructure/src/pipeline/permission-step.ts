@@ -5,7 +5,7 @@ import {
   resolveEffectivePermissions,
   type EffectivePermissions,
 } from "@kanban/domain";
-import { loadEffectivePermissionInputs } from "../database/permission-resolution.ts";
+import { loadEffectivePermissionInputs, type EffectivePermissionInputs } from "../database/permission-resolution.ts";
 import { permissionCatalogKeys } from "../database/permission-catalog.ts";
 
 export interface PermissionContext {
@@ -16,6 +16,13 @@ export interface PermissionContext {
 
 export interface PermissionResolution {
   permission: EffectivePermissions;
+  /**
+   * Assignment mentah yang sudah di-fetch untuk resolusi scope-Project di
+   * atas — dioper lagi ke createEntityPermissionResolver (route re-resolve
+   * per-entity, TASK-4.3.1) supaya TIDAK fetch ulang dari Global DB untuk
+   * request yang sama (Review-CL-05: redundant round-trip di 23 call site).
+   */
+  inputs: EffectivePermissionInputs;
 }
 
 export interface PermissionResolver {
@@ -25,7 +32,10 @@ export interface PermissionResolver {
 /** Null-object untuk test yang tidak butuh permission nyata — granted kosong, visibility default (D.3). */
 export class EmptyPermissionResolver implements PermissionResolver {
   async resolve(): Promise<PermissionResolution> {
-    return { permission: { grantedKeys: new Set<string>(), cardReadVisibility: "CREATED_BY_ME" } };
+    return {
+      permission: { grantedKeys: new Set<string>(), cardReadVisibility: "CREATED_BY_ME" },
+      inputs: { groupAssignments: [], directAssignments: [] },
+    };
   }
 }
 
@@ -53,6 +63,7 @@ export class RealPermissionResolver implements PermissionResolver {
         hierarchy: { projectId: context.project.id },
         isOwner,
       }),
+      inputs,
     };
   }
 }

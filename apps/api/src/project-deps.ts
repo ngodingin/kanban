@@ -93,6 +93,7 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
           membershipId: resolved.membership.id,
           projectId,
           isOwner: resolved.project.ownerUserId === resolved.identity.userId,
+          preloadedInputs: resolved.permissionInputs,
         }),
       };
     },
@@ -247,6 +248,7 @@ function buildProjectContextDeps(
           membershipId: resolved.membership.id,
           projectId,
           isOwner: resolved.project.ownerUserId === resolved.identity.userId,
+          preloadedInputs: resolved.permissionInputs,
         }),
       };
     },

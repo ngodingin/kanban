@@ -9,6 +9,7 @@ import { ResolveDatabaseStep, type ProjectClientFactory } from "./database-step.
 import { RealPermissionResolver, type PermissionResolver } from "./permission-step.ts";
 import { PipelineError } from "./errors.ts";
 import type { EffectivePermissions } from "@kanban/domain";
+import type { EffectivePermissionInputs } from "../database/permission-resolution.ts";
 
 export type ProjectRequestContext = {
   identity: ResolvedIdentity;
@@ -16,6 +17,8 @@ export type ProjectRequestContext = {
   membership: ProjectMembershipRecord;
   database: Client;
   permission: EffectivePermissions;
+  /** Assignment mentah dari resolusi permission di atas — lihat PermissionResolution.inputs. */
+  permissionInputs: EffectivePermissionInputs;
 };
 
 export class RequestPipeline {
@@ -53,7 +56,7 @@ export class RequestPipeline {
       userId: identity.userId,
     });
     const database = await this.databaseStep.run(projectId);
-    const { permission } = await this.permissionResolver.resolve({ identity, project, membership });
-    return { identity, project, membership, database, permission };
+    const { permission, inputs } = await this.permissionResolver.resolve({ identity, project, membership });
+    return { identity, project, membership, database, permission, permissionInputs: inputs };
   }
 }

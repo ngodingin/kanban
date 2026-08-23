@@ -163,7 +163,12 @@ describe("ApiKeyIdentityResolver + Composite — goal 4.7.2", () => {
       globalClient,
       databaseResolver: new SqliteProjectDatabaseResolver(globalClient),
       projectClientFactory: { create: () => createClient({ url: ":memory:" }) },
-      permissionResolver: { resolve: async () => ({ permission: { grantedKeys: new Set<string>(), cardReadVisibility: "CREATED_BY_ME" } }) },
+      permissionResolver: {
+        resolve: async () => ({
+          permission: { grantedKeys: new Set<string>(), cardReadVisibility: "CREATED_BY_ME" },
+          inputs: { groupAssignments: [], directAssignments: [] },
+        }),
+      },
     });
     const ctx = await okPipeline.run(fakeRequest(fresh.secret), PROJ_A);
     expect(ctx.identity.type).toBe("api_key");

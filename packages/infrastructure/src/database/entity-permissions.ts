@@ -1,7 +1,7 @@
 import type { Client } from "@libsql/client";
 import type { EffectivePermissions } from "@kanban/domain";
 import { resolveEffectivePermissions } from "@kanban/domain";
-import { loadEffectivePermissionInputs } from "./permission-resolution.ts";
+import { loadEffectivePermissionInputs, type EffectivePermissionInputs } from "./permission-resolution.ts";
 import { permissionCatalogKeys } from "./permission-catalog.ts";
 
 export type RouteEntityType = "milestone" | "board" | "list" | "card";
@@ -75,9 +75,18 @@ export function createEntityPermissionResolver(input: {
   membershipId: string;
   projectId: string;
   isOwner: boolean;
+  /**
+   * Assignment yang SUDAH di-fetch (mis. dari RequestPipeline's resolusi
+   * scope-Project) — kalau diberikan, dipakai ulang alih-alih fetch lagi
+   * dari Global DB (Review-CL-05: hindari 2x round-trip identik per
+   * request). Opsional — caller yang tidak punya hasil siap pakai (mis.
+   * test) tetap bisa mengandalkan fetch lazy seperti sebelumnya.
+   */
+  preloadedInputs?: EffectivePermissionInputs;
 }): EntityPermissionResolver {
   return async (hierarchy) => {
-    const assignments = await loadEffectivePermissionInputs(input.globalClient, input.membershipId);
+    const assignments =
+      input.preloadedInputs ?? (await loadEffectivePermissionInputs(input.globalClient, input.membershipId));
     return resolveEffectivePermissions({
       allPermissionKeys: permissionCatalogKeys(),
       groupAssignments: assignments.groupAssignments,
