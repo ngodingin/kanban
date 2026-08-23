@@ -340,6 +340,19 @@ ERROR [Better Auth]: Error Error: Resend gagal: API key is invalid
 **Verifikasi:** `pnpm exec vitest run` → **82 file/500 test PASS** (5 baru dari `full-app-routing.test.ts` + 495 existing hijau, termasuk 49 file yang path request-nya diperbaiki). `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. DoD grep `grep -rn 'new Hono().basePath("/api")' apps/api/src/routes` → **0 hasil** (dikonfirmasi).
 **Belum selesai (Status `🔎`/80%, BUKAN `✅`):** DoD 0.13.2 eksplisit mensyaratkan **"staging (`kanban-ngodingin.vercel.app`, lewat Vercel SSO) dikonfirmasi SELURUH route reachable via curl/browser sungguhan; baru setelah itu `stag` boleh di-push ulang ke `main`"** — ini di luar jangkauan sesi ini (Vercel Deployment Protection SSO memblokir sandbox, dan token bypass yang dicoba sesi Ops sebelumnya — QA-CL-52 — belum berhasil baik sebagai token API Vercel maupun protection-bypass secret). Fix kode + regression test lokal sudah genuinely benar dan terbukti (bukan klaim kosong), tapi verifikasi HTTP staging sungguhan — pelajaran eksplisit dari insiden ini sendiri (kegagalan verifikasi staging adalah PENYEBAB bug ini lolos ke production pertama kali) — WAJIB dilakukan manusia/sesi dengan akses bypass yang benar sebelum `stag` di-push ulang ke `main`. Dicatat di sini supaya tidak terlewat.
 
+<a id="review-cl-15"></a>
+### Review-CL-15 — 2026-08-23 · TASK-0.14 (QA-CL-66) — klaim "production terverifikasi 200" TIDAK cocok kondisi sungguhan; akar penyebab: `main` belum di-push
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Verifikasi independen (bukan menerima laporan QA-CL-66 begitu saja):** `pnpm -r typecheck`/`pnpm lint` bersih; `pnpm exec vitest run` → 83 file/503 test PASS, cocok klaim. Diff `17f30c5` (`guardedSendMagicLink()`) dibaca langsung — desain solid, membungkus SETIAP implementasi `sendMagicLink` dengan try/catch di titik pemanggilan, log ke `console.error` tanpa propagate, konsisten prinsip anti-enumeration 03-ENG A.14.
+
+**Test langsung `POST /api/auth/sign-in/magic-link` ke KEDUA environment:** **Staging** (`kanban-ngodingin.vercel.app`, via `VERCEL_AUTOMATION_BYPASS_SECRET`, Origin canonical) → `200 {"status":true}` — klaim akurat. **Production** (`kanban.ngodingin.xyz`, Origin canonical) → **MASIH `500` body kosong** — TIDAK cocok klaim "production diverifikasi live → 200".
+
+**Akar penyebab ditemukan:** `git merge-base --is-ancestor 17f30c5 ai-github/main` → **BUKAN ancestor**. `main` masih persis di `76b6deb` (state akhir `TASK-0.13`) — SELURUH kerja `TASK-0.14` (`379dcbb`/`17f30c5`/`25ae541`) baru ada di `stag`, tidak pernah di-push ke `main`. Kode fix `guardedSendMagicLink()` dan (kemungkinan) env var yang sudah diperbaiki TIDAK PERNAH sampai ke domain production sungguhan. Kemungkinan penjelasan: sesi pelapor menguji preview deployment dari commit `stag` terbaru (bukan `kanban.ngodingin.xyz` sebenarnya) — kesalahan serupa dengan masalah alias yang mereka sendiri catat pernah terjadi untuk staging ("redeploy via forceNew tidak otomatis memindahkan alias custom").
+
+**Keputusan manusia:** push `stag→main` sekarang — guard di `guardedSendMagicLink()` bersifat unconditional (menangkap SEMUA kegagalan `sendMagicLink`, bukan cuma kasus Resend-key-salah), jadi begitu ter-deploy gejala 500 kosong di production seharusnya langsung hilang terlepas status `AUTH_RESEND_KEY` production saat ini.
+
 <a id="review-cl-14"></a>
 ### Review-CL-14 — 2026-08-23 · TASK-0.14 dibuka — Magic Link 500 di production & staging, ditemukan saat verifikasi TASK-0.13
 
