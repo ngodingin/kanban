@@ -6,14 +6,15 @@ import type { IdentityResolver } from "../auth/resolve-identity.ts";
 import { ResolveIdentityStep } from "./identity-step.ts";
 import { LoadProjectStep } from "./project-step.ts";
 import { ResolveDatabaseStep, type ProjectClientFactory } from "./database-step.ts";
-import { EmptyPermissionResolver, type PermissionResolver } from "./permission-step.ts";
+import { RealPermissionResolver, type PermissionResolver } from "./permission-step.ts";
+import type { EffectivePermissions } from "@kanban/domain";
 
 export type ProjectRequestContext = {
   identity: ResolvedIdentity;
   project: ProjectRecord;
   membership: ProjectMembershipRecord;
   database: Client;
-  permission: null;
+  permission: EffectivePermissions;
 };
 
 export class RequestPipeline {
@@ -32,7 +33,7 @@ export class RequestPipeline {
     this.identityStep = new ResolveIdentityStep(input.identityResolver);
     this.projectStep = new LoadProjectStep(input.globalClient);
     this.databaseStep = new ResolveDatabaseStep(input.databaseResolver, input.projectClientFactory);
-    this.permissionResolver = input.permissionResolver ?? new EmptyPermissionResolver();
+    this.permissionResolver = input.permissionResolver ?? new RealPermissionResolver(input.globalClient);
   }
 
   async run(request: Request, projectId: string): Promise<ProjectRequestContext> {

@@ -90,6 +90,13 @@ export type { EffectivePermissionInputs } from "./database/permission-resolution
 export { PipelineError } from "./pipeline/errors.ts";
 export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
 export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline.ts";
+export {
+  RealPermissionResolver,
+  EmptyPermissionResolver,
+  type PermissionResolver,
+  type PermissionResolution,
+  type PermissionContext,
+} from "./pipeline/permission-step.ts";
 export type { ProjectClientFactory } from "./pipeline/database-step.ts";
 export type {
   BoardLabelRecord,

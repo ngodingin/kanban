@@ -84,6 +84,7 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
         userId: resolved.identity.userId,
         ownerUserId: resolved.project.ownerUserId,
         database: resolved.database,
+        permission: resolved.permission,
       };
     },
   };
@@ -231,6 +232,7 @@ function buildProjectContextDeps(
         userId: resolved.identity.userId,
         ownerUserId: resolved.project.ownerUserId,
         database: resolved.database,
+        permission: resolved.permission,
       };
     },
   };

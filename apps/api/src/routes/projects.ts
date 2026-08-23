@@ -17,6 +17,7 @@ import {
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
+import type { EffectivePermissions } from "@kanban/domain";
 
 export interface CreateProjectInput {
   projectId: string;
@@ -28,6 +29,7 @@ export interface OpenProjectContext {
   userId: string;
   ownerUserId: string;
   database: Client;
+  permission: EffectivePermissions;
 }
 
 export interface ProjectRoutesDeps {
