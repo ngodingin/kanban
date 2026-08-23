@@ -96,6 +96,10 @@ export async function pruneEligibleProjects(
         "DELETE FROM membership_group_assignments WHERE membership_id IN (SELECT id FROM project_memberships WHERE project_id = ?)",
         "DELETE FROM membership_permission_assignments WHERE membership_id IN (SELECT id FROM project_memberships WHERE project_id = ?)",
         "DELETE FROM group_permissions WHERE group_id IN (SELECT id FROM permission_groups WHERE project_id = ?)",
+        // invitation_group_assignments referensi invitations.id DAN permission_groups.id
+        // (global-schema.ts) — WAJIB dihapus SEBELUM keduanya (QA-CL-01: FK constraint
+        // failure, tabel ini terlewat dari delete list semula).
+        "DELETE FROM invitation_group_assignments WHERE invitation_id IN (SELECT id FROM invitations WHERE project_id = ?)",
         "DELETE FROM permission_groups WHERE project_id = ?",
         "DELETE FROM invitations WHERE project_id = ?",
         "DELETE FROM api_keys WHERE project_id = ?",

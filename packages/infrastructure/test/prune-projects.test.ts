@@ -156,6 +156,38 @@ describe("pruneEligibleProjects — goal 5.3.1", () => {
     void result;
   });
 
+  it("[QA-CL-01/CL-11 regresi] Project dengan Invitation + Group assignment → prune TIDAK crash FK, invitation_group_assignments ikut bersih", async () => {
+    // Reproduksi persis bug ditemukan QA: invitation_group_assignments
+    // referensi invitations.id DAN permission_groups.id (global-schema.ts)
+    // tapi sebelumnya TIDAK ADA di delete list — DELETE FROM invitations
+    // gagal SQLITE_CONSTRAINT: FOREIGN KEY constraint failed.
+    const pid = "pinv";
+    await seedProject(pid, { deletedAt: daysAgoIso(31) });
+    await globalClient.execute({
+      sql: "INSERT INTO invitations (id, project_id, email, invited_by_user_id, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+      args: [`inv-${pid}`, pid, "invited@t.local", "u-owner", daysAgoIso(-3), BASE],
+    });
+    await globalClient.execute({
+      sql: "INSERT INTO invitation_group_assignments (id, invitation_id, group_id, scope_type, scope_id) VALUES (?, ?, ?, 'project', ?)",
+      args: [`iga-${pid}`, `inv-${pid}`, `g-${pid}`, pid],
+    });
+    const turso = { org: "org", group: "g", apiToken: "t" };
+
+    const result = await pruneEligibleProjects(globalClient, turso, {
+      now: NOW,
+      deleteDb: async () => undefined,
+    });
+
+    // prunedProjects TIDAK dipastikan == 1 (Global DB dipakai bersama antar
+    // test file ini, pola sama test "[isolasi]" di bawah) — yang esensial
+    // adalah row spesifik Project ini genuinely bersih tanpa crash FK.
+    expect(result.prunedProjects).toBeGreaterThanOrEqual(1);
+    expect(await exists("projects", pid)).toBe(false);
+    expect(await exists("invitations", `inv-${pid}`)).toBe(false);
+    expect(await exists("invitation_group_assignments", `iga-${pid}`)).toBe(false);
+    expect(await exists("permission_groups", `g-${pid}`)).toBe(false);
+  });
+
   it("[isolasi] hanya Project eligible yang terhapus; lainnya utuh dalam satu run", async () => {
     await seedProject("pmix1", { deletedAt: daysAgoIso(45) });
     await seedProject("pmix2", { deletedAt: daysAgoIso(3) });
