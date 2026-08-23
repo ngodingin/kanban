@@ -459,6 +459,7 @@ GET    /api/v1/projects/:project_id/permission-groups
 POST   /api/v1/projects/:project_id/permission-groups
 PATCH  /api/v1/projects/:project_id/permission-groups/:group_id
 POST   /api/v1/projects/:project_id/permission-groups/:group_id/delete
+GET    /api/v1/projects/:project_id/members/:membership_id/assignments
 POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments
 POST   /api/v1/projects/:project_id/members/:membership_id/group-assignments/:assignment_id/revoke
 POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments
@@ -477,6 +478,8 @@ Scoped direct Permission assignment:
 { "permission_id": "perm_card_read", "scope_type": "milestone", "scope_id": "milestone_app_x", "card_read_visibility": "ALL" }
 ```
 `card_read_visibility` hanya berlaku untuk `card.read`; jika tidak diberikan default `CREATED_BY_ME`. Assignment bersifat additive dan revoke mempertahankan riwayat.
+
+`GET .../members/:membership_id/assignments` mengembalikan seluruh scoped Group assignment DAN scoped direct Permission assignment milik Membership tsb (aktif dan revoked, tanpa filter server-side — pola sama `GET /invitations`), sebagai satu response `{ group_assignments: [...], permission_assignments: [...] }`. Tanpa endpoint ini tidak ada cara membaca kembali apa yang sudah di-grant ke sebuah Membership — `GET /members` sendiri hanya mengembalikan metadata Membership (`membershipId`, `userId`, `email`, `name`, `createdAt`, `revokedAt`), bukan assignment-nya.
 
 ## C.13 Invitation
 ```http
@@ -497,12 +500,16 @@ Setelah accept: `Invitation → Membership → scoped Permission Group assignmen
 
 ## C.14 API Key & PAT
 ```http
+GET  /api/v1/projects/:project_id/api-keys
 POST /api/v1/projects/:project_id/api-keys
 POST /api/v1/projects/:project_id/api-keys/:key_id/revoke
+GET  /api/v1/me/personal-access-tokens
 POST /api/v1/me/personal-access-tokens
 POST /api/v1/me/personal-access-tokens/:token_id/revoke
 ```
 Response secret hanya diberikan sekali saat creation. Tidak ada update secret — hanya revoke + create baru.
+
+`GET .../api-keys` dan `GET .../personal-access-tokens` mengembalikan metadata saja (`id`, `name`, `expiresAt`, `revokedAt`, `createdAt`, `lastUsedAt`) — **MUST NOT** pernah menyertakan `key_hash`/`token_hash` (C.2 Credential Types, secret hanya tampil sekali saat create). Tanpa endpoint ini, User yang lupa detail key yang pernah dibuat tidak punya cara menemukannya untuk di-revoke.
 
 ## C.15 Generic PATCH — Batasan Wajib
 
