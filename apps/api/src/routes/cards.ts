@@ -11,7 +11,7 @@ import {
   type CardRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface CardRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -41,16 +41,6 @@ function cardPayload(record: CardRecord, labels?: CardLabelSummary[]) {
     // tidak berubah shape-nya (parameter opsional, undefined = field absen).
     ...(labels === undefined ? {} : { labels: labels.map((l) => ({ id: l.id, name: l.name, scope: l.scope })) }),
   };
-}
-
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
 }
 
 async function withErrorHandling<T>(
@@ -102,7 +92,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.create", projectId, { type: "list", id: c.req.param("list_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const repository = new DrizzleCardRepository(ctx.database, {
         assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
@@ -161,7 +151,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       const allowedFields = ["title", "subtitle", "description", "due_date", "assignee"] as const;
@@ -197,7 +187,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       // BR-044 — card.move permission terpisah dari card.update; interim Owner-only.
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.move", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       for (const key of Object.keys(body)) {
         if (key !== "destination_list_id" && key !== "expected_version") {
@@ -242,7 +232,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
-        assertOwnerInterim(ctx);
+        await authorize(ctx, `card.${action}`, projectId, { type: "card", id: c.req.param("card_id") });
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleCardRepository(ctx.database, {
           assertAssigneeActiveMember: deps.assertAssigneeActiveMember,

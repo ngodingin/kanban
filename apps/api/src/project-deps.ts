@@ -11,6 +11,7 @@ import {
   listProjectInvitations,
   listProjectMembers,
   listProjectSummaries,
+  createEntityPermissionResolver,
   newProjectId,
   provisionProjectWithMapping,
   RequestPipeline,
@@ -85,6 +86,12 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
         ownerUserId: resolved.project.ownerUserId,
         database: resolved.database,
         permission: resolved.permission,
+        effectiveFor: createEntityPermissionResolver({
+          globalClient,
+          membershipId: resolved.membership.id,
+          projectId,
+          isOwner: resolved.project.ownerUserId === resolved.identity.userId,
+        }),
       };
     },
   };
@@ -233,6 +240,12 @@ function buildProjectContextDeps(
         ownerUserId: resolved.project.ownerUserId,
         database: resolved.database,
         permission: resolved.permission,
+        effectiveFor: createEntityPermissionResolver({
+          globalClient,
+          membershipId: resolved.membership.id,
+          projectId,
+          isOwner: resolved.project.ownerUserId === resolved.identity.userId,
+        }),
       };
     },
   };

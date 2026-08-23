@@ -87,6 +87,15 @@ export {
 } from "./database/project-admin.ts";
 export { loadEffectivePermissionInputs } from "./database/permission-resolution.ts";
 export type { EffectivePermissionInputs } from "./database/permission-resolution.ts";
+export {
+  loadEntityHierarchy,
+  createEntityPermissionResolver,
+  type RouteEntityType,
+  type HierarchyPath,
+  type EntityPermissionResolver,
+} from "./database/entity-permissions.ts";
+export { hasPermission, resolveCardVisibilityFilter } from "@kanban/domain";
+export type { CardReadVisibility } from "@kanban/domain";
 export { PipelineError } from "./pipeline/errors.ts";
 export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
 export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline.ts";

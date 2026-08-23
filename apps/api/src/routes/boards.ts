@@ -8,7 +8,7 @@ import {
   type BoardRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface BoardRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -28,16 +28,6 @@ function boardPayload(record: BoardRecord) {
     deletedAt: record.deletedAt,
     version: record.version,
   };
-}
-
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
 }
 
 async function withErrorHandling<T>(
@@ -79,7 +69,7 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "board.create", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const repository = new DrizzleBoardRepository(ctx.database);
       const created = await repository.createBoard(projectId, {
@@ -127,7 +117,7 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "board.update", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       const allowedFields = ["title", "description"] as const;
@@ -167,7 +157,7 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
-        assertOwnerInterim(ctx);
+        await authorize(ctx, `board.${action}`, projectId, { type: "board", id: c.req.param("board_id") });
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleBoardRepository(ctx.database);
         const record = await command(repository, projectId, {

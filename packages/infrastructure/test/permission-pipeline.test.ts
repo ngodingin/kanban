@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createClient, type Client } from "@libsql/client";
 import type { Request } from "hono";
 import { applyGlobalMigrations } from "../src/database/migrate.ts";
-import { RequestPipeline, RealPermissionResolver, EmptyPermissionResolver } from "../src/index.ts";
+import { RequestPipeline, EmptyPermissionResolver } from "../src/index.ts";
 import { SqliteProjectDatabaseResolver } from "../src/database/project-resolver.ts";
 
 const NOW = "2026-08-22T00:00:00.000Z";

@@ -11,6 +11,7 @@ import {
   registerProjectWithOwnerMembership,
   RequestPipeline,
   SqliteProjectDatabaseResolver,
+  createEntityPermissionResolver,
 } from "@kanban/infrastructure";
 import type { ResolvedIdentity } from "@kanban/infrastructure";
 import { createListsRouter, type ListRoutesDeps } from "../src/routes/lists.ts";
@@ -80,7 +81,18 @@ beforeAll(async () => {
           projectClientFactory: { create: (databaseId) => createClient({ url: databaseId }) },
         });
         const resolved = await pipeline.run(request, projectId);
-        return { userId: resolved.identity.userId, ownerUserId: resolved.project.ownerUserId, database: resolved.database };
+        return {
+          userId: resolved.identity.userId,
+          ownerUserId: resolved.project.ownerUserId,
+          database: resolved.database,
+          permission: resolved.permission,
+          effectiveFor: createEntityPermissionResolver({
+            globalClient,
+            membershipId: resolved.membership.id,
+            projectId: projectId,
+            isOwner: resolved.project.ownerUserId === resolved.identity.userId,
+          }),
+        };
       },
     },
   };

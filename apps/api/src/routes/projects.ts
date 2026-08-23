@@ -18,6 +18,11 @@ import {
 } from "@kanban/infrastructure";
 import type { Client } from "@libsql/client";
 import type { EffectivePermissions } from "@kanban/domain";
+import {
+  hasPermission,
+  loadEntityHierarchy,
+  type RouteEntityType,
+} from "@kanban/infrastructure";
 
 export interface CreateProjectInput {
   projectId: string;
@@ -30,6 +35,45 @@ export interface OpenProjectContext {
   ownerUserId: string;
   database: Client;
   permission: EffectivePermissions;
+  effectiveFor(hierarchy: {
+    milestoneId?: string;
+    boardId?: string;
+    listId?: string;
+    cardId?: string;
+  }): Promise<EffectivePermissions>;
+}
+
+/**
+ * Formula ALLOW A.10 — komponen "permission granted + scope matches".
+ * Bila entity dialamati, hierarchy SAAT INI di-walk dan permission
+ * di-resolve ulang (BR-042); entity tak dikenal → fallback Project-scope
+ * sehingga non-berhak tetap 403 sebelum command menghasilkan 404.
+ */
+export async function authorize(
+  ctx: OpenProjectContext,
+  key: string,
+  projectId: string,
+  entity?: { type: RouteEntityType; id: string },
+): Promise<void> {
+  let effective = ctx.permission;
+  if (entity) {
+    const path = await loadEntityHierarchy(ctx.database, entity.type, entity.id);
+    if (path) effective = await ctx.effectiveFor(path);
+    else
+      effective = await ctx.effectiveFor(
+        entity.type === "milestone"
+          ? { milestoneId: entity.id }
+          : entity.type === "board"
+            ? { boardId: entity.id }
+            : entity.type === "list"
+              ? { listId: entity.id }
+              : { cardId: entity.id },
+      );
+  }
+  void projectId;
+  if (!hasPermission(effective, key)) {
+    throw new PipelineError("PERMISSION_DENIED", `Permission '${key}' tidak dimiliki pada scope ini.`, 403);
+  }
 }
 
 export interface ProjectRoutesDeps {

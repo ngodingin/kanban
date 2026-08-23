@@ -8,7 +8,7 @@ import {
   type ListRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface ListRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -27,16 +27,6 @@ function listPayload(record: ListRecord) {
     deletedAt: record.deletedAt,
     version: record.version,
   };
-}
-
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
 }
 
 async function withErrorHandling<T>(
@@ -69,7 +59,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "list.create", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const repository = new DrizzleListRepository(ctx.database);
       const created = await repository.createList(projectId, {
@@ -116,7 +106,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "list.update", projectId, { type: "list", id: c.req.param("list_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       for (const key of Object.keys(body)) {
@@ -154,7 +144,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
-        assertOwnerInterim(ctx);
+        await authorize(ctx, `list.${action}`, projectId, { type: "list", id: c.req.param("list_id") });
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleListRepository(ctx.database);
         const record = await command(repository, projectId, {

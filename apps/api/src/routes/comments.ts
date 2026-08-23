@@ -9,7 +9,7 @@ import {
   type EditCommentRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface CommentRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -39,16 +39,6 @@ function editedCommentPayload(record: EditCommentRecord) {
     commentActivityId: record.commentActivityId,
     createdAt: record.createdAt,
   };
-}
-
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
 }
 
 function readBodyField(body: unknown): string {
@@ -84,7 +74,7 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.comment", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readBodyField(await c.req.json().catch(() => null));
       const created = await addComment(ctx.database, c.req.param("card_id"), body, ctx.userId);
       return { comment: commentPayload(created) };
@@ -96,7 +86,7 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.comment.update", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readBodyField(await c.req.json().catch(() => null));
       const edited = await editComment(
         ctx.database,

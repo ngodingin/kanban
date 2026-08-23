@@ -7,7 +7,7 @@ import {
   type MilestoneRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface MilestoneRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -29,16 +29,6 @@ function milestonePayload(record: MilestoneRecord) {
     deletedAt: record.deletedAt,
     version: record.version,
   };
-}
-
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
 }
 
 async function withErrorHandling<T>(
@@ -93,7 +83,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "milestone.create", projectId);
       const body = readJsonObject(await c.req.json().catch(() => null));
       const title = readTitleField(body);
       const repository = new DrizzleMilestoneRepository(ctx.database);
@@ -143,7 +133,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "milestone.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       const allowedFields = ["title", "description", "progress", "start_date", "due_date"] as const;
@@ -186,7 +176,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
-        assertOwnerInterim(ctx);
+        await authorize(ctx, `milestone.${action}`, projectId, { type: "milestone", id: c.req.param("milestone_id") });
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleMilestoneRepository(ctx.database);
         const record = await command(repository, projectId, {

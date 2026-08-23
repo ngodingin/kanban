@@ -8,7 +8,7 @@ import {
   type CardLabelAssociationRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface CardLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -23,16 +23,6 @@ function associationPayload(record: CardLabelAssociationRecord) {
     labelName: record.labelName,
     createdAt: record.createdAt,
   };
-}
-
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
 }
 
 function readLabelIdField(body: unknown): string {
@@ -67,7 +57,7 @@ export function createCardLabelsRouter(getDeps: () => CardLabelRoutesDeps): Hono
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
       const labelId = readLabelIdField(await c.req.json().catch(() => null));
       const created = await assignLabelToCard(ctx.database, c.req.param("card_id"), labelId, ctx.userId);
       return { association: associationPayload(created) };
@@ -79,7 +69,7 @@ export function createCardLabelsRouter(getDeps: () => CardLabelRoutesDeps): Hono
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
       const removed = await removeLabelFromCard(
         ctx.database,
         c.req.param("card_id"),

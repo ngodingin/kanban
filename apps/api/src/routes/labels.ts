@@ -10,7 +10,7 @@ import {
   type MilestoneLabelRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
 
 export interface MilestoneLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -50,16 +50,6 @@ function boardLabelPayload(record: BoardLabelRecord) {
   };
 }
 
-function assertOwnerInterim(ctx: OpenProjectContext): void {
-  if (ctx.ownerUserId !== ctx.userId) {
-    throw new PipelineError(
-      "PERMISSION_DENIED",
-      "Hanya Owner Project yang dapat melakukan operasi ini (interim).",
-      403,
-    );
-  }
-}
-
 async function withErrorHandling<T>(
   c: Context,
   handler: () => Promise<T>,
@@ -96,7 +86,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "milestone_label.create", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const rawName = body.name;
       if (typeof rawName !== "string" || rawName.trim().length === 0) {
@@ -126,7 +116,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "milestone_label.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       for (const key of Object.keys(body)) {
@@ -167,7 +157,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
-        assertOwnerInterim(ctx);
+        await authorize(ctx, `milestone_label.${action}`, projectId, { type: "milestone", id: c.req.param("milestone_id") });
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleMilestoneLabelRepository(ctx.database);
         const record = await command(repository, projectId, {
@@ -205,7 +195,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "board_label.create", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const rawName = body.name;
       if (typeof rawName !== "string" || rawName.trim().length === 0) {
@@ -235,7 +225,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
-      assertOwnerInterim(ctx);
+      await authorize(ctx, "board_label.update", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       for (const key of Object.keys(body)) {
@@ -276,7 +266,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
-        assertOwnerInterim(ctx);
+        await authorize(ctx, `board_label.${action}`, projectId, { type: "board", id: c.req.param("board_id") });
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleBoardLabelRepository(ctx.database);
         const record = await command(repository, projectId, {
