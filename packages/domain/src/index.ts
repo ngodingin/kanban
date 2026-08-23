@@ -101,7 +101,7 @@ export {
   LabelInvalidStateError,
   LabelValidationError,
 } from "./label/label-errors.ts";
-export { resolveEffectivePermissions } from "./permission/permission-engine.ts";
+export { resolveEffectivePermissions, hasPermission, resolveCardVisibilityFilter } from "./permission/permission-engine.ts";
 export type {
   PermissionScopeType,
   CardReadVisibility,
@@ -110,4 +110,5 @@ export type {
   PermissionHierarchyInput,
   EffectivePermissions,
   ResolveEffectivePermissionsInput,
+  CardVisibilityFields,
 } from "./permission/permission-engine.ts";

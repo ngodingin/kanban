@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasPermission,
+  resolveCardVisibilityFilter,
   resolveEffectivePermissions,
   type PermissionHierarchyInput,
   type ResolveEffectivePermissionsInput,
@@ -206,5 +208,53 @@ describe("resolveEffectivePermissions — kemurnian fungsi (DoD, goal 4.1.1)", (
     expect([...a.grantedKeys].sort()).toEqual([...b.grantedKeys].sort());
     expect(a.cardReadVisibility).toBe(b.cardReadVisibility);
     expect(input.groupAssignments[0]!.permissionKeys).toHaveLength(2);
+  });
+});
+
+describe("hasPermission — helper call site (goal 4.1.2)", () => {
+  it("[BR-043] true hanya untuk key yang di-grant; false untuk key lain dan set kosong", () => {
+    const effective = resolve({ groupAssignments: [group(["card.read"], "project", PROJECT)] });
+    expect(hasPermission(effective, "card.read")).toBe(true);
+    expect(hasPermission(effective, "card.update")).toBe(false);
+
+    const empty = resolve({});
+    for (const key of ALL_KEYS) expect(hasPermission(empty, key)).toBe(false);
+  });
+
+  it("[BR-037] Owner → true untuk seluruh katalog", () => {
+    const owner = resolve({ isOwner: true });
+    for (const key of ALL_KEYS) expect(hasPermission(owner, key)).toBe(true);
+  });
+});
+
+describe("resolveCardVisibilityFilter — D.3/BR-047 (goal 4.1.2)", () => {
+  const ME = "user_me";
+  const OTHER = "user_other";
+  const cards = [
+    { creatorUserId: ME, assigneeUserId: null },
+    { creatorUserId: OTHER, assigneeUserId: ME },
+    { creatorUserId: OTHER, assigneeUserId: OTHER },
+    { creatorUserId: null, assigneeUserId: ME },
+  ];
+
+  it("[BR-047] CREATED_BY_ME → hanya Card buatan sendiri (assignee tidak cukup)", () => {
+    const filter = resolveCardVisibilityFilter(resolve({}), ME);
+    expect(cards.filter(filter)).toEqual([cards[0]]);
+  });
+
+  it("[BR-047] ASSIGNED_TO_ME → union OR creator/assignee", () => {
+    const filter = resolveCardVisibilityFilter(
+      resolve({ directAssignments: [direct("card.read", "project", PROJECT, "ASSIGNED_TO_ME")] }),
+      ME,
+    );
+    expect(cards.filter(filter)).toEqual([cards[0], cards[1], cards[3]]);
+  });
+
+  it("[BR-048] ALL → semua Card tanpa kecuali", () => {
+    const filter = resolveCardVisibilityFilter(
+      resolve({ directAssignments: [direct("card.read", "project", PROJECT, "ALL")] }),
+      ME,
+    );
+    expect(cards.filter(filter)).toHaveLength(cards.length);
   });
 });

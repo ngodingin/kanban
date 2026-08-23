@@ -117,3 +117,28 @@ export function resolveEffectivePermissions(input: ResolveEffectivePermissionsIn
     cardReadVisibility: visibility ?? "CREATED_BY_ME",
   };
 }
+
+/** Helper call site (TASK-4.4) — sembunyikan struktur internal EffectivePermissions. */
+export function hasPermission(effective: EffectivePermissions, key: string): boolean {
+  return effective.grantedKeys.has(key);
+}
+
+export interface CardVisibilityFields {
+  readonly creatorUserId: string | null;
+  readonly assigneeUserId: string | null;
+}
+
+/** Filter visibility Card murni untuk TASK-4.5 (D.3/BR-047): ALL > ASSIGNED_TO_ME (creator OR assignee) > CREATED_BY_ME. */
+export function resolveCardVisibilityFilter(
+  effective: EffectivePermissions,
+  currentUserId: string,
+): (card: CardVisibilityFields) => boolean {
+  switch (effective.cardReadVisibility) {
+    case "ALL":
+      return () => true;
+    case "ASSIGNED_TO_ME":
+      return (card) => card.creatorUserId === currentUserId || card.assigneeUserId === currentUserId;
+    case "CREATED_BY_ME":
+      return (card) => card.creatorUserId === currentUserId;
+  }
+}
