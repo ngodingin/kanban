@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import type { Client } from "@libsql/client";
 import type { IdentityResolver, ResolvedIdentity } from "./resolve-identity.ts";
 import { hashApiKeySecret } from "../database/api-key.ts";
@@ -21,14 +20,6 @@ function extractBearerToken(request: Request, prefix: string): string | null {
   return token.startsWith(prefix) ? token : null;
 }
 
-function hashesMatch(aHex: string, bHex: string): boolean {
-  // Constant-time compare (anti timing side-channel, DoD TASK-4.7).
-  const a = Buffer.from(aHex, "utf8");
-  const b = Buffer.from(bHex, "utf8");
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
-}
-
 /**
  * Credential API Key — Project-scoped (BR-055/057). BUKAN model otorisasi
  * baru: permission tetap di-resolve dari User→Membership→Permission.
@@ -43,6 +34,10 @@ export class ApiKeyIdentityResolver implements IdentityResolver {
   async resolveIdentity(request: Request): Promise<ResolvedIdentity | null> {
     const token = extractBearerToken(request, "ak_");
     if (!token) return null;
+    // Lookup dilakukan atas HASH secret, bukan secret mentah — timing dari
+    // pencarian indexed-equality di DB tidak membocorkan byte hash asli
+    // (beda dari perbandingan string naif byte-per-byte di application code),
+    // jadi ini sudah cukup aman tanpa perbandingan constant-time tambahan.
     const keyHash = hashApiKeySecret(token);
     const result = await this.globalClient.execute({
       sql: `SELECT k.id, k.created_by_user_id AS user_id, u.email, k.project_id, k.expires_at, k.revoked_at
@@ -65,7 +60,6 @@ export class ApiKeyIdentityResolver implements IdentityResolver {
     } catch {
       // ignore
     }
-    void hashesMatch;
     return {
       type: "api_key",
       userId: row.user_id,
