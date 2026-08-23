@@ -352,6 +352,19 @@ ERROR [Better Auth]: Error Error: Resend gagal: API key is invalid
 **Verifikasi:** `pnpm exec vitest run` → **82 file/500 test PASS** (5 baru dari `full-app-routing.test.ts` + 495 existing hijau, termasuk 49 file yang path request-nya diperbaiki). `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. DoD grep `grep -rn 'new Hono().basePath("/api")' apps/api/src/routes` → **0 hasil** (dikonfirmasi).
 **Belum selesai (Status `🔎`/80%, BUKAN `✅`):** DoD 0.13.2 eksplisit mensyaratkan **"staging (`kanban-ngodingin.vercel.app`, lewat Vercel SSO) dikonfirmasi SELURUH route reachable via curl/browser sungguhan; baru setelah itu `stag` boleh di-push ulang ke `main`"** — ini di luar jangkauan sesi ini (Vercel Deployment Protection SSO memblokir sandbox, dan token bypass yang dicoba sesi Ops sebelumnya — QA-CL-52 — belum berhasil baik sebagai token API Vercel maupun protection-bypass secret). Fix kode + regression test lokal sudah genuinely benar dan terbukti (bukan klaim kosong), tapi verifikasi HTTP staging sungguhan — pelajaran eksplisit dari insiden ini sendiri (kegagalan verifikasi staging adalah PENYEBAB bug ini lolos ke production pertama kali) — WAJIB dilakukan manusia/sesi dengan akses bypass yang benar sebelum `stag` di-push ulang ke `main`. Dicatat di sini supaya tidak terlewat.
 
+<a id="review-cl-18"></a>
+### Review-CL-18 — 2026-08-24 · `main` diubah jadi snapshot production-only — `docs/`, `poc/`, `PHASE-*.md`, `.env.*.example` tidak lagi ikut
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Keputusan manusia (2026-08-24):** `main` TIDAK LAGI representasi fast-forward murni dari `stag` — sekarang murni artifact deployment production, TANPA `docs/` (SOT), `poc/` (proof-of-concept lama), `PHASE-*.md` (task/Closure Log tracking), dan `.env.*.example`. `stag` TIDAK berubah — tetap sumber kebenaran audit-trail penuh sesuai `AGENTS.md §6.1`.
+
+**Verifikasi sebelum eksekusi:** dikonfirmasi tidak ada kode source (`packages/*/src`, `apps/*/src`, `scripts/`) yang mereferensikan `docs/`/`poc/` di runtime — SATU pengecualian ditemukan (`scripts/release-check.mjs` membaca `docs/03-ENGINEERING.md`), tapi itu dipanggil `ci.yml` (CI check), BUKAN `scripts/preview-build.mjs` (build production Vercel) — tidak relevan untuk runtime. Konsekuensi yang WAJIB ditangani sekaligus: `ci.yml` sebelumnya trigger untuk push ke `main` MAUPUN `stag` — begitu `docs/` hilang dari `main`, `release-check.mjs` akan gagal palsu di sana. Diperbaiki: `ci.yml` trigger hanya `stag` (`main` tidak lagi menerima development langsung, seluruh verifikasi sudah terjadi di `stag` sebelum snapshot dibuat).
+
+**Implementasi:** `scripts/release-to-main.mjs` (baru, di-commit `stag`) — generate SATU commit baru per release, parent = HEAD `main` saat ini (linear, tidak pernah force-push), tree = `stag` terbaru minus `docs`/`poc`/`PHASE-*.md`/`.env.*.example`, via `git commit-tree`+`read-tree` dengan index sementara terpisah (tidak menyentuh index kerja utama — aman dipakai di working directory yang dibagi banyak sesi). Default dry-run, `--push` wajib eksplisit untuk push sungguhan. **Konsekuensi permanen:** `git push stag:main` fast-forward TIDAK BISA lagi dipakai — setiap release berikutnya WAJIB lewat script ini.
+
+**Dijalankan:** dry-run diverifikasi dulu (tree hasil dicek eksplisit — `docs`/`poc`/`PHASE-*.md`/`.env.*.example` absen, `apps`/`packages`/`package.json`/`vercel.json` utuh) sebelum push sungguhan. Push berhasil (`c10d1cc..70cf244`), production diverifikasi tetap `200`/`env: "production"` pasca-deploy — mengonfirmasi tidak ada dependency runtime terhadap file yang di-strip.
+
 <a id="review-cl-17"></a>
 ### Review-CL-17 — 2026-08-24 · koreksi severity temuan `INVALID_STATE`-sebagai-500 (Review-CL-11) — bukan opsional/kosmetik, genuinely pelanggaran definisi terkunci
 
