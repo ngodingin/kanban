@@ -9,7 +9,19 @@ export interface SessionIdentity {
   image: string | null;
 }
 
-export type ResolvedIdentity = SessionIdentity;
+/** Identitas non-session dari credential Project-scoped (AC-021). */
+export interface ApiKeyIdentity {
+  type: "api_key";
+  userId: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+  image: null;
+  /** Project tempat key terdaftar — request ke Project lain WAJIB ditolak pipeline. */
+  apiKeyProjectId: string;
+}
+
+export type ResolvedIdentity = SessionIdentity | ApiKeyIdentity;
 
 export interface IdentityResolver {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;

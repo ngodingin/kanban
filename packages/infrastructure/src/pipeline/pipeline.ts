@@ -7,6 +7,7 @@ import { ResolveIdentityStep } from "./identity-step.ts";
 import { LoadProjectStep } from "./project-step.ts";
 import { ResolveDatabaseStep, type ProjectClientFactory } from "./database-step.ts";
 import { RealPermissionResolver, type PermissionResolver } from "./permission-step.ts";
+import { PipelineError } from "./errors.ts";
 import type { EffectivePermissions } from "@kanban/domain";
 
 export type ProjectRequestContext = {
@@ -38,6 +39,15 @@ export class RequestPipeline {
 
   async run(request: Request, projectId: string): Promise<ProjectRequestContext> {
     const identity = await this.identityStep.run(request);
+    // AC-021 — API Key HANYA valid untuk Project tempatnya terdaftar, walau
+    // secret cocok dan User-nya member di Project tujuan.
+    if (identity.type === "api_key" && identity.apiKeyProjectId !== projectId) {
+      throw new PipelineError(
+        "PERMISSION_DENIED",
+        "API Key ini tidak berlaku untuk Project tersebut.",
+        403,
+      );
+    }
     const { project, membership } = await this.projectStep.run({
       projectId,
       userId: identity.userId,

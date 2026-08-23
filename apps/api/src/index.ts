@@ -3,6 +3,11 @@ import { handle } from "hono/vercel";
 import { ok } from "@kanban/contracts";
 import {
   BetterAuthIdentityResolver,
+  CompositeIdentityResolver,
+  assertPermissionKey,
+  createApiKey,
+  listApiKeys,
+  revokeApiKey,
   createAuth,
   createGlobalClient,
   loadAppConfig,
@@ -20,6 +25,7 @@ import { createBoardLabelsRouter, createMilestoneLabelsRouter, type BoardLabelRo
 import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/milestones.ts";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
+import { createApiKeysRouter, type ApiKeysRoutesDeps } from "./routes/api-keys.ts";
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
   app: Hono;
@@ -80,6 +86,28 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         turso: readTursoEnvFromProcess(),
       });
       adminDeps = deps;
+    }
+    return deps;
+  };
+
+  let apiKeysDeps: ApiKeysRoutesDeps | null = null;
+  const getApiKeysDeps = (): ApiKeysRoutesDeps => {
+    let deps = apiKeysDeps;
+    if (!deps) {
+      const r = ensure();
+      const identityResolver = new CompositeIdentityResolver({
+        globalClient: r.globalClient,
+        fallback: new BetterAuthIdentityResolver(r.auth),
+      });
+      deps = {
+        resolveIdentity: (request) => identityResolver.resolveIdentity(request),
+        assertPermissionKey: (projectId, requesterUserId, key) =>
+          assertPermissionKey(r.globalClient, projectId, requesterUserId, key),
+        createApiKey: (input) => createApiKey(r.globalClient, input),
+        revokeApiKey: (projectId, keyId) => revokeApiKey(r.globalClient, { projectId, keyId }),
+        listApiKeys: (projectId) => listApiKeys(r.globalClient, projectId),
+      };
+      apiKeysDeps = deps;
     }
     return deps;
   };
@@ -255,6 +283,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createActivitiesRouter(getActivityDeps));
   app.route("/", createCommentsRouter(getCommentDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
+  app.route("/", createApiKeysRouter(getApiKeysDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
 }

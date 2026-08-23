@@ -100,6 +100,18 @@ export {
 } from "./database/entity-permissions.ts";
 export { hasPermission, resolveCardVisibilityFilter } from "@kanban/domain";
 export type { CardReadVisibility } from "@kanban/domain";
+export {
+  createApiKey,
+  revokeApiKey,
+  listApiKeys,
+  getApiKey,
+  hashApiKeySecret,
+  type ApiKeyCreateInput,
+  type ApiKeyCreated,
+  type ApiKeySummary,
+} from "./database/api-key.ts";
+export { ApiKeyIdentityResolver } from "./auth/api-key-identity-resolver.ts";
+export { CompositeIdentityResolver } from "./auth/composite-identity-resolver.ts";
 export { PipelineError } from "./pipeline/errors.ts";
 export { ResolveIdentityStep } from "./pipeline/identity-step.ts";
 export { RequestPipeline, type ProjectRequestContext } from "./pipeline/pipeline.ts";
