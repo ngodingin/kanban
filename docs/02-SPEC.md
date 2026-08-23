@@ -331,8 +331,9 @@ Error codes kanonik minimum:
 PROJECT_ACCESS_DENIED · PERMISSION_DENIED · RESOURCE_NOT_FOUND · RESOURCE_ARCHIVED
 RESOURCE_DELETED · INVALID_STATE · INVALID_DESTINATION · VALIDATION_ERROR
 VERSION_CONFLICT · TOKEN_EXPIRED · TOKEN_REVOKED · INVITATION_EXPIRED · INVITATION_ALREADY_USED
+INTERNAL_ERROR
 ```
-`VALIDATION_ERROR` (HTTP 400) MUST dipakai untuk payload/transport request yang tidak valid secara bentuk (field wajib hilang, tipe salah, body bukan JSON object) — kesalahan di sisi pengirim sebelum sistem sempat mengevaluasi state domain apa pun. `INVALID_STATE` (HTTP 409) tetap khusus untuk payload yang valid bentuknya tetapi tidak dapat diproses karena konflik state domain saat ini. Kedua kode TIDAK boleh saling menggantikan.
+`VALIDATION_ERROR` (HTTP 400) MUST dipakai untuk payload/transport request yang tidak valid secara bentuk (field wajib hilang, tipe salah, body bukan JSON object) — kesalahan di sisi pengirim sebelum sistem sempat mengevaluasi state domain apa pun. `INVALID_STATE` (HTTP 409) tetap khusus untuk payload yang valid bentuknya tetapi tidak dapat diproses karena konflik state domain saat ini. `INTERNAL_ERROR` (HTTP 500) MUST dipakai KHUSUS untuk kegagalan tak terduga/infrastruktur (mis. config tidak lengkap, exception tak tertangani, dependency eksternal gagal) — MUST NOT dipakai untuk apa pun yang punya kode kanonik lain yang lebih spesifik yang applicable. Ketiga kode ini TIDAK boleh saling menggantikan — `INVALID_STATE` MUST NOT dipasangkan dengan HTTP 500 atau dipakai untuk kegagalan yang bukan konflik state domain; kasus semacam itu WAJIB `INTERNAL_ERROR`.
 
 ## C.3 Idempotency
 

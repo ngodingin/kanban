@@ -236,6 +236,18 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 ---
 
+## TASK-0.15 — Fix `INVALID_STATE` dipasangkan HTTP 500 — pelanggaran definisi kode kanonik yang sudah dikunci  (dep: —)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 0.15.1 | ⬜️ | [Review-CL-17](#review-cl-17) | 0 | P1 | Ditemukan saat code-review lanjutan (2026-08-24): `INVALID_STATE` (definisi terkunci sejak awal SOT — HTTP 409, khusus konflik state domain, C.2) dipasangkan **HTTP 500** di 3 titik untuk kasus yang BUKAN konflik state domain: (1) `packages/contracts/src/http-mapping.ts` — fallback `toErrorResponse` untuk error tak dikenal `isErrorCode()`; (2) `apps/api/src/routes/projects.ts` — fallback serupa; (3) `apps/api/src/index.ts` — try/catch `/auth/*` yang membungkus `ensure().auth.handler(...)`. Amandemen SOT 2.12.0 menambah kode kanonik baru `INTERNAL_ERROR` (HTTP 500) khusus kasus ini. Fix: ganti ketiga titik dari `apiError("INVALID_STATE", ...)`/500 menjadi `apiError("INTERNAL_ERROR", ...)`/500; tambah `INTERNAL_ERROR: 500` ke `CODE_TO_HTTP` (`http-mapping.ts`) dan ke `ERROR_CODES` (`error-codes.ts`). | [02-SPEC C.2](docs/02-SPEC.md) (amandemen 2.12.0) | — |
+| 0.15.2 | ⬜️ | [Review-CL-17](#review-cl-17) | 0 | P2 | Regression test: assert `INVALID_STATE` TIDAK PERNAH dipasangkan status selain 409 di seluruh codebase (`grep`/test langsung terhadap `CODE_TO_HTTP` + panggilan `apiError("INVALID_STATE", ...)` yang menyertakan status eksplisit ≠ 409) — cegah kelas pelanggaran ini terulang di titik baru. | [02-SPEC C.2](docs/02-SPEC.md) | 0.15.1 |
+
+**Test:** Ketiga titik yang diperbaiki dipicu (config tidak lengkap, error tak dikenal) → response `{"error":{"code":"INTERNAL_ERROR",...}}` status 500 (BUKAN lagi `INVALID_STATE`). Test lama yang mengasumsikan `INVALID_STATE` di titik-titik ini diperbarui mengikuti kode baru. `pnpm exec vitest run` tetap 100% hijau.
+**DoD:** `grep -rn '"INVALID_STATE"' apps/api/src packages/contracts/src` dikonfirmasi manual — tidak ada lagi yang dipasangkan status 500; `INTERNAL_ERROR` terdaftar di `ERROR_CODES` dan `CODE_TO_HTTP`.
+
+---
+
 ## Exit Criteria Phase 0 (syarat mulai Phase 1)
 - Repo terstruktur sesuai A.7; build/typecheck/test/CI hijau.
 - Keputusan POC (0.2) tercatat: Turso GO/NO-GO + provisioning sync/async.
@@ -339,6 +351,15 @@ ERROR [Better Auth]: Error Error: Resend gagal: API key is invalid
 **Dibuktikan (bukan cuma diklaim), pola `git stash` sama seperti CL-25/CL-30 sebelumnya:** `git stash` ke-10 file route (SEBELUM fix) → `node scripts/preview-build.mjs` → `require()` bundle → `app.routes` menunjukkan `POST /api/api/v1/projects` (prefix dobel, PERSIS Review-CL-12) → request nyata ke `/api/v1/projects` → **404 `"404 Not Found"`** (reproduksi identik bug asli). `git stash pop` (fix dikembalikan) → rebuild → `app.routes` 0 entry mengandung `/api/api/` dari 81 total → request yang sama sekarang MATCHED (500 karena config, bukan lagi 404 unmatched).
 **Verifikasi:** `pnpm exec vitest run` → **82 file/500 test PASS** (5 baru dari `full-app-routing.test.ts` + 495 existing hijau, termasuk 49 file yang path request-nya diperbaiki). `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. DoD grep `grep -rn 'new Hono().basePath("/api")' apps/api/src/routes` → **0 hasil** (dikonfirmasi).
 **Belum selesai (Status `🔎`/80%, BUKAN `✅`):** DoD 0.13.2 eksplisit mensyaratkan **"staging (`kanban-ngodingin.vercel.app`, lewat Vercel SSO) dikonfirmasi SELURUH route reachable via curl/browser sungguhan; baru setelah itu `stag` boleh di-push ulang ke `main`"** — ini di luar jangkauan sesi ini (Vercel Deployment Protection SSO memblokir sandbox, dan token bypass yang dicoba sesi Ops sebelumnya — QA-CL-52 — belum berhasil baik sebagai token API Vercel maupun protection-bypass secret). Fix kode + regression test lokal sudah genuinely benar dan terbukti (bukan klaim kosong), tapi verifikasi HTTP staging sungguhan — pelajaran eksplisit dari insiden ini sendiri (kegagalan verifikasi staging adalah PENYEBAB bug ini lolos ke production pertama kali) — WAJIB dilakukan manusia/sesi dengan akses bypass yang benar sebelum `stag` di-push ulang ke `main`. Dicatat di sini supaya tidak terlewat.
+
+<a id="review-cl-17"></a>
+### Review-CL-17 — 2026-08-24 · koreksi severity temuan `INVALID_STATE`-sebagai-500 (Review-CL-11) — bukan opsional/kosmetik, genuinely pelanggaran definisi terkunci
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Koreksi eksplisit atas penilaian saya sendiri (Review-CL-11):** temuan `INVALID_STATE` dipakai sebagai fallback 500 generik sebelumnya saya catat "severity rendah... opsional... murni kosmetik-semantik" — **keliru**. Manusia mendorong evaluasi ulang: dicek langsung teks C.2 — `INVALID_STATE` definisinya SUDAH dikunci sejak awal SOT (HTTP 409, khusus "payload valid bentuknya tetapi tidak dapat diproses karena konflik state domain saat ini"). Ketiga titik kode yang memasangkan `INVALID_STATE` dengan HTTP 500 untuk kegagalan tak terduga (BUKAN konflik state domain) **melanggar definisi yang sudah terkunci** — bukan mengisi area yang belum diatur SOT. Ini genuinely SOT-compliance violation, bukan preferensi gaya kode.
+
+**Amandemen:** `SPEC_VERSION` 2.11.0 → **2.12.0** — `INTERNAL_ERROR` (HTTP 500) ditambahkan ke C.2 sebagai kode kanonik baru khusus kegagalan tak terduga/infrastruktur, dengan penegasan eksplisit `INVALID_STATE` MUST NOT dipasangkan HTTP 500. **TASK-0.15 dibuka** (2 goal: fix 3 titik kode + regression test cegah kelas pelanggaran ini terulang di titik baru). Disetujui manusia 2026-08-24.
 
 <a id="review-cl-16"></a>
 ### Review-CL-16 — 2026-08-23 · TASK-0.14 genuinely selesai — production dikonfirmasi 200 pasca-push `main`
