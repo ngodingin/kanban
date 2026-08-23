@@ -9,13 +9,13 @@ import {
   readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
-import { buildActivityRoutesDeps, buildBoardRoutesDeps, buildCardRoutesDeps, buildCommentRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
+import { buildActivityRoutesDeps, buildBoardLabelRoutesDeps, buildBoardRoutesDeps, buildCardRoutesDeps, buildCommentRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
 import { createActivitiesRouter, type ActivityRoutesDeps } from "./routes/activities.ts";
 import { createBoardsRouter, type BoardRoutesDeps } from "./routes/boards.ts";
 import { createCardsRouter, type CardRoutesDeps } from "./routes/cards.ts";
 import { createCommentsRouter, type CommentRoutesDeps } from "./routes/comments.ts";
 import { createListsRouter, type ListRoutesDeps } from "./routes/lists.ts";
-import { createMilestoneLabelsRouter, type MilestoneLabelRoutesDeps } from "./routes/labels.ts";
+import { createBoardLabelsRouter, createMilestoneLabelsRouter, type BoardLabelRoutesDeps, type MilestoneLabelRoutesDeps } from "./routes/labels.ts";
 import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/milestones.ts";
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
@@ -158,6 +158,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return deps;
   };
 
+  let boardLabelDeps: BoardLabelRoutesDeps | null = null;
+  const getBoardLabelDeps = (): BoardLabelRoutesDeps => {
+    let deps = boardLabelDeps;
+    if (!deps) {
+      const r = ensure();
+      deps = buildBoardLabelRoutesDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
+      });
+      boardLabelDeps = deps;
+    }
+    return deps;
+  };
+
   let activityDeps: ActivityRoutesDeps | null = null;
   const getActivityDeps = (): ActivityRoutesDeps => {
     let deps = activityDeps;
@@ -219,6 +234,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createListsRouter(getListDeps));
   app.route("/", createCardsRouter(getCardDeps));
   app.route("/", createMilestoneLabelsRouter(getMilestoneLabelDeps));
+  app.route("/", createBoardLabelsRouter(getBoardLabelDeps));
   app.route("/", createActivitiesRouter(getActivityDeps));
   app.route("/", createCommentsRouter(getCommentDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));

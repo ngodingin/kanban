@@ -30,7 +30,7 @@ import type { BoardRoutesDeps } from "./routes/boards.ts";
 import type { CardRoutesDeps } from "./routes/cards.ts";
 import type { CommentRoutesDeps } from "./routes/comments.ts";
 import type { ListRoutesDeps } from "./routes/lists.ts";
-import type { MilestoneLabelRoutesDeps } from "./routes/labels.ts";
+import type { BoardLabelRoutesDeps, MilestoneLabelRoutesDeps } from "./routes/labels.ts";
 import type { MilestoneRoutesDeps } from "./routes/milestones.ts";
 import type { ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import type { ProjectRoutesDeps } from "./routes/projects.ts";
@@ -178,6 +178,20 @@ export function buildMilestoneLabelRoutesDeps(input: BuildMilestoneLabelRoutesDe
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
     newMilestoneLabelId: newProjectId,
+  };
+}
+
+export interface BuildBoardLabelRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+  turso: TursoEnv | null;
+}
+
+export function buildBoardLabelRoutesDeps(input: BuildBoardLabelRoutesDepsInput): BoardLabelRoutesDeps {
+  const { identityResolver, globalClient, turso } = input;
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    newBoardLabelId: newProjectId,
   };
 }
 

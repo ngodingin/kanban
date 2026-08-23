@@ -3,8 +3,10 @@ import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ok } from "@kanban/contracts";
 import {
+  DrizzleBoardLabelRepository,
   DrizzleMilestoneLabelRepository,
   PipelineError,
+  type BoardLabelRecord,
   type MilestoneLabelRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
@@ -16,10 +18,29 @@ export interface MilestoneLabelRoutesDeps {
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
 }
 
+export interface BoardLabelRoutesDeps {
+  resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
+  newBoardLabelId(): string;
+  openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
+}
+
 function labelPayload(record: MilestoneLabelRecord) {
   return {
     id: record.id,
     milestoneId: record.milestoneId,
+    name: record.name,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt,
+    archivedAt: record.archivedAt,
+    deletedAt: record.deletedAt,
+    version: record.version,
+  };
+}
+
+function boardLabelPayload(record: BoardLabelRecord) {
+  return {
+    id: record.id,
+    boardId: record.boardId,
     name: record.name,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
@@ -132,12 +153,12 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
   });
 
   const lifecycleCommands = {
-    archive: (repository: DrizzleMilestoneLabelRepository, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
-      repository.archiveMilestoneLabel("project", input),
-    restore: (repository: DrizzleMilestoneLabelRepository, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
-      repository.restoreMilestoneLabel("project", input),
-    delete: (repository: DrizzleMilestoneLabelRepository, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
-      repository.deleteMilestoneLabel("project", input),
+    archive: (repository: DrizzleMilestoneLabelRepository, projectId: string, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveMilestoneLabel(projectId, input),
+    restore: (repository: DrizzleMilestoneLabelRepository, projectId: string, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreMilestoneLabel(projectId, input),
+    delete: (repository: DrizzleMilestoneLabelRepository, projectId: string, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteMilestoneLabel(projectId, input),
   } as const;
 
   for (const [action, command] of Object.entries(lifecycleCommands)) {
@@ -149,12 +170,121 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
         assertOwnerInterim(ctx);
         const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
         const repository = new DrizzleMilestoneLabelRepository(ctx.database);
-        const record = await command(repository, {
+        const record = await command(repository, projectId, {
           labelId: c.req.param("label_id"),
           expectedVersion,
           actorUserId: ctx.userId,
         });
         return { label: labelPayload(record) };
+      });
+    });
+  }
+
+  return router;
+}
+
+export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Hono {
+  const router = new Hono().basePath("/api");
+
+  router.get("/v1/projects/:project_id/boards/:board_id/labels", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      const repository = new DrizzleBoardLabelRepository(ctx.database);
+      const includeDeleted = c.req.query("include_deleted") === "true";
+      const labels = await repository.listBoardLabels(projectId, c.req.param("board_id"), {
+        includeDeleted,
+      });
+      return { labels: labels.map(boardLabelPayload) };
+    });
+  });
+
+  router.post("/v1/projects/:project_id/boards/:board_id/labels", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const rawName = body.name;
+      if (typeof rawName !== "string" || rawName.trim().length === 0) {
+        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
+      }
+      for (const key of Object.keys(body)) {
+        if (key !== "name") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dikenal pada payload create Label (C.11).`,
+            400,
+          );
+        }
+      }
+      const repository = new DrizzleBoardLabelRepository(ctx.database);
+      const created = await repository.createBoardLabel(projectId, c.req.param("board_id"), {
+        id: deps.newBoardLabelId(),
+        name: rawName.trim(),
+        actorUserId: ctx.userId,
+      });
+      return { label: boardLabelPayload(created) };
+    }, 201);
+  });
+
+  router.patch("/v1/projects/:project_id/boards/:board_id/labels/:label_id", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      assertOwnerInterim(ctx);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const expectedVersion = readExpectedVersionField(body);
+      for (const key of Object.keys(body)) {
+        if (key !== "name" && key !== "expected_version") {
+          throw new PipelineError(
+            "VALIDATION_ERROR",
+            `Field '${key}' tidak dapat diubah via PATCH Label (C.15).`,
+            400,
+          );
+        }
+      }
+      if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim().length === 0)) {
+        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
+      }
+      const repository = new DrizzleBoardLabelRepository(ctx.database);
+      const updated = await repository.updateBoardLabel(projectId, {
+        labelId: c.req.param("label_id"),
+        expectedVersion,
+        actorUserId: ctx.userId,
+        ...(body.name === undefined ? {} : { name: (body.name as string).trim() }),
+      });
+      return { label: boardLabelPayload(updated) };
+    });
+  });
+
+  const lifecycleCommands = {
+    archive: (repository: DrizzleBoardLabelRepository, projectId: string, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.archiveBoardLabel(projectId, input),
+    restore: (repository: DrizzleBoardLabelRepository, projectId: string, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.restoreBoardLabel(projectId, input),
+    delete: (repository: DrizzleBoardLabelRepository, projectId: string, input: { labelId: string; expectedVersion: number; actorUserId: string }) =>
+      repository.deleteBoardLabel(projectId, input),
+  } as const;
+
+  for (const [action, command] of Object.entries(lifecycleCommands)) {
+    router.post(`/v1/projects/:project_id/boards/:board_id/labels/:label_id/${action}`, async (c) => {
+      return withErrorHandling(c, async () => {
+        const deps = getDeps();
+        const projectId = c.req.param("project_id");
+        const ctx = await deps.openProjectContext(c.req.raw, projectId);
+        assertOwnerInterim(ctx);
+        const expectedVersion = readExpectedVersionField(await c.req.json().catch(() => null));
+        const repository = new DrizzleBoardLabelRepository(ctx.database);
+        const record = await command(repository, projectId, {
+          labelId: c.req.param("label_id"),
+          expectedVersion,
+          actorUserId: ctx.userId,
+        });
+        return { label: boardLabelPayload(record) };
       });
     });
   }

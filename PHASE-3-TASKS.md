@@ -120,9 +120,9 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 3.6.1 | ⬜️ | — | 0 | P0 | `GET .../boards/:board_id/labels` + `POST .../labels` — pola identik 3.4.1. | [02-SPEC C.11](docs/02-SPEC.md) | 3.5 |
-| 3.6.2 | ⬜️ | — | 0 | P1 | `PATCH .../labels/:label_id` — pola identik 3.4.2. | [02-SPEC C.11](docs/02-SPEC.md), C.15, C.2 | 3.5, 3.6.1 |
-| 3.6.3 | ⬜️ | — | 0 | P1 | `POST .../labels/:label_id/{archive,restore,delete}` — pola identik 3.4.3. | [02-SPEC C.11](docs/02-SPEC.md), A.3 | 3.5, 3.6.1 |
+| 3.6.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21) | 80 | P0 | `GET .../boards/:board_id/labels` + `POST .../labels` — pola identik 3.4.1. | [02-SPEC C.11](docs/02-SPEC.md) | 3.5 |
+| 3.6.2 | 🔎 | [CL-22](#cl-22) | 80 | P1 | `PATCH .../labels/:label_id` — pola identik 3.4.2. | [02-SPEC C.11](docs/02-SPEC.md), C.15, C.2 | 3.5, 3.6.1 |
+| 3.6.3 | 🔎 | [CL-22](#cl-22) | 80 | P1 | `POST .../labels/:label_id/{archive,restore,delete}` — pola identik 3.4.3. | [02-SPEC C.11](docs/02-SPEC.md), A.3 | 3.5, 3.6.1 |
 
 **Test:** Sama pola TASK-3.4, ancestor 3-level.
 **DoD:** Endpoint sesuai kontrak C.11 (6 route Board Label); response envelope C.2; seluruh test hijau.
@@ -199,6 +199,20 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-23 · goal 3.6.1/3.6.2/3.6.3 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — Board Label endpoints HTTP (6 route)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 60 file / **386** test lulus (8 test baru `apps/api/test/board-labels.test.ts`); `pnpm -r typecheck` bersih 6/6 package; `pnpm lint` bersih. Implementasi ditambahkan ke file yang sama dengan Milestone Label (`apps/api/src/routes/labels.ts`, pola identik 3.4.1–3.4.3): `BoardLabelRoutesDeps` + `createBoardLabelsRouter` — `GET`/`POST .../boards/:board_id/labels`, `PATCH .../labels/:label_id`, `POST .../labels/:label_id/{archive,restore,delete}`. Wiring `buildBoardLabelRoutesDeps` (`project-deps.ts`) + mount `apps/api/src/index.ts`. Export `BoardLabelRecord` ditambah ke `packages/infrastructure/src/index.ts` (sebelumnya cuma class repository yang di-export, tipe record belum).
+**Test (3 goal dalam 1 file, ditag jelas):** [3.6.1] create → 201 + Activity `board_label.created`; create pada Board ARCHIVED → `INVALID_STATE`; non-member 403, tanpa identitas 401, payload invalid 400; GET oleh member non-Owner tetap 200 (baca-saja bukan Owner-only). [3.6.2] update name → 200; field asing ditolak `VALIDATION_ERROR`; non-Owner 403; `expected_version` salah → `VERSION_CONFLICT` tanpa perubahan. [3.6.3] archive→ulang `INVALID_STATE`; **restore ditolak saat Milestone di-archive (bukan Board langsung)** — regresi transitive-ancestor pola sama 3.5.1; version mismatch → `VERSION_CONFLICT`; non-Owner 403; tidak ada → `RESOURCE_NOT_FOUND`.
+**Catatan:** TASK-3.7 (Card-Label association) sekarang unblocked (dependency 3.5+3.3 terpenuhi Dev-side; 3.6 tidak jadi dependency langsung 3.7 tapi melengkapi kontrak C.11 Board Label sebelum Card-Label assign/remove).
+
+<a id="cl-21"></a>
+### CL-21 — 2026-08-23 · goal 3.6.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 3.6.1 `⬜️/—/0/P0`, dependency `3.5` → `🔎/80%` (CL-20, commit e7374e7). Pola `apps/api/src/routes/labels.ts` (Milestone Label, 3.4.1) dibaca ulang untuk direplikasi persis ke Board Label di file yang sama.
+**Catatan insidental:** ditemukan bug kecil di `lifecycleCommands` (`labels.ts`, goal 3.4.3) — memanggil `repository.archiveMilestoneLabel("project", input)` dkk. dengan literal string `"project"`, bukan variabel `projectId` sungguhan yang tersedia di scope handler. Tidak berefek runtime (param `projectId` di implementasi memang unused hari ini), tapi salah ketik nyata yang akan salah kalau param itu suatu saat dipakai. Diperbaiki (`command` sekarang menerima `projectId` dan meneruskannya) karena file yang sama sedang saya sentuh untuk Board Label — bukan reopening 3.4.3 (masih `🔎`, belum di-QA, DoD/Test-nya tidak berubah).
+**Rencana:** Tambah `BoardLabelRoutesDeps` + `createBoardLabelsRouter` di file yang sama (`labels.ts`), reuse helper `withErrorHandling`/`assertOwnerInterim`, pola identik 3.4.1.
 
 <a id="cl-20"></a>
 ### CL-20 — 2026-08-23 · goal 3.5.1 diambil alih & selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — Board Label domain commands, chain 3-level
