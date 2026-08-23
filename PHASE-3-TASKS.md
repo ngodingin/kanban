@@ -200,6 +200,13 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="qa-cl-09"></a>
+### QA-CL-09 — 2026-08-23 · CL-31 (fix regresi CL-53, cross-cutting) — verifikasi independen, e2e dijalankan kali ini
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Konteks:** ini regresi yang lolos QA-CL-01..08/Review-CL-02 (audit closure Phase 3 saya sendiri) karena `playwright test` tidak dijalankan — kelalaian yang sudah diakui langsung di Review-CL-03 dan di sesi QA sebelumnya. Verifikasi kali ini eksplisit menjalankan e2e, bukan cuma vitest/typecheck/lint.
+**Bukti:** Baca diff `dac5e1b` — pola konversi identik CL-53 (parameter-property → field eksplisit) untuk ketiga constructor, `LabelValidationError` benar tidak tersentuh (memang tidak pernah pakai shorthand). Re-run mandiri dari nol: `pnpm -r typecheck` → 6/6 Done; `pnpm lint` → 0 error; `grep` parameter-property constructor di SELURUH `packages/*/src`+`apps/*/src` → nol hasil (scope closure total, bukan cuma 3 file yang disebut); `pnpm exec vitest run` → 68 file/416 test PASS; **`pnpm exec playwright test` → 1/1 PASS** (`node dist/serve.js` boot bersih, health 200 — sebelumnya crash total, dikonfirmasi dulu via reproduksi langsung sebelum melihat fix).
+**Kesimpulan:** Tidak ada tindakan lanjutan — fix akurat dan lengkap. `playwright test` sekarang bagian standar setiap verifikasi closure saya ke depan, bukan cuma direkomendasikan.
+
 <a id="cl-31"></a>
 ### CL-31 — 2026-08-23 · fix regresi CL-53 di `label-errors.ts` (Review-CL-03 P0 blocker) — bukan reopening goal, seluruh 17/17 goal tetap ✅
 **Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
