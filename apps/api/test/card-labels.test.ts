@@ -152,7 +152,7 @@ function makeApp(): Hono {
 
 describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
   it("[C.11] Owner assign Board Label → 201, envelope data.association", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ label_id: "bl_1" }),
@@ -163,7 +163,7 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
   });
 
   it("[Boundary] assign pada Card yang tidak ada di Project ini → RESOURCE_NOT_FOUND (bukan bocor lintas-Project)", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${otherProjectIdValue}/cards/c_missing/labels`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${otherProjectIdValue}/cards/c_missing/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ label_id: "bl_1" }),
@@ -173,7 +173,7 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
   });
 
   it("[Authz] non-Owner member → PERMISSION_DENIED (sama card.update); tanpa identitas 401; payload invalid 400", async () => {
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ label_id: "bl_1" }),
@@ -181,14 +181,14 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ label_id: "bl_1" }),
     });
     expect(noIdentity.status).toBe(401);
 
-    const invalid = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels`, {
+    const invalid = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({}),
@@ -201,7 +201,7 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
 describe("POST .../cards/:card_id/labels/:label_id/remove — goal 3.8.1", () => {
   it("[C.11] Owner remove asosiasi aktif → 200, removed_at terisi", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels/bl_1/remove`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels/bl_1/remove`,
       { method: "POST", headers: { "x-test-user": "user-a" } },
     );
     expect(res.status).toBe(200);
@@ -227,7 +227,7 @@ describe("POST .../cards/:card_id/labels/:label_id/remove — goal 3.8.1", () =>
       await projectDb.close();
     }
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels/bl_1/remove`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels/bl_1/remove`,
       { method: "POST", headers: { "x-test-user": "user-a" } },
     );
     expect(res.status).toBe(409);
@@ -243,7 +243,7 @@ describe("POST .../cards/:card_id/labels/:label_id/remove — goal 3.8.1", () =>
 
   it("[Authz] non-Owner member → PERMISSION_DENIED", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/labels/bl_1/remove`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels/bl_1/remove`,
       { method: "POST", headers: { "x-test-user": "user-b" } },
     );
     expect(res.status).toBe(403);

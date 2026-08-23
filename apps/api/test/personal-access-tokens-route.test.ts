@@ -62,7 +62,7 @@ const app = (): Hono => new Hono().route("/", createPersonalAccessTokensRouter((
 
 describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-managed, tanpa permission key)", () => {
   it("[positif] User mana pun create tanpa grant apa pun (self-managed, FR-052) → 201, token RAW sekali", async () => {
-    const res = await app().request("http://localhost/api/v1/me/personal-access-tokens", {
+    const res = await app().request("http://localhost/v1/me/personal-access-tokens", {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "CLI" }),
@@ -74,18 +74,18 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
   });
 
   it("[isolasi] list hanya milik identity yang resolve, bukan seluruh User", async () => {
-    await app().request("http://localhost/api/v1/me/personal-access-tokens", {
+    await app().request("http://localhost/v1/me/personal-access-tokens", {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ name: "B token" }),
     });
-    const resA = await app().request("http://localhost/api/v1/me/personal-access-tokens", {
+    const resA = await app().request("http://localhost/v1/me/personal-access-tokens", {
       headers: { "x-test-user": "user-a" },
     });
     const jsonA = await resA.json();
     expect(jsonA.data.personal_access_tokens.map((t: { name: string }) => t.name)).toEqual(["CLI"]);
 
-    const resB = await app().request("http://localhost/api/v1/me/personal-access-tokens", {
+    const resB = await app().request("http://localhost/v1/me/personal-access-tokens", {
       headers: { "x-test-user": "user-b" },
     });
     const jsonB = await resB.json();
@@ -93,7 +93,7 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
   });
 
   it("[boundary] User A revoke token milik User B → RESOURCE_NOT_FOUND (bukan 403 — analog BR-034A)", async () => {
-    const created = await app().request("http://localhost/api/v1/me/personal-access-tokens", {
+    const created = await app().request("http://localhost/v1/me/personal-access-tokens", {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ name: "ToRevoke" }),
@@ -101,14 +101,14 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
     const tokenId = (await created.json()).data.personal_access_token.id as string;
 
     const denied = await app().request(
-      `http://localhost/api/v1/me/personal-access-tokens/${tokenId}/revoke`,
+      `http://localhost/v1/me/personal-access-tokens/${tokenId}/revoke`,
       { method: "POST", headers: { "x-test-user": "user-a" } },
     );
     expect(denied.status).toBe(404);
     expect((await denied.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
 
     const ok = await app().request(
-      `http://localhost/api/v1/me/personal-access-tokens/${tokenId}/revoke`,
+      `http://localhost/v1/me/personal-access-tokens/${tokenId}/revoke`,
       { method: "POST", headers: { "x-test-user": "user-b" } },
     );
     expect(ok.status).toBe(200);
@@ -116,7 +116,7 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
   });
 
   it("[validation] field tak dikenal di body create → 400", async () => {
-    const res = await app().request("http://localhost/api/v1/me/personal-access-tokens", {
+    const res = await app().request("http://localhost/v1/me/personal-access-tokens", {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "X", bogus: true }),

@@ -81,7 +81,7 @@ async function makeRouter() {
 
 function accept(invitationId: string, user: string) {
   return makeRouter().then((router) =>
-    router.request(`http://localhost/api/v1/invitations/${invitationId}/accept`, {
+    router.request(`http://localhost/v1/invitations/${invitationId}/accept`, {
       method: "POST",
       headers: { "x-test-user": user },
     }),

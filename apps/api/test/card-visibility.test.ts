@@ -153,12 +153,12 @@ afterAll(async () => {
 const app = (): Hono => new Hono().route("/", createCardsRouter(() => ctx.deps));
 
 const listCards = (user: string): Promise<Response> =>
-  app().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_v/cards`, {
+  app().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_v/cards`, {
     headers: { "x-test-user": user },
   });
 
 const getCard = (cid: string, user: string): Promise<Response> =>
-  app().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/${cid}`, {
+  app().request(`http://localhost/v1/projects/${projectIdValue}/cards/${cid}`, {
     headers: { "x-test-user": user },
   });
 

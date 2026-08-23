@@ -125,7 +125,7 @@ function makeApp(): Hono {
 
 function post(action: string, milestoneId: string, body: unknown, user = "user-a"): Promise<Response> {
   return makeApp().request(
-    `http://localhost/api/v1/projects/${projectIdValue}/milestones/${milestoneId}/${action}`,
+    `http://localhost/v1/projects/${projectIdValue}/milestones/${milestoneId}/${action}`,
     {
       method: "POST",
       headers: { "x-test-user": user, "content-type": "application/json" },
@@ -198,7 +198,7 @@ describe("POST .../milestones/:milestone_id/{archive,restore,delete} — goal 2.
     expect(resDenied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_arc/archive`,
+      `http://localhost/v1/projects/${projectIdValue}/milestones/ms_arc/archive`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

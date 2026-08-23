@@ -106,7 +106,7 @@ function makeApp(): Hono {
 
 describe("GET /api/v1/projects — list Project bermembership aktif (goal 1.3.2)", () => {
   it("[C.4][A.4] list berisi Project dengan membership aktif + status ringkas benar (ACTIVE dan ARCHIVED), tanpa transaksi lintas-DB", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects", {
+    const res = await makeApp().request("http://localhost/v1/projects", {
       headers: { "x-test-user": "user-a" },
     });
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
@@ -124,7 +124,7 @@ describe("GET /api/v1/projects — list Project bermembership aktif (goal 1.3.2)
   });
 
   it("[INV-04][C.4] boundary: Project milik User lain tidak muncul, dan membership revoked tidak menghasilkan entri", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects", {
+    const res = await makeApp().request("http://localhost/v1/projects", {
       headers: { "x-test-user": "user-a" },
     });
     const json = await res.json();
@@ -132,7 +132,7 @@ describe("GET /api/v1/projects — list Project bermembership aktif (goal 1.3.2)
     if (ids.some((id) => id.startsWith("b1-"))) {
       throw new Error("project milik user-b bocor ke list user-a");
     }
-    const resB = await makeApp().request("http://localhost/api/v1/projects", {
+    const resB = await makeApp().request("http://localhost/v1/projects", {
       headers: { "x-test-user": "user-b" },
     });
     const jsonB = await resB.json();
@@ -153,7 +153,7 @@ describe("GET /api/v1/projects — list Project bermembership aktif (goal 1.3.2)
   });
 
   it("[C.2][C.4] GET tanpa identitas ditolak TOKEN_EXPIRED 401", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects");
+    const res = await makeApp().request("http://localhost/v1/projects");
     if (res.status !== 401) throw new Error(`status ${res.status}`);
     const json = await res.json();
     if (json.error?.code !== "TOKEN_EXPIRED") throw new Error(`code ${json.error?.code}`);
@@ -162,7 +162,7 @@ describe("GET /api/v1/projects — list Project bermembership aktif (goal 1.3.2)
 
 describe("GET /api/v1/projects?status= — filter subset status (goal 1.3.5)", () => {
   it("[C.4] positif: ?status=ACTIVE hanya mengembalikan project ACTIVE", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects?status=ACTIVE", {
+    const res = await makeApp().request("http://localhost/v1/projects?status=ACTIVE", {
       headers: { "x-test-user": "user-a" },
     });
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
@@ -173,19 +173,19 @@ describe("GET /api/v1/projects?status= — filter subset status (goal 1.3.5)", (
   });
 
   it("[C.4] positif: ?status=ARCHIVED / DELETED / kombinasi comma-separated", async () => {
-    const archived = (await (await makeApp().request("http://localhost/api/v1/projects?status=ARCHIVED", {
+    const archived = (await (await makeApp().request("http://localhost/v1/projects?status=ARCHIVED", {
       headers: { "x-test-user": "user-a" },
     })).json()).data.projects as Array<{ name: string }>;
     if (archived.length !== 1 || archived[0]!.name !== "Proj A2") {
       throw new Error(`hasil filter ARCHIVED salah: ${JSON.stringify(archived)}`);
     }
 
-    const deleted = (await (await makeApp().request("http://localhost/api/v1/projects?status=DELETED", {
+    const deleted = (await (await makeApp().request("http://localhost/v1/projects?status=DELETED", {
       headers: { "x-test-user": "user-a" },
     })).json()).data.projects as Array<{ name: string }>;
     if (deleted.length !== 0) throw new Error(`hasil filter DELETED harusnya kosong: ${JSON.stringify(deleted)}`);
 
-    const both = (await (await makeApp().request("http://localhost/api/v1/projects?status=ACTIVE,ARCHIVED", {
+    const both = (await (await makeApp().request("http://localhost/v1/projects?status=ACTIVE,ARCHIVED", {
       headers: { "x-test-user": "user-a" },
     })).json()).data.projects as Array<{ name: string }>;
     if (both.length !== 2) throw new Error(`hasil filter gabungan salah: ${JSON.stringify(both)}`);
@@ -193,7 +193,7 @@ describe("GET /api/v1/projects?status= — filter subset status (goal 1.3.5)", (
 
   it("[C.12] negatif: nilai status tidak dikenal → VALIDATION_ERROR 400", async () => {
     for (const query of ["?status=bogus", "?status=ACTIVE,archived"]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects${query}`, {
+      const res = await makeApp().request(`http://localhost/v1/projects${query}`, {
         headers: { "x-test-user": "user-a" },
       });
       if (res.status !== 400) throw new Error(`${query}: status ${res.status}, harusnya 400`);
@@ -203,7 +203,7 @@ describe("GET /api/v1/projects?status= — filter subset status (goal 1.3.5)", (
   });
 
   it("[C.4] tanpa param tetap mengembalikan semua status (default tidak berubah)", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects", {
+    const res = await makeApp().request("http://localhost/v1/projects", {
       headers: { "x-test-user": "user-a" },
     });
     const projects = (await res.json()).data.projects as Array<{ name: string }>;

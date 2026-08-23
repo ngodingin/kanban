@@ -163,7 +163,7 @@ function makeApp(): Hono {
 
 describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
   it("[C.9] generic tanpa filter mengembalikan seluruh 5 Activity Project ini, terurut created_at ASC", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/activities`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/activities`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(200);
@@ -174,7 +174,7 @@ describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
 
   it("[C.9] filter entity_type+entity_id mengembalikan HANYA Activity entity tsb", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/activities?entity_type=card&entity_id=c_1`,
+      `http://localhost/v1/projects/${projectIdValue}/activities?entity_type=card&entity_id=c_1`,
       { headers: { "x-test-user": "user-a" } },
     );
     const json = await res.json();
@@ -184,19 +184,19 @@ describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
 
   it("[C.9] filter actor+action+from/to menyempitkan hasil dengan benar", async () => {
     const byActor = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/activities?actor=user-b`,
+      `http://localhost/v1/projects/${projectIdValue}/activities?actor=user-b`,
       { headers: { "x-test-user": "user-a" } },
     );
     expect((await byActor.json()).data.activities).toHaveLength(1);
 
     const byAction = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/activities?action=card.created`,
+      `http://localhost/v1/projects/${projectIdValue}/activities?action=card.created`,
       { headers: { "x-test-user": "user-a" } },
     );
     expect((await byAction.json()).data.activities).toHaveLength(1);
 
     const byRange = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/activities?from=2026-08-01T00:00:02.000Z&to=2026-08-01T00:00:03.000Z`,
+      `http://localhost/v1/projects/${projectIdValue}/activities?from=2026-08-01T00:00:02.000Z&to=2026-08-01T00:00:03.000Z`,
       { headers: { "x-test-user": "user-a" } },
     );
     expect((await byRange.json()).data.activities.map((a: { id: string }) => a.id)).toEqual(["act_2", "act_3"]);
@@ -210,7 +210,7 @@ describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
       [`lists/l_1`, "list"],
     ];
     for (const [path, entityType] of routes) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/${path}/activities`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/${path}/activities`, {
         headers: { "x-test-user": "user-a" },
       });
       expect(res.status).toBe(200);
@@ -221,11 +221,11 @@ describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
   });
 
   it("[Authz + boundary] tanpa identitas 401; non-member 403; Activity Project lain tidak pernah muncul", async () => {
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/activities`);
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/activities`);
     expect(noIdentity.status).toBe(401);
 
     // user-a bukan member Project B (Owner-nya user-b).
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${otherProjectIdValue}/activities`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${otherProjectIdValue}/activities`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(denied.status).toBe(403);
@@ -234,7 +234,7 @@ describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
     // GET biasa tetap tidak Owner-only: member non-Owner (user-b bukan member Project A) tetap ditolak
     // karena bukan member, BUKAN karena non-Owner — buktikan lewat Project B: user-a (bukan member) ditolak,
     // sementara isolasi struktural per-Project-DB memastikan act_other tidak pernah muncul di Project A manapun.
-    const projA = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/activities`, {
+    const projA = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/activities`, {
       headers: { "x-test-user": "user-a" },
     });
     const ids = (await projA.json()).data.activities.map((a: { id: string }) => a.id);
@@ -243,7 +243,7 @@ describe("GET /api/v1/projects/:project_id/activities — goal 3.10.1", () => {
 
   it("[BR-024/invariant #8] tidak ada endpoint PUT/PATCH/DELETE pada /activities", async () => {
     for (const method of ["PUT", "PATCH", "DELETE", "POST"]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/activities`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/activities`, {
         method,
         headers: { "x-test-user": "user-a" },
       });

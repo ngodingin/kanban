@@ -120,14 +120,14 @@ function makeApp(): Hono {
 }
 
 async function currentStateVersion(): Promise<number> {
-  const res = await makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
+  const res = await makeApp().request(`http://localhost/v1/projects/${idA1}`, {
     headers: { "x-test-user": "user-a" },
   });
   return (await res.json()).data.project.version;
 }
 
 function restore(body: unknown, user?: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${idA1}/restore`, {
+  return makeApp().request(`http://localhost/v1/projects/${idA1}/restore`, {
     method: "POST",
     headers: {
       "content-type": "application/json",

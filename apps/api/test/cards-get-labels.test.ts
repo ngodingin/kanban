@@ -157,7 +157,7 @@ function makeApp(): Hono {
 
 describe("GET /api/v1/projects/:project_id/cards/:card_id — field labels (goal 3.9.1)", () => {
   it("[DoD] Card tanpa Label apa pun → labels: [] (bukan null/undefined)", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/c_bare`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_bare`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(200);
@@ -166,7 +166,7 @@ describe("GET /api/v1/projects/:project_id/cards/:card_id — field labels (goal
   });
 
   it("[C.8] Card dengan campuran Milestone Label + Board Label → keduanya muncul dengan scope benar; Label yang sudah di-remove TIDAK muncul", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/c_mixed`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_mixed`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(200);

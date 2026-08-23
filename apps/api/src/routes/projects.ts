@@ -204,7 +204,7 @@ async function withErrorHandling<T>(
 }
 
 export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects", async (c) => {
     return withErrorHandling(c, async () => {

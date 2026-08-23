@@ -118,7 +118,7 @@ function makeApp(): Hono {
 }
 
 function archive(body: unknown, user?: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${idA1}/archive`, {
+  return makeApp().request(`http://localhost/v1/projects/${idA1}/archive`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -188,7 +188,7 @@ describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHI
   });
 
   it("[A.3] archive pada state ARCHIVED ditolak INVALID_STATE 409", async () => {
-    const current = await makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
+    const current = await makeApp().request(`http://localhost/v1/projects/${idA1}`, {
       headers: { "x-test-user": "user-a" },
     });
     const version = (await current.json()).data.project.version;

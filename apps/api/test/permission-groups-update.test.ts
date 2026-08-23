@@ -96,7 +96,7 @@ function makeApp(): Hono {
 }
 
 async function patchGroup(projectId: string, groupId: string, body: unknown, user: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectId}/permission-groups/${groupId}`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectId}/permission-groups/${groupId}`, {
     method: "PATCH",
     headers: { "content-type": "application/json", "x-test-user": user },
     body: JSON.stringify(body),

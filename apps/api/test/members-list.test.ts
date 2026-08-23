@@ -99,7 +99,7 @@ async function makeRouter() {
 }
 
 async function listMembers(user: string, query = "") {
-  return (await makeRouter()).request(`http://localhost/api/v1/projects/${ctx.projectIdA}/members${query}`, {
+  return (await makeRouter()).request(`http://localhost/v1/projects/${ctx.projectIdA}/members${query}`, {
     method: "GET",
     headers: { "x-test-user": user },
   });
@@ -144,13 +144,13 @@ describe("GET /members (goal 1.10.1)", () => {
     if (res.status !== 403 || (await res.json()).error.code !== "PERMISSION_DENIED") {
       throw new Error(`revoked member harusnya 403, dapat ${res.status}: ${await res.text()}`);
     }
-    const outsider = await (await makeRouter()).request(`http://localhost/api/v1/projects/${projectIdB}/members`, {
+    const outsider = await (await makeRouter()).request(`http://localhost/v1/projects/${projectIdB}/members`, {
       method: "GET",
       headers: { "x-test-user": "user-b" }, // member A mencoba list Project B
     });
     if (outsider.status !== 403) throw new Error(`list lintas Project harusnya 403, dapat ${outsider.status}`);
     // Daftar Project B hanya berisi member B sendiri — tidak ada kebocoran dari A.
-    const resB = await (await makeRouter()).request(`http://localhost/api/v1/projects/${projectIdB}/members`, {
+    const resB = await (await makeRouter()).request(`http://localhost/v1/projects/${projectIdB}/members`, {
       method: "GET",
       headers: { "x-test-user": "user-c" },
     });

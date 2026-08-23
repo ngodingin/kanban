@@ -142,7 +142,7 @@ afterAll(async () => {
 
 const patchMs = (mid: string, user: string): Promise<Response> =>
   new Hono().route("/", createMilestonesRouter(() => ctx.msDeps)).request(
-    `http://localhost/api/v1/projects/${projectIdValue}/milestones/${mid}`,
+    `http://localhost/v1/projects/${projectIdValue}/milestones/${mid}`,
     {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },
@@ -152,7 +152,7 @@ const patchMs = (mid: string, user: string): Promise<Response> =>
 
 const patchBd = (bid: string, user: string): Promise<Response> =>
   new Hono().route("/", createBoardsRouter(() => ctx.bdDeps)).request(
-    `http://localhost/api/v1/projects/${projectIdValue}/boards/${bid}`,
+    `http://localhost/v1/projects/${projectIdValue}/boards/${bid}`,
     {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },

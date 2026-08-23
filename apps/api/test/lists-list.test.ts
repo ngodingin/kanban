@@ -132,7 +132,7 @@ function makeApp(): Hono {
 describe("GET /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.4", () => {
   it("[C.7] mengembalikan seluruh List Board tsb (termasuk ARCHIVED), List Board LAIN tidak muncul", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/lists`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/lists`,
       { headers: { "x-test-user": "user-a" } },
     );
     expect(res.status).toBe(200);
@@ -143,13 +143,13 @@ describe("GET /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.4
 
   it("[Boundary/Authz] tanpa membership → PROJECT_ACCESS_DENIED; tanpa identitas → 401", async () => {
     const denied = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/lists`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/lists`,
       { headers: { "x-test-user": "user-stranger" } },
     );
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/lists`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/lists`,
     );
     expect(noIdentity.status).toBe(401);
   });

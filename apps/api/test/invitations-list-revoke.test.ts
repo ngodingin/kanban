@@ -98,14 +98,14 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
 
     // Accept inv1
     const router = await makeRouter();
-    const acceptRes = await router.request(`http://localhost/api/v1/invitations/${inv1}/accept`, {
+    const acceptRes = await router.request(`http://localhost/v1/invitations/${inv1}/accept`, {
       method: "POST",
       headers: { "x-test-user": "user-b" },
     });
     if (acceptRes.status !== 200) throw new Error(`accept failed: ${acceptRes.status}`);
 
     // Revoke inv2
-    const revokeRes = await router.request(`http://localhost/api/v1/projects/${ctx.projectIdA}/invitations/${inv2}/revoke`, {
+    const revokeRes = await router.request(`http://localhost/v1/projects/${ctx.projectIdA}/invitations/${inv2}/revoke`, {
       method: "POST",
       headers: { "x-test-user": "user-a" },
     });
@@ -118,7 +118,7 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
     });
 
     // List all invitations
-    const listRes = await router.request(`http://localhost/api/v1/projects/${ctx.projectIdA}/invitations`, {
+    const listRes = await router.request(`http://localhost/v1/projects/${ctx.projectIdA}/invitations`, {
       method: "GET",
       headers: { "x-test-user": "user-a" },
     });
@@ -146,7 +146,7 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
   it("[C.13][FR-006] Negatif 1.9.4: revoke pending → revokedAt ter-set", async () => {
     const invId = await createInvitation("pending@test.local");
     const router = await makeRouter();
-    const res = await router.request(`http://localhost/api/v1/projects/${ctx.projectIdA}/invitations/${invId}/revoke`, {
+    const res = await router.request(`http://localhost/v1/projects/${ctx.projectIdA}/invitations/${invId}/revoke`, {
       method: "POST",
       headers: { "x-test-user": "user-a" },
     });
@@ -160,14 +160,14 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
     const router = await makeRouter();
 
     // Accept first
-    const acceptRes = await router.request(`http://localhost/api/v1/invitations/${invId}/accept`, {
+    const acceptRes = await router.request(`http://localhost/v1/invitations/${invId}/accept`, {
       method: "POST",
       headers: { "x-test-user": "user-c" },
     });
     if (acceptRes.status !== 200) throw new Error(`accept failed: ${acceptRes.status}`);
 
     // Try to revoke accepted invitation
-    const revokeRes = await router.request(`http://localhost/api/v1/projects/${ctx.projectIdA}/invitations/${invId}/revoke`, {
+    const revokeRes = await router.request(`http://localhost/v1/projects/${ctx.projectIdA}/invitations/${invId}/revoke`, {
       method: "POST",
       headers: { "x-test-user": "user-a" },
     });
@@ -192,7 +192,7 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
 
     // List invitations dari projectB (seharusnya kosong)
     const router = await makeRouter();
-    const listRes = await router.request(`http://localhost/api/v1/projects/${projectIdB}/invitations`, {
+    const listRes = await router.request(`http://localhost/v1/projects/${projectIdB}/invitations`, {
       method: "GET",
       headers: { "x-test-user": "user-b" },
     });

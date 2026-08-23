@@ -130,7 +130,7 @@ function makeApp(): Hono {
 
 describe("GET+POST /api/v1/projects/:project_id/boards/:board_id/labels — goal 3.6.1", () => {
   it("[C.11] Owner membuat label → 201 envelope data.label + Activity board_label.created", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "Bug" }),
@@ -158,7 +158,7 @@ describe("GET+POST /api/v1/projects/:project_id/boards/:board_id/labels — goal
     } finally {
       await projectDb.close();
     }
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
@@ -175,7 +175,7 @@ describe("GET+POST /api/v1/projects/:project_id/boards/:board_id/labels — goal
   });
 
   it("[Authz + boundary] non-member 403; tanpa identitas 401; payload invalid 400; GET tidak Owner-only", async () => {
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
@@ -183,14 +183,14 @@ describe("GET+POST /api/v1/projects/:project_id/boards/:board_id/labels — goal
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
     });
     expect(noIdentity.status).toBe(401);
 
-    const invalid = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
+    const invalid = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "" }),
@@ -198,7 +198,7 @@ describe("GET+POST /api/v1/projects/:project_id/boards/:board_id/labels — goal
     expect(invalid.status).toBe(400);
 
     // GET oleh member non-Owner (user-b) tetap berhasil — baca-saja bukan Owner-only.
-    const getRes = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
+    const getRes = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels`, {
       headers: { "x-test-user": "user-b" },
     });
     expect(getRes.status).toBe(200);
@@ -208,7 +208,7 @@ describe("GET+POST /api/v1/projects/:project_id/boards/:board_id/labels — goal
 describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
   it("[C.15] Owner update name → 200; field asing ditolak; non-Owner 403", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -219,7 +219,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
     expect((await res.json()).data.label).toMatchObject({ name: "Renamed", version: 2 });
 
     const foreignField = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -230,7 +230,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
     expect((await foreignField.json()).error?.code).toBe("VALIDATION_ERROR");
 
     const denied = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
       {
         method: "PATCH",
         headers: { "x-test-user": "user-b", "content-type": "application/json" },
@@ -242,7 +242,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
 
   it("[AC-020] expected_version salah → VERSION_CONFLICT tanpa perubahan", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels/bl_patch`,
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -257,7 +257,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
 describe("POST .../boards/:board_id/labels/:label_id/{archive,restore,delete} — goal 3.6.3", () => {
   function post(action: string, labelId: string, body: unknown, user = "user-a"): Promise<Response> {
     return makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_1/labels/${labelId}/${action}`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_1/labels/${labelId}/${action}`,
       {
         method: "POST",
         headers: { "x-test-user": user, "content-type": "application/json" },

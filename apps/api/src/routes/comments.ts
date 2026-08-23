@@ -67,7 +67,7 @@ async function withErrorHandling<T>(
 // terpisah, TIDAK ada DELETE. Otorisasi Owner-only interim (Prinsip #2);
 // permission card.comment sudah ada di katalog sejak Phase 1.
 export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects/:project_id/cards/:card_id/comments", async (c) => {
     return withErrorHandling(c, async () => {

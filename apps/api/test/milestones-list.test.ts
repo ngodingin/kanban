@@ -125,7 +125,7 @@ function makeApp(): Hono {
 
 describe("GET /api/v1/projects/:project_id/milestones — goal 2.3.4", () => {
   it("[C.5] mengembalikan SELURUH Milestone termasuk ARCHIVED/DELETED, tanpa filter server-side", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(200);
@@ -135,20 +135,20 @@ describe("GET /api/v1/projects/:project_id/milestones — goal 2.3.4", () => {
   });
 
   it("[Bukan Owner-only] member non-Owner tetap 200 (baca-saja)", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones`, {
       headers: { "x-test-user": "user-b" },
     });
     expect(res.status).toBe(200);
   });
 
   it("[Boundary/Authz] tanpa membership → PROJECT_ACCESS_DENIED; tanpa identitas → 401", async () => {
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones`, {
       headers: { "x-test-user": "user-stranger" },
     });
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PROJECT_ACCESS_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones`);
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones`);
     expect(noIdentity.status).toBe(401);
   });
 });

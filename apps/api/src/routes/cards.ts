@@ -87,7 +87,7 @@ function readAssigneeField(body: Record<string, unknown>): string | null {
 }
 
 export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects/:project_id/lists/:list_id/cards", async (c) => {
     return withErrorHandling(c, async () => {

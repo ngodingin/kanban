@@ -65,7 +65,7 @@ async function withErrorHandling<T>(
 }
 
 export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.get("/v1/projects/:project_id/milestones/:milestone_id/labels", async (c) => {
     return withErrorHandling(c, async () => {
@@ -174,7 +174,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
 }
 
 export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.get("/v1/projects/:project_id/boards/:board_id/labels", async (c) => {
     return withErrorHandling(c, async () => {

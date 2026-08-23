@@ -93,7 +93,7 @@ async function makeRouter() {
 }
 
 async function assignPerm(projectId: string, membershipId: string, body: unknown, user: string) {
-  return (await makeRouter()).request(`http://localhost/api/v1/projects/${projectId}/members/${membershipId}/permission-assignments`, {
+  return (await makeRouter()).request(`http://localhost/v1/projects/${projectId}/members/${membershipId}/permission-assignments`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-test-user": user },
     body: JSON.stringify(body),
@@ -101,7 +101,7 @@ async function assignPerm(projectId: string, membershipId: string, body: unknown
 }
 
 async function revokePerm(projectId: string, membershipId: string, assignmentId: string, user: string) {
-  return (await makeRouter()).request(`http://localhost/api/v1/projects/${projectId}/members/${membershipId}/permission-assignments/${assignmentId}/revoke`, {
+  return (await makeRouter()).request(`http://localhost/v1/projects/${projectId}/members/${membershipId}/permission-assignments/${assignmentId}/revoke`, {
     method: "POST",
     headers: { "x-test-user": user },
   });

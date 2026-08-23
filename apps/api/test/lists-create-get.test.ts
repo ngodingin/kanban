@@ -128,7 +128,7 @@ describe("POST /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.
       await setup.close();
     }
 
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_l/lists`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_l/lists`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "To Do" }),
@@ -149,7 +149,7 @@ describe("POST /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.
   it("[Project-boundary] board Project lain / tidak ada → RESOURCE_NOT_FOUND", async () => {
     const rowsA = await ctx.globalClient.execute({ sql: "SELECT id FROM projects WHERE owner_user_id = 'user-a' LIMIT 1" });
     const projectIdA = String(rowsA.rows[0]!.id);
-    const resMissing = await makeApp().request(`http://localhost/api/v1/projects/${projectIdA}/boards/bd_none/lists`, {
+    const resMissing = await makeApp().request(`http://localhost/v1/projects/${projectIdA}/boards/bd_none/lists`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -158,7 +158,7 @@ describe("POST /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.
 
     const rowsB = await ctx.globalClient.execute({ sql: "SELECT id FROM projects WHERE owner_user_id = 'user-b' LIMIT 1" });
     const projectIdB = String(rowsB.rows[0]!.id);
-    const resCross = await makeApp().request(`http://localhost/api/v1/projects/${projectIdB}/boards/bd_l/lists`, {
+    const resCross = await makeApp().request(`http://localhost/v1/projects/${projectIdB}/boards/bd_l/lists`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -169,7 +169,7 @@ describe("POST /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.
   it("[Authz interim + payload] non-member 403; tanpa identitas 401; title invalid → VALIDATION_ERROR", async () => {
     const rows = await ctx.globalClient.execute({ sql: "SELECT id FROM projects WHERE owner_user_id = 'user-a' LIMIT 1" });
     const projectId = String(rows.rows[0]!.id);
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_l/lists`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_l/lists`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -177,7 +177,7 @@ describe("POST /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PROJECT_ACCESS_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_l/lists`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_l/lists`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -185,7 +185,7 @@ describe("POST /api/v1/projects/:project_id/boards/:board_id/lists — goal 2.7.
     expect(noIdentity.status).toBe(401);
 
     for (const body of [{}, { title: "" }, { title: 9 }, "bukan-json"]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_l/lists`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_l/lists`, {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
         body: typeof body === "string" ? body : JSON.stringify(body),
@@ -208,19 +208,19 @@ describe("GET /api/v1/projects/:project_id/lists/:list_id — goal 2.7.1", () =>
       await setup.close();
     }
 
-    const okRes = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/lists/ls_get`, {
+    const okRes = await makeApp().request(`http://localhost/v1/projects/${projectId}/lists/ls_get`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(okRes.status).toBe(200);
     expect((await okRes.json()).data.list).toMatchObject({ id: "ls_get", title: "Kolom Get" });
 
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/lists/ls_get`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectId}/lists/ls_get`, {
       headers: { "x-test-user": "user-b" },
     });
     expect(denied.status).toBe(403);
     expect(((await denied.json()).data ?? {}).list).toBeUndefined();
 
-    const missing = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/lists/ls_none`, {
+    const missing = await makeApp().request(`http://localhost/v1/projects/${projectId}/lists/ls_none`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(missing.status).toBe(404);

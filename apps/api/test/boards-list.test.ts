@@ -129,7 +129,7 @@ function makeApp(): Hono {
 describe("GET /api/v1/projects/:project_id/milestones/:milestone_id/boards — goal 2.5.4", () => {
   it("[C.6] mengembalikan seluruh Board Milestone tsb (termasuk ARCHIVED), Board Milestone LAIN tidak muncul", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_1/boards`,
+      `http://localhost/v1/projects/${projectIdValue}/milestones/ms_1/boards`,
       { headers: { "x-test-user": "user-a" } },
     );
     expect(res.status).toBe(200);
@@ -140,13 +140,13 @@ describe("GET /api/v1/projects/:project_id/milestones/:milestone_id/boards — g
 
   it("[Boundary/Authz] tanpa membership → PROJECT_ACCESS_DENIED; tanpa identitas → 401", async () => {
     const denied = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_1/boards`,
+      `http://localhost/v1/projects/${projectIdValue}/milestones/ms_1/boards`,
       { headers: { "x-test-user": "user-stranger" } },
     );
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_1/boards`,
+      `http://localhost/v1/projects/${projectIdValue}/milestones/ms_1/boards`,
     );
     expect(noIdentity.status).toBe(401);
   });

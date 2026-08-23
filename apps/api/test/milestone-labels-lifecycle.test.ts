@@ -122,7 +122,7 @@ function makeApp(): Hono {
 
 function post(action: string, labelId: string, body: unknown, user = "user-a"): Promise<Response> {
   return makeApp().request(
-    `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels/${labelId}/${action}`,
+    `http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels/${labelId}/${action}`,
     {
       method: "POST",
       headers: { "x-test-user": user, "content-type": "application/json" },
@@ -185,7 +185,7 @@ describe("POST .../milestones/:milestone_id/labels/:label_id/{archive,restore,de
     expect(((await denied.json()).error ?? {}).code).toBe("PERMISSION_DENIED");
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels/ml_arc/archive`,
+      `http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels/ml_arc/archive`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

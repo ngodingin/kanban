@@ -111,7 +111,7 @@ function makeApp(): Hono {
 }
 
 function post(action: string, listId: string, body: unknown, user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/${listId}/${action}`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/${listId}/${action}`, {
     method: "POST",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -213,7 +213,7 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/lists/ls_arc/archive`,
+      `http://localhost/v1/projects/${projectIdValue}/lists/ls_arc/archive`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

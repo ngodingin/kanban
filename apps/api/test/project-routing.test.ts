@@ -193,13 +193,13 @@ describe("routing Project DB lewat wiring produksi (regression QA-CL-04..09)", (
 
   it("[BR-007][C.4] endpoint GET detail lewat router+wiring produksi membaca DB yang benar", async () => {
     const app = new Hono().route("/", createProjectsRouter(() => ctx.deps));
-    const resA = await app.request(`http://localhost/api/v1/projects/${ctx.idA}`, {
+    const resA = await app.request(`http://localhost/v1/projects/${ctx.idA}`, {
       headers: { "x-test-user": "user-a" },
     });
     if (resA.status !== 200) throw new Error(`status A ${resA.status}: ${await resA.text()}`);
     const jsonA = await resA.json();
     if (jsonA.data.project.name !== "Alpha Renamed") throw new Error(`nama A salah: ${JSON.stringify(jsonA)}`);
-    const resB = await app.request(`http://localhost/api/v1/projects/${ctx.idB}`, {
+    const resB = await app.request(`http://localhost/v1/projects/${ctx.idB}`, {
       headers: { "x-test-user": "user-b" },
     });
     const jsonB = await resB.json();
@@ -210,7 +210,7 @@ describe("routing Project DB lewat wiring produksi (regression QA-CL-04..09)", (
     const app = new Hono().route("/", createProjectsRouter(() => ctx.deps));
     // user-b punya membership aktif di idA tapi BUKAN Owner (Owner = user-a);
     // body sengaja invalid — hasilnya harus 403 PERMISSION_DENIED, bukan 409.
-    const res = await app.request(`http://localhost/api/v1/projects/${ctx.idA}`, {
+    const res = await app.request(`http://localhost/v1/projects/${ctx.idA}`, {
       method: "PATCH",
       headers: { "content-type": "application/json", "x-test-user": "user-b" },
       body: JSON.stringify({ name: "" }),
@@ -222,7 +222,7 @@ describe("routing Project DB lewat wiring produksi (regression QA-CL-04..09)", (
 
   it("[C.4] negatif: request tanpa identitas ditolak sebelum operasi apa pun", async () => {
     const app = new Hono().route("/", createProjectsRouter(() => ctx.deps));
-    const res = await app.request("http://localhost/api/v1/projects");
+    const res = await app.request("http://localhost/v1/projects");
     if (res.status !== 401) throw new Error(`harusnya 401, dapat ${res.status}: ${await res.text()}`);
   });
 });

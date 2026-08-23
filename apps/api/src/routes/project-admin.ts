@@ -197,7 +197,7 @@ function readUpdateGroupBody(body: unknown): UpdatePermissionGroupPayload {
 }
 
 export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.get("/v1/projects/:project_id/permission-groups", (c) =>
     withErrorHandling(c, async () => {

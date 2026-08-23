@@ -146,7 +146,7 @@ async function projectIdOwnedBy(owner: string): Promise<string> {
 describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — goal 2.5.1", () => {
   it("[FR-018][C.6][C.2] Owner membuat board → 201 envelope data.board + Activity board.created", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones/ms_live/boards`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones/ms_live/boards`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "Papan Baru", description: "desc" }),
@@ -184,7 +184,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
 
   it("[Project-boundary] create dengan milestone Project lain / tidak ada → RESOURCE_NOT_FOUND", async () => {
     const projectIdA = await projectIdOwnedBy("user-a");
-    const resOther = await makeApp().request(`http://localhost/api/v1/projects/${projectIdA}/milestones/ms_milik_b/boards`, {
+    const resOther = await makeApp().request(`http://localhost/v1/projects/${projectIdA}/milestones/ms_milik_b/boards`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -196,7 +196,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
       sql: "SELECT id FROM projects WHERE owner_user_id = 'user-b' LIMIT 1",
     });
     const projectIdB = String(rowsB.rows[0]!.id);
-    const resCrossDb = await makeApp().request(`http://localhost/api/v1/projects/${projectIdB}/milestones/ms_live/boards`, {
+    const resCrossDb = await makeApp().request(`http://localhost/v1/projects/${projectIdB}/milestones/ms_live/boards`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -207,7 +207,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
 
   it("[INV-LIFE-001][TASK-2.5 Test] create pada Milestone ARCHIVED → INVALID_STATE 409", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones/ms_arc/boards`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones/ms_arc/boards`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -218,7 +218,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
 
   it("[Authz interim] non-member → PROJECT_ACCESS_DENIED; tanpa identitas → TOKEN_EXPIRED; payload invalid → VALIDATION_ERROR", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones/ms_live/boards`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones/ms_live/boards`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -226,7 +226,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PROJECT_ACCESS_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones/ms_live/boards`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones/ms_live/boards`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -234,7 +234,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
     expect(noIdentity.status).toBe(401);
 
     for (const body of [{}, { title: "" }, { title: 42 }, "bukan-json"]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones/ms_live/boards`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones/ms_live/boards`, {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
         body: typeof body === "string" ? body : JSON.stringify(body),
@@ -248,7 +248,7 @@ describe("POST /api/v1/projects/:project_id/milestones/:milestone_id/boards — 
 describe("GET /api/v1/projects/:project_id/boards/:board_id — goal 2.5.1", () => {
   it("[C.6][C.2] member membaca board via pipeline", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_get`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_get`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(200);
@@ -258,7 +258,7 @@ describe("GET /api/v1/projects/:project_id/boards/:board_id — goal 2.5.1", () 
 
   it("[INV-04] non-member → PROJECT_ACCESS_DENIED tanpa isi board terungkap", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_get`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_get`, {
       headers: { "x-test-user": "user-b" },
     });
     expect(res.status).toBe(403);
@@ -269,7 +269,7 @@ describe("GET /api/v1/projects/:project_id/boards/:board_id — goal 2.5.1", () 
 
   it("[C.2] board tidak ada → RESOURCE_NOT_FOUND 404", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/boards/bd_none`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/boards/bd_none`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(404);

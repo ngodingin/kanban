@@ -115,7 +115,7 @@ afterAll(async () => {
 const app = (): Hono => new Hono().route("/", createProjectAdminRouter(() => deps));
 
 const getAssignments = (mid: string, user: string): Promise<Response> =>
-  app().request(`http://localhost/api/v1/projects/${projectIdValue}/members/${mid}/assignments`, {
+  app().request(`http://localhost/v1/projects/${projectIdValue}/members/${mid}/assignments`, {
     headers: { "x-test-user": user },
   });
 
@@ -161,7 +161,7 @@ describe("GET .../members/:membership_id/assignments — goal 4.6.1", () => {
 
   it("[boundary] membership_id milik Project lain → RESOURCE_NOT_FOUND 404", async () => {
     const res = await app().request(
-      `http://localhost/api/v1/projects/${otherProjectIdValue}/members/m-reader/assignments`,
+      `http://localhost/v1/projects/${otherProjectIdValue}/members/m-reader/assignments`,
       { headers: { "x-test-user": "user-plain" } },
     );
     // user-plain adalah Owner Project B → member.read terpenuhi (BR-037), lalu boundary 404

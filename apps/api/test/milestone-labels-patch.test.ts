@@ -119,7 +119,7 @@ function makeApp(): Hono {
 
 function patch(body: unknown, user = "user-a"): Promise<Response> {
   return makeApp().request(
-    `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels/ml_patch`,
+    `http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels/ml_patch`,
     {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },
@@ -173,7 +173,7 @@ describe("PATCH .../milestones/:milestone_id/labels/:label_id — goal 3.4.2", (
     expect(denied.status).toBe(403);
 
     const missing = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels/ml_none`,
+      `http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels/ml_none`,
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },

@@ -56,7 +56,7 @@ async function withErrorHandling<T>(
 export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTokensRoutesDeps): Hono {
   const router = new Hono();
 
-  router.post("/api/v1/me/personal-access-tokens", async (c) =>
+  router.post("/v1/me/personal-access-tokens", async (c) =>
     withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
@@ -80,7 +80,7 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
     }, 201),
   );
 
-  router.get("/api/v1/me/personal-access-tokens", async (c) =>
+  router.get("/v1/me/personal-access-tokens", async (c) =>
     withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
@@ -89,7 +89,7 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
     }),
   );
 
-  router.post("/api/v1/me/personal-access-tokens/:token_id/revoke", async (c) =>
+  router.post("/v1/me/personal-access-tokens/:token_id/revoke", async (c) =>
     withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);

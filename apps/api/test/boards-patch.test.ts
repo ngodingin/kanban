@@ -122,7 +122,7 @@ function makeApp(): Hono {
 }
 
 function patch(body: unknown, user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/bd_patch`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/bd_patch`, {
     method: "PATCH",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -172,7 +172,7 @@ describe("PATCH /api/v1/projects/:project_id/boards/:board_id — goal 2.5.2", (
     expect(res.status).toBe(400);
 
     const resMissing = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_none`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_none`,
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },

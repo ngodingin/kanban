@@ -130,7 +130,7 @@ function makeApp(): Hono {
 }
 
 function patch(body: unknown, user?: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
+  return makeApp().request(`http://localhost/v1/projects/${idA1}`, {
     method: "PATCH",
     headers: {
       "content-type": "application/json",
@@ -177,7 +177,7 @@ describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal
     if (res.status !== 409) throw new Error(`status ${res.status}`);
     const json = await res.json();
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
-    const check = await makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
+    const check = await makeApp().request(`http://localhost/v1/projects/${idA1}`, {
       headers: { "x-test-user": "user-a" },
     });
     const p = (await check.json()).data.project;

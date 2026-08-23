@@ -147,7 +147,7 @@ function makeApp(): Hono {
 
 async function patchComment(activityId: string, body: string, user = "user-a") {
   return makeApp().request(
-    `http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/comments/${activityId}`,
+    `http://localhost/v1/projects/${projectIdValue}/cards/c_1/comments/${activityId}`,
     {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },
@@ -249,7 +249,7 @@ describe("PATCH .../comments/:activity_id — goal 3.12.1", () => {
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_1/comments/act_orig`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_1/comments/act_orig`,
       { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ body: "x" }) },
     );
     expect(noIdentity.status).toBe(401);

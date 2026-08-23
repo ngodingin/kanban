@@ -120,7 +120,7 @@ function makeApp(): Hono {
 
 describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1", () => {
   it("[FR-024][FR-025][C.8] Owner membuat card dengan assignee → 201 + creator=actor + Activity", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({
@@ -158,7 +158,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
   });
 
   it("[03-ENG A.5][FR-026] negatif: assignee bukan member aktif → PERMISSION_DENIED 403", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "X", assignee: "orang-luar" }),
@@ -168,7 +168,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
   });
 
   it("[Project-boundary] list tidak ada di Project ini → RESOURCE_NOT_FOUND 404", async () => {
-    const missing = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_none/cards`, {
+    const missing = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_none/cards`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -178,7 +178,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
   });
 
   it("[Authz interim + payload] non-member 403; tanpa identitas 401; payload invalid → VALIDATION_ERROR", async () => {
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
       method: "POST",
       headers: { "x-test-user": "non-member-z", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -186,7 +186,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PROJECT_ACCESS_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -194,7 +194,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
     expect(noIdentity.status).toBe(401);
 
     for (const body of [{}, { title: "" }, { title: 7 }, "bukan-json"]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_c/cards`, {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
         body: typeof body === "string" ? body : JSON.stringify(body),
@@ -216,13 +216,13 @@ describe("GET /api/v1/projects/:project_id/cards/:card_id — goal 2.9.1", () =>
       const cards = await projectDb.execute("SELECT id FROM cards LIMIT 1");
       const cardId = String(cards.rows[0]!.id);
 
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/${cardId}`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/${cardId}`, {
         headers: { "x-test-user": "user-b" }, // member tanpa grant visibility → default CREATED_BY_ME, Card orang lain tersembunyi
       });
       expect(res.status).toBe(404); // TASK-4.5: filter D.3 aktif — hidden card 404 identik dengan tidak-ada
       expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
 
-      const missing = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/cd_none`, {
+      const missing = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/cd_none`, {
         headers: { "x-test-user": "user-a" },
       });
       expect(missing.status).toBe(404);

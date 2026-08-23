@@ -52,7 +52,7 @@ function readTitleField(body: Record<string, unknown>): string {
 }
 
 export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects/:project_id/boards/:board_id/lists", async (c) => {
     return withErrorHandling(c, async () => {

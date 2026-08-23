@@ -105,7 +105,7 @@ function makeApp(): Hono {
 }
 
 function patch(body: unknown, user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_patch`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_patch`, {
     method: "PATCH",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -143,7 +143,7 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
     const denied = await patch({ expected_version: 2, title: "X" }, "user-b");
     expect(denied.status).toBe(403);
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_patch`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_patch`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ expected_version: 2, title: "X" }),
@@ -168,7 +168,7 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
   });
 
   it("[C.7] list tidak ada → RESOURCE_NOT_FOUND 404", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/ls_none`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_none`, {
       method: "PATCH",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ expected_version: 1, title: "X" }),

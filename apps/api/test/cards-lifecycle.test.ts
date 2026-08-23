@@ -114,7 +114,7 @@ function makeApp(): Hono {
 }
 
 function post(action: string, cardId: string, body: unknown, user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/${cardId}/${action}`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/${cardId}/${action}`, {
     method: "POST",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -184,7 +184,7 @@ describe("POST .../cards/:card_id/{archive,restore,delete} — goal 2.9.3", () =
     expect(((await denied.json()).error ?? {}).code).toBe("PERMISSION_DENIED");
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/cd_res/archive`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/cd_res/archive`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

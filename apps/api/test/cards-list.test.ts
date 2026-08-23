@@ -145,7 +145,7 @@ function makeApp(): Hono {
 
 describe("GET /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.4", () => {
   it("[C.8] mengembalikan seluruh Card List tsb (termasuk ARCHIVED) dengan field labels; Card List LAIN tidak muncul", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/l_1/cards`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/l_1/cards`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(200);
@@ -159,12 +159,12 @@ describe("GET /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.4",
   });
 
   it("[Boundary/Authz] tanpa membership → PROJECT_ACCESS_DENIED; tanpa identitas → 401", async () => {
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/l_1/cards`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/l_1/cards`, {
       headers: { "x-test-user": "user-stranger" },
     });
     expect(denied.status).toBe(403);
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/lists/l_1/cards`);
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/l_1/cards`);
     expect(noIdentity.status).toBe(401);
   });
 });

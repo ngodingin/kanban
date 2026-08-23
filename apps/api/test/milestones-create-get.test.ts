@@ -134,7 +134,7 @@ async function projectIdOwnedBy(owner: string, index = 0): Promise<string> {
 describe("POST /api/v1/projects/:project_id/milestones — goal 2.3.1", () => {
   it("[FR-014][C.5][C.2] Owner membuat milestone → 201 envelope data.milestone lengkap + row DB + Activity", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({
@@ -177,7 +177,7 @@ describe("POST /api/v1/projects/:project_id/milestones — goal 2.3.1", () => {
 
   it("[C.2] tanpa identitas → TOKEN_EXPIRED 401", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -188,7 +188,7 @@ describe("POST /api/v1/projects/:project_id/milestones — goal 2.3.1", () => {
 
   it("[C.5] non-member → PROJECT_ACCESS_DENIED tanpa membuat apa pun", async () => {
     const projectId = await projectIdOwnedBy("user-a");
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -199,7 +199,7 @@ describe("POST /api/v1/projects/:project_id/milestones — goal 2.3.1", () => {
 
   it("[INV-LIFE-001][BR-013] create pada Project ARCHIVED → ditolak INVALID_STATE 409", async () => {
     const projectId = await projectIdOwnedBy("user-a", 2);
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "X" }),
@@ -218,7 +218,7 @@ describe("POST /api/v1/projects/:project_id/milestones — goal 2.3.1", () => {
       JSON.stringify({}),
       "bukan-json",
     ]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones`, {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
         body,
@@ -234,7 +234,7 @@ describe("GET /api/v1/projects/:project_id/milestones/:milestone_id — goal 2.3
 
   beforeAll(async () => {
     const projectId = await projectIdOwnedBy("user-a", 1);
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ title: "Terlihat", progress: 10 }),
@@ -245,7 +245,7 @@ describe("GET /api/v1/projects/:project_id/milestones/:milestone_id — goal 2.3
 
   it("[C.5][C.2] member membaca milestone via pipeline", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${seeded.projectId}/milestones/${seeded.milestoneId}`,
+      `http://localhost/v1/projects/${seeded.projectId}/milestones/${seeded.milestoneId}`,
       { headers: { "x-test-user": "user-a" } },
     );
     expect(res.status).toBe(200);
@@ -255,7 +255,7 @@ describe("GET /api/v1/projects/:project_id/milestones/:milestone_id — goal 2.3
 
   it("[INV-04] Project-boundary: milestone Project lain tidak bocor — akses non-member ditolak", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${seeded.projectId}/milestones/${seeded.milestoneId}`,
+      `http://localhost/v1/projects/${seeded.projectId}/milestones/${seeded.milestoneId}`,
       { headers: { "x-test-user": "user-b" } },
     );
     expect(res.status).toBe(403);
@@ -264,7 +264,7 @@ describe("GET /api/v1/projects/:project_id/milestones/:milestone_id — goal 2.3
 
   it("[C.2] milestone tidak ada → RESOURCE_NOT_FOUND 404", async () => {
     const projectId = await projectIdOwnedBy("user-a", 1);
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}/milestones/ms_tidak_ada`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}/milestones/ms_tidak_ada`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(res.status).toBe(404);
@@ -273,7 +273,7 @@ describe("GET /api/v1/projects/:project_id/milestones/:milestone_id — goal 2.3
 
   it("[C.2] GET tanpa identitas → TOKEN_EXPIRED 401", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${seeded.projectId}/milestones/${seeded.milestoneId}`,
+      `http://localhost/v1/projects/${seeded.projectId}/milestones/${seeded.milestoneId}`,
     );
     expect(res.status).toBe(401);
     expect((await res.json()).error?.code).toBe("TOKEN_EXPIRED");

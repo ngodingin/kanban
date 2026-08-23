@@ -112,7 +112,7 @@ describe("GET /api/v1/projects/:project_id — detail Project (goal 1.3.3)", () 
       sql: "SELECT id FROM projects WHERE owner_user_id = 'user-a'",
     });
     const projectId = String(rows.rows[0]!.id);
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}`, {
       headers: { "x-test-user": "user-a" },
     });
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
@@ -134,7 +134,7 @@ describe("GET /api/v1/projects/:project_id — detail Project (goal 1.3.3)", () 
       sql: "SELECT id FROM projects WHERE owner_user_id = 'user-a'",
     });
     const projectId = String(rows.rows[0]!.id);
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectId}`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectId}`, {
       headers: { "x-test-user": "user-b" },
     });
     if (res.status !== 403) throw new Error(`status ${res.status}, harusnya 403`);
@@ -144,7 +144,7 @@ describe("GET /api/v1/projects/:project_id — detail Project (goal 1.3.3)", () 
   });
 
   it("[C.2][C.4] project yang tidak ada di registry → RESOURCE_NOT_FOUND 404", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV", {
+    const res = await makeApp().request("http://localhost/v1/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV", {
       headers: { "x-test-user": "user-a" },
     });
     if (res.status !== 404) throw new Error(`status ${res.status}`);
@@ -153,7 +153,7 @@ describe("GET /api/v1/projects/:project_id — detail Project (goal 1.3.3)", () 
   });
 
   it("[C.2] GET detail tanpa identitas ditolak TOKEN_EXPIRED 401", async () => {
-    const res = await makeApp().request("http://localhost/api/v1/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV");
+    const res = await makeApp().request("http://localhost/v1/projects/01ARZ3NDEKTSV4RRFFQ69G5FAV");
     if (res.status !== 401) throw new Error(`status ${res.status}`);
     const json = await res.json();
     if (json.error?.code !== "TOKEN_EXPIRED") throw new Error(`code ${json.error?.code}`);

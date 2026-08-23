@@ -76,7 +76,7 @@ function readProgressField(body: Record<string, unknown>): number | undefined {
 }
 
 export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects/:project_id/milestones", async (c) => {
     return withErrorHandling(c, async () => {

@@ -139,7 +139,7 @@ function makeApp(): Hono {
 describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.11.1", () => {
   it("[C.10][BR-030] Owner comment pada Card ACTIVE → 201, Activity comment.added dengan entity_version = versi Card TERKINI", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_active/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_active/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -170,7 +170,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
 
   it("[BR-033] Comment pada Card ARCHIVED ditolak — INVALID_STATE 409", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_archived/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_archived/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -183,7 +183,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
 
   it("[BR-033] Comment pada Card DELETED ditolak — INVALID_STATE 409", async () => {
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_deleted/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_deleted/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -202,7 +202,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
       await projectDb.close();
     }
     const res = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_active/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_active/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -222,7 +222,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
 
   it("[Validasi + Authz] body kosong 400; non-Owner 403; tanpa identitas 401; Card tidak ada 404", async () => {
     const emptyBody = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_active/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_active/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
@@ -233,7 +233,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
     expect((await emptyBody.json()).error?.code).toBe("VALIDATION_ERROR");
 
     const denied = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_active/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_active/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-b", "content-type": "application/json" },
@@ -244,7 +244,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_active/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_active/comments`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -254,7 +254,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/comments — goal 3.1
     expect(noIdentity.status).toBe(401);
 
     const notFound = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/c_missing/comments`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/c_missing/comments`,
       {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },

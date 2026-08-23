@@ -84,7 +84,7 @@ function makeApp(deps: ProjectRoutesDeps = ctx.deps): Hono {
 }
 
 async function post(app: Hono, body?: unknown, headers: Record<string, string> = {}) {
-  return app.request("http://localhost/api/v1/projects", {
+  return app.request("http://localhost/v1/projects", {
     method: "POST",
     headers: { "content-type": "application/json", ...headers },
     body: body === undefined ? undefined : JSON.stringify(body),

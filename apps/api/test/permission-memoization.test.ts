@@ -108,7 +108,7 @@ describe("Memoisasi loadEffectivePermissionInputs per-request (Review-CL-05, P2)
     const app = new Hono().route("/", createMilestonesRouter(() => deps));
 
     const counter = countAssignmentQueryCalls(globalClient);
-    const res = await app.request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_1`, {
+    const res = await app.request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_1`, {
       method: "PATCH",
       headers: { "x-test-user": "user-ms", "content-type": "application/json" },
       body: JSON.stringify({ expected_version: 1, title: "diubah" }),

@@ -116,7 +116,7 @@ function makeApp(): Hono {
 }
 
 function patch(body: unknown, user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/cd_patch`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/cd_patch`, {
     method: "PATCH",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),

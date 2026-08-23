@@ -133,7 +133,7 @@ function makeApp(): Hono {
 }
 
 function move(body: unknown, cardId = "cd_move", user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/${cardId}/move`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/${cardId}/move`, {
     method: "POST",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -212,7 +212,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1"
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/cards/cd_move/move`,
+      `http://localhost/v1/projects/${projectIdValue}/cards/cd_move/move`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

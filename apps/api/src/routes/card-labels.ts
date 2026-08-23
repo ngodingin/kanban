@@ -50,7 +50,7 @@ async function withErrorHandling<T>(
 // C.11 — assign/remove Label ke Card menumpang otorisasi card.update
 // (Owner-only interim, Prinsip #4). BUKAN permission Label tersendiri.
 export function createCardLabelsRouter(getDeps: () => CardLabelRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects/:project_id/cards/:card_id/labels", async (c) => {
     return withErrorHandling(c, async () => {

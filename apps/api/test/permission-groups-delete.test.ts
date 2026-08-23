@@ -90,7 +90,7 @@ function makeApp(): Hono {
 }
 
 function deleteGroup(projectId: string, groupId: string, user: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectId}/permission-groups/${groupId}/delete`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectId}/permission-groups/${groupId}/delete`, {
     method: "POST",
     headers: { "x-test-user": user },
   });

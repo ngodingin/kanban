@@ -56,7 +56,7 @@ function readOptionalQueryFilters(c: Context): ListActivitiesFilters {
 // invariant #8). Membership aktif cukup (pola sama GET Milestone/Board/List/
 // Card) — TIDAK ada Owner-only restriction untuk baca Activity.
 export function createActivitiesRouter(getDeps: () => ActivityRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.get("/v1/projects/:project_id/activities", async (c) => {
     return withErrorHandling(c, async () => {

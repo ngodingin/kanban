@@ -125,7 +125,7 @@ function makeApp(): Hono {
 }
 
 function post(action: string, boardId: string, body: unknown, user = "user-a"): Promise<Response> {
-  return makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/boards/${boardId}/${action}`, {
+  return makeApp().request(`http://localhost/v1/projects/${projectIdValue}/boards/${boardId}/${action}`, {
     method: "POST",
     headers: { "x-test-user": user, "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -197,7 +197,7 @@ describe("POST .../boards/:board_id/{archive,restore,delete} — goal 2.5.3", ()
     expect(missing.status).toBe(400);
 
     const noIdentity = await makeApp().request(
-      `http://localhost/api/v1/projects/${projectIdValue}/boards/bd_arc/archive`,
+      `http://localhost/v1/projects/${projectIdValue}/boards/bd_arc/archive`,
       {
         method: "POST",
         headers: { "content-type": "application/json" },

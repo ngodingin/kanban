@@ -111,7 +111,7 @@ function makeApp(): Hono {
 
 describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels — goal 3.4.1", () => {
   it("[C.11][C.2] Owner membuat label → 201 envelope data.label + Activity milestone_label.created", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "Bug" }),
@@ -138,7 +138,7 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
     } finally {
       await projectDb.close();
     }
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
@@ -156,7 +156,7 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
   });
 
   it("[Authz + payload + boundary] non-member 403; tanpa identitas 401; payload invalid 400; milestone asing 404", async () => {
-    const denied = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+    const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
@@ -164,7 +164,7 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PROJECT_ACCESS_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
@@ -172,7 +172,7 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
     expect(noIdentity.status).toBe(401);
 
     for (const body of [{}, { name: "" }, { name: 5 }, { name: "Ok", extra: 1 }, "bukan-json"]) {
-      const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+      const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
         body: typeof body === "string" ? body : JSON.stringify(body),
@@ -181,7 +181,7 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
       expect((await res.json()).error?.code).toBe("VALIDATION_ERROR");
     }
 
-    const missing = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_none/labels`, {
+    const missing = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_none/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
       body: JSON.stringify({ name: "X" }),
@@ -191,7 +191,7 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
   });
 
   it("[C.11] GET list member — default exclude deleted; non-member ditolak; tanpa identitas 401", async () => {
-    const okRes = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+    const okRes = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
       headers: { "x-test-user": "user-a" },
     });
     expect(okRes.status).toBe(200);
@@ -199,13 +199,13 @@ describe("POST+GET /api/v1/projects/:project_id/milestones/:milestone_id/labels 
     expect(Array.isArray(json.data.labels)).toBe(true);
     expect(json.data.labels.length).toBeGreaterThanOrEqual(1);
 
-    const nonMember = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
+    const nonMember = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`, {
       headers: { "x-test-user": "orang-luar" },
     });
     expect(nonMember.status).toBe(403);
     expect((await nonMember.json()).error?.code).toBe("PROJECT_ACCESS_DENIED");
 
-    const noIdentity = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/milestones/ms_l/labels`);
+    const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_l/labels`);
     expect(noIdentity.status).toBe(401);
     expect((await noIdentity.json()).error?.code).toBe("TOKEN_EXPIRED");
   });

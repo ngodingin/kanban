@@ -62,7 +62,7 @@ function readOptionalDescription(body: Record<string, unknown>): string | null {
 }
 
 export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
-  const router = new Hono().basePath("/api");
+  const router = new Hono();
 
   router.post("/v1/projects/:project_id/milestones/:milestone_id/boards", async (c) => {
     return withErrorHandling(c, async () => {

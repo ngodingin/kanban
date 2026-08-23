@@ -91,7 +91,7 @@ async function makeRouter() {
 }
 
 async function assign(projectId: string, membershipId: string, body: unknown, user: string) {
-  return (await makeRouter()).request(`http://localhost/api/v1/projects/${projectId}/members/${membershipId}/group-assignments`, {
+  return (await makeRouter()).request(`http://localhost/v1/projects/${projectId}/members/${membershipId}/group-assignments`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-test-user": user },
     body: JSON.stringify(body),
@@ -99,7 +99,7 @@ async function assign(projectId: string, membershipId: string, body: unknown, us
 }
 
 async function revoke(projectId: string, membershipId: string, assignmentId: string, user: string) {
-  return (await makeRouter()).request(`http://localhost/api/v1/projects/${projectId}/members/${membershipId}/group-assignments/${assignmentId}/revoke`, {
+  return (await makeRouter()).request(`http://localhost/v1/projects/${projectId}/members/${membershipId}/group-assignments/${assignmentId}/revoke`, {
     method: "POST",
     headers: { "x-test-user": user },
   });

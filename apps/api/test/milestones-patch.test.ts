@@ -123,7 +123,7 @@ async function projectId(): Promise<string> {
 
 function patch(body: unknown, user = "user-a"): Promise<Response> {
   return projectId().then((pid) =>
-    makeApp().request(`http://localhost/api/v1/projects/${pid}/milestones/ms_patch`, {
+    makeApp().request(`http://localhost/v1/projects/${pid}/milestones/ms_patch`, {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },
       body: JSON.stringify(body),

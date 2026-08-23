@@ -118,7 +118,7 @@ function makeApp(): Hono {
 }
 
 function del(body: unknown, user?: string) {
-  return makeApp().request(`http://localhost/api/v1/projects/${idA1}/delete`, {
+  return makeApp().request(`http://localhost/v1/projects/${idA1}/delete`, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -152,7 +152,7 @@ describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 
   });
 
   it("[INV-LIFE-004] restore setelah DELETED ditolak INVALID_STATE (terminal)", async () => {
-    const res = await makeApp().request(`http://localhost/api/v1/projects/${idA1}/restore`, {
+    const res = await makeApp().request(`http://localhost/v1/projects/${idA1}/restore`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
       body: JSON.stringify({ expected_version: 2 }),
@@ -167,7 +167,7 @@ describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
-    const check = await makeApp().request(`http://localhost/api/v1/projects/${idA1}`, {
+    const check = await makeApp().request(`http://localhost/v1/projects/${idA1}`, {
       headers: { "x-test-user": "user-a" },
     });
     const p = (await check.json()).data.project;

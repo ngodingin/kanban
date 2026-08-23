@@ -86,7 +86,7 @@ async function makeRouter() {
 }
 
 async function invite(body: unknown, user: string) {
-  return (await makeRouter()).request(`http://localhost/api/v1/projects/${ctx.projectIdA}/invitations`, {
+  return (await makeRouter()).request(`http://localhost/v1/projects/${ctx.projectIdA}/invitations`, {
     method: "POST",
     headers: { "content-type": "application/json", "x-test-user": user },
     body: JSON.stringify(body),

@@ -114,7 +114,7 @@ async function makeRouter() {
 
 function revoke(projectId: string, membershipId: string, user: string) {
   return makeRouter().then((router) =>
-    router.request(`http://localhost/api/v1/projects/${projectId}/members/${membershipId}/revoke`, {
+    router.request(`http://localhost/v1/projects/${projectId}/members/${membershipId}/revoke`, {
       method: "POST",
       headers: { "x-test-user": user },
     }),
