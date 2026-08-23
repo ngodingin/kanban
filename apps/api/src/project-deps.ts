@@ -11,6 +11,8 @@ import {
   listProjectInvitations,
   listProjectMembers,
   listProjectSummaries,
+  listMembershipAssignments,
+  assertPermissionKey,
   createEntityPermissionResolver,
   newProjectId,
   provisionProjectWithMapping,
@@ -325,6 +327,10 @@ export function buildProjectAdminDeps(input: {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listProjectMembers(globalClient, projectId, opts);
     },
+    assertPermissionKey: (projectId, requesterUserId, key) =>
+      assertPermissionKey(globalClient, projectId, requesterUserId, key),
+    listMembershipAssignments: (projectId, membershipId) =>
+      listMembershipAssignments(globalClient, projectId, membershipId),
     revokeMembership: async (projectId, membershipId, actorUserId) => {
       const projectDb = await resolveProjectDbClient(projectId);
       return revokeMembership(globalClient, { projectId, membershipId, actorUserId }, projectDb);

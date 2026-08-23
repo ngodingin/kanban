@@ -6,6 +6,7 @@ import {
   ResolveIdentityStep,
   type AcceptInvitationResult,
   type GroupAssignmentSummary,
+  type MembershipAssignmentsList,
   type InvitationSummary,
   type InvitationListSummary,
   type PermissionAssignmentSummary,
@@ -99,6 +100,11 @@ export interface ProjectAdminRoutesDeps {
     requesterUserId: string,
     opts: { status?: Array<"active" | "revoked"> },
   ): Promise<ProjectMemberSummary[]>;
+  assertPermissionKey(projectId: string, requesterUserId: string, key: string): Promise<void>;
+  listMembershipAssignments(
+    projectId: string,
+    membershipId: string,
+  ): Promise<MembershipAssignmentsList | null>;
   revokeMembership(projectId: string, membershipId: string, actorUserId?: string): Promise<ProjectMemberSummary>;
   listProjectInvitations(projectId: string): Promise<InvitationListSummary[]>;
   revokeInvitation(projectId: string, invitationId: string): Promise<InvitationListSummary>;
@@ -427,6 +433,32 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       }
       const members = await deps.listMembers(projectId, identity.userId, { ...(status !== undefined ? { status } : {}) });
       return { members };
+    });
+  });
+
+  router.get("/v1/projects/:project_id/members/:membership_id/assignments", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const membershipId = c.req.param("membership_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // Authorization first (Implementation Rule 3) — member.read via engine
+      // TASK-4.1/4.4 (bukan Owner-only interim).
+      await deps.assertPermissionKey(projectId, identity.userId, "member.read");
+      const data = await deps.listMembershipAssignments(projectId, membershipId);
+      if (data === null) {
+        throw new PipelineError(
+          "RESOURCE_NOT_FOUND",
+          `Membership ${membershipId} tidak ditemukan di Project ini.`,
+          404,
+        );
+      }
+      return {
+        group_assignments: data.groupAssignments,
+        permission_assignments: data.permissionAssignments,
+      };
     });
   });
 

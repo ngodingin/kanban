@@ -16,6 +16,9 @@ import {
 } from "./global-schema.ts";
 import { PipelineError } from "../pipeline/errors.ts";
 import { runInDrizzleWriteTransaction } from "./transaction.ts";
+import { loadEffectivePermissionInputs } from "./permission-resolution.ts";
+import { permissionCatalogKeys } from "./permission-catalog.ts";
+import { resolveEffectivePermissions, hasPermission } from "@kanban/domain";
 import { cleanupAssigneesForRevokedMembership } from "./card-assignee-cleanup.ts";
 
 // Semua operasi di modul ini bekerja pada tabel Global DB (authorization
@@ -802,4 +805,105 @@ export async function revokeInvitation(
     revokedAt,
     createdAt: invitation.createdAt,
   };
+}
+
+// ---------------------------------------------------------------------------
+// TASK-4.6.1 — GET .../members/:membership_id/assignments
+// ---------------------------------------------------------------------------
+
+export interface MembershipAssignmentsList {
+  groupAssignments: GroupAssignmentSummary[];
+  permissionAssignments: PermissionAssignmentSummary[];
+}
+
+/** Membership milik projectId ini? null bila tidak ditemukan / lintas-Project (boundary). */
+export async function getMembershipInProject(
+  globalClient: Client,
+  projectId: string,
+  membershipId: string,
+): Promise<{ id: string; userId: string } | null> {
+  const result = await globalClient.execute({
+    sql: "SELECT id, user_id FROM project_memberships WHERE id = ? AND project_id = ? LIMIT 1",
+    args: [membershipId, projectId],
+  });
+  const row = result.rows[0];
+  if (!row) return null;
+  return { id: String(row.id), userId: String(row.user_id) };
+}
+
+/**
+ * Seluruh assignment Membership (AKTIF dan REVOKED, tanpa filter — pola
+ * GET /invitations). Return null bila membership bukan milik Project ini.
+ */
+export async function listMembershipAssignments(
+  globalClient: Client,
+  projectId: string,
+  membershipId: string,
+): Promise<MembershipAssignmentsList | null> {
+  const membership = await getMembershipInProject(globalClient, projectId, membershipId);
+  if (!membership) return null;
+  const [groupRows, directRows] = await Promise.all([
+    globalClient.execute({
+      sql: "SELECT id, membership_id, group_id, scope_type, scope_id, created_at, revoked_at FROM membership_group_assignments WHERE membership_id = ? ORDER BY created_at, id",
+      args: [membershipId],
+    }),
+    globalClient.execute({
+      sql: "SELECT id, membership_id, permission_id, scope_type, scope_id, card_read_visibility, created_at, revoked_at FROM membership_permission_assignments WHERE membership_id = ? ORDER BY created_at, id",
+      args: [membershipId],
+    }),
+  ]);
+  return {
+    groupAssignments: groupRows.rows.map((row) => ({
+      id: String(row.id),
+      membershipId: String(row.membership_id),
+      groupId: String(row.group_id),
+      scopeType: String(row.scope_type),
+      scopeId: String(row.scope_id),
+      createdAt: String(row.created_at),
+      revokedAt: row.revoked_at === null ? null : String(row.revoked_at),
+    })),
+    permissionAssignments: directRows.rows.map((row) => ({
+      id: String(row.id),
+      membershipId: String(row.membership_id),
+      permissionId: String(row.permission_id),
+      scopeType: String(row.scope_type),
+      scopeId: String(row.scope_id),
+      cardReadVisibility: row.card_read_visibility === null ? null : String(row.card_read_visibility),
+      createdAt: String(row.created_at),
+      revokedAt: row.revoked_at === null ? null : String(row.revoked_at),
+    })),
+  };
+}
+
+/** Authz `member.read` utk router admin — engine sama (4.1), scope Project root. */
+export async function assertPermissionKey(
+  globalClient: Client,
+  projectId: string,
+  requesterUserId: string,
+  key: string,
+): Promise<void> {
+  const ownerId = await getProjectOwnerId(globalClient, projectId);
+  if (ownerId === null) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Project ${projectId} tidak ditemukan.`, 404);
+  }
+  if (ownerId === requesterUserId) return; // BR-037
+  const membershipResult = await globalClient.execute({
+    sql: "SELECT id FROM project_memberships WHERE project_id = ? AND user_id = ? AND revoked_at IS NULL LIMIT 1",
+    args: [projectId, requesterUserId],
+  });
+  const membershipRow = membershipResult.rows[0];
+  if (!membershipRow) {
+    throw new PipelineError("PERMISSION_DENIED", "User bukan member aktif Project ini.", 403);
+  }
+  const inputs = await loadEffectivePermissionInputs(globalClient, String(membershipRow.id));
+  const effective = resolveEffectivePermissions({
+    allPermissionKeys: permissionCatalogKeys(),
+    groupAssignments: inputs.groupAssignments,
+    directAssignments: inputs.directAssignments,
+    hierarchy: { projectId },
+    isOwner: false,
+  });
+  if (!hasPermission(effective, key)) {
+    throw new PipelineError("PERMISSION_DENIED", `Permission '${key}' tidak dimiliki pada scope ini.`, 403);
+  }
 }

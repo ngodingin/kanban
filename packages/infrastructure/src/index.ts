@@ -84,6 +84,10 @@ export {
   type PermissionGroupSummary,
   type ProjectMemberSummary,
   type UpdatePermissionGroupInput,
+  getMembershipInProject,
+  listMembershipAssignments,
+  assertPermissionKey,
+  type MembershipAssignmentsList,
 } from "./database/project-admin.ts";
 export { loadEffectivePermissionInputs } from "./database/permission-resolution.ts";
 export type { EffectivePermissionInputs } from "./database/permission-resolution.ts";

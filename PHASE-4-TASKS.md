@@ -118,7 +118,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 4.6.1 | ⬜️ | — | 0 | P1 | `GET /api/v1/projects/:project_id/members/:membership_id/assignments` (amandemen 2.10.0) — baca `membership_group_assignments` + `membership_permission_assignments` untuk Membership tsb (AKTIF dan REVOKED, tanpa filter server-side — pola sama `GET /invitations`), return `{data:{group_assignments:[...], permission_assignments:[...]}}`. Otorisasi: `member.read` (D.1, sudah ada sejak Phase 1 katalog) via `assertPermission` (TASK-4.4, bukan endpoint baru yang masih Owner-only interim). | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.10.0) | 4.4 |
+| 4.6.1 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15) | 80 | P1 | `GET /api/v1/projects/:project_id/members/:membership_id/assignments` (amandemen 2.10.0) — baca `membership_group_assignments` + `membership_permission_assignments` untuk Membership tsb (AKTIF dan REVOKED, tanpa filter server-side — pola sama `GET /invitations`), return `{data:{group_assignments:[...], permission_assignments:[...]}}`. Otorisasi: `member.read` (D.1, sudah ada sejak Phase 1 katalog) via `assertPermission` (TASK-4.4, bukan endpoint baru yang masih Owner-only interim). | [02-SPEC C.12](docs/02-SPEC.md) (amandemen 2.10.0) | 4.4 |
 
 **Test:** Membership dengan >1 assignment (Group + direct, aktif + revoked campur) → seluruhnya muncul dengan `scopeType`/`scopeId`/`revokedAt` benar; Membership tanpa assignment → array kosong keduanya; `membership_id` milik Project lain → `RESOURCE_NOT_FOUND` (Project-boundary); non-`member.read` → `PERMISSION_DENIED`.
 **DoD:** Response TIDAK menyertakan definisi permission Group secara penuh (cuma referensi `groupId` — client fetch detail Group terpisah via `GET /permission-groups`, hindari over-fetching); Project-boundary teruji eksplisit.
@@ -173,6 +173,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Bukti:** `hasPermission` — trivial `grantedKeys.has(key)`, dikonfirmasi benar termasuk Owner (seluruh katalog true) dan set kosong (seluruh key false). `resolveCardVisibilityFilter` — logika widening dikonfirmasi benar per kasus: `CREATED_BY_ME` (`creatorUserId===currentUserId` saja, assignee TIDAK cukup — dites eksplisit dengan Card yang assignee=ME tapi creator≠ME harus TIDAK lolos), `ASSIGNED_TO_ME` (OR creator/assignee), `ALL` (selalu true). Test suite `permission-engine.test.ts` (bagian 4.1.2, ~7 test) dijalankan ulang — hijau.
 `pnpm -r typecheck`/`pnpm lint` bersih. Full suite `pnpm exec vitest run` → **70 file/437 test PASS**; `pnpm exec playwright test` → **1/1 PASS** (dijalankan sebagai bagian standar verifikasi closure, bukan cuma saat ada insiden).
 **Kesimpulan:** ✅ ACCEPT goal 4.1.2. Goal 4.1.1 tetap `⚠️`, menunggu Dev rework terhadap teks goal yang sudah dikoreksi Review-CL-02.
+
+<a id="cl-16"></a>
+### CL-16 — 2026-08-23 · goal 4.6.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET assignments Membership
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 75 file / **461 test lulus** (+4 `membership-assignments.test.ts`: campuran AKTIF+REVOKED dengan scopeType/scopeId/revokedAt benar + DoD tanpa definisi Group penuh; kosong; boundary Project lain 404; negatif non-member.read 403 + positif Owner). `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan:** Loader `listMembershipAssignments` (tanpa filter server-side, pola GET /invitations) + `getMembershipInProject` (boundary → null → 404); authz via dep baru `assertPermissionKey` yang memakai engine TASK-4.1 scope Project — bukan Owner-only interim.
+
+<a id="cl-15"></a>
+### CL-15 — 2026-08-23 · goal 4.6.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 4.6.1 `⬜️/—/0`, dependency `4.4` = 4.4.1 `🔎80`. Router admin terverifikasi: `ProjectAdminRoutesDeps` memakai closure globalClient (bukan OpenProjectContext), sehingga authz `member.read` diimplementasikan sebagai dep baru dengan engine yang SAMA (resolveEffectivePermissions scope Project).
+**Catatan:** Loader data mengembalikan AKTIF+REVOKED tanpa filter (pola GET /invitations) dan memverifikasi membership.project_id === projectId → RESOURCE_NOT_FOUND bila bukan (boundary).
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-23 · goal 4.5.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — filter visibility GET Card
