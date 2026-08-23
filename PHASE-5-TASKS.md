@@ -60,7 +60,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.1.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | `packages/domain/src/lifecycle/retention.ts` — `isPruneEligible(deletedAt: string \| null, now: Date): boolean` (BR-016A: `deletedAt !== null && (now.getTime() - Date.parse(deletedAt)) >= RETENTION_MS`, konstanta `RETENTION_DAYS = 30` di-export eksplisit sebagai named constant — BUKAN angka ajaib inline, agar 1 titik perubahan jika retention berubah). Fungsi 100% murni (terima `now` sebagai parameter, JANGAN panggil `Date.now()`/`new Date()` internal — testable deterministik, pola sama `effective-state.ts`). | [02-SPEC](docs/02-SPEC.md) BR-016A; [03-ENG C.6](docs/03-ENGINEERING.md) | — |
+| 5.1.1 | 🔎 | [CL-02](#cl-02)<br>[CL-01](#cl-01) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | `packages/domain/src/lifecycle/retention.ts` — `isPruneEligible(deletedAt: string \| null, now: Date): boolean` (BR-016A: `deletedAt !== null && (now.getTime() - Date.parse(deletedAt)) >= RETENTION_MS`, konstanta `RETENTION_DAYS = 30` di-export eksplisit sebagai named constant — BUKAN angka ajaib inline, agar 1 titik perubahan jika retention berubah). Fungsi 100% murni (terima `now` sebagai parameter, JANGAN panggil `Date.now()`/`new Date()` internal — testable deterministik, pola sama `effective-state.ts`). | [02-SPEC](docs/02-SPEC.md) BR-016A; [03-ENG C.6](docs/03-ENGINEERING.md) | — |
 
 **Test:** `deletedAt = null` → selalu `false` (entity ACTIVE/ARCHIVED tidak pernah eligible). `deletedAt` tepat 30 hari − 1 detik dari `now` → `false` (belum genap, BR-016A "MUST NOT sebelumnya"). `deletedAt` tepat 30 hari dari `now` → `true` (boundary inclusive, "eligible saat `deleted_at <= now - 30 days`"). `deletedAt` 100 hari lalu → `true` (job yang terlambat jalan tetap eligible, Prinsip #7).
 **DoD:** Tidak ada I/O, tidak ada default `now = new Date()` di signature (parameter wajib, cegah non-determinisme tersembunyi).
@@ -125,6 +125,19 @@ Generate `PHASE-5-TASKS.md` (4 task, 6 goal) mengikuti [04-DELIVERY C.6](docs/04
 
 Belum ada implementasi yang dimulai — seluruh goal `⬜️`. Menunggu review manusia atas breakdown ini sebelum AI-Dev mulai bekerja (04-DELIVERY C.6.6).
 
+<a id="cl-02"></a>
+### CL-02 — 2026-08-23 · goal 5.1.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — retention eligibility utility
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **84 file / 509 test lulus**, termasuk 7 baru `packages/domain/test/retention.test.ts`: null → false; tepat 30 hari − 1 detik → false; tepat 30 hari → true (boundary inclusive BR-016A); 31 & 100 hari → true (Prinsip #7 job terlambat); baru 1 hari → false; deletedAt invalid → false defensif; deterministik + `RETENTION_DAYS = 30` konstanta publik. `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan:** Fungsi murni tanpa I/O; `now` parameter wajib tanpa default (DoD). Satu iterasi perbaikan test saat Gate B: arah offset helper `daysAgo` awalnya terbalik (kasus −1 detik) — ditemukan sendiri lewat verifikasi mandiri sebelum handoff.
+
+<a id="cl-01"></a>
+### CL-01 — 2026-08-23 · goal 5.1.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row 5.1.1 `⬜️/—/0`, dependency `—`; seluruh file task dibaca penuh termasuk Prinsip #1–#8 dan panduan Review-CL-03; state repo bersih, Phase 0–4 ✅ tertutup QA. Pola kemurnian fungsi mengikuti `effective-state.ts` (Phase 2).
+**Catatan:** Boundary BR-016A inclusive (`deleted_at <= now - 30 hari` → eligible); konstanta `RETENTION_DAYS` diekspor eksplisit; `now` parameter wajib tanpa default.
+
+<a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-23 · audit arsitektur dan kesiapan implementasi Phase 5
 
 **Role:** AI-Planning & Review · **Model:** Gemini 3.1 Pro (Low)

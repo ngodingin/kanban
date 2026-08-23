@@ -27,6 +27,7 @@ export {
   evaluateRestore,
 } from "./lifecycle/effective-state.ts";
 export { AncestorNotActiveError, InvalidDestinationError } from "./lifecycle/lifecycle-errors.ts";
+export { isPruneEligible, RETENTION_DAYS } from "./lifecycle/retention.ts";
 
 export type {
   MilestoneRepository,
