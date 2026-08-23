@@ -191,6 +191,39 @@ export class DrizzleCardRepository implements CardRepository {
         ],
       );
 
+      // TASK-3.7.2 — auto-orphan Board Label saat move lintas-Board (03-ENG
+      // B.4 rationale, FR-033). Milestone tetap sama pada move valid
+      // (invariant #5/BR-018), jadi card_milestone_labels TIDAK disentuh.
+      // Atomik dengan move (transaksi sama, invariant #9) — kegagalan
+      // orphan membatalkan move juga, bukan partial state.
+      if (sourceChain.boardId !== destination.boardId) {
+        const activeBoardLabels = await tx.execute(
+          `SELECT cbl.label_id AS label_id, bl.name AS label_name
+           FROM card_board_labels cbl
+           JOIN board_labels bl ON bl.id = cbl.label_id
+           WHERE cbl.card_id = ? AND cbl.removed_at IS NULL`,
+          [input.cardId],
+        );
+        for (const row of activeBoardLabels.rows) {
+          const labelId = String(row.label_id);
+          await tx.execute(
+            "UPDATE card_board_labels SET removed_at = ? WHERE card_id = ? AND label_id = ? AND removed_at IS NULL",
+            [now, input.cardId, labelId],
+          );
+          await tx.execute(
+            "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, 'label.removed', ?, ?)",
+            [
+              ulid(),
+              input.cardId,
+              nextVersion,
+              input.actorUserId,
+              JSON.stringify({ label_id: labelId, label_scope: "board", label_name: String(row.label_name) }),
+              now,
+            ],
+          );
+        }
+      }
+
       return {
         ...loaded.current,
         listId: input.destinationListId,
