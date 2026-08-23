@@ -5,6 +5,7 @@ import { ok } from "@kanban/contracts";
 import {
   DrizzleCardRepository,
   listCardLabels,
+  listCardLabelsForCards,
   PipelineError,
   type CardLabelSummary,
   type CardRecord,
@@ -118,6 +119,20 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       });
       return { card: cardPayload(created) };
     }, 201);
+  });
+
+  router.get("/v1/projects/:project_id/lists/:list_id/cards", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      const repository = new DrizzleCardRepository(ctx.database, {
+        assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
+      });
+      const records = await repository.listCards(c.req.param("list_id"));
+      const labelsByCard = await listCardLabelsForCards(ctx.database, records.map((r) => r.id));
+      return { cards: records.map((record) => cardPayload(record, labelsByCard.get(record.id) ?? [])) };
+    });
   });
 
   router.get("/v1/projects/:project_id/cards/:card_id", async (c) => {

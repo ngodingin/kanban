@@ -283,3 +283,46 @@ export async function listCardLabels(client: Client, cardId: string): Promise<Ca
   }));
   return [...milestoneLabels, ...boardLabels];
 }
+
+/**
+ * TASK-2.9.4 — batched version of `listCardLabels` untuk GET list Card
+ * (satu JOIN per scope untuk SELURUH Card sekaligus, bukan N+1 per Card).
+ */
+export async function listCardLabelsForCards(
+  client: Client,
+  cardIds: string[],
+): Promise<Map<string, CardLabelSummary[]>> {
+  const result = new Map<string, CardLabelSummary[]>();
+  if (cardIds.length === 0) return result;
+  const placeholders = cardIds.map(() => "?").join(", ");
+  const [msRows, bdRows] = await Promise.all([
+    client.execute(
+      `SELECT cml.card_id AS card_id, ml.id AS id, ml.name AS name
+       FROM card_milestone_labels cml
+       JOIN milestone_labels ml ON ml.id = cml.label_id
+       WHERE cml.card_id IN (${placeholders}) AND cml.removed_at IS NULL
+       ORDER BY cml.created_at`,
+      cardIds,
+    ),
+    client.execute(
+      `SELECT cbl.card_id AS card_id, bl.id AS id, bl.name AS name
+       FROM card_board_labels cbl
+       JOIN board_labels bl ON bl.id = cbl.label_id
+       WHERE cbl.card_id IN (${placeholders}) AND cbl.removed_at IS NULL
+       ORDER BY cbl.created_at`,
+      cardIds,
+    ),
+  ]);
+  const push = (cardId: string, summary: CardLabelSummary): void => {
+    const list = result.get(cardId) ?? [];
+    list.push(summary);
+    result.set(cardId, list);
+  };
+  for (const row of msRows.rows) {
+    push(String(row.card_id), { id: String(row.id), name: String(row.name), scope: "milestone" });
+  }
+  for (const row of bdRows.rows) {
+    push(String(row.card_id), { id: String(row.id), name: String(row.name), scope: "board" });
+  }
+  return result;
+}

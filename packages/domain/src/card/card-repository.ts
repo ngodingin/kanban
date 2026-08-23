@@ -61,6 +61,8 @@ export interface MoveCardInput {
 
 export interface CardRepository {
   getCard(projectId: string, cardId: string): Promise<CardRecord | undefined>;
+  /** 2.11.0 — seluruh Card List tsb (termasuk ARCHIVED/DELETED), tanpa filter visibility (Phase 4). */
+  listCards(listId: string): Promise<CardRecord[]>;
 
   createCard(projectId: string, input: CreateCardInput): Promise<CardRecord>;
   updateCard(projectId: string, input: UpdateCardInput): Promise<CardRecord>;

@@ -40,6 +40,7 @@ export {
 export {
   assignLabelToCard,
   listCardLabels,
+  listCardLabelsForCards,
   removeLabelFromCard,
   type CardLabelAssociationRecord,
   type CardLabelSummary,

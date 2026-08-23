@@ -64,6 +64,14 @@ export class DrizzleCardRepository implements CardRepository {
     return mapCardRow(result.rows[0]);
   }
 
+  async listCards(listId: string): Promise<CardRecord[]> {
+    const result = await this.client.execute(
+      "SELECT id, list_id, creator_user_id, assignee_user_id, title, subtitle, description, due_date, created_at, updated_at, archived_at, deleted_at, version FROM cards WHERE list_id = ? ORDER BY created_at, id",
+      [listId],
+    );
+    return result.rows.map((row) => mapCardRow(row)!);
+  }
+
   async createCard(projectId: string, input: CreateCardInput): Promise<CardRecord> {
     validateTitle(input.title);
     if (input.assigneeUserId !== null) {

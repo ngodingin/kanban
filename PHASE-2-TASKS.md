@@ -156,7 +156,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 2.9.1 | ✅ | [CL-42](#cl-42)<br>[CL-41](#cl-41)<br>[QA-CL-20](#qa-cl-20) | 100 | P0 | `POST /api/v1/projects/:project_id/lists/:list_id/cards` + `GET .../cards/:card_id` — TANPA filter visibility (Prinsip #5, Phase 4 scope) | [02-SPEC C.8](docs/02-SPEC.md), FR-024 | 2.8 |
 | 2.9.2 | ✅ | [CL-44](#cl-44)<br>[CL-43](#cl-43)<br>[QA-CL-20](#qa-cl-20) | 100 | P1 | `PATCH .../cards/:card_id` — `title`/`subtitle`/`description`/`due_date`/`assignee` saja (C.8 eksplisit), **TIDAK BOLEH** `list_id` | [02-SPEC C.8](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.8, 2.9.1 |
 | 2.9.3 | ✅ | [CL-46](#cl-46)<br>[CL-45](#cl-45)<br>[QA-CL-20](#qa-cl-20) | 100 | P1 | `POST .../cards/:card_id/{archive,restore,delete}` | [02-SPEC C.8](docs/02-SPEC.md), A.3, BR-045A | 2.8, 2.9.1 |
-| 2.9.4 | ⬜️ | — | 0 | P2 | `GET .../lists/:list_id/cards` (list, amandemen 2.11.0) — seluruh Card List tsb (termasuk ARCHIVED/DELETED, field `labels` sama seperti GET tunggal), **TANPA filter visibility** (sama Prinsip #5 — visibility scope ditegakkan Phase 4, bukan di sini), `{data:{cards:[...]}}` | [02-SPEC C.8](docs/02-SPEC.md) (amandemen 2.11.0) | 2.8 |
+| 2.9.4 | 🔎 | [CL-61](#cl-61)<br>[CL-60](#cl-60) | 80 | P2 | `GET .../lists/:list_id/cards` (list, amandemen 2.11.0) — seluruh Card List tsb (termasuk ARCHIVED/DELETED, field `labels` sama seperti GET tunggal), **TANPA filter visibility** (sama Prinsip #5 — visibility scope ditegakkan Phase 4, bukan di sini), `{data:{cards:[...]}}` | [02-SPEC C.8](docs/02-SPEC.md) (amandemen 2.11.0) | 2.8 |
 
 **Test:** Create Card dengan `list_id` Project lain → ditolak; PATCH dengan `list_id` di body → diabaikan/ditolak (BR-017/061, uji eksplisit); assignee bukan member → ditolak dengan kode jelas; lifecycle + version-conflict pattern konsisten; list (2.9.4) hanya mengembalikan Card milik List yang diminta, Project-boundary sama seperti GET tunggal, field `labels` konsisten dengan GET tunggal (TASK-3.9).
 **DoD:** Endpoint sesuai C.8 (minus move); generic PATCH tidak pernah bisa mindahkan Card (BR-017 ditegakkan transport-level, bukan cuma domain).
@@ -215,6 +215,19 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-61"></a>
+### CL-61 — 2026-08-23 · goal 2.9.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list Card per List + field labels batched
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 68 file / **416** test lulus (2 test baru `apps/api/test/cards-list.test.ts`); `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. Implementasi: `listCards(listId)` di domain `CardRepository` + `DrizzleCardRepository`. Field `labels` TIDAK dipanggil per-Card (akan N+1 di level Card) — ditambah `listCardLabelsForCards(client, cardIds[])` baru (`card-label-association.ts`) yang batch: 2 query total (satu JOIN per scope, `WHERE card_id IN (...)`) untuk SELURUH Card sekaligus, dipetakan balik via `Map<cardId, CardLabelSummary[]>`. Endpoint `GET /projects/:project_id/lists/:list_id/cards` — baca-saja, TANPA filter visibility (Prinsip #5 Phase 3, Phase 4 scope).
+**Test:** 2 Card List tsb (termasuk ARCHIVED) muncul, Card List LAIN tidak bocor; Card dengan Label → `labels` terisi benar (`{id,name,scope}`); Card tanpa Label → `labels: []`; non-member 403; tanpa identitas 401.
+**Catatan:** Seluruh 5 goal yang diminta (1.9.1, 2.3.4, 2.5.4, 2.7.4, 2.9.4) selesai sisi Dev di sesi ini — Phase 0-3 sekarang **tidak ada goal `⬜️`/`⚠️` tersisa** (seluruhnya `🔎`/`✅`), siap giliran QA sebelum Phase 4 benar-benar mulai.
+
+<a id="cl-60"></a>
+### CL-60 — 2026-08-23 · goal 2.9.4 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 2.9.4 `⬜️/—/0/P2`, dependency `2.8` → ✅.
+**Rencana:** `listCards(listId)` ke domain `CardRepository` + `DrizzleCardRepository`, pola identik 2.3.4/2.5.4/2.7.4. Field `labels` sama seperti GET tunggal (3.9.1, `listCardLabels`) — per-Card lookup, TANPA filter visibility (Prinsip #5 Phase 3, ditegakkan Phase 4).
 
 <a id="cl-59"></a>
 ### CL-59 — 2026-08-23 · goal 2.7.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list List per Board
