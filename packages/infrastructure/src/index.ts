@@ -121,6 +121,11 @@ export {
   type PersonalAccessTokenSummary,
 } from "./database/personal-access-token.ts";
 export { pruneDescendantSubtrees, type PruneResult } from "./database/prune.ts";
+export {
+  pruneEligibleProjects,
+  type PruneProjectsResult,
+  type PruneProjectsOptions,
+} from "./database/prune-projects.ts";
 export { ApiKeyIdentityResolver } from "./auth/api-key-identity-resolver.ts";
 export { PersonalAccessTokenIdentityResolver } from "./auth/pat-identity-resolver.ts";
 export {
