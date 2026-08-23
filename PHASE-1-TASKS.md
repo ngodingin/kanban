@@ -228,6 +228,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="qa-cl-26"></a>
+### QA-CL-26 — 2026-08-23 · CL-68 (`mapUniqueViolation` string-match fragile → structured `.code`) — verifikasi independen
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Direproduksi ulang independen shape error asli (bukan percaya klaim laporan) — INSERT UNIQUE-violation sungguhan terhadap file DB lokal (`@libsql/client` nyata): `error.code === "SQLITE_CONSTRAINT"` (top-level), `error.cause.code === "SQLITE_CONSTRAINT_UNIQUE"` — keduanya match kondisi baru `code === "SQLITE_CONSTRAINT_UNIQUE" || code === "SQLITE_CONSTRAINT"`, match sudah di level PERTAMA rantai `.cause` (top-level). `group-assignments.test.ts` + `permission-assignments.test.ts` (14 test) dijalankan ulang — hijau, membuktikan deteksi `.code` bekerja terhadap constraint sungguhan, bukan kebetulan cocok string seperti sebelumnya. `pnpm -r typecheck`/`pnpm lint` bersih; `pnpm exec vitest run` → 70 file/437 test PASS; `pnpm exec playwright test` → 1/1 PASS.
+**Kesimpulan:** ✅ ACCEPT — pola identik `isBusy()` (CL-65) diterapkan benar, bukan reopening goal 1.8.1/1.8.2 (✅, Test/DoD asli tetap valid, bukan bug aktif — murni robustness preventif).
+
 <a id="cl-68"></a>
 ### CL-68 — 2026-08-23 · fix Review-CL-19: `mapUniqueViolation` string-match rapuh → cek `.code` terstruktur — bukan reopening goal
 **Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)

@@ -229,6 +229,12 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
 
+<a id="qa-cl-51"></a>
+### QA-CL-51 — 2026-08-23 · CL-62 (`databaseExists` string-match fragile → structured `.status`) — verifikasi independen
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Baca diff — `TursoApiError` membawa `status: number` terstruktur, dilempar `api()` dengan `res.status` asli (bukan di-embed ke string). `databaseExists()` sekarang cek `error instanceof TursoApiError && error.status === 404`, bukan `String(error).includes("404")`. Test regresi baru (`turso-database-exists.test.ts`, 4 test, dijalankan ulang — hijau) membuktikan skenario false-negative persis yang dilaporkan: nama DB `proj-404-abc` (mengandung literal "404") dengan response SUNGGUHAN 500 → tetap `throw`, TIDAK dibungkam jadi `false` — dikonfirmasi logika lama akan salah di skenario ini karena nama DB ikut masuk ke path/pesan text yang di-string-match. `pnpm -r typecheck`/`pnpm lint` bersih; `pnpm exec vitest run` → 70 file/437 test PASS; `pnpm exec playwright test` → 1/1 PASS.
+**Kesimpulan:** ✅ ACCEPT — pola identik `isBusy()` (CL-65) diterapkan benar, bukan reopening goal manapun (tidak ada goal Phase 0 yang men-assert perilaku spesifik fungsi ini).
+
 <a id="cl-62"></a>
 ### CL-62 — 2026-08-23 · fix Review-CL-11 temuan (1): `databaseExists()` string-match rapuh → `.status` terstruktur — bukan reopening goal
 **Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
