@@ -155,6 +155,14 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="qa-cl-11"></a>
+### QA-CL-11 — 2026-08-23 · CL-30 (memoize permission fetch per-request + clean NUL bytes) — verifikasi independen
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti — P2 (redundant fetch), causality dikonfirmasi bukan cuma korelasi:** dijalankan test baru `permission-memoization.test.ts` (real production wiring, `buildMilestoneRoutesDeps`, instrumentasi `client.execute` menghitung query `membership_group_assignments` sungguhan) → **1 call**. Fix di-revert sementara (`preloadedInputs ?? await loadEffectivePermissionInputs(...)` → paksa selalu fetch ulang) → test GAGAL persis seperti diklaim (**2 call**, bukan 1). Dikembalikan → PASS lagi. Baca diff: desain additive murni (`preloadedInputs` parameter opsional di `createEntityPermissionResolver`, `inputs` field baru di `PermissionResolution`/`ProjectRequestContext`) — dikonfirmasi HANYA 2 call site `createEntityPermissionResolver` di seluruh `project-deps.ts`, keduanya sudah dapat `preloadedInputs: resolved.permissionInputs`, mencakup seluruh 23 call site `authorize()` di 7 file route (satu titik wiring bersama, `buildProjectContextDeps`). Satu test file (`api-key.test.ts`) butuh update KARENA membangun `PermissionResolver` custom lewat interface low-level langsung (bukan via builder), bukan karena breaking change — field `inputs` baru wajib di tipe, murni pemenuhan type, bukan perubahan perilaku (dikonfirmasi baca diff-nya, cuma menambah field dummy).
+**Bukti — P3 (NUL byte), dikonfirmasi byte-level:** `python3` baca file `permission-resolution.ts` biner → **0 byte NUL** (sebelumnya 2, sesuai QA-CL-03). `git diff -a HEAD~1 HEAD -- <file>` menampilkan diff teks normal terhadap versi SEBELUM fix (yang masih ber-NUL, jadi diff itu sendiri tetap ditandai "binary" oleh `git diff` biasa — ekspektasi wajar karena salah satu sisi diff historis itu memang biner; commit berikutnya yang membandingkan dua state NUL-free akan render normal).
+**Verifikasi umum:** `pnpm -r typecheck` 6/6 bersih; `pnpm lint` 0 error; `pnpm exec vitest run` → **81 file/495 test PASS**; `pnpm exec playwright test` → 1/1 PASS.
+**Kesimpulan:** ✅ ACCEPT — kedua fix P2/P3 genuinely benar, diverifikasi causal (revert-dan-uji) bukan cuma baca laporan.
+
 <a id="cl-30"></a>
 ### CL-30 — 2026-08-23 · cross-cutting: fix P2 (Review-CL-05) redundant fetch + P3 (QA-CL-03/Review-CL-05) NUL byte
 **Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
