@@ -123,8 +123,11 @@ export {
 export { pruneDescendantSubtrees, type PruneResult } from "./database/prune.ts";
 export {
   pruneEligibleProjects,
+  pruneAllRegisteredProjects,
+  listRegisteredProjectDatabases,
   type PruneProjectsResult,
   type PruneProjectsOptions,
+  type CombinedPruneSummary,
 } from "./database/prune-projects.ts";
 export { ApiKeyIdentityResolver } from "./auth/api-key-identity-resolver.ts";
 export { PersonalAccessTokenIdentityResolver } from "./auth/pat-identity-resolver.ts";

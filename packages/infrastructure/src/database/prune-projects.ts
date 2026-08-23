@@ -4,6 +4,7 @@ import { isPruneEligible } from "@kanban/domain";
 import type { TursoEnv } from "../provisioning/turso.ts";
 import { deleteDatabase, projectDatabaseName, TursoApiError } from "../provisioning/turso.ts";
 import { runInWriteTransaction } from "./transaction.ts";
+import { pruneDescendantSubtrees, type PruneResult } from "./prune.ts";
 
 export interface PruneProjectsResult {
   prunedProjects: number;
@@ -109,4 +110,64 @@ export async function pruneEligibleProjects(
   }
 
   return { prunedProjects };
+}
+
+export interface CombinedPruneSummary {
+  prunedEntities: PruneResult;
+  prunedProjects: number;
+}
+
+/** Daftar seluruh Project DB terdaftar (sistem-lebar, tanpa filter membership). */
+export async function listRegisteredProjectDatabases(
+  globalClient: Client,
+): Promise<Array<{ projectId: string; databaseId: string }>> {
+  const result = await globalClient.execute(
+    "SELECT d.project_id AS projectId, d.database_id AS databaseId FROM project_databases d JOIN projects p ON p.id = d.project_id ORDER BY p.created_at, d.project_id",
+  );
+  return result.rows.map((row) => ({
+    projectId: String(row.projectId),
+    databaseId: String(row.databaseId),
+  }));
+}
+
+/**
+ * Orkestrasi prune lengkap untuk trigger internal (TASK-5.4): descendant-level
+ * DULU untuk setiap Project DB yang MASIH terdaftar, baru Project-level
+ * (deprovision). Kegagalan satu Project DB tidak menggagalkan yang lain.
+ */
+export async function pruneAllRegisteredProjects(
+  globalClient: Client,
+  turso: TursoEnv,
+  opts: PruneProjectsOptions = {},
+): Promise<CombinedPruneSummary> {
+  const now = opts.now ?? new Date();
+  const openProjectDb =
+    opts.openProjectDb ??
+    ((databaseId: string) => Promise.resolve(createClient({ url: databaseId })));
+
+  const entities: PruneResult = { milestones: 0, boards: 0, lists: 0, cards: 0, labels: 0 };
+  for (const registered of await listRegisteredProjectDatabases(globalClient)) {
+    try {
+      const client = await openProjectDb(registered.databaseId);
+      try {
+        const partial = await pruneDescendantSubtrees(client, now);
+        entities.milestones += partial.milestones;
+        entities.boards += partial.boards;
+        entities.lists += partial.lists;
+        entities.cards += partial.cards;
+        entities.labels += partial.labels;
+      } finally {
+        try {
+          await client.close();
+        } catch {
+          // ignore
+        }
+      }
+    } catch {
+      // Project DB gagal dibuka → lanjut Project berikutnya.
+    }
+  }
+
+  const projects = await pruneEligibleProjects(globalClient, turso, { ...opts, now });
+  return { prunedEntities: entities, prunedProjects: projects.prunedProjects };
 }
