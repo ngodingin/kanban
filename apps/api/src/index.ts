@@ -9,9 +9,10 @@ import {
   readTursoEnvFromProcess,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
-import { buildActivityRoutesDeps, buildBoardLabelRoutesDeps, buildBoardRoutesDeps, buildCardRoutesDeps, buildCommentRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
+import { buildActivityRoutesDeps, buildBoardLabelRoutesDeps, buildBoardRoutesDeps, buildCardLabelRoutesDeps, buildCardRoutesDeps, buildCommentRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
 import { createActivitiesRouter, type ActivityRoutesDeps } from "./routes/activities.ts";
 import { createBoardsRouter, type BoardRoutesDeps } from "./routes/boards.ts";
+import { createCardLabelsRouter, type CardLabelRoutesDeps } from "./routes/card-labels.ts";
 import { createCardsRouter, type CardRoutesDeps } from "./routes/cards.ts";
 import { createCommentsRouter, type CommentRoutesDeps } from "./routes/comments.ts";
 import { createListsRouter, type ListRoutesDeps } from "./routes/lists.ts";
@@ -188,6 +189,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return deps;
   };
 
+  let cardLabelDeps: CardLabelRoutesDeps | null = null;
+  const getCardLabelDeps = (): CardLabelRoutesDeps => {
+    let deps = cardLabelDeps;
+    if (!deps) {
+      const r = ensure();
+      deps = buildCardLabelRoutesDeps({
+        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        globalClient: r.globalClient,
+        turso: readTursoEnvFromProcess(),
+      });
+      cardLabelDeps = deps;
+    }
+    return deps;
+  };
+
   let commentDeps: CommentRoutesDeps | null = null;
   const getCommentDeps = (): CommentRoutesDeps => {
     let deps = commentDeps;
@@ -235,6 +251,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createCardsRouter(getCardDeps));
   app.route("/", createMilestoneLabelsRouter(getMilestoneLabelDeps));
   app.route("/", createBoardLabelsRouter(getBoardLabelDeps));
+  app.route("/", createCardLabelsRouter(getCardLabelDeps));
   app.route("/", createActivitiesRouter(getActivityDeps));
   app.route("/", createCommentsRouter(getCommentDeps));
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));

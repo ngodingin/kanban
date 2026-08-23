@@ -145,7 +145,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 3.8.1 | ⬜️ | — | 0 | P1 | `POST /api/v1/projects/:project_id/cards/:card_id/labels` (assign, body `{label_id}`) + `POST .../labels/:label_id/remove` — otorisasi menumpang `card.update` (Owner-only interim, Prinsip #4, BUKAN permission Label tersendiri). | [02-SPEC C.11](docs/02-SPEC.md) | 3.7 |
+| 3.8.1 | 🔎 | [CL-28](#cl-28)<br>[CL-27](#cl-27) | 80 | P1 | `POST /api/v1/projects/:project_id/cards/:card_id/labels` (assign, body `{label_id}`) + `POST .../labels/:label_id/remove` — otorisasi menumpang `card.update` (Owner-only interim, Prinsip #4, BUKAN permission Label tersendiri). | [02-SPEC C.11](docs/02-SPEC.md) | 3.7 |
 
 **Test:** Integration — assign/remove oleh non-Owner → `PERMISSION_DENIED` (sama `card.update`); assign label lintas-Project (Project lain) ditolak sebagai `RESOURCE_NOT_FOUND` (bukan bocor cross-project); assign/remove pada Card ARCHIVED/DELETED ditolak.
 **DoD:** 2 endpoint sesuai kontrak C.11; response envelope C.2.
@@ -199,6 +199,19 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-28"></a>
+### CL-28 — 2026-08-23 · goal 3.8.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint assign/remove Label ke Card
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 63 file / **405** test lulus (6 test baru `apps/api/test/card-labels.test.ts`); `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. Router baru `apps/api/src/routes/card-labels.ts`: `POST /cards/:card_id/labels` (body `{label_id}`, 201) + `POST .../labels/:label_id/remove` (200) — keduanya `assertOwnerInterim` (menumpang `card.update`, Prinsip #4, BUKAN permission Label tersendiri). Delegasi penuh ke `assignLabelToCard`/`removeLabelFromCard` (3.7.1) — route tidak menduplikasi validasi domain. Wiring `buildCardLabelRoutesDeps` + mount `index.ts`.
+**Test:** assign sukses → 201 + envelope `data.association`; assign pada Card tidak ada di Project → `RESOURCE_NOT_FOUND` (bukan bocor lintas-Project); non-Owner 403, tanpa identitas 401, payload invalid 400; remove sukses → 200 + `removed_at` terisi (assert row langsung); remove pada Card ARCHIVED → `INVALID_STATE` (delegasi domain layer 3.7.1 bekerja lewat HTTP); non-Owner remove 403.
+**Catatan:** TASK-3.8 selesai. Sisa Phase 3 (dari scope yang diminta): TASK-3.9 (Card GET embed `labels`).
+
+<a id="cl-27"></a>
+### CL-27 — 2026-08-23 · goal 3.8.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 3.8.1 `⬜️/—/0/P1`, dependency `3.7` → 3.7.1/3.7.2 `🔎/80%` (CL-24/CL-26). `assignLabelToCard`/`removeLabelFromCard` (`card-label-association.ts`) siap dipakai langsung.
+**Rencana:** Router baru `apps/api/src/routes/card-labels.ts` — `POST /cards/:card_id/labels` (body `{label_id}`) + `POST .../labels/:label_id/remove`, otorisasi `assertOwnerInterim` (menumpang `card.update`, Prinsip #4 — BUKAN permission Label tersendiri).
 
 <a id="cl-26"></a>
 ### CL-26 — 2026-08-23 · goal 3.7.2 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — auto-orphan Board Label saat moveCard lintas-Board [MODEL LEBIH KUAT WAJIB]

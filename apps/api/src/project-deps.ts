@@ -28,6 +28,7 @@ import type { Client } from "@libsql/client";
 import type { ActivityRoutesDeps } from "./routes/activities.ts";
 import type { BoardRoutesDeps } from "./routes/boards.ts";
 import type { CardRoutesDeps } from "./routes/cards.ts";
+import type { CardLabelRoutesDeps } from "./routes/card-labels.ts";
 import type { CommentRoutesDeps } from "./routes/comments.ts";
 import type { ListRoutesDeps } from "./routes/lists.ts";
 import type { BoardLabelRoutesDeps, MilestoneLabelRoutesDeps } from "./routes/labels.ts";
@@ -163,6 +164,17 @@ export interface BuildCommentRoutesDepsInput {
 }
 
 export function buildCommentRoutesDeps(input: BuildCommentRoutesDepsInput): CommentRoutesDeps {
+  const { identityResolver, globalClient, turso } = input;
+  return buildProjectContextDeps(identityResolver, globalClient, turso);
+}
+
+export interface BuildCardLabelRoutesDepsInput {
+  identityResolver: IdentityResolver;
+  globalClient: Client;
+  turso: TursoEnv | null;
+}
+
+export function buildCardLabelRoutesDeps(input: BuildCardLabelRoutesDepsInput): CardLabelRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   return buildProjectContextDeps(identityResolver, globalClient, turso);
 }
