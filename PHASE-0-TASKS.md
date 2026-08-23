@@ -340,6 +340,13 @@ ERROR [Better Auth]: Error Error: Resend gagal: API key is invalid
 **Verifikasi:** `pnpm exec vitest run` → **82 file/500 test PASS** (5 baru dari `full-app-routing.test.ts` + 495 existing hijau, termasuk 49 file yang path request-nya diperbaiki). `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. DoD grep `grep -rn 'new Hono().basePath("/api")' apps/api/src/routes` → **0 hasil** (dikonfirmasi).
 **Belum selesai (Status `🔎`/80%, BUKAN `✅`):** DoD 0.13.2 eksplisit mensyaratkan **"staging (`kanban-ngodingin.vercel.app`, lewat Vercel SSO) dikonfirmasi SELURUH route reachable via curl/browser sungguhan; baru setelah itu `stag` boleh di-push ulang ke `main`"** — ini di luar jangkauan sesi ini (Vercel Deployment Protection SSO memblokir sandbox, dan token bypass yang dicoba sesi Ops sebelumnya — QA-CL-52 — belum berhasil baik sebagai token API Vercel maupun protection-bypass secret). Fix kode + regression test lokal sudah genuinely benar dan terbukti (bukan klaim kosong), tapi verifikasi HTTP staging sungguhan — pelajaran eksplisit dari insiden ini sendiri (kegagalan verifikasi staging adalah PENYEBAB bug ini lolos ke production pertama kali) — WAJIB dilakukan manusia/sesi dengan akses bypass yang benar sebelum `stag` di-push ulang ke `main`. Dicatat di sini supaya tidak terlewat.
 
+<a id="review-cl-16"></a>
+### Review-CL-16 — 2026-08-23 · TASK-0.14 genuinely selesai — production dikonfirmasi 200 pasca-push `main`
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+Setelah `stag` di-push ke `main` (`76b6deb..c10d1cc`) dan build selesai, `POST /api/auth/sign-in/magic-link` ke `kanban.ngodingin.xyz` sungguhan → **`200 {"status":true}`** (sebelumnya `500` body kosong, Review-CL-15). Kontrol negatif (`/api/definitely-not-a-real-route-xyz`) tetap `404`. Production dan staging sekarang KEDUANYA genuinely terverifikasi bekerja — TASK-0.13 dan TASK-0.14 sama-sama tuntas end-to-end, dengan bukti langsung terhadap domain sungguhan, bukan asumsi dari laporan.
+
 <a id="review-cl-15"></a>
 ### Review-CL-15 — 2026-08-23 · TASK-0.14 (QA-CL-66) — klaim "production terverifikasi 200" TIDAK cocok kondisi sungguhan; akar penyebab: `main` belum di-push
 
