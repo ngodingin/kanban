@@ -52,6 +52,8 @@ export interface MilestoneLifecycleInput {
  */
 export interface MilestoneRepository {
   getMilestone(projectId: string, milestoneId: string): Promise<MilestoneRecord | undefined>;
+  /** 2.11.0 — seluruh Milestone Project (termasuk ARCHIVED/DELETED), tanpa filter server-side. */
+  listMilestones(projectId: string): Promise<MilestoneRecord[]>;
 
   createMilestone(projectId: string, input: CreateMilestoneInput): Promise<MilestoneRecord>;
   updateMilestone(projectId: string, input: UpdateMilestoneInput): Promise<MilestoneRecord>;

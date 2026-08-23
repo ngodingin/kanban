@@ -80,7 +80,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 2.3.1 | ✅ | [CL-06](#cl-06)<br>[CL-05](#cl-05)<br>[QA-CL-03](#qa-cl-03) | 100 | P0 | `POST /api/v1/projects/:project_id/milestones` + `GET .../milestones/:milestone_id` — pakai `RequestPipeline` (identity+membership+resolve DB), Owner-only interim utk create (Prinsip #2), balikan `{data:{milestone:{...}}}` konsisten C.2 | [02-SPEC C.5](docs/02-SPEC.md), FR-014 | 2.2 |
 | 2.3.2 | ✅ | [CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[QA-CL-04](#qa-cl-04) | 100 | P1 | `PATCH /api/v1/projects/:project_id/milestones/:milestone_id` — field `title`/`description`/`progress`/`start_date`/`due_date` saja (C.15 generic PATCH tidak boleh ubah `id`/`version`/dst), `expected_version` wajib, Owner-only interim, payload invalid → `VALIDATION_ERROR` (bukan `INVALID_STATE`, konsisten SOT 2.3.0) | [02-SPEC C.5](docs/02-SPEC.md), [C.15](docs/02-SPEC.md), [C.2](docs/02-SPEC.md) | 2.2, 2.3.1 |
 | 2.3.3 | ✅ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[QA-CL-05](#qa-cl-05) | 100 | P1 | `POST .../milestones/:milestone_id/{archive,restore,delete}` — 3 domain command endpoint, `expected_version` wajib, Owner-only interim, pola `handleLifecycle` sama seperti Project (TASK-1.4) | [02-SPEC C.5](docs/02-SPEC.md), A.3 | 2.2, 2.3.1 |
-| 2.3.4 | ⬜️ | — | 0 | P2 | `GET /api/v1/projects/:project_id/milestones` (list, amandemen 2.11.0) — seluruh Milestone Project (termasuk ARCHIVED/DELETED, tanpa filter server-side), tanpa Owner-only restriction (pola sama GET tunggal), `{data:{milestones:[...]}}` | [02-SPEC C.5](docs/02-SPEC.md) (amandemen 2.11.0) | 2.2 |
+| 2.3.4 | 🔎 | [CL-55](#cl-55)<br>[CL-54](#cl-54) | 80 | P2 | `GET /api/v1/projects/:project_id/milestones` (list, amandemen 2.11.0) — seluruh Milestone Project (termasuk ARCHIVED/DELETED, tanpa filter server-side), tanpa Owner-only restriction (pola sama GET tunggal), `{data:{milestones:[...]}}` | [02-SPEC C.5](docs/02-SPEC.md) (amandemen 2.11.0) | 2.2 |
 
 **Test:** Integration — create tanpa identitas ditolak; create pada Project non-ACTIVE ditolak; read tanpa membership → `PROJECT_ACCESS_DENIED`; update/lifecycle oleh non-Owner → `PERMISSION_DENIED`; version mismatch → `VERSION_CONFLICT`; payload invalid (mis. `progress` bukan angka 0–100) → `VALIDATION_ERROR`; Project-boundary — Milestone Project lain tidak pernah bocor/tersentuh; list (2.3.4) tanpa membership ditolak, Project-boundary sama seperti GET tunggal.
 **DoD:** Endpoint sesuai kontrak C.5; response envelope C.2; field domain-controlled tidak bisa diubah via PATCH; seluruh test di atas hijau.
@@ -215,6 +215,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-55"></a>
+### CL-55 — 2026-08-23 · goal 2.3.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list Milestone
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 65 file / **410** test lulus (3 test baru `apps/api/test/milestones-list.test.ts`); `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. Implementasi: `listMilestones(projectId)` ditambah ke interface domain `MilestoneRepository` + `DrizzleMilestoneRepository` (query tanpa filter status, `ORDER BY created_at, id`); endpoint `GET /projects/:project_id/milestones` (tanpa `assertOwnerInterim` — baca-saja, membership cukup, pola sama GET tunggal).
+**Test:** seluruh 3 Milestone (ACTIVE/ARCHIVED/DELETED) muncul tanpa filter; member non-Owner tetap 200; non-member → `PROJECT_ACCESS_DENIED`; tanpa identitas → 401.
+
+<a id="cl-54"></a>
+### CL-54 — 2026-08-23 · goal 2.3.4 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 2.3.4 `⬜️/—/0/P2`, dependency `2.2` → ✅. `MilestoneRepository` (domain) dibaca — belum ada `listMilestones`, hanya `getMilestone` tunggal.
+**Rencana:** Tambah `listMilestones(projectId): Promise<MilestoneRecord[]>` ke interface domain + `DrizzleMilestoneRepository`; endpoint `GET /projects/:project_id/milestones` di `milestones.ts` (membership-only, bukan Owner-only, pola sama GET tunggal); seluruh Milestone termasuk ARCHIVED/DELETED, tanpa filter server-side.
 
 <a id="review-cl-06"></a>
 ### Review-CL-06 — 2026-08-23 · 4 goal baru dibuka (2.3.4/2.5.4/2.7.4/2.9.4) — gap GET list-children ditemukan saat audit pra-Phase-4

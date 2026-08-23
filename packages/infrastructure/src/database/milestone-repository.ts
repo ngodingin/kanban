@@ -51,6 +51,14 @@ export class DrizzleMilestoneRepository implements MilestoneRepository {
     return mapMilestoneRow(result.rows[0]);
   }
 
+  async listMilestones(projectId: string): Promise<MilestoneRecord[]> {
+    void projectId;
+    const result = await this.client.execute(
+      "SELECT id, title, description, progress, start_date, due_date, created_at, updated_at, archived_at, deleted_at, version FROM milestones ORDER BY created_at, id",
+    );
+    return result.rows.map((row) => mapMilestoneRow(row)!);
+  }
+
   async createMilestone(projectId: string, input: CreateMilestoneInput): Promise<MilestoneRecord> {
     validateTitle(input.title);
     validateProgress(input.progress);

@@ -110,6 +110,17 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
     }, 201);
   });
 
+  router.get("/v1/projects/:project_id/milestones", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      const repository = new DrizzleMilestoneRepository(ctx.database);
+      const records = await repository.listMilestones(projectId);
+      return { milestones: records.map(milestonePayload) };
+    });
+  });
+
   router.get("/v1/projects/:project_id/milestones/:milestone_id", async (c) => {
     return withErrorHandling(c, async () => {
       const deps = getDeps();
