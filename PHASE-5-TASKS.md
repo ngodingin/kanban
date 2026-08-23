@@ -1,0 +1,120 @@
+# Phase 5 — Lifecycle · Task & Goal Breakdown
+
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.11.0.
+> Scope batas: [04-DELIVERY C.1 "Phase 5"](docs/04-DELIVERY.md). Acuan utama: [02-SPEC](docs/02-SPEC.md) A.3, A.4, A.14; B.11; C.4–C.8; [03-ENGINEERING](docs/03-ENGINEERING.md) C.6 (Data Retention & Deletion), F.2 (Provisioning).
+> **Konteks repo saat digenerate:** Phase 0–4 selesai (semua ✅). **State machine lifecycle penuh (archive/restore/delete) dan ancestor-chain validation (INV-LIFE-001/002) SUDAH DIBANGUN sejak Phase 2/3** — `packages/domain/src/lifecycle/effective-state.ts` (`resolveLifecycleState`/`isEffectivelyOperational`/`evaluateRestore`) dipakai konsisten oleh Milestone/Board/List/Card/MilestoneLabel/BoardLabel repository. **Phase 5 TIDAK membangun ulang mekanisme ini** — sesuai catatan Prinsip Phase 2 #1 ("Phase 5 nanti MENGERASKAN mekanisme ini — retention 30 hari, internal prune — bukan membangunnya dari nol"). Satu-satunya kapabilitas yang GENUINELY belum ada: **retention 30 hari + internal prune** (BR-016, BR-016A, FR-047, 03-ENG C.6) — permanent physical removal subtree entity DELETED setelah 30 hari, bukan endpoint user-triggered.
+
+> **[CROSS-CUTTING, didelegasikan sebelum/bersamaan Phase 5]** 3 temuan P2 menumpuk dari audit sebelumnya, BUKAN blocker teknis (semua non-regresi, test tetap hijau) tapi WAJIB diselesaikan sebelum menambah lebih banyak kode di atasnya:
+> 1. **Review-CL-11** ([PHASE-0-TASKS.md](PHASE-0-TASKS.md)) — `turso.ts:databaseExists()` fragile string-match `"404"` → ganti `TursoApiError{status}` + cek numerik. **Relevan langsung untuk Phase 5**: TASK-5.3 (prune Project-level) MEMANGGIL `databaseExists`/`deleteDatabase` dari file yang sama — perbaiki DULU sebelum dipakai jalur baru yang lebih sering (prune berjalan reguler, bukan cuma saat create Project).
+> 2. **Review-CL-11** ([PHASE-0-TASKS.md](PHASE-0-TASKS.md)) — `INVALID_STATE` dipakai sebagai fallback 500 generik (`http-mapping.ts`/`routes/projects.ts`) — opsional, tambah kode kanonik `INTERNAL_ERROR` ke C.2 jika mau diperbaiki (butuh amandemen SOT kecil dulu, TIDAK blocking Phase 5).
+> 3. **Review-CL-19** ([PHASE-1-TASKS.md](PHASE-1-TASKS.md)) — `mapUniqueViolation` (`project-admin.ts`) fragile string-match `"UNIQUE constraint failed"` → ganti cek `.code`/`.cause.code === "SQLITE_CONSTRAINT_UNIQUE"`, pola sama `isBusy()` (CL-65).
+> 4. **Review-CL-05** ([PHASE-4-TASKS.md](PHASE-4-TASKS.md)) — `loadEffectivePermissionInputs` double-fetch per request (23 call site) — murni Phase 4, tidak menyentuh Phase 5, tapi didelegasikan bersamaan karena sama-sama P2 menumpuk.
+>
+> Keempatnya BUKAN goal baru (tidak reopen goal manapun, Test/DoD asli tetap valid) — dikerjakan AI-Dev sebagai commit cross-cutting sebelum/bersamaan goal Phase 5 pertama, didokumentasikan via CL biasa merujuk Review-CL terkait. **Goal 5.3.x (prune Project-level) secara eksplisit depend pada perbaikan #1 selesai lebih dulu** (lihat Dependency TASK-5.3).
+>
+> **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
+
+## Prinsip Phase 5
+
+1. **[MODEL LEBIH KUAT WAJIB UNTUK SELURUH FASE INI]** — AGENTS.md §11.2 menyebut eksplisit **"Lifecycle/effective ancestor state (Phase 5)"** sebagai kategori penuh invariant-critical, sama seperti Phase 4. **Setiap goal WAJIB model lebih kuat, tanpa pengecualian.** Insiden Phase 4 (Review-CL-03/04/05, [PHASE-4-TASKS.md](PHASE-4-TASKS.md)) — 11 goal dikerjakan model salah, redo penuh, satu deviasi (verifikasi-tanpa-rebuild) baru diterima setelah eskalasi eksplisit ke manusia — MASIH BERLAKU sebagai preseden: pelanggaran tier model TIDAK diterima diam-diam, dan "verifikasi ekstra" bukan pengganti otomatis untuk kualitas konstruksi awal.
+2. **Prune adalah SATU-SATUNYA kapabilitas benar-benar baru di fase ini.** Jangan mengulang/membangun ulang ancestor-chain check atau state machine archive/restore/delete — itu SUDAH ada dan sudah diaudit berkali-kali (Review-CL-02 Phase 2, Review-CL-02 Phase 3). Goal Phase 5 murni tentang: (a) menentukan eligibility retention, (b) menghapus fisik subtree tanpa orphan, (c) mekanisme trigger internal (bukan endpoint user).
+3. **Physical cascade DIIZINKAN hanya di sini (BR-059/060).** Seluruh kode lain di codebase ini (Phase 1–4) SENGAJA tidak pernah pakai `ON DELETE CASCADE`/DELETE fisik langsung — soft-delete (`deleted_at`) adalah satu-satunya mutasi user-facing. Prune (Phase 5) adalah SATU-SATUNYA tempat physical DELETE diizinkan, dan HANYA untuk entity yang sudah `deleted_at <= now - 30 hari` (BR-016A) — jangan pernah physical-delete entity yang masih ACTIVE/ARCHIVED atau yang `deleted_at`-nya belum 30 hari.
+4. **Prune granularitas per-entity, bukan cuma per-Project (BR-016).** Milestone/Board/List/Card/MilestoneLabel/BoardLabel yang DELETED sendiri (Project induk-nya masih ACTIVE/ARCHIVED) TETAP eligible di-prune independen — tidak perlu menunggu Project ikut di-delete. Sebaliknya, Project yang DELETED >= 30 hari men-trigger prune SELURUH isinya sekaligus (deprovision Turso DB, F.2/F.3) — descendant TIDAK perlu dicek `deleted_at`-nya masing-masing dalam kasus ini (subtree ikut terhapus karena parent Project DB-nya sendiri yang dihapus, bukan karena masing-masing baris dicek).
+5. **No-orphan adalah DoD non-negotiable (BR-016).** Setiap goal prune WAJIB test eksplisit: setelah prune, TIDAK ADA baris anak (Activity, junction Label, Card di bawah List yang di-prune, dst) yang tersisa merujuk entity yang sudah tidak ada. Urutan hapus WAJIB descendant dulu baru ancestor (leaf-to-root) dalam SATU transaksi, agar tidak ada window di mana FK/reference rusak jika prune gagal di tengah jalan.
+6. **Trigger BUKAN endpoint publik (FR-047, C.6 03-ENG).** Keputusan teknis murni (04-DELIVERY C.6.5 poin 3, tidak menyentuh business invariant — SOT sengaja permisif "sistem MAY mengeksekusinya sesuai jadwal internal", BR-016A): endpoint internal `POST /api/internal/prune`, digerbangi header `Authorization: Bearer <CRON_SECRET>` dibandingkan **constant-time** (`crypto.timingSafeEqual` — kasus ini GENUINELY butuh itu, beda dari API Key Phase 4 yang lookup-by-hash-index; di sini bandingkan SECRET MENTAH langsung terhadap env var, persis skenario yang dirancang `timingSafeEqual` untuk dicegah), dipanggil Vercel Cron (`vercel.json` `crons` config, jadwal harian). Dipilih karena idiomatik untuk platform yang sudah dikunci (03-ENG D.1) dan reversibel (ganti mekanisme trigger nanti tidak mengubah logika prune itu sendiri, sudah di balik abstraction terpisah).
+7. **Retention 30 hari dihitung dari `deleted_at`, bukan dari waktu prune berjalan pertama kali menemukannya (BR-016A).** `now - deleted_at >= 30 hari` — jika job prune sempat tidak berjalan beberapa hari (Cron gagal, dsb), entity yang SUDAH lewat 30 hari tetap eligible saat job berikutnya jalan (bukan menunggu 30 hari SEJAK job terakhir).
+8. **Aktivitas ikut retention entity induk (03-ENG C.6), bukan dipertahankan terpisah selamanya.** Saat entity di-prune, seluruh `activities` yang `entity_type`+`entity_id`-nya merujuk entity itu (dan descendant-nya) WAJIB ikut dihapus dalam transaksi yang sama — TIDAK ADA pengecualian "audit selamanya" di MVP (SOT eksplisit: "kecuali requirement legal/audit khusus", tidak ada requirement seperti itu di 01-PRODUCT §2.2).
+
+## Legend Status
+| Simbol | Arti |
+|---|---|
+| ⬜️ | Belum Dikerjakan |
+| 🔄 | Dikerjakan |
+| 🔎 | Menunggu verifikasi |
+| ✅ | Terverifikasi QA |
+| ⚠️ | Gagal-verifikasi |
+| ⏸️ | Blocked |
+
+Kolom **%** = kemajuan yang sudah terbukti, bukan estimasi atau asumsi. Dev hanya boleh mengisi `0–80`; `80` berarti implementasi + Test + DoD sisi Dev selesai dan siap `🔎`. Hanya QA yang boleh mengisi `100`, bersamaan dengan `✅`. Nilai untuk `⚠️`/`⏸️` dipertahankan atau dikoreksi berdasarkan bukti aktual.
+
+Kolom **CL** = indeks tautan Closure Log per goal. Gunakan `[CL-nn](#cl-nn)` untuk catatan Dev, `[QA-CL-nn](#qa-cl-nn)` untuk catatan QA, dan `[Review-CL-nn](#review-cl-nn)` untuk catatan AI-Planning & Review/reviewer. Kolom ini append-only. Gunakan `—` hanya selama belum ada entry.
+
+Kolom **Prior** = prioritas relatif di dalam fase: `P0` blocker/gate/fondasi kritis · `P1` tinggi/core dependency · `P2` normal · `P3` lanjutan/polish. Prioritas **tidak** membatalkan Dependency atau Status.
+
+Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](AGENTS.md); tidak diedit manual.
+
+## Dependency graph (task-level)
+```text
+[cross-cutting, di luar file ini] Fix turso.ts databaseExists() (Review-CL-11) — WAJIB selesai sebelum 5.3
+
+5.1 Retention eligibility utility (domain, pure) ── independen
+ ├─ 5.2 Prune descendant-level (Milestone/Board/List/Card/Label, dalam satu Project DB) ◄── 5.1, effective-state.ts (Phase 2)
+ │    └─ 5.2.2 No-orphan integrity test (property-style, banyak kombinasi subtree)
+ └─ 5.3 Prune Project-level (deprovision Turso DB penuh) ◄── 5.1, turso.ts fix (cross-cutting)
+      └─ 5.4 Trigger internal (endpoint + Vercel Cron) ◄── 5.2, 5.3
+```
+
+---
+
+## TASK-5.1 — Retention eligibility utility (domain, pure)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 5.1.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | `packages/domain/src/lifecycle/retention.ts` — `isPruneEligible(deletedAt: string \| null, now: Date): boolean` (BR-016A: `deletedAt !== null && (now.getTime() - Date.parse(deletedAt)) >= RETENTION_MS`, konstanta `RETENTION_DAYS = 30` di-export eksplisit sebagai named constant — BUKAN angka ajaib inline, agar 1 titik perubahan jika retention berubah). Fungsi 100% murni (terima `now` sebagai parameter, JANGAN panggil `Date.now()`/`new Date()` internal — testable deterministik, pola sama `effective-state.ts`). | [02-SPEC](docs/02-SPEC.md) BR-016A; [03-ENG C.6](docs/03-ENGINEERING.md) | — |
+
+**Test:** `deletedAt = null` → selalu `false` (entity ACTIVE/ARCHIVED tidak pernah eligible). `deletedAt` tepat 30 hari − 1 detik dari `now` → `false` (belum genap, BR-016A "MUST NOT sebelumnya"). `deletedAt` tepat 30 hari dari `now` → `true` (boundary inclusive, "eligible saat `deleted_at <= now - 30 days`"). `deletedAt` 100 hari lalu → `true` (job yang terlambat jalan tetap eligible, Prinsip #7).
+**DoD:** Tidak ada I/O, tidak ada default `now = new Date()` di signature (parameter wajib, cegah non-determinisme tersembunyi).
+
+---
+
+## TASK-5.2 — Prune descendant-level (subtree dalam satu Project DB)  (dep: 5.1)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 5.2.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | `packages/infrastructure/src/database/prune.ts` — `pruneDescendantSubtrees(projectClient): Promise<PruneResult>`, SATU `runInWriteTransaction`: (1) SELECT seluruh id dari `milestones`/`boards`/`lists`/`cards`/`milestone_labels`/`board_labels` WHERE `deleted_at IS NOT NULL` DAN `isPruneEligible` (5.1) true untuk MASING-MASING (independen — Prinsip #4, TIDAK menunggu Project ikut delete); (2) untuk SETIAP entity eligible, hapus fisik SELURUH subtree-nya leaf-to-root DALAM urutan: `card_milestone_labels`/`card_board_labels` (junction, by `label_id` ATAU `card_id` match) → `activities` (by `entity_type`+`entity_id` match, seluruh descendant) → `cards` → `lists` → `boards` → `milestones` → `milestone_labels`/`board_labels`. **Penting:** jika Milestone eligible-prune, SELURUH Board/List/Card di bawahnya ikut terhapus TERLEPAS `deleted_at` masing-masing (subtree Milestone yang di-prune tidak dicek ulang eligibility per descendant — begitu ancestor-nya diputuskan prune, descendant ikut, karena tidak ada cara descendant "selamat" saat ancestornya sudah dihapus fisik). Cegah double-prune: descendant yang SUDAH ikut terhapus lewat ancestor-nya (mis. Card di bawah Milestone yang di-prune) TIDAK diproses lagi sebagai entity independen di iterasi Card level (skip jika parent chain-nya sudah tidak ada, cek via `NOT EXISTS`). | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-059, BR-060; [03-ENG C.6](docs/03-ENGINEERING.md) | 5.1 |
+| 5.2.2 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | No-orphan integrity test khusus (Prinsip #5) — dipisah goal sendiri karena scope test-nya besar dan krusial: buat fixture multi-level (Milestone dengan Board/List/Card/Label/Activity/Comment lengkap), delete Milestone (`deleted_at` = 31 hari lalu), jalankan prune, VERIFIKASI LANGSUNG via query row-level (bukan cuma cek return value fungsi) bahwa NOL baris tersisa di `boards`/`lists`/`cards`/`milestone_labels`/`card_milestone_labels`/`card_board_labels`/`activities` yang merujuk subtree tsb. | [02-SPEC](docs/02-SPEC.md) BR-016 | 5.2.1 |
+
+**Test:** Milestone `deleted_at` 31 hari lalu, Board/List/Card di bawahnya ACTIVE (local state, non-operational karena ancestor tapi TIDAK sendiri DELETED) → seluruhnya ikut terhapus fisik (subtree cascade). Milestone `deleted_at` 29 hari lalu (belum eligible) → SAMA SEKALI tidak disentuh, subtree tetap utuh. Card yang DELETED independen (Milestone/Board/List induk masih ACTIVE) 31 hari lalu → Card + Activity + Label-nya terhapus, List/Board/Milestone induk TIDAK terpengaruh. Project lain (Project DB terpisah) tidak pernah tersentuh (Project isolation, structural — beda `projectClient`). Kegagalan di tengah proses (simulasi error) → transaksi rollback penuh, TIDAK ada partial-prune (invariant #9 gaya, walau ini bukan Activity-write biasa).
+**DoD:** Physical `DELETE FROM` dipakai (bukan `UPDATE ... SET deleted_at`, karena sudah `deleted_at` — ini benar-benar physical removal); satu transaksi mencakup SELURUH subtree satu entity root; test 5.2.2 lulus dengan verifikasi row-level eksplisit di setiap tabel yang relevan.
+
+---
+
+## TASK-5.3 — Prune Project-level (deprovision Turso DB)  (dep: 5.1, fix turso.ts cross-cutting)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 5.3.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | `pruneEligibleProjects(globalClient, turso): Promise<PruneResult>` — iterasi SELURUH `projects` terdaftar (pola sama `project-list.ts`, TAPI tanpa filter membership — prune adalah operasi sistem-lebar, bukan per-user), untuk masing-masing buka `project_state` di Project DB-nya dan cek `isPruneEligible` (5.1) atas `deletedAt`. Jika eligible: (1) `deleteDatabase` (`turso.ts`, SUDAH diperbaiki cross-cutting — pastikan pakai `.status` numerik bukan string-match sebelum goal ini mulai); (2) hapus row `project_databases` + `projects` (Global DB) DALAM transaksi yang sama dengan langkah (1) secara logis (Turso API call tidak bisa ikut SQL transaction — urutan WAJIB: sukses deprovision Turso DULU, baru hapus row Global DB; jika step 1 gagal, JANGAN lanjut ke step 2, biarkan project tetap terdaftar untuk dicoba prune lagi run berikutnya — lebih aman "tertunda" daripada row Global DB yatim menunjuk DB yang sudah tidak ada). `projectMemberships`/`membershipGroupAssignments`/dst yang merujuk `projectId` ini ikut dihapus (FK cleanup Global DB, physical — BR-059/060 sama berlaku di sini). | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A; [03-ENG F.2](docs/03-ENGINEERING.md) (provisioning symmetry) | 5.1 |
+
+**Test:** Project `deleted_at` (di `project_state`, Project DB-nya) 31 hari lalu → `deleteDatabase` dipanggil dengan `databaseId` yang benar, row `projects`/`project_databases`/`project_memberships`/assignment terkait terhapus dari Global DB. Project 29 hari lalu → tidak disentuh sama sekali. Simulasi `deleteDatabase` gagal (network/API error) → row Global DB TETAP ADA (tidak orphan-pointing ke DB yang sudah terhapus sebagian), project tetap muncul di run prune berikutnya. Project ARCHIVED (bukan DELETED) → tidak pernah eligible, tidak disentuh berapa lama pun.
+**DoD:** Urutan operasi (Turso API dulu, baru Global DB) dijaga ketat, tidak ada kondisi yang bisa menghasilkan row Global DB menunjuk database yang sudah tidak ada.
+
+---
+
+## TASK-5.4 — Trigger internal prune (endpoint + Vercel Cron)  (dep: 5.2, 5.3)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 5.4.1 | ⬜️ | — | 0 | P1 **[MODEL LEBIH KUAT WAJIB]** | `POST /api/internal/prune` (`apps/api/src/routes/internal.ts` baru) — cek header `Authorization: Bearer <secret>` dibandingkan `process.env.CRON_SECRET` via `crypto.timingSafeEqual` (Prinsip #6 — konstanta-waktu genuinely diperlukan di sini, bandingkan secret mentah langsung, BUKAN kasus lookup-hash-via-index seperti API Key Phase 4); tolak `401` jika tidak cocok/header tidak ada — **TIDAK melalui `RequestPipeline`/`OpenProjectContext`** (bukan user-facing, tidak ada identity/membership User yang relevan). Panggil `pruneDescendantSubtrees` (5.2) untuk SETIAP Project DB yang masih terdaftar (iterasi sama seperti 5.3.1) DAN `pruneEligibleProjects` (5.3) — urutan: descendant-level dulu untuk Project yang MASIH ada (biar tidak sia-sia buka Project DB yang sebentar lagi ikut di-deprovision), baru Project-level. Return ringkasan `{prunedEntities: {milestones, boards, lists, cards, labels}, prunedProjects}` untuk observability (log, bukan expose ke user). `vercel.json` ditambah `crons: [{path: "/api/internal/prune", schedule: "0 3 * * *"}]` (harian jam 03:00 UTC — off-peak, technical decision C.6.5 poin 3, mudah diubah). | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md) | 5.2, 5.3 |
+
+**Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
+**DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
+
+---
+
+## Closure Log
+
+<!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+### Review-CL-01 — 2026-08-23 · generate task list Phase 5 (tanpa perubahan status implementasi)
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+Generate `PHASE-5-TASKS.md` (4 task, 6 goal) mengikuti [04-DELIVERY C.6](docs/04-DELIVERY.md), setelah membaca penuh 02-SPEC A.3/A.4/A.14/B.11, 03-ENGINEERING C.6/F.2, dan memeriksa state repo — dikonfirmasi state machine lifecycle + ancestor-chain validation SUDAH lengkap sejak Phase 2/3 (`effective-state.ts`, dipakai 6 entity type), sehingga scope Phase 5 murni retention 30 hari + internal prune (BR-016/016A/FR-047), belum ada kode prune sama sekali di repo.
+
+**Keputusan teknis tanpa eskalasi (C.6.5 poin 3, tidak menyentuh business invariant):** mekanisme trigger prune = endpoint internal `POST /api/internal/prune` digerbangi `CRON_SECRET` (constant-time compare) dipanggil Vercel Cron harian — SOT sengaja permisif soal mekanisme ("MAY mengeksekusinya sesuai jadwal internal", BR-016A), dipilih karena idiomatik platform terkunci (Vercel, 03-ENG D.1) dan reversibel.
+
+**Didelegasikan bersamaan (instruksi manusia eksplisit):** 3 temuan P2 yang menumpuk dari audit-audit sebelumnya (Review-CL-11 turso.ts + INVALID_STATE-as-500 di [PHASE-0-TASKS.md](PHASE-0-TASKS.md); Review-CL-19 mapUniqueViolation di [PHASE-1-TASKS.md](PHASE-1-TASKS.md); Review-CL-05 double-fetch permission di [PHASE-4-TASKS.md](PHASE-4-TASKS.md)) — dicatat sebagai cross-cutting fix WAJIB dikerjakan sebelum/bersamaan goal Phase 5 pertama, BUKAN goal baru (tidak reopen apa pun). Fix `turso.ts` secara khusus WAJIB selesai sebelum TASK-5.3 dimulai karena goal itu memanggil fungsi yang sama.
+
+**Model-tiering:** SELURUH goal ditandai `[MODEL LEBIH KUAT WAJIB]` (Prinsip #1), mengikuti AGENTS.md §11.2 yang menyebut "Lifecycle/effective ancestor state (Phase 5)" eksplisit — preseden insiden Phase 4 (Review-CL-03/04/05) berlaku penuh di sini.
+
+Belum ada implementasi yang dimulai — seluruh goal `⬜️`. Menunggu review manusia atas breakdown ini sebelum AI-Dev mulai bekerja (04-DELIVERY C.6.6).
