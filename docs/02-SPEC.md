@@ -358,6 +358,7 @@ Restore hanya valid dari ARCHIVED; DELETED selalu menolak.
 
 ## C.5 Milestone
 ```http
+GET    /api/v1/projects/:project_id/milestones
 POST   /api/v1/projects/:project_id/milestones
 GET    /api/v1/projects/:project_id/milestones/:milestone_id
 PATCH  /api/v1/projects/:project_id/milestones/:milestone_id
@@ -371,8 +372,11 @@ Create:
 ```
 Update (`PATCH`) dan seluruh domain command wajib membawa `expected_version`. Archive/delete Milestone hanya mengubah Milestone; Board/List/Card descendant mempertahankan local state.
 
+`GET /milestones` (list, tanpa Owner-only restriction — pola sama GET Milestone tunggal) mengembalikan seluruh Milestone Project (termasuk ARCHIVED/DELETED, tanpa filter server-side — client filter dari `archivedAt`/`deletedAt` seperti pola `GET /invitations`).
+
 ## C.6 Board
 ```http
+GET    /api/v1/projects/:project_id/milestones/:milestone_id/boards
 POST   /api/v1/projects/:project_id/milestones/:milestone_id/boards
 GET    /api/v1/projects/:project_id/boards/:board_id
 PATCH  /api/v1/projects/:project_id/boards/:board_id
@@ -382,8 +386,11 @@ POST   /api/v1/projects/:project_id/boards/:board_id/delete
 ```
 Archive/delete Board hanya mengubah Board; List/Card descendant mempertahankan local state. Board tidak memiliki operasi move.
 
+`GET /boards` (list under Milestone, pola sama GET Milestone list) mengembalikan seluruh Board Milestone tsb (termasuk ARCHIVED/DELETED).
+
 ## C.7 List
 ```http
+GET    /api/v1/projects/:project_id/boards/:board_id/lists
 POST   /api/v1/projects/:project_id/boards/:board_id/lists
 GET    /api/v1/projects/:project_id/lists/:list_id
 PATCH  /api/v1/projects/:project_id/lists/:list_id
@@ -393,8 +400,11 @@ POST   /api/v1/projects/:project_id/lists/:list_id/delete
 ```
 List tidak memiliki operasi move. Archive/delete List hanya mengubah List; Card descendant mempertahankan local state dan `list_id`.
 
+`GET /lists` (list under Board, pola sama GET Milestone/Board list) mengembalikan seluruh List Board tsb (termasuk ARCHIVED/DELETED).
+
 ## C.8 Card
 ```http
+GET    /api/v1/projects/:project_id/lists/:list_id/cards
 POST   /api/v1/projects/:project_id/lists/:list_id/cards
 GET    /api/v1/projects/:project_id/cards/:card_id
 PATCH  /api/v1/projects/:project_id/cards/:card_id
@@ -406,6 +416,8 @@ POST   /api/v1/projects/:project_id/cards/:card_id/delete
 `PATCH` boleh mengubah: `title`, `subtitle`, `description`, `due_date`, `assignee`. **Tidak boleh** mengubah `list_id`.
 
 `GET`/response Card MUST menyertakan field `labels` (array `{id, name, scope: "milestone"|"board"}`), diturunkan dari asosiasi aktif (`removed_at IS NULL`) di `card_milestone_labels`/`card_board_labels` (C.11) — tanpa ini, hasil assign/remove Label (C.11) tidak dapat dibaca kembali oleh client.
+
+`GET /cards` (list under List) mengembalikan seluruh Card List tsb (termasuk ARCHIVED/DELETED, field `labels` sama seperti GET tunggal). Card visibility scope (`ALL`/`CREATED_BY_ME`/`ASSIGNED_TO_ME`, A.11/D.3) MUST diterapkan pada endpoint ini DAN pada `GET /cards/:card_id` — keduanya adalah `card.read`. Sampai permission resolution engine (Phase 4) berjalan, kedua endpoint MAY mengembalikan Card apa adanya untuk member aktif tanpa filter visibility (pola interim yang sama seperti Phase 2, lihat Prinsip Phase 2 #5) — filter visibility WAJIB ditegakkan begitu Phase 4 closed, bukan opsional selamanya.
 
 Move: `{ "destination_list_id": "list_456", "expected_version": 12 }`
 
