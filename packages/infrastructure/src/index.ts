@@ -38,6 +38,12 @@ export {
   type EditCommentRecord,
 } from "./database/card-comment.ts";
 export {
+  assignLabelToCard,
+  removeLabelFromCard,
+  type CardLabelAssociationRecord,
+  type LabelScope,
+} from "./database/card-label-association.ts";
+export {
   deriveProjectStatus,
   listProjectSummaries,
   type ProjectStatus,
