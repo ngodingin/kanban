@@ -206,7 +206,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
 });
 
 describe("GET /api/v1/projects/:project_id/cards/:card_id — goal 2.9.1", () => {
-  it("[C.8][C.2][Prinsip #5] member membaca card TANPA filter visibility; tidak ada → 404", async () => {
+  it("[C.8][D.3] member tanpa grant visibility → card orang lain tersembunyi 404; tidak ada → 404", async () => {
     const dbRow = await ctx.globalClient.execute({
       sql: "SELECT d.database_id AS db FROM project_databases d WHERE d.project_id = ?",
       args: [projectIdValue],
@@ -217,10 +217,10 @@ describe("GET /api/v1/projects/:project_id/cards/:card_id — goal 2.9.1", () =>
       const cardId = String(cards.rows[0]!.id);
 
       const res = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/${cardId}`, {
-        headers: { "x-test-user": "user-b" }, // member biasa — visibility filter belum ada (Phase 4)
+        headers: { "x-test-user": "user-b" }, // member tanpa grant visibility → default CREATED_BY_ME, Card orang lain tersembunyi
       });
-      expect(res.status).toBe(200);
-      expect((await res.json()).data.card).toMatchObject({ id: cardId, creatorUserId: "user-a" });
+      expect(res.status).toBe(404); // TASK-4.5: filter D.3 aktif — hidden card 404 identik dengan tidak-ada
+      expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
 
       const missing = await makeApp().request(`http://localhost/api/v1/projects/${projectIdValue}/cards/cd_none`, {
         headers: { "x-test-user": "user-a" },

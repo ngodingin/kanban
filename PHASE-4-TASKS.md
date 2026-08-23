@@ -107,7 +107,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 4.5.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | `GET /lists/:list_id/cards` (goal 2.9.4, Phase 2 — dibangun TANPA filter visibility per Prinsip #5 Phase 2) — tambah filter `resolveCardVisibilityFilter` (TASK-4.1.2) ke hasil query SEBELUM response, berdasarkan `ctx.permission.cardReadVisibility` (resolve ulang di scope entity Card — List→Board→Milestone→Project chain, TASK-4.3's keputusan re-resolve per-route). `GET /cards/:card_id` (goal 2.9.1, Phase 2) — TAMBAH cek visibility SETELAH cek existence/Project-boundary: jika Card ditemukan tapi TIDAK lolos filter visibility, response `RESOURCE_NOT_FOUND` (BUKAN `PERMISSION_DENIED` — mencegah enumeration: User yang tidak boleh melihat Card seharusnya tidak tahu bedanya "tidak ada" vs "ada tapi disembunyikan", konsisten pola BR-054A soal tidak membocorkan alasan spesifik). | [02-SPEC C.8](docs/02-SPEC.md) (amandemen 2.11.0), A.11, D.3 | 4.4 |
+| 4.5.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | `GET /lists/:list_id/cards` (goal 2.9.4, Phase 2 — dibangun TANPA filter visibility per Prinsip #5 Phase 2) — tambah filter `resolveCardVisibilityFilter` (TASK-4.1.2) ke hasil query SEBELUM response, berdasarkan `ctx.permission.cardReadVisibility` (resolve ulang di scope entity Card — List→Board→Milestone→Project chain, TASK-4.3's keputusan re-resolve per-route). `GET /cards/:card_id` (goal 2.9.1, Phase 2) — TAMBAH cek visibility SETELAH cek existence/Project-boundary: jika Card ditemukan tapi TIDAK lolos filter visibility, response `RESOURCE_NOT_FOUND` (BUKAN `PERMISSION_DENIED` — mencegah enumeration: User yang tidak boleh melihat Card seharusnya tidak tahu bedanya "tidak ada" vs "ada tapi disembunyikan", konsisten pola BR-054A soal tidak membocorkan alasan spesifik). | [02-SPEC C.8](docs/02-SPEC.md) (amandemen 2.11.0), A.11, D.3 | 4.4 |
 
 **Test:** Membership dengan visibility `CREATED_BY_ME` → GET list hanya mengembalikan Card yang dia buat sendiri, Card buatan orang lain TIDAK muncul; GET tunggal Card buatan orang lain → `RESOURCE_NOT_FOUND` (bukan 403); `ASSIGNED_TO_ME` → Card yang dia buat ATAU di-assign ke dia, bukan keduanya sekaligus wajib (union OR, BR-047); `ALL` → seluruh Card List tsb tanpa filter; ganti assignee Card (Phase 2, existing) lalu cek ulang visibility `ASSIGNED_TO_ME` User baru → langsung applicable (BR-049, dihitung dari hierarchy/assignment TERKINI, bukan snapshot).
 **DoD:** Filter diterapkan SETELAH Project-boundary/ancestor-operational check (urutan formula ALLOW A.10 — state/invariant dulu, baru visibility), tidak pernah membocorkan existence Card yang tidak visible lewat perbedaan response.
@@ -173,6 +173,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Bukti:** `hasPermission` — trivial `grantedKeys.has(key)`, dikonfirmasi benar termasuk Owner (seluruh katalog true) dan set kosong (seluruh key false). `resolveCardVisibilityFilter` — logika widening dikonfirmasi benar per kasus: `CREATED_BY_ME` (`creatorUserId===currentUserId` saja, assignee TIDAK cukup — dites eksplisit dengan Card yang assignee=ME tapi creator≠ME harus TIDAK lolos), `ASSIGNED_TO_ME` (OR creator/assignee), `ALL` (selalu true). Test suite `permission-engine.test.ts` (bagian 4.1.2, ~7 test) dijalankan ulang — hijau.
 `pnpm -r typecheck`/`pnpm lint` bersih. Full suite `pnpm exec vitest run` → **70 file/437 test PASS**; `pnpm exec playwright test` → **1/1 PASS** (dijalankan sebagai bagian standar verifikasi closure, bukan cuma saat ada insiden).
 **Kesimpulan:** ✅ ACCEPT goal 4.1.2. Goal 4.1.1 tetap `⚠️`, menunggu Dev rework terhadap teks goal yang sudah dikoreksi Review-CL-02.
+
+<a id="cl-14"></a>
+### CL-14 — 2026-08-23 · goal 4.5.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — filter visibility GET Card
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** `pnpm exec vitest run` → 74 file / **457 test lulus**, termasuk 4 baru `card-visibility.test.ts`: default CREATED_BY_ME (list hanya cd_own; hidden single → 404 bukan 403), ASSIGNED_TO_ME union OR + Owner ALL, ALL tanpa filter, BR-049 assignee diganti → visibility langsung berubah dari state terkini; `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan:** Test lama 2.9.1 "TANPA filter visibility" diperbarui — premisnya interim Phase 2 yang kini digantikan D.3/TASK-4.5 (hidden → RESOURCE_NOT_FOUND 404, anti-enumeration). Filter dijalankan SETELAH existence/boundary sesuai DoD urutan A.10.
+
+<a id="cl-13"></a>
+### CL-13 — 2026-08-23 · goal 4.5.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** big-pickle (opencode)
+**Bukti:** Freshness check dari disk: row 4.5.1 `⬜️/—/0`, dependency `4.4` = 4.4.1 `🔎80`. Kedua endpoint GET Card terverifikasi dari disk (cards.ts:114 list, :128 single) — keduanya belum menyentuh visibility.
+**Catatan:** Filter diaplikasikan SETELAH existence/boundary (404 dulu), sesuai DoD urutan A.10; GET tunggal yang tersembunyi → RESOURCE_NOT_FOUND 404 identik dengan tidak-ada.
 
 <a id="cl-12"></a>
 ### CL-12 — 2026-08-23 · goal 4.4.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — interim Owner-only dihapus, formula ALLOW aktif

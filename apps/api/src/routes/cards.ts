@@ -12,6 +12,8 @@ import {
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
 import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { loadEntityHierarchy } from "@kanban/infrastructure";
+import { resolveCardVisibilityFilter } from "@kanban/domain";
 
 export interface CardRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -119,9 +121,14 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const repository = new DrizzleCardRepository(ctx.database, {
         assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
       });
-      const records = await repository.listCards(c.req.param("list_id"));
-      const labelsByCard = await listCardLabelsForCards(ctx.database, records.map((r) => r.id));
-      return { cards: records.map((record) => cardPayload(record, labelsByCard.get(record.id) ?? [])) };
+      const listId = c.req.param("list_id");
+      const records = await repository.listCards(listId);
+      const path = await loadEntityHierarchy(ctx.database, "list", listId);
+      const effective = await ctx.effectiveFor(path ?? { listId });
+      const isVisible = resolveCardVisibilityFilter(effective, ctx.userId);
+      const visible = records.filter((r) => isVisible({ creatorUserId: r.creatorUserId, assigneeUserId: r.assigneeUserId }));
+      const labelsByCard = await listCardLabelsForCards(ctx.database, visible.map((r) => r.id));
+      return { cards: visible.map((record) => cardPayload(record, labelsByCard.get(record.id) ?? [])) };
     });
   });
 
@@ -135,6 +142,18 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       });
       const record = await repository.getCard(projectId, c.req.param("card_id"));
       if (!record) {
+        throw new PipelineError(
+          "RESOURCE_NOT_FOUND",
+          `Card ${c.req.param("card_id")} tidak ditemukan.`,
+          404,
+        );
+      }
+      // D.3/A.11 — visibility dicek SETELAH existence; tersembunyi → 404 identik
+      // dengan tidak-ada (anti-enumeration, konsisten BR-054A).
+      const path = await loadEntityHierarchy(ctx.database, "card", record.id);
+      const effective = await ctx.effectiveFor(path ?? { cardId: record.id });
+      const isVisible = resolveCardVisibilityFilter(effective, ctx.userId);
+      if (!isVisible({ creatorUserId: record.creatorUserId, assigneeUserId: record.assigneeUserId })) {
         throw new PipelineError(
           "RESOURCE_NOT_FOUND",
           `Card ${c.req.param("card_id")} tidak ditemukan.`,
