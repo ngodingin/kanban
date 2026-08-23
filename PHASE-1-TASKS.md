@@ -228,6 +228,15 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) dan [PHASE-0-TASKS.md](PHASE-0-TASKS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 1 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
+<a id="review-cl-19"></a>
+### Review-CL-19 — 2026-08-23 · `mapUniqueViolation` (project-admin.ts) memakai pola fragile yang sama seperti `isBusy()` (CL-65)
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Temuan:** `mapUniqueViolation` (`packages/infrastructure/src/database/project-admin.ts:277-287`, dipakai `createGroupAssignment`/`createPermissionAssignment`, TASK-1.8) mendeteksi pelanggaran UNIQUE constraint via `current.message.includes("UNIQUE constraint failed")` di sepanjang rantai `.cause` (maks 5 level) — bukan `.code`/`.cause.code` terstruktur. **Verifikasi live** (`@libsql/client` lokal, INSERT duplikat kolom UNIQUE): error asli punya `code: "SQLITE_CONSTRAINT"` di top-level DAN `cause.code: "SQLITE_CONSTRAINT_UNIQUE"` — persis pola `isBusy()` (CL-65, Phase 1: `.code`/`.cause.code` reliable, `.message`/`.cause.message` yang TIDAK). Fungsi ini secara kebetulan masih benar HARI INI (baik top-level `message` maupun `cause.message` sama-sama mengandung substring "UNIQUE constraint failed" pada test lokal saya) — BUKAN bug aktif seperti `isBusy()` dulu (yang secara aktif salah di `.cause.message` spesifik) — tapi memakai anti-pattern PERSIS yang sudah didokumentasikan sebagai pelajaran eksplisit di codebase ini (CL-65's rasional: cek `.code` terstruktur, bukan substring pesan yang bisa berubah antar versi driver/mode koneksi Turso remote vs lokal).
+
+**Rekomendasi:** ganti jadi cek `current.code === "SQLITE_CONSTRAINT_UNIQUE"` (atau `"SQLITE_CONSTRAINT"` sebagai fallback lebih umum) di sepanjang rantai `.cause`, mengikuti pola `isBusy()` (`transaction.ts`) persis. **Severity rendah-sedang** — bukan blocker aktif (goal 1.8.x tetap ✅, tidak reopen), didelegasikan ke AI-Dev sebagai fix cross-cutting robustness (pola sama CL-65/CL-53/CL-31), prioritas P2.
+
 <a id="qa-cl-25"></a>
 ### QA-CL-25 — 2026-08-23 · goal 1.9.1 🔎 → ✅ — default expiry 3 hari (BR-052A), sitasi lama bersih
 **Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
