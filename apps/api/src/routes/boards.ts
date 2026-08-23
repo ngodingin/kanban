@@ -93,6 +93,17 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
     }, 201);
   });
 
+  router.get("/v1/projects/:project_id/milestones/:milestone_id/boards", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      const repository = new DrizzleBoardRepository(ctx.database);
+      const records = await repository.listBoards(c.req.param("milestone_id"));
+      return { boards: records.map(boardPayload) };
+    });
+  });
+
   router.get("/v1/projects/:project_id/boards/:board_id", async (c) => {
     return withErrorHandling(c, async () => {
       const deps = getDeps();

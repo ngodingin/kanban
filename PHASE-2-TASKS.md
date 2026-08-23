@@ -105,7 +105,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 2.5.1 | ✅ | [CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[QA-CL-07](#qa-cl-07) | 100 | P0 | `POST /api/v1/projects/:project_id/milestones/:milestone_id/boards` + `GET .../boards/:board_id` — Owner-only interim create, validasi Milestone ada & di Project sama sebelum create | [02-SPEC C.6](docs/02-SPEC.md), FR-018 | 2.4 |
 | 2.5.2 | ✅ | [CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[QA-CL-08](#qa-cl-08) | 100 | P1 | `PATCH .../boards/:board_id` — `title`/`description` saja, `expected_version` wajib | [02-SPEC C.6](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.4, 2.5.1 |
 | 2.5.3 | ✅ | [CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[QA-CL-09](#qa-cl-09) | 100 | P1 | `POST .../boards/:board_id/{archive,restore,delete}` | [02-SPEC C.6](docs/02-SPEC.md), A.3 | 2.4, 2.5.1 |
-| 2.5.4 | ⬜️ | — | 0 | P2 | `GET .../milestones/:milestone_id/boards` (list, amandemen 2.11.0) — seluruh Board Milestone tsb (termasuk ARCHIVED/DELETED), `{data:{boards:[...]}}` | [02-SPEC C.6](docs/02-SPEC.md) (amandemen 2.11.0) | 2.4 |
+| 2.5.4 | 🔎 | [CL-57](#cl-57)<br>[CL-56](#cl-56) | 80 | P2 | `GET .../milestones/:milestone_id/boards` (list, amandemen 2.11.0) — seluruh Board Milestone tsb (termasuk ARCHIVED/DELETED), `{data:{boards:[...]}}` | [02-SPEC C.6](docs/02-SPEC.md) (amandemen 2.11.0) | 2.4 |
 
 **Test:** Create Board dengan `milestone_id` milik Project lain → ditolak (Project-boundary); create pada Milestone ARCHIVED → ditolak; restore Board ditolak jika Milestone masih ARCHIVED (INV-LIFE-002 urutan — restore Milestone dulu baru Board); lifecycle + version-conflict pattern sama seperti TASK-2.3; list (2.5.4) hanya mengembalikan Board milik Milestone yang diminta, Project-boundary sama seperti GET tunggal.
 **DoD:** Endpoint sesuai C.6; Board tidak punya operasi move (INV-MOVE-001); archive/delete Board tidak menyentuh List/Card descendant.
@@ -215,6 +215,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-57"></a>
+### CL-57 — 2026-08-23 · goal 2.5.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list Board per Milestone
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 66 file / **412** test lulus (2 test baru `apps/api/test/boards-list.test.ts`); `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. Implementasi: `listBoards(milestoneId)` di domain `BoardRepository` + `DrizzleBoardRepository` (`WHERE milestone_id = ?`); endpoint `GET /projects/:project_id/milestones/:milestone_id/boards`, baca-saja.
+**Test:** seluruh Board Milestone tsb (termasuk ARCHIVED) muncul; Board milik Milestone LAIN tidak bocor; non-member 403; tanpa identitas 401.
+
+<a id="cl-56"></a>
+### CL-56 — 2026-08-23 · goal 2.5.4 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 2.5.4 `⬜️/—/0/P2`, dependency `2.4` → ✅.
+**Rencana:** `listBoards(milestoneId)` ke domain `BoardRepository` + `DrizzleBoardRepository`, pola identik 2.3.4 (CL-55).
 
 <a id="cl-55"></a>
 ### CL-55 — 2026-08-23 · goal 2.3.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list Milestone

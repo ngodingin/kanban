@@ -52,6 +52,14 @@ export class DrizzleBoardRepository implements BoardRepository {
     return mapBoardRow(result.rows[0]);
   }
 
+  async listBoards(milestoneId: string): Promise<BoardRecord[]> {
+    const result = await this.client.execute(
+      "SELECT id, milestone_id, title, description, created_at, updated_at, archived_at, deleted_at, version FROM boards WHERE milestone_id = ? ORDER BY created_at, id",
+      [milestoneId],
+    );
+    return result.rows.map((row) => mapBoardRow(row)!);
+  }
+
   async createBoard(projectId: string, input: CreateBoardInput): Promise<BoardRecord> {
     validateTitle(input.title);
     const now = new Date().toISOString();

@@ -40,6 +40,8 @@ export interface BoardLifecycleInput {
 
 export interface BoardRepository {
   getBoard(projectId: string, boardId: string): Promise<BoardRecord | undefined>;
+  /** 2.11.0 — seluruh Board Milestone tsb (termasuk ARCHIVED/DELETED). */
+  listBoards(milestoneId: string): Promise<BoardRecord[]>;
 
   createBoard(projectId: string, input: CreateBoardInput): Promise<BoardRecord>;
   updateBoard(projectId: string, input: UpdateBoardInput): Promise<BoardRecord>;
