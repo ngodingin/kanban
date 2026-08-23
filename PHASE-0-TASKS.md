@@ -261,6 +261,32 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 ---
 
+## TASK-0.17 — [BREAKING] Migrasi request body ke `camelCase` (amandemen SOT 3.0.0)  (dep: —)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 0.17.1 | ⬜️ | [Review-CL-20](#review-cl-20) | 0 | P1 | Migrasi parsing request body Milestone/Board/List/Card (`routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`): field `expected_version`→`expectedVersion`, `start_date`/`due_date`→`startDate`/`dueDate`, `destination_list_id`→`destinationListId` (Move Card), PATCH `allowedFields` array disesuaikan. Field response TIDAK berubah (sudah camelCase). | [02-SPEC C.2.1](docs/02-SPEC.md), C.5, C.8 (amandemen 3.0.0) | — |
+| 0.17.2 | ⬜️ | [Review-CL-20](#review-cl-20) | 0 | P1 | Migrasi Label/Card-Label/Comment (`routes/labels.ts`, `card-labels.ts`, `comments.ts`): `label_id`→`labelId` (assign ke Card). | [02-SPEC C.2.1](docs/02-SPEC.md), C.11 | — |
+| 0.17.3 | ⬜️ | [Review-CL-20](#review-cl-20) | 0 | P1 | Migrasi Permission/Membership/Invitation (`project-admin.ts` + route terkait): `group_id`/`scope_type`/`scope_id`→`groupId`/`scopeType`/`scopeId`, `permission_id`/`card_read_visibility`→`permissionId`/`cardReadVisibility` (scoped assignment); Invitation create `assignments[].group_id`/dst sama. | [02-SPEC C.2.1](docs/02-SPEC.md), C.12, C.13 | — |
+| 0.17.4 | ⬜️ | [Review-CL-20](#review-cl-20) | 0 | P2 | **Fitur baru** `VALIDATION_ERROR.details` — ganti pola fail-fast (`throw` di field pertama invalid) jadi collect-all: kumpulkan SELURUH field gagal validasi dalam satu payload sebelum `throw`, format `{ code: "VALIDATION_ERROR", message, details: [{field, reason}] }` (`C.2` amandemen 3.0.0). Terapkan minimal ke endpoint create Milestone/Board/List/Card (representative, bukan seluruh 40 endpoint sekaligus — cukup buktikan pola-nya benar, endpoint lain MAY menyusul goal terpisah). | [02-SPEC C.2](docs/02-SPEC.md) (amandemen 3.0.0) | 0.17.1 |
+
+**Test:** Field lama (`expected_version`, dst) di request body TIDAK LAGI diterima/dibaca (kirim field lama → server memperlakukannya sebagai field tak dikenal, BUKAN membaca nilainya). Field baru (`expectedVersion`, dst) BERFUNGSI seperti field lama sebelumnya (regresi behavioral nihil, cuma nama berubah). `C.15`/`BR-062` (field terlarang generic PATCH: `id`/`projectId`/`creatorUserId`/`createdAt`/`version`/`archivedAt`/`deletedAt`/`listId`) tetap tertolak — test eksplisit kirim field-field ini di body PATCH, harus tetap `VALIDATION_ERROR`. `VALIDATION_ERROR.details` (0.17.4): kirim payload dengan 2+ field invalid sekaligus → response `details` array berisi SEMUA field yang gagal, bukan cuma satu.
+**DoD:** `pnpm exec vitest run` 100% hijau (test lama yang mengasumsikan field snake_case DIPERBARUI mengikuti field baru, bukan dihapus); `grep -rn '"start_date"\|"due_date"\|"expected_version"\|"destination_list_id"\|"label_id"\|"group_id"\|"scope_type"\|"scope_id"\|"permission_id"\|"card_read_visibility"' apps/api/src` → nol hasil di kode PARSING request body (boleh tetap muncul di komentar yang merujuk kolom database).
+
+---
+
+## TASK-0.18 — [BREAKING] Migrasi Activity payload key ke `camelCase` (amandemen SOT 3.0.0)  (dep: —)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 0.18.1 | ⬜️ | [Review-CL-20](#review-cl-20) | 0 | P2 | Migrasi Activity payload write di `card-repository.ts` (`moveCard` — `card.moved` `from`/`to`: `list_id`/`list_title`/`board_id`/`board_title`→camelCase; unassign — `previous_assignee_user_id`→`previousAssigneeUserId`), `card-label-association.ts` (`label.added`/`label.removed`: `label_id`/`label_scope`/`label_name`→camelCase), `card-comment.ts` (`comment.edited`: `comment_activity_id`→`commentActivityId`). | [03-ENG B.5](docs/03-ENGINEERING.md) (amandemen 3.0.0) | — |
+| 0.18.2 | ⬜️ | [Review-CL-20](#review-cl-20) | 0 | P2 | Migrasi Activity payload write lifecycle generik (`milestone-repository.ts`/`board-repository.ts`/`list-repository.ts`/`milestone-label-repository.ts`/`board-label-repository.ts` — archive/restore/delete: `previous_state`→`previousState`). | [03-ENG B.5](docs/03-ENGINEERING.md) (amandemen 3.0.0) | — |
+
+**Test:** `GET /activities` (dan endpoint per-entity convenience) mengembalikan `data` dengan KEY camelCase untuk SELURUH action family (`card.moved`, `card.unassigned`, `*.archived`/`*.deleted`/`*.restored`, `label.added`/`label.removed`, `comment.edited`) — assert struktur field eksplisit, bukan cuma "Activity tercipta". Enum VALUE (`"membership_revoked"`, action name dot-notation) TIDAK berubah — assert nilai-nilai ini tetap sama persis.
+**DoD:** `pnpm exec vitest run` 100% hijau; test Activity payload existing (banyak tersebar di test Phase 2/3) diperbarui mengikuti key baru, bukan dihapus.
+
+---
+
 ## Exit Criteria Phase 0 (syarat mulai Phase 1)
 - Repo terstruktur sesuai A.7; build/typecheck/test/CI hijau.
 - Keputusan POC (0.2) tercatat: Turso GO/NO-GO + provisioning sync/async.
@@ -364,6 +390,19 @@ ERROR [Better Auth]: Error Error: Resend gagal: API key is invalid
 **Dibuktikan (bukan cuma diklaim), pola `git stash` sama seperti CL-25/CL-30 sebelumnya:** `git stash` ke-10 file route (SEBELUM fix) → `node scripts/preview-build.mjs` → `require()` bundle → `app.routes` menunjukkan `POST /api/api/v1/projects` (prefix dobel, PERSIS Review-CL-12) → request nyata ke `/api/v1/projects` → **404 `"404 Not Found"`** (reproduksi identik bug asli). `git stash pop` (fix dikembalikan) → rebuild → `app.routes` 0 entry mengandung `/api/api/` dari 81 total → request yang sama sekarang MATCHED (500 karena config, bukan lagi 404 unmatched).
 **Verifikasi:** `pnpm exec vitest run` → **82 file/500 test PASS** (5 baru dari `full-app-routing.test.ts` + 495 existing hijau, termasuk 49 file yang path request-nya diperbaiki). `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. DoD grep `grep -rn 'new Hono().basePath("/api")' apps/api/src/routes` → **0 hasil** (dikonfirmasi).
 **Belum selesai (Status `🔎`/80%, BUKAN `✅`):** DoD 0.13.2 eksplisit mensyaratkan **"staging (`kanban-ngodingin.vercel.app`, lewat Vercel SSO) dikonfirmasi SELURUH route reachable via curl/browser sungguhan; baru setelah itu `stag` boleh di-push ulang ke `main`"** — ini di luar jangkauan sesi ini (Vercel Deployment Protection SSO memblokir sandbox, dan token bypass yang dicoba sesi Ops sebelumnya — QA-CL-52 — belum berhasil baik sebagai token API Vercel maupun protection-bypass secret). Fix kode + regression test lokal sudah genuinely benar dan terbukti (bukan klaim kosong), tapi verifikasi HTTP staging sungguhan — pelajaran eksplisit dari insiden ini sendiri (kegagalan verifikasi staging adalah PENYEBAB bug ini lolos ke production pertama kali) — WAJIB dilakukan manusia/sesi dengan akses bypass yang benar sebelum `stag` di-push ulang ke `main`. Dicatat di sini supaya tidak terlewat.
+
+<a id="review-cl-20"></a>
+### Review-CL-20 — 2026-08-24 · SOT 3.0.0 (BREAKING) — standarisasi `camelCase` seluruh field JSON; `TASK-0.17`/`0.18` dibuka
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Keputusan manusia (2026-08-24):** "saya juga mau adanya standard api yang ditegakkan disini - bukan hanya soal endpoint, tapi juga request dan response". Audit lanjutan mengonfirmasi request body `snake_case` vs response body `camelCase` untuk field yang SAMA — tidak pernah diatur SOT. Ditanya trade-off (kunci status quo vs satukan camelCase vs satukan snake_case) — dipilih **satukan camelCase penuh**, dieksekusi SEKARANG karena belum ada UI/konsumen produksi (murah untuk breaking change).
+
+**Amandemen (SPEC_VERSION 2.12.0 → 3.0.0, MAJOR — breaking):** `C.2.1` baru mengunci konvensi (field JSON `camelCase`; nama kolom database TETAP `snake_case`, dua hal terpisah — dijelaskan eksplisit supaya tidak tertukar sesi mendatang; query parameter URL MAY tetap `snake_case`). Field lifecycle universal wajib didaftar eksplisit. `VALIDATION_ERROR.details` (collect-all, bukan fail-fast) ditambahkan sebagai temuan terpisah yang ditemukan bersamaan. Seluruh contoh JSON di `C.4`–`C.14` diperbarui; `C.15`/`BR-062` (field terlarang PATCH) turut disesuaikan. **Scope amandemen MELEBAR ke `03-ENG B.5`** (Activity payload `data` JSON) — payload ini JUGA terekspos client via `GET /activities` (`C.9`), jadi tunduk aturan sama; enum VALUE (`"membership_revoked"`, action name dot-notation) SENGAJA TIDAK diubah — hanya field KEY.
+
+**Batasan scope yang dijaga hati-hati:** BANYAK referensi `snake_case` di SOT (`deleted_at`, `card.list_id`, `activity.actor_user_id`, `project_memberships.revoked_at`, dst) merujuk **kolom database** (konvensi SQL, `03-ENG` Part B), BUKAN field JSON API — SENGAJA TIDAK diubah, supaya tidak keliru mengubah hal yang bukan bagian dari kontrak API.
+
+**Implementasi didelegasikan** — `TASK-0.17` (migrasi request body parsing, 4 goal per area: Milestone/Board/List/Card, Label/Comment, Permission/Invitation, fitur `VALIDATION_ERROR.details`) dan `TASK-0.18` (migrasi Activity payload key, 2 goal). Bukan reopening goal lama — Test/DoD goal asli tetap valid untuk behaviour yang diuji saat closed; ini murni field-renaming migrasi terpisah.
 
 <a id="review-cl-19"></a>
 ### Review-CL-19 — 2026-08-24 · TASK-0.16 dibuka (Idempotency-Key kosong) — plus temuan DRY (11 fungsi `xPayload()` terpisah, bukan pelanggaran SOLID)
