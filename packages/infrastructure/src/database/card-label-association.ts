@@ -238,3 +238,48 @@ export async function removeLabelFromCard(
     return { cardId, labelId, labelScope: label.scope, labelName: label.name, createdAt: String(activeRow.created_at) };
   });
 }
+
+export interface CardLabelSummary {
+  id: string;
+  name: string;
+  scope: LabelScope;
+}
+
+/**
+ * TASK-3.9 (C.8 field `labels`) — Label aktif (`removed_at IS NULL`) yang
+ * ter-assign ke Card. Dipanggil terpisah dari `getCard` (Phase 2 ✅, tidak
+ * dimodifikasi) agar call site `getCard` lain (create/update/lifecycle)
+ * tidak ikut berubah — cuma `GET /cards/:card_id` yang wajib field ini.
+ * Satu JOIN per scope (2 query total), bukan N+1 per Label.
+ */
+export async function listCardLabels(client: Client, cardId: string): Promise<CardLabelSummary[]> {
+  const [msRows, bdRows] = await Promise.all([
+    client.execute(
+      `SELECT ml.id AS id, ml.name AS name
+       FROM card_milestone_labels cml
+       JOIN milestone_labels ml ON ml.id = cml.label_id
+       WHERE cml.card_id = ? AND cml.removed_at IS NULL
+       ORDER BY cml.created_at`,
+      [cardId],
+    ),
+    client.execute(
+      `SELECT bl.id AS id, bl.name AS name
+       FROM card_board_labels cbl
+       JOIN board_labels bl ON bl.id = cbl.label_id
+       WHERE cbl.card_id = ? AND cbl.removed_at IS NULL
+       ORDER BY cbl.created_at`,
+      [cardId],
+    ),
+  ]);
+  const milestoneLabels: CardLabelSummary[] = msRows.rows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    scope: "milestone",
+  }));
+  const boardLabels: CardLabelSummary[] = bdRows.rows.map((row) => ({
+    id: String(row.id),
+    name: String(row.name),
+    scope: "board",
+  }));
+  return [...milestoneLabels, ...boardLabels];
+}

@@ -39,8 +39,10 @@ export {
 } from "./database/card-comment.ts";
 export {
   assignLabelToCard,
+  listCardLabels,
   removeLabelFromCard,
   type CardLabelAssociationRecord,
+  type CardLabelSummary,
   type LabelScope,
 } from "./database/card-label-association.ts";
 export {

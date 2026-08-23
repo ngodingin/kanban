@@ -4,7 +4,9 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ok } from "@kanban/contracts";
 import {
   DrizzleCardRepository,
+  listCardLabels,
   PipelineError,
+  type CardLabelSummary,
   type CardRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
@@ -18,7 +20,7 @@ export interface CardRoutesDeps {
   assertAssigneeActiveMember(projectId: string, userId: string): Promise<void>;
 }
 
-function cardPayload(record: CardRecord) {
+function cardPayload(record: CardRecord, labels?: CardLabelSummary[]) {
   return {
     id: record.id,
     listId: record.listId,
@@ -33,6 +35,10 @@ function cardPayload(record: CardRecord) {
     archivedAt: record.archivedAt,
     deletedAt: record.deletedAt,
     version: record.version,
+    // C.8 amandemen 2.8.1 — hanya GET /cards/:card_id yang menyertakan
+    // labels (Prinsip TASK-3.9); response lain (create/update/lifecycle)
+    // tidak berubah shape-nya (parameter opsional, undefined = field absen).
+    ...(labels === undefined ? {} : { labels: labels.map((l) => ({ id: l.id, name: l.name, scope: l.scope })) }),
   };
 }
 
@@ -130,7 +136,8 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
           404,
         );
       }
-      return { card: cardPayload(record) };
+      const labels = await listCardLabels(ctx.database, record.id);
+      return { card: cardPayload(record, labels) };
     });
   });
 

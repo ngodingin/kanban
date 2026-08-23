@@ -156,7 +156,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 3.9.1 | ⬜️ | — | 0 | P1 | `getCard` (`packages/infrastructure/src/database/card-repository.ts`, goal 2.9.1 Phase 2 ✅) — tambah JOIN `card_milestone_labels`/`card_board_labels` (filter `removed_at IS NULL`) ke `milestone_labels`/`board_labels`, kembalikan field `labels: [{id, name, scope: "milestone"|"board"}]` di payload response (C.8, amandemen 2.8.1). | [02-SPEC C.8](docs/02-SPEC.md) (field `labels`) | 3.7, 2.9.1 (Phase 2 ✅) |
+| 3.9.1 | 🔎 | [CL-30](#cl-30)<br>[CL-29](#cl-29) | 80 | P1 | `getCard` (`packages/infrastructure/src/database/card-repository.ts`, goal 2.9.1 Phase 2 ✅) — tambah JOIN `card_milestone_labels`/`card_board_labels` (filter `removed_at IS NULL`) ke `milestone_labels`/`board_labels`, kembalikan field `labels: [{id, name, scope: "milestone"|"board"}]` di payload response (C.8, amandemen 2.8.1). | [02-SPEC C.8](docs/02-SPEC.md) (field `labels`) | 3.7, 2.9.1 (Phase 2 ✅) |
 
 **Test:** Card tanpa Label apa pun → `labels: []` (bukan `null`/`undefined`); Card dengan campuran Milestone Label + Board Label → keduanya muncul dengan `scope` benar; Label yang sudah di-`remove` TIDAK muncul; Label yang di-orphan otomatis oleh move (3.7.2) TIDAK muncul setelah move.
 **DoD:** `GET /cards/:card_id` selalu menyertakan `labels` (array, boleh kosong); tidak menambah N+1 query berlebihan (satu JOIN per scope, bukan query per Label).
@@ -199,6 +199,19 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-30"></a>
+### CL-30 — 2026-08-23 · goal 3.9.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET /cards/:card_id embed field labels
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 64 file / **407** test lulus (2 test baru `apps/api/test/cards-get-labels.test.ts`, file terpisah dari `cards-create-get.test.ts` goal 2.9.1 Phase 2 ✅ — regresi diverifikasi ulang hijau 5 test tanpa modifikasi); `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. Implementasi: `listCardLabels(client, cardId)` baru (`card-label-association.ts`) — 2 query paralel (`Promise.all`, satu JOIN per scope: `card_milestone_labels`→`milestone_labels`, `card_board_labels`→`board_labels`, filter `removed_at IS NULL`), bukan N+1 per Label. `cardPayload` (`cards.ts`) diberi parameter `labels?: CardLabelSummary[]` opsional — kalau `undefined`, field `labels` absen dari output (JSON.stringify tidak menyertakan key `undefined`), sehingga call site create/update/lifecycle (yang TIDAK dipanggil dengan `labels`) shape response-nya tidak berubah sama sekali. Hanya handler `GET /cards/:card_id` yang memanggil `listCardLabels` lalu meneruskan ke `cardPayload(record, labels)`.
+**Test:** Card tanpa Label → `labels: []` (bukan `null`/`undefined`, assert `toEqual([])` eksplisit); Card dengan campuran Milestone+Board Label → keduanya muncul dengan `scope` benar (`toContainEqual` dua kali) DAN Label yang sudah di-`remove` (baris `removed_at` terisi) TIDAK muncul (assert `find(...)` `toBeUndefined`).
+**Catatan:** Seluruh 7 goal yang diminta (3.6.1, 3.6.2, 3.6.3, 3.7.1, 3.7.2, 3.8.1, 3.9.1) selesai sisi Dev di sesi ini. Sisa Phase 3 di luar scope yang diminta: TASK-3.10 (✅ 3.10.1 selesai sesi sebelumnya), TASK-3.11/3.12 (✅ selesai sesi sebelumnya) — jadi seluruh Phase 3 kini `🔎`/`✅`, tidak ada goal `⬜️` tersisa.
+
+<a id="cl-29"></a>
+### CL-29 — 2026-08-23 · goal 3.9.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 3.9.1 `⬜️/—/0/P1`, dependency `3.7(🔎/80%), 2.9.1(Phase 2 ✅)` terpenuhi. `GET /cards/:card_id` route (`apps/api/src/routes/cards.ts:117-135`) dibaca ulang.
+**Keputusan implementasi (didokumentasikan agar mudah diganti, C.6.5 poin 3 — bukan menyimpang dari goal):** field `labels` ditambahkan lewat fungsi query BARU `listCardLabels` (`card-label-association.ts`, file yang sama dengan 3.7.1) yang dipanggil dari route GET, BUKAN memodifikasi signature `getCard`/`CardRecord` (`card-repository.ts`/domain, Phase 2 ✅) — menghindari blast radius ke seluruh call site `getCard` lain (create/update/lifecycle responses, yang TIDAK diminta punya `labels` per teks goal/DoD "GET /cards/:card_id selalu menyertakan labels", bukan seluruh response Card). Tetap 1 JOIN per scope (2 query total), tidak N+1 per Label, sesuai DoD.
 
 <a id="cl-28"></a>
 ### CL-28 — 2026-08-23 · goal 3.8.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — endpoint assign/remove Label ke Card
