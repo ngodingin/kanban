@@ -1,5 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "buildCommand": "node scripts/preview-build.mjs"
+  "buildCommand": "node scripts/preview-build.mjs",
+  "crons": [
+    {
+      "path": "/api/internal/prune",
+      "schedule": "0 3 * * *"
+    }
+  ]
 }

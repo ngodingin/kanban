@@ -2,7 +2,12 @@ name: CI
 
 on:
   push:
-    branches: [main, stag]
+    # main = snapshot deployment (dari scripts/release-to-main.sh), bukan
+    # development branch — seluruh verifikasi (termasuk release-check.mjs
+    # yang baca docs/) sudah jalan di stag SEBELUM snapshot dibuat; main
+    # sengaja tidak punya docs/poc/PHASE-*.md sehingga CI di sini akan
+    # gagal palsu kalau tetap ditrigger.
+    branches: [stag]
   pull_request:
 
 jobs:

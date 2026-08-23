@@ -5,6 +5,7 @@ import {
   BetterAuthIdentityResolver,
   CompositeIdentityResolver,
   assertPermissionKey,
+  pruneAllRegisteredProjects,
   createApiKey,
   createPersonalAccessToken,
   listPersonalAccessTokens,
@@ -29,6 +30,7 @@ import { createMilestonesRouter, type MilestoneRoutesDeps } from "./routes/miles
 import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.ts";
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import { createApiKeysRouter, type ApiKeysRoutesDeps } from "./routes/api-keys.ts";
+import { createInternalRouter, type InternalRoutesDeps } from "./routes/internal.ts";
 import { createPersonalAccessTokensRouter, type PersonalAccessTokensRoutesDeps } from "./routes/personal-access-tokens.ts";
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
@@ -90,6 +92,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         turso: readTursoEnvFromProcess(),
       });
       adminDeps = deps;
+    }
+    return deps;
+  };
+
+  let internalDeps: InternalRoutesDeps | null = null;
+  const getInternalDeps = (): InternalRoutesDeps => {
+    let deps = internalDeps;
+    if (!deps) {
+      const r = ensure();
+      const tursoEnv = readTursoEnvFromProcess();
+      deps = {
+        cronSecret: process.env.CRON_SECRET,
+        pruneAll: () => pruneAllRegisteredProjects(r.globalClient, tursoEnv ?? { org: "", group: "", apiToken: "" }),
+      };
+      internalDeps = deps;
     }
     return deps;
   };
@@ -311,6 +328,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
   app.route("/", createApiKeysRouter(getApiKeysDeps));
   app.route("/", createPersonalAccessTokensRouter(getPatDeps));
+  app.route("/", createInternalRouter(getInternalDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
 }
