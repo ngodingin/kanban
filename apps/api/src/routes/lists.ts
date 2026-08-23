@@ -82,6 +82,17 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
     }, 201);
   });
 
+  router.get("/v1/projects/:project_id/boards/:board_id/lists", async (c) => {
+    return withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const ctx = await deps.openProjectContext(c.req.raw, projectId);
+      const repository = new DrizzleListRepository(ctx.database);
+      const records = await repository.listLists(c.req.param("board_id"));
+      return { lists: records.map(listPayload) };
+    });
+  });
+
   router.get("/v1/projects/:project_id/lists/:list_id", async (c) => {
     return withErrorHandling(c, async () => {
       const deps = getDeps();

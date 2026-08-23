@@ -52,6 +52,14 @@ export class DrizzleListRepository implements ListRepository {
     return mapListRow(result.rows[0]);
   }
 
+  async listLists(boardId: string): Promise<ListRecord[]> {
+    const result = await this.client.execute(
+      "SELECT id, board_id, title, created_at, updated_at, archived_at, deleted_at, version FROM lists WHERE board_id = ? ORDER BY created_at, id",
+      [boardId],
+    );
+    return result.rows.map((row) => mapListRow(row)!);
+  }
+
   async createList(projectId: string, input: CreateListInput): Promise<ListRecord> {
     validateTitle(input.title);
     const now = new Date().toISOString();

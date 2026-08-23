@@ -38,6 +38,8 @@ export interface ListLifecycleInput {
 
 export interface ListRepository {
   getList(projectId: string, listId: string): Promise<ListRecord | undefined>;
+  /** 2.11.0 — seluruh List Board tsb (termasuk ARCHIVED/DELETED). */
+  listLists(boardId: string): Promise<ListRecord[]>;
 
   createList(projectId: string, input: CreateListInput): Promise<ListRecord>;
   updateList(projectId: string, input: UpdateListInput): Promise<ListRecord>;

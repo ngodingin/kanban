@@ -130,7 +130,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 2.7.1 | ✅ | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | `POST /api/v1/projects/:project_id/boards/:board_id/lists` + `GET .../lists/:list_id` | [02-SPEC C.7](docs/02-SPEC.md), FR-021 | 2.6 |
 | 2.7.2 | ✅ | [CL-38](#cl-38)<br>[CL-37](#cl-37)<br>[CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[QA-CL-12](#qa-cl-12)<br>[QA-CL-17](#qa-cl-17) | 100 | P1 | `PATCH .../lists/:list_id` — `title` saja | [02-SPEC C.7](docs/02-SPEC.md), [C.15](docs/02-SPEC.md) | 2.6, 2.7.1 |
 | 2.7.3 | ✅ | [CL-40](#cl-40)<br>[CL-39](#cl-39)<br>[CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-18](#qa-cl-18) | 100 | P1 | `POST .../lists/:list_id/{archive,restore,delete}` | [02-SPEC C.7](docs/02-SPEC.md), A.3 | 2.6, 2.7.1 |
-| 2.7.4 | ⬜️ | — | 0 | P2 | `GET .../boards/:board_id/lists` (list, amandemen 2.11.0) — seluruh List Board tsb (termasuk ARCHIVED/DELETED), `{data:{lists:[...]}}` | [02-SPEC C.7](docs/02-SPEC.md) (amandemen 2.11.0) | 2.6 |
+| 2.7.4 | 🔎 | [CL-59](#cl-59)<br>[CL-58](#cl-58) | 80 | P2 | `GET .../boards/:board_id/lists` (list, amandemen 2.11.0) — seluruh List Board tsb (termasuk ARCHIVED/DELETED), `{data:{lists:[...]}}` | [02-SPEC C.7](docs/02-SPEC.md) (amandemen 2.11.0) | 2.6 |
 
 **Test:** Create List dengan `board_id` Project lain → ditolak; List tidak punya operasi move (INV-MOVE-001); pola version-conflict/lifecycle sama seperti task List sebelumnya; list (2.7.4) hanya mengembalikan List milik Board yang diminta, Project-boundary sama seperti GET tunggal.
 **DoD:** Endpoint sesuai C.7; List tidak punya field status; archive/delete List tidak mengubah `list_id` Card manapun.
@@ -215,6 +215,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="cl-59"></a>
+### CL-59 — 2026-08-23 · goal 2.7.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list List per Board
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** `pnpm exec vitest run` → 67 file / **414** test lulus (2 test baru `apps/api/test/lists-list.test.ts`); `pnpm -r typecheck` bersih 6/6; `pnpm lint` bersih. Implementasi: `listLists(boardId)` di domain `ListRepository` + `DrizzleListRepository`; endpoint `GET /projects/:project_id/boards/:board_id/lists`, baca-saja.
+**Test:** seluruh List Board tsb (termasuk ARCHIVED) muncul; List milik Board LAIN tidak bocor; non-member 403; tanpa identitas 401.
+
+<a id="cl-58"></a>
+### CL-58 — 2026-08-23 · goal 2.7.4 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
+**Bukti:** Freshness check dari disk: row 2.7.4 `⬜️/—/0/P2`, dependency `2.6` → ✅.
+**Rencana:** `listLists(boardId)` ke domain `ListRepository` + `DrizzleListRepository`, pola identik 2.3.4/2.5.4.
 
 <a id="cl-57"></a>
 ### CL-57 — 2026-08-23 · goal 2.5.4 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — GET list Board per Milestone
