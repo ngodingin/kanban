@@ -86,7 +86,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | ⚠️ | [CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
+| 5.3.1 | 🔎 | [CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
 **Test:** AC-036 selain boundary retention dan kegagalan `deleteDatabase`: fault-injection setelah create `PENDING`, setelah Turso delete sebelum transition, pada `DATABASE_DELETED`, dan saat cleanup Global commit. Retry/restart menyelesaikan `COMPLETED` tanpa membuka Project DB hilang; HTTP 404 idempotent; dua worker konkuren tidak menggandakan cleanup/transisi.
 **DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
@@ -154,6 +154,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row 5.4.1 `⚠️/70` teks baru SOT 4.1.0; dependency `5.2` ✅ dan `5.3` kini `🔎80` via CL-14 (commit a6fd9e3) — journal siap diproses trigger.
 **Catatan:** Rencana: proses job journal EXISTING lebih dulu per state (PENDING → provider delete+transisi; DATABASE_DELETED → finalize tanpa buka DB), baru scan eligibility untuk project tanpa job; kegagalan satu Project tidak menghentikan lainnya; summary dilaporkan.
+
+<a id="cl-17"></a>
+### CL-17 — 2026-08-24 · goal 5.3.1 dikerjakan ulang (⚠️ → 🔄 · 60% dipertahankan) — ownership transisi + barrier nyata
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row `⚠️/60`; QA-CL-03 dibaca — (1) test dua worker harus Promise.all/barrier sungguhan; (2) double-provider-call saat dua worker sama-sama membaca PENDING; (3) kesuksesan dinilai dari state akhir, bukan ownership transisi.
+**Catatan:** Rencana: in-process per-project mutex + re-validasi state DI DALAM tx tulis sebelum provider delete (worker lain diblokir BEGIN IMMEDIATE sehingga tak ada double-provider-call); ownership via `UPDATE ... RETURNING` di tx yang sama; barrier test Promise.all dengan gate pada provider mock.
+
+<a id="cl-18"></a>
+### CL-18 — 2026-08-24 · goal 5.3.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — ownership transisi + barrier Promise.all nyata
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **98 file / 597 test lulus**; typecheck+lint bersih. Per QA-CL-03: **(1)** test `[AC-036 barrier nyata]` — dua worker `Promise.all` dengan koneksi Global TERPISAH, provider mock DITAHAN saat worker pertama masuk, worker kedua terbukti sudah start (overlap nyata); hasil: provider TEPAT SATU panggilan, `prunedProjects` total = 1, job COMPLETED, registry bersih. **(2)** double-provider-call dicegah struktural: mutex in-process per project + provider delete & transisi dijalankan DALAM SATU tx tulis (`BEGIN IMMEDIATE` memblokir worker lain; state dire-validasi dalam tx). **(3)** ownership via `UPDATE ... RETURNING project_id` di tx yang sama — hanya pemilik yang melaporkan selesai (bukan state akhir).
+**Catatan:** Provider delete kini berada dalam lock tulis Global — keputusan teknis terdokumentasi (cron internal, traffic rendah) untuk menutup double-call secara deterministik sesuai tuntutan QA.
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-24 · goal 5.3.1 selesai sisi Dev sesi ini (🔄 → 🔎 · 60 → 80%) — journal BR-016B lengkap + integrasi fix FK CL-12

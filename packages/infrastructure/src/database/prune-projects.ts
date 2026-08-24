@@ -21,6 +21,21 @@ export interface PruneProjectsOptions {
 
 type DeprovisionState = "PENDING" | "DATABASE_DELETED" | "COMPLETED";
 
+/**
+ * Mutex in-process per project_id — dua worker pada SATU proses tidak pernah
+ * menjalankan driveDeprovision yang sama bersamaan (mencegah double-provider-
+ * call). Lintas-proses tetap aman via conditional transition + BEGIN IMMEDIATE
+ * (F.2.1 poin 4); provider delete sendiri idempotent (404 = sukses).
+ */
+const deprovisionLocks = new Map<string, Promise<unknown>>();
+
+async function withProjectLock<T>(projectId: string, fn: () => Promise<T>): Promise<T> {
+  const prev = deprovisionLocks.get(projectId) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  deprovisionLocks.set(projectId, next.catch(() => undefined));
+  return next;
+}
+
 interface DeprovisionJob {
   id: string;
   projectId: string;
@@ -186,49 +201,95 @@ async function driveDeprovision(
     opts.openProjectDb ??
     ((databaseId: string) => Promise.resolve(createClient({ url: databaseId })));
   const deleteDb = opts.deleteDb ?? deleteDatabase;
-  const existingJob = await loadJob(globalClient, projectId);
 
-  let job: DeprovisionJob | null = existingJob;
-  if (!job) {
-    const mapping = await globalClient.execute({
-      sql: "SELECT database_id FROM project_databases WHERE project_id = ? LIMIT 1",
-      args: [projectId],
-    });
-    if (!mapping.rows[0]) return false;
-    const databaseId = String(mapping.rows[0].database_id);
+  // Serialisasi in-process: worker kedua masuk SETELAH yang pertama selesai.
+  return withProjectLock(projectId, async () => {
+    let job = await loadJob(globalClient, projectId);
 
-    let deletedAt: string | null;
-    try {
-      deletedAt = await readDeletedAt(openProjectDb, databaseId);
-    } catch {
-      return false; // DB tidak bisa dibuka → coba lagi run berikutnya
-    }
-    if (!isPruneEligible(deletedAt, opts.now)) return false;
-    // BR-016B: journal DIBUAT SEBELUM provider delete.
-    job = await createOrLoadJob(globalClient, projectId, databaseId, opts.now);
-  }
+    if (!job) {
+      const mapping = await globalClient.execute({
+        sql: "SELECT database_id FROM project_databases WHERE project_id = ? LIMIT 1",
+        args: [projectId],
+      });
+      if (!mapping.rows[0]) return false;
+      const databaseId = String(mapping.rows[0].database_id);
 
-  if (job.state === "COMPLETED") return false;
-
-  if (job.state === "PENDING") {
-    try {
-      await deleteDb(turso, job.databaseName);
-    } catch (error) {
-      if (error instanceof TursoApiError && error.status === 404) {
-        // not found = sukses setara (BR-016B)
-      } else {
-        await globalClient.execute({
-          sql: "UPDATE project_deprovision_jobs SET attempts = attempts + 1, last_error = ?, updated_at = ? WHERE project_id = ? AND state = 'PENDING'",
-          args: [String(error instanceof Error ? error.message : error), new Date().toISOString(), projectId],
-        });
-        return false;
+      let deletedAt: string | null;
+      try {
+        deletedAt = await readDeletedAt(openProjectDb, databaseId);
+      } catch {
+        return false; // DB tidak bisa dibuka → coba lagi run berikutnya
       }
+      if (!isPruneEligible(deletedAt, opts.now)) return false;
+      // BR-016B: journal DIBUAT SEBELUM provider delete.
+      job = await createOrLoadJob(globalClient, projectId, databaseId, opts.now);
     }
-    await transitionJob(globalClient, projectId, "PENDING", "DATABASE_DELETED");
-  }
 
-  // DATABASE_DELETED → cleanup Global + COMPLETED (satu tx, tanpa buka Project DB).
-  return finalizeProjectCleanup(globalClient, projectId);
+    if (job.state === "COMPLETED") return false;
+
+    if (job.state === "PENDING") {
+      // Provider delete + transisi DALAM SATU tx tulis: worker lain diblokir
+      // oleh BEGIN IMMEDIATE sehingga TIDAK ADA double-provider-call, dan
+      // ownership transisi terbukti via UPDATE ... RETURNING.
+      let proceed = false;
+      await runInWriteTransaction(globalClient, async (tx) => {
+        const cur = await tx.execute(
+          "SELECT state FROM project_deprovision_jobs WHERE project_id = ?",
+          [projectId],
+        );
+        if (String(cur.rows[0]?.state ?? "") !== "PENDING") {
+          proceed = false;
+          return; // worker lain lebih dulu → rollback tanpa efek
+        }
+        try {
+          await deleteDb(turso, job!.databaseName);
+          proceed = true;
+        } catch (error) {
+          if (error instanceof TursoApiError && error.status === 404) {
+            proceed = true; // not found = sukses setara (BR-016B)
+          } else {
+            await tx.execute(
+              "UPDATE project_deprovision_jobs SET attempts = attempts + 1, last_error = ?, updated_at = ? WHERE project_id = ? AND state = 'PENDING'",
+              [String(error instanceof Error ? error.message : error), new Date().toISOString(), projectId],
+            );
+            proceed = false;
+          }
+        }
+        if (proceed) {
+          await tx.execute(
+            "UPDATE project_deprovision_jobs SET state = 'DATABASE_DELETED', updated_at = ? WHERE project_id = ? AND state = 'PENDING'",
+            [new Date().toISOString(), projectId],
+          );
+        }
+      });
+      if (!proceed) return false;
+      job.state = "DATABASE_DELETED";
+    }
+
+    // DATABASE_DELETED → cleanup Global + COMPLETED (satu tx). Ownership
+    // dibuktikan UPDATE ... RETURNING — bukan sekadar state akhir.
+    return runInWriteTransaction(globalClient, async (tx) => {
+      for (const sql of [
+        "DELETE FROM membership_group_assignments WHERE membership_id IN (SELECT id FROM project_memberships WHERE project_id = ?)",
+        "DELETE FROM membership_permission_assignments WHERE membership_id IN (SELECT id FROM project_memberships WHERE project_id = ?)",
+        "DELETE FROM invitation_group_assignments WHERE invitation_id IN (SELECT id FROM invitations WHERE project_id = ?)",
+        "DELETE FROM group_permissions WHERE group_id IN (SELECT id FROM permission_groups WHERE project_id = ?)",
+        "DELETE FROM permission_groups WHERE project_id = ?",
+        "DELETE FROM invitations WHERE project_id = ?",
+        "DELETE FROM api_keys WHERE project_id = ?",
+        "DELETE FROM project_memberships WHERE project_id = ?",
+        "DELETE FROM project_databases WHERE project_id = ?",
+        "DELETE FROM projects WHERE id = ?",
+      ]) {
+        await tx.execute(sql, [projectId]);
+      }
+      const owned = await tx.execute(
+        "UPDATE project_deprovision_jobs SET state = 'COMPLETED', updated_at = ?, completed_at = ? WHERE project_id = ? AND state = 'DATABASE_DELETED' RETURNING project_id",
+        [new Date().toISOString(), new Date().toISOString(), projectId],
+      );
+      return owned.rows.length > 0;
+    });
+  });
 }
 
 export async function pruneEligibleProjects(

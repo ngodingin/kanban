@@ -302,26 +302,36 @@ describe("AC-036 — journal recovery & worker concurrency (goal 5.3.1 rework)",
     expect(await existsIn(gc, "projects", "pj2")).toBe(false);
   });
 
-  it("[dua worker / crash point] DATABASE_DELETED + registry masih ada → run berikutnya menyelesaikan cleanup tanpa duplikat", async () => {
-    const { gc, seed, sub } = await makeFreshEnv();
-    await seed("pj3", 31);
-    // Simulasi persis crash point F.2.1 langkah 2→3: worker A sukses provider
-    // delete dan transisi ke DATABASE_DELETED, lalu mati SEBELUM cleanup Global.
-    // (Kondisi ini konsisten tercapai di produksi karena projects row baru
-    // terhapus pada commit yang sama dengan COMPLETED.)
-    await gc.execute({
-      sql: `INSERT INTO project_deprovision_jobs
-            (id, project_id, database_id, database_name, state, attempts, created_at, updated_at)
-            VALUES ('pdj-pj3', 'pj3', ?, ?, 'DATABASE_DELETED', 1, ?, ?)`,
-      args: [`file:${join(sub, "pj3.db")}`, projectDatabaseName("pj3"), BASE, BASE],
+  it("[AC-036 barrier nyata] dua worker Promise.all overlap → provider TEPAT SATU panggil, satu pemenang COMPLETED", async () => {
+    const { gc, sub, seed } = await makeFreshEnv();
+    await seed("pj5", 31);
+
+    let entered = 0;
+    let releaseProvider!: () => void;
+    const providerGate = new Promise<void>((r) => (releaseProvider = r));
+    const deleteDb = vi.fn(async (_env: unknown, name: string) => {
+      entered += 1;
+      if (entered === 1) await providerGate; // tahan worker pertama DI provider
     });
-    const del = vi.fn(async () => undefined);
-    const result = await pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb: del });
-    expect(result.prunedProjects).toBe(1);
-    expect(del).not.toHaveBeenCalled(); // retry TIDAK menyentuh provider lagi
-    const st = await gc.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = 'pj3'" });
+
+    // Dua worker BENAR-BENAR PARALEL (Promise.all), koneksi Global terpisah
+    // agar kontensi nyata (single-writer ditangani BEGIN IMMEDIATE + mutex).
+    const gcB = createClient({ url: `file:${join(sub, "global.db")}` });
+    const w1 = pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb });
+    // beri kesempatan w1 masuk provider dulu
+    for (let i = 0; i < 200 && entered === 0; i++) await new Promise((r) => setTimeout(r, 5));
+    expect(entered).toBe(1);
+    const w2 = pruneEligibleProjects(gcB, ENV, { now: NOW, deleteDb });
+    releaseProvider();
+    const [r1, r2] = await Promise.all([w1, w2]);
+    await gcB.close();
+
+    // Ownership: tepat SATU worker melaporkan selesai; provider sekali saja
+    expect(r1.prunedProjects + r2.prunedProjects).toBe(1);
+    expect(deleteDb).toHaveBeenCalledTimes(1);
+    const st = await gc.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = 'pj5'" });
     expect(st.rows[0]!.state).toBe("COMPLETED");
-    expect(await existsIn(gc, "projects", "pj3")).toBe(false);
+    expect(await existsIn(gc, "projects", "pj5")).toBe(false);
   });
 
   it("[idempotent ulang penuh] run kedua pada job COMPLETED → tanpa efek", async () => {
