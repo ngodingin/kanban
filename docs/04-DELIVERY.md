@@ -43,7 +43,7 @@ Project [+ New Milestone] → Milestone (title, due date, progress=0)
 ```text
 Drag Card List A → List B
         ▼
-POST /cards/:id/move { destination_list_id, expected_version }
+POST /cards/:id/move { destinationListId, expectedVersion }
         ▼
    ┌────┴────┐
    ▼         ▼
@@ -201,8 +201,8 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 - **AC-016 Parent Delete Isolation** — Given Board punya List/Card; When delete Board; Then hanya Board DELETED/version/Activity berubah; descendant tidak operasional dan Board tidak dapat di-restore.
 - **AC-017 Scoped Group Assignment** — Given Eko dan Budi memakai Contributor pada Milestone berbeda; Then masing-masing hanya memperoleh permission pada scope dan descendant assignment-nya.
 - **AC-018 Invalid Card Destination** — Given destination List atau salah satu ancestornya ARCHIVED/DELETED; When move Card; Then MUST menolak tanpa state/Activity baru.
-- **AC-019 Card Move Rollback** — Given Card move gagal saat update asosiasi/Activity; Then `list_id`, version, label association, dan Activity MUST seluruhnya rollback.
-- **AC-020 Optimistic Locking** — Given Card.version=10; dua client `expected_version=10`; pertama sukses → version=11; kedua MUST `VERSION_CONFLICT`.
+- **AC-019 Card Move Rollback** — Given Card move gagal saat update asosiasi/Activity; Then `listId`, version, label association, dan Activity MUST seluruhnya rollback.
+- **AC-020 Optimistic Locking** — Given Card.version=10; dua client `expectedVersion=10`; pertama sukses → version=11; kedua MUST `VERSION_CONFLICT`.
 - **AC-021 API Key Scope** — Given API Key Project A; When dipakai ke B; Then MUST ditolak.
 - **AC-022 PAT Scope** — Given PAT User A; When akses Project B; Then akses tetap bergantung membership & permission B.
 - **AC-023 Expired Credential** — Given `expiration < now`; Then autentikasi MUST gagal.
@@ -211,7 +211,7 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 - **AC-026 Membership Revocation** — Given punya membership; When dicabut; Then request berikutnya MUST gagal otorisasi; Activity historis tetap utuh.
 - **AC-027 Owner** — Given User Owner; Then MUST tetap pegang ownership penuh walau Permission Group diubah.
 - **AC-028 Co-Owner** — Given anggota Co-Owner Group; Then dapat permission dari Group tapi TIDAK jadi Owner.
-- **AC-029 Generic PATCH Protection** — Given Card ada; When `PATCH` dengan `deleted_at`/`list_id`; Then MUST menolak/mengabaikan field terproteksi.
+- **AC-029 Generic PATCH Protection** — Given Card ada; When `PATCH` dengan `deletedAt`/`listId`; Then MUST menolak/mengabaikan field terproteksi.
 - **AC-030 Project Move Prohibition** — Given Project A & B; When upaya pindah descendant A ke B; Then MUST menolak.
 - **AC-031 Project Activity Atomicity** — Given mutation lifecycle/update pada Project; When Activity append gagal; Then `project_state` MUST rollback. When mutation gagal; Then tidak ada Activity Project baru. Kedua operasi MUST terjadi dalam satu transaksi Project DB.
 - **AC-032 Prune Retention** — Given entity DELETED belum mencapai 30 hari; When internal prune berjalan; Then entity dan subtree MUST tetap ada. Given `deleted_at <= now - 30 days`; Then entity eligible untuk di-prune sebagai satu subtree tanpa orphan.
@@ -222,7 +222,7 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 |---|---|---|
 | Domain/Unit | Permission resolution, lifecycle helper, scope ordering, version comparator | **Vitest** |
 | Integration | Domain command/API end-to-end terhadap database test terisolasi | **Vitest** + database test terpisah per suite; transaksi di-rollback setelah test |
-| Concurrency | Dua request paralel pada entity sama | Test yang fire dua mutation dengan `expected_version` sama |
+| Concurrency | Dua request paralel pada entity sama | Test yang fire dua mutation dengan `expectedVersion` sama |
 | Authorization matrix | Group × Operation × Resource | Table-driven test dari matrix di 02-SPEC Part D |
 | Frontend component | React component/hooks | **Vitest + React Testing Library**; routing dan integrasi production build diuji lewat E2E |
 | E2E | Alur multi-langkah realistis pada build production-like | **Playwright**, skenario dari UX Flows Part A |
@@ -247,7 +247,7 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 **Phase 0 — Foundation**
 - Setup Hono API + Better Auth Magic Link untuk identitas web: mekanisme server + antarmuka uji minimal; React/Vite UI final Phase 7
 - Setup Global DB (schema 03-ENGINEERING B.2)
-- Project DB provisioning (awal, boleh manual/sinkron dulu)
+- Project DB provisioning sinkron sesuai hasil POC dan 03-ENGINEERING F.2
 - Project isolation di layer request (resolusi `project_id → database`)
 - API infrastructure dasar (routing, response convention, error codes — 02-SPEC C.2)
 
@@ -269,7 +269,7 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 **Phase 3 — Labels & Activity**
 - Milestone Label & Board Label (CRUD)
 - Card-Label association dengan lifecycle (`created_at`/`removed_at`)
-- Activity table & append-only write path
+- Memperluas Activity append-only ke Label, query Activity, dan Comment; fondasi tabel/write path sudah tersedia dari Phase 0–2
 - Comment (create, edit — sebagai Activity `comment.added`/`comment.edited`)
 - Historical context pada Activity payload (BR-028)
 
@@ -282,7 +282,7 @@ Foundation Project Kanban Label& Author- Life- Harden- UI
 - PAT (create, revoke, resolve saat autentikasi)
 
 **Phase 5 — Lifecycle**
-- Archive/Restore untuk seluruh entity; Delete terminal tanpa restore
+- Verifikasi/hardening Archive/Restore seluruh entity dan Delete terminal tanpa restore yang dibangun per fase domain
 - Effective ancestor state tanpa cascade local state/Activity descendant
 - Ancestor-chain validation untuk operasi dan restore ARCHIVED (INV-LIFE-001/002)
 - Retention 30 hari + internal subtree prune tanpa orphan

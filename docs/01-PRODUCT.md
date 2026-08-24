@@ -3,7 +3,7 @@
 > Project codename: **NGodingin Kanban**
 > Type: Project Management / Kanban Platform (API-based, multi-tenant via Project isolation)
 > Status: MVP Baseline — Source of Truth (SOT)
-> Version: 2.0.6
+> Version: 3.0.1
 
 ---
 
@@ -50,14 +50,14 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 | API Contract | Locked untuk struktur; detail response boleh berkembang |
 | Authorization Model | Locked for MVP |
 | Deployment topology | Dikunci — Turso/libSQL; POC Phase 0 lulus; provisioning sinkron untuk MVP |
-| Stack keputusan dan baseline versi | Locked v2.0.6 — Hono + Better Auth + React/Vite; lihat 03-ENGINEERING A.8, A.11–A.14 |
-| Authentication (web session) | Locked v2.0.6 — Better Auth Magic Link + Resend API, user di Global DB (A.14) |
-| Payload `activities.data` | Locked v1.0.2 — konvensi B.5 |
+| Stack keputusan dan baseline versi | Locked untuk MVP — Hono + Better Auth + React/Vite; lihat 03-ENGINEERING A.8, A.11–A.14 |
+| Authentication (web session) | Locked untuk MVP — Better Auth Magic Link + Resend API, user di Global DB (A.14) |
+| Payload `activities.data` | Locked untuk MVP — konvensi 03-ENGINEERING B.5 dan aturan JSON C.2.1 |
 
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 3.0.0
+SPEC_VERSION = 3.0.1
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 3.0.0
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **3.0.1** — Audit konsistensi lintas-SOT setelah amandemen 3.0.0. Patch ini tidak mengubah kontrak atau perilaku domain: menyelaraskan metadata versi; memperbaiki US-020 agar aktornya Manager sesuai keputusan authorization 2.7.0; memasukkan Milestone Label/Board Label ke daftar lifecycle A.3/FR-043 yang sebelumnya tertinggal dari C.11; memperjelas bahwa list Label default hanya mengecualikan DELETED (ARCHIVED tetap dapat dibaca tetapi tidak dapat di-assign); menyelaraskan contoh JSON konsumen ke `camelCase`; dan mengoreksi deskripsi roadmap/engineering yang tertinggal dari hasil POC serta implementasi fase terdahulu. Isu yang memerlukan keputusan baru—cakupan optimistic concurrency Global DB, semantik idempotency, dan bentuk response endpoint admin—sengaja tidak diputuskan dalam patch ini.
 - **3.0.0** — **BREAKING.** Standarisasi struktur API menyeluruh, disetujui manusia 2026-08-24 setelah audit "apakah API sekarang sesuai standard" menemukan request body pakai `snake_case` (`start_date`, `expected_version`, dst) sementara response body pakai `camelCase` (`startDate`, `createdAt`, dst) untuk field yang SAMA — inkonsistensi yang tidak pernah diatur SOT sama sekali. Keputusan: **satukan SELURUH field JSON (request DAN response) jadi `camelCase`** — dipilih saat paling murah untuk migrasi (belum ada UI/konsumen produksi nyata, Phase 7 belum dibangun). Perubahan C.2: **(1)** section baru `C.2.1` mengunci konvensi (`camelCase` field JSON, `snake_case` TETAP untuk nama kolom database — dua hal berbeda, jangan tertukar; query parameter URL MAY tetap `snake_case`/lowercase, konvensi terpisah dari JSON body); field lifecycle universal wajib (`id`/`createdAt`/`updatedAt`/`archivedAt`/`deletedAt`/`version`) untuk entity manapun yang punya lifecycle; **(2)** `VALIDATION_ERROR` sekarang WAJIB mengumpulkan SELURUH field gagal validasi via array `details` (bukan fail-fast berhenti di field pertama, gap ditemukan sesi yang sama). Seluruh contoh JSON di C.4–C.14 diperbarui (`expected_version`→`expectedVersion`, `start_date`/`due_date`→`startDate`/`dueDate`, `destination_list_id`→`destinationListId`, `label_id`→`labelId`, `group_id`/`scope_type`/`scope_id`→`groupId`/`scopeType`/`scopeId`, `permission_id`/`card_read_visibility`→`permissionId`/`cardReadVisibility`); `C.15`/`BR-062` (field terlarang generic PATCH) turut disesuaikan (`project_id`→`projectId`, dst). `03-ENG B.5` (Activity payload `data` JSON) turut diselaraskan — payload ini terekspos client via `GET /activities` (C.9), jadi tunduk aturan sama (`list_id`/`board_id`/`assignee_user_id`/`label_id`/`label_scope`/`label_name`/`previous_state`→camelCase; enum VALUE seperti `"membership_revoked"` dan action name dot-notation TIDAK terpengaruh, hanya field KEY). Migrasi implementasi kode (request parsing, PATCH allowed-fields, Activity payload writer, fitur baru `VALIDATION_ERROR.details`) didelegasikan ke goal Dev — dibuka sebagai `TASK-0.17`/`TASK-0.18` di [PHASE-0-TASKS.md](../PHASE-0-TASKS.md) (bukan reopening goal lama; Test/DoD goal asli tetap valid untuk behaviour yang diuji saat itu). **Response body TIDAK berubah** (sudah `camelCase` sejak awal implementasi) — breaking change murni di sisi REQUEST body dan Activity payload key.
 - **2.12.0** — Menambah kode kanonik baru **`INTERNAL_ERROR`** (HTTP 500) ke C.2, khusus untuk kegagalan tak terduga/infrastruktur (config tidak lengkap, exception tak tertangani, dependency eksternal gagal). Gap ditemukan saat audit code-review sesi 2026-08-24: `INVALID_STATE` (yang definisinya SUDAH dikunci sejak awal — HTTP 409, khusus konflik state domain) ternyata dipakai di 3 titik kode (`http-mapping.ts` fallback, `routes/projects.ts` fallback, try/catch `/auth/*` di `index.ts`) dengan **HTTP 500** untuk kasus yang **bukan** konflik state domain — pelanggaran langsung terhadap definisi `INVALID_STATE` yang sudah dikunci, bukan sekadar area yang belum diatur (C.2 sebelumnya memang tidak punya kode apa pun untuk kegagalan tak terduga generik). Disetujui manusia 2026-08-24: tambah `INTERNAL_ERROR`, tegaskan `INVALID_STATE` MUST NOT dipasangkan HTTP 500. Ketiga titik kode yang salah dibuka sebagai goal fix baru (`TASK-0.15`, [PHASE-0-TASKS.md](../PHASE-0-TASKS.md)) — bukan reopening goal lama (Test/DoD goal asli yang menciptakan kode ini tidak pernah menguji kasus fallback generik ini). Minor — kode kanonik baru, additive, tidak mengubah perilaku kode yang sudah mengembalikan kode kanonik lain dengan benar.
 - **2.11.0** — Menambah 4 endpoint `GET` list-children yang sebelumnya tidak ada sama sekali di C.5–C.8: `GET /milestones` (under Project), `GET .../boards` (under Milestone), `GET .../lists` (under Board), `GET .../cards` (under List). Gap paling signifikan yang ditemukan saat audit pra-Phase-4: sebelum ini, TIDAK ADA cara mengenumerasi Milestone/Board/List/Card manapun via API — hanya `GET .../:id` (single) — artinya Kanban board tidak dapat dirender sama sekali, dan Card visibility scope (BR-047–049, D.3), yang menjadi inti Phase 4, tidak punya list apa pun untuk difilter. Disetujui manusia 2026-08-23 (opsi "tambahkan keempatnya sekarang", bukan cuma `GET .../cards` atau ditunda ke Phase 7). `GET /cards` DAN `GET /cards/:card_id` MUST menegakkan visibility scope begitu Phase 4 closed; sebelum itu MAY tetap interim (pola sama Phase 2). Karena Milestone/Board/List/Card list adalah kapabilitas CRUD dasar (bukan authorization), goal endpoint-nya dibuka sebagai goal baru di [PHASE-2-TASKS.md](../PHASE-2-TASKS.md) (2.3.4/2.5.4/2.7.4/2.9.4) — TASK Phase 2 kembali `🔄` (derived dari goal, otomatis, bukan regresi implementasi lama). Minor — kapabilitas baru backward-compatible, tidak mengubah endpoint yang sudah ada.
@@ -279,7 +280,7 @@ Format: "Sebagai [aktor/konteks akses], saya ingin [aksi], sehingga [manfaat]."
 ## 3.5 Label
 
 - **US-019** Sebagai Manager, saya ingin membuat Label pada level Milestone agar bisa dipakai semua Board di dalamnya.
-- **US-020** Sebagai Contributor, saya ingin membuat Label pada level Board untuk kategori spesifik Board tersebut saja.
+- **US-020** Sebagai Manager, saya ingin membuat Label pada level Board untuk kategori spesifik Board tersebut saja.
 - **US-021** Sebagai user, saya ingin tetap melihat Label lama pada riwayat Card meski Label sudah orphaned, sehingga histori tidak hilang.
 
 ## 3.6 Activity & Comment

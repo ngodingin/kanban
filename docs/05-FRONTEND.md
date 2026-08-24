@@ -2,7 +2,7 @@
 
 > Status: **Content ready — IMPLEMENTASI BLOCKED.** Pekerjaan frontend (PHASE-7-TASKS.md) TIDAK dimulai sebelum Phase 0–6 selesai & terverifikasi.
 > Related: 01-PRODUCT.md, 02-SPEC.md, 03-ENGINEERING.md, 04-DELIVERY.md (Part A UX Flows)
-> SOT version: 2.0.8
+> SOT version: 3.0.1
 
 ---
 
@@ -88,10 +88,10 @@ Hasil rekonsiliasi mockup terhadap SOT. **UI MUST mengikuti kolom "Resolusi", bu
 |---|---|---|---|
 | **Priority: High** pada card | Tidak ada di domain | **BUANG dari UI.** Card tidak punya priority. Non-goal. | [01-PRODUCT §2.2](01-PRODUCT.md) |
 | **Progress bar** pada card | Card progress dihapus (v1.0.4) | **BUANG dari UI.** Progress hanya untuk **Milestone** (0–100 manual). | [01-PRODUCT §2.1](01-PRODUCT.md) |
-| **"Status: In Progress"** di card detail | Card tidak punya status | **Display-only = nama List saat ini** (turunan `list_id`). JANGAN buat field/aksi `card.status`. Ganti label jadi "List". | [02-SPEC A.3](02-SPEC.md), [01-PRODUCT §2.2](01-PRODUCT.md) |
+| **"Status: In Progress"** di card detail | Card tidak punya status | **Display-only = nama List saat ini** (turunan `listId` pada JSON response; `list_id` hanya nama kolom database). JANGAN buat field/aksi `card.status`. Ganti label jadi "List". | [02-SPEC A.3](02-SPEC.md), [01-PRODUCT §2.2](01-PRODUCT.md) |
 | **Inbox (badge 3)** di sidebar | Notification = non-goal | **BUANG dari sidebar MVP.** Cukup Home / My Tasks / Activity. | [01-PRODUCT §2.2](01-PRODUCT.md) |
 | Milestone progress | Ada (Milestone) | **KEEP** — progress bar hanya di level Milestone. | [02-SPEC FR-014](02-SPEC.md) |
-| Single assignee | Ada | **KEEP** — satu avatar; multiple assignee non-goal. | [02-SPEC A.6](02-SPEC.md) |
+| Single assignee | Ada | **KEEP** — satu avatar; multiple assignee non-goal. | [02-SPEC A.12](02-SPEC.md), [02-SPEC FR-026](02-SPEC.md) |
 | Labels (backend/auth/…) | Ada (Board/Milestone Label) | **KEEP** | [02-SPEC B.8/C.11](02-SPEC.md) |
 | Activity timeline | Ada (immutable) | **KEEP** — sebagai audit timeline, bukan notification feed. | [02-SPEC A.8](02-SPEC.md) |
 
@@ -141,5 +141,5 @@ apps/web/src/
 
 ## 8. Governance Frontend
 - Setiap komponen yang menampilkan data domain MUST memetakan ke field yang ADA di 02-SPEC. Menemukan kebutuhan field baru → `[NEEDS-SPEC-AMENDMENT]`, berhenti, jangan tambah diam-diam.
-- Drag & drop Card, quick-edit, dan aksi lifecycle tetap lewat domain command API, tunduk optimistic locking (`expected_version`) & permission — UI tidak boleh mem-bypass business rule.
+- Drag & drop Card, quick-edit, dan aksi lifecycle tetap lewat domain command API, tunduk optimistic locking (`expectedVersion`) & permission — UI tidak boleh mem-bypass business rule.
 - **Implementasi frontend BLOCKED sampai Phase 0–6 selesai & terverifikasi** (lihat PHASE-7-TASKS.md).

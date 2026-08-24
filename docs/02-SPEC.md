@@ -36,7 +36,7 @@ ARCHIVED:  archived_at != NULL, deleted_at = NULL
 DELETED:   deleted_at != NULL   (mengalahkan archived_at dalam determinasi state)
 ```
 
-State machine (berlaku untuk Project, Milestone, Board, List, Card):
+State machine (berlaku untuk Project, Milestone, Board, List, Card, Milestone Label, dan Board Label):
 
 ```mermaid
 stateDiagram-v2
@@ -274,7 +274,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-042** Sistem MUST menolak comment baru pada Card berstatus Deleted atau Archived.
 
 ## B.11 Lifecycle
-- **FR-043** Sistem MUST mendukung state Active/Archived/Deleted untuk Project, Milestone, Board, List, Card; hanya ARCHIVED yang dapat di-restore.
+- **FR-043** Sistem MUST mendukung state Active/Archived/Deleted untuk Project, Milestone, Board, List, Card, Milestone Label, dan Board Label; hanya ARCHIVED yang dapat di-restore.
 - **FR-044** Sistem MUST memperlakukan entity local-ACTIVE sebagai tidak operasional jika ada ancestor Archived/Deleted.
 - **FR-045** Sistem MUST menolak restore entity ARCHIVED apabila ancestor belum sepenuhnya Active dan MUST selalu menolak restore entity DELETED.
 - **FR-046** Archive/delete parent MUST tidak mengubah local state descendant dan MUST tidak meminta child handling.
@@ -472,7 +472,7 @@ POST   /api/v1/projects/:project_id/boards/:board_id/labels/:label_id/delete
 POST   /api/v1/projects/:project_id/cards/:card_id/labels              # Assign ke Card
 POST   /api/v1/projects/:project_id/cards/:card_id/labels/:label_id/remove
 ```
-Milestone Label dan Board Label MUST memiliki lifecycle penuh (archive/restore/delete, `archived_at`/`deleted_at`/`version` — schema 03-ENG B.3) mengikuti pola domain-command yang sama seperti Milestone/Board/List (bukan generic PATCH untuk business transition, C.15). `GET .../labels` mengembalikan Label aktif (exclude soft-deleted kecuali diminta eksplisit, pola sama C.12 Permission Group). Label yang ARCHIVED/DELETED MUST NOT dapat di-assign ke Card baru (konsisten FR-034 — label non-aktif tidak boleh dipakai sebagai asosiasi baru).
+Milestone Label dan Board Label MUST memiliki lifecycle penuh (archive/restore/delete, `archived_at`/`deleted_at`/`version` — schema 03-ENG B.3) mengikuti pola domain-command yang sama seperti Milestone/Board/List (bukan generic PATCH untuk business transition, C.15). Tanpa filter eksplisit, `GET .../labels` mengembalikan Label ACTIVE dan ARCHIVED serta mengecualikan Label DELETED (pola soft-delete yang sama dengan C.12 Permission Group). Label yang ARCHIVED/DELETED MUST NOT dapat di-assign ke Card baru (konsisten FR-034 — label non-aktif tidak boleh dipakai sebagai asosiasi baru).
 
 Assign ke Card: `{ "labelId": "label_123" }`. Server menentukan scope Label & memvalidasi keabsahannya terhadap posisi Card saat ini. `POST .../labels/:label_id/remove` men-set `removed_at` pada baris junction (`card_milestone_labels`/`card_board_labels`) — melengkapi FR-033 (riwayat asosiasi dipertahankan, bukan hapus fisik) dengan jalur pelepasan manual eksplisit, di luar orphaning otomatis saat Card pindah Board. Otorisasi assign/remove Label ke Card MENUMPANG `card.update` (bukan permission Label tersendiri — berbeda dari `card.comment`, karena label bukan konten dengan aturan integritas append-only khusus seperti Comment, murni atribut Card biasa).
 

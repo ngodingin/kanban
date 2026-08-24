@@ -1,6 +1,6 @@
 # 03 — ENGINEERING (Architecture · Database · Security · Deployment)
 
-> Status: Structure locked; specific providers open (§ D)
+> Status: Structure and MVP providers locked; lihat A.8–A.14 dan Part D
 > Related: 02-SPEC.md (normative rules), 04-DELIVERY.md
 
 ---
@@ -85,7 +85,7 @@ Mutation & Activity terkait MUST atomic:
 ```text
 BEGIN TRANSACTION
     1. Load current entity
-    2. Validate expected_version
+    2. Validate expectedVersion
     3. Validate permission
     4. Validate destination/business invariant
     5. Update entity (version += 1)
@@ -107,7 +107,7 @@ sequenceDiagram
     participant AUTH as AuthZ
     participant DB as Project DB (tx)
 
-    C->>API: POST /boards/A/delete { expected_version }
+    C->>API: POST /boards/A/delete { expectedVersion }
     API->>DB: BEGIN IMMEDIATE
     API->>DB: Load Board A (+ version)
     API->>AUTH: cek board.delete pada Board A
@@ -271,9 +271,9 @@ Mutation → Transaction → Activity → Event → Realtime subscribers (future
 ```
 Activity **bukan** message queue/event bus — ia historical record. Event/realtime adalah layer terpisah yang di masa depan mengonsumsi Activity sebagai sumber event, bukan sebaliknya.
 
-## A.10 Long-Running Operations (Future)
+## A.10 Long-Running Operations
 
-Operasi berpotensi panjang (**bukan MVP**): internal subtree prune setelah retention, database provisioning otomatis, large export/backup. Arsitektur SHOULD tidak menghalangi pola `API → enqueue job → background worker` di masa depan.
+Provisioning Project DB dan internal subtree prune setelah retention adalah kapabilitas MVP, tetapi baseline MVP tidak memakai queue/worker: provisioning berjalan sinkron (F.2), sedangkan prune adalah operasi internal sesuai C.6 dan 04-DELIVERY Phase 5. Large export/backup terorkestrasi serta pemindahan pekerjaan panjang ke pola `API → enqueue job → background worker` tetap future/non-MVP. Arsitektur SHOULD tidak menghalangi pola itu di masa depan.
 
 ---
 
@@ -532,9 +532,11 @@ erDiagram
     MILESTONE_LABELS ||--o{ CARD_MILESTONE_LABELS : "referenced by"
     BOARD_LABELS     ||--o{ CARD_BOARD_LABELS : "referenced by"
     CARDS            ||--o{ ACTIVITIES : "logged (entity_type=card)"
+    MILESTONE_LABELS ||--o{ ACTIVITIES : "logged (entity_type=milestone_label)"
+    BOARD_LABELS     ||--o{ ACTIVITIES : "logged (entity_type=board_label)"
 ```
 
-> Catatan: `ACTIVITIES` bersifat polymorphic (`entity_type` + `entity_id`) untuk project/milestone/board/list/card, jadi bukan FK tunggal — diagram menampilkan relasi ke CARDS sebagai ilustrasi utama. `creator_user_id`/`assignee_user_id`/`actor_user_id` menunjuk `USERS` di **Global DB** (cross-database, app-level integrity — A.5), sehingga tidak digambarkan sebagai FK fisik lintas diagram.
+> Catatan: `ACTIVITIES` bersifat polymorphic (`entity_type` + `entity_id`) untuk project/milestone/board/list/card/milestone_label/board_label, jadi bukan FK tunggal. Diagram menampilkan relasi eksplisit ke Card dan kedua jenis Label; relasi polymorphic lain mengikuti pola yang sama. `creator_user_id`/`assignee_user_id`/`actor_user_id` menunjuk `USERS` di **Global DB** (cross-database, app-level integrity — A.5), sehingga tidak digambarkan sebagai FK fisik lintas diagram.
 
 ## B.7 Yang Belum Dikunci
 **Sudah dikunci:** Format ID → ULID (A.13) · Provider database-per-project → Turso/libSQL; POC Phase 0 lulus dan keputusan GO final (A.11).
@@ -598,8 +600,8 @@ Tidak ada implicit cross-project access, bahkan untuk User anggota banyak Projec
 
 ## C.5 Input Validation & API Hardening
 
-- Generic `PATCH` MUST NOT terima field domain (`version`, `archived_at`, `deleted_at`, `list_id`, `creator_user_id`, dst.) — 02-SPEC C.15. Cegah client melewati domain rules.
-- Semua mutation command MUST divalidasi terhadap `expected_version` untuk cegah silent overwrite oleh request usang.
+- Generic `PATCH` MUST NOT terima field domain (`version`, `archivedAt`, `deletedAt`, `listId`, `creatorUserId`, dst.) — 02-SPEC C.15. Cegah client melewati domain rules. Nama `snake_case` hanya berlaku pada kolom database.
+- Semua mutation command MUST divalidasi terhadap `expectedVersion` untuk cegah silent overwrite oleh request usang.
 - Idempotency key SHOULD dipakai pada mutation berisiko tinggi untuk cegah efek ganda akibat retry.
 
 ## C.6 Data Retention & Deletion
@@ -717,7 +719,7 @@ Backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Pr
 - Migration dikelola drizzle-kit (A.12), MUST idempotent & version-tracked.
 - **Global DB:** migrasi tunggal, dijalankan sebagai bagian deployment pipeline.
 - **Project DB:** karena banyak database dengan schema identik, migrasi MUST dapat diterapkan **terprogram ke seluruh Project DB** (fan-out). Strategi:
-  - Simpan `schema_version` per Project DB.
+  - Simpan versi migrasi per Project DB melalui journal migrasi Drizzle (atau mekanisme ekuivalen yang dikelola migration runner); tidak wajib membuat tabel domain bernama `schema_version`.
   - Saat deploy membawa migrasi baru, jalankan migrasi untuk setiap Project DB (batch/async untuk jumlah besar), catat progress, aman diulang (idempotent).
   - Project DB yang baru di-provision langsung memakai schema terbaru.
 - Migrasi yang mengubah **semantik domain** WAJIB melewati governance amandemen SPEC (01-PRODUCT § 0.2) lebih dulu.
