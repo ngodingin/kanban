@@ -97,7 +97,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.4.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 80 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
+| 5.4.1 | ✅ | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03)<br>[QA-CL-08](#qa-cl-08) | 100 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
 
 **Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
 **DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
@@ -120,6 +120,19 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-08"></a>
+### QA-CL-08 — 2026-08-24 · verifikasi independen 5.4.1 pasca-dependency 5.3.1/2.12.1 ✅ — ✅ 100%
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Konteks:** QA-CL-03 menahan goal ini semata karena mewarisi gap concurrency `driveDeprovision` (5.3.1) — bukan cacat pada orkestrasi trigger itu sendiri. Dependency (`5.3.1`, `2.12.1`) sudah saya tutup ✅ sesi ini (QA-CL-05, QA-CL-27); `driveDeprovision`/`processDeprovisionJobs`/`pruneAllRegisteredProjects` sudah dibaca dan diverifikasi mendalam saat itu, tidak berubah sejak (`git log` dikonfirmasi).
+
+**Test baru (`internal-prune.test.ts`, describe "TASK-5.4 rework") dibaca dan dijalankan ulang independen:** (1) `[recovery]` — job `DATABASE_DELETED` existing (file Project DB fisik SUDAH dihapus via `rmSync` sebelum trigger dipanggil) genuinely diselesaikan trigger TANPA membuka Project DB yang hilang (dibuktikan tidak error), sementara Project lain yang genuinely baru eligible diproses lewat jalur scan — `deleteDb` dikonfirmasi TIDAK dipanggil untuk job recovery (`not.toContain("pa")`), hanya untuk job baru; (2) `[isolasi kegagalan]` — satu Project gagal provider (tetap `PENDING`, `attempts=1`) TIDAK menghentikan Project lain yang sukses. Re-run independen: **6/6 PASS**.
+
+**Full re-run independen:** `pnpm exec vitest run` → **98 file/597 test PASS**; `pnpm -r typecheck` → 6/6 Done; `pnpm lint` → bersih; `vercel.json` `crons` dikonfirmasi valid (`/api/internal/prune`, `0 3 * * *`).
+
+**Kesimpulan:** 5.4.1 ditutup `✅ 100%`. TASK-5.4 tuntas.
 
 <a id="qa-cl-07"></a>
 ### QA-CL-07 — 2026-08-24 · goal 5.5.1 — reverifikasi Phase 1 terhadap SOT 4.1.0 (⬜️ → ⚠️ · 0 → 40%) — 5 area bersih, 1 gap konkurensi genuinely ditemukan
