@@ -1,20 +1,31 @@
-import { Route, Routes } from "react-router";
-import { Sidebar } from "./components/layout/sidebar";
+import { Route, Routes, useParams } from "react-router";
+import { Header } from "@/components/layout/header";
+import { Sidebar } from "@/components/layout/sidebar";
 import { LoginPage } from "./features/auth/login-page";
 
 function Home() {
   return (
-    <main className="min-h-svh bg-background text-foreground">
-      <h1 className="p-6 text-2xl font-semibold tracking-tight">NGodingin Kanban</h1>
+    <main className="p-6">
+      <h1 className="text-2xl font-semibold tracking-tight">NGodingin Kanban</h1>
     </main>
   );
 }
 
 function NotFound() {
+  return <main className="p-6 text-muted-foreground">Halaman tidak ditemukan.</main>;
+}
+
+// Halaman domain nyata dibangun goal TASK-7.4+; shell menyediakan layout +
+// header breadcrumb berbasis params rute.
+function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-svh bg-background text-foreground">
-      <p className="p-6 text-muted-foreground">Halaman tidak ditemukan.</p>
-    </main>
+    <div className="flex min-h-svh flex-col bg-background text-foreground">
+      <Header />
+      <div className="flex flex-1">
+        <Sidebar />
+        <main className="flex-1">{children}</main>
+      </div>
+    </div>
   );
 }
 
@@ -23,20 +34,60 @@ export default function App() {
     <Routes>
       {/* Layar autentikasi standalone — tanpa app shell (05-FRONTEND §5). */}
       <Route path="/login" element={<LoginPage />} />
+
+      <Route path="/" element={<Shell><Home /></Shell>} />
+
+      {/* Konteks Project/Milestone/Board — breadcrumb header mengikuti params. */}
+      <Route
+        path="/projects/:projectId"
+        element={
+          <Shell>
+            <ProjectPlaceholder />
+          </Shell>
+        }
+      />
+      <Route
+        path="/projects/:projectId/milestones/:milestoneId"
+        element={
+          <Shell>
+            <MilestonePlaceholder />
+          </Shell>
+        }
+      />
+      <Route
+        path="/projects/:projectId/milestones/:milestoneId/boards/:boardId"
+        element={
+          <Shell>
+            <BoardPlaceholder />
+          </Shell>
+        }
+      />
+
+      {/* Route non-domain tetap memakai shell tanpa breadcrumb context. */}
       <Route
         path="*"
         element={
-          <div className="flex min-h-svh">
-            <Sidebar />
-            <div className="flex-1">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-          </div>
+          <Shell>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Shell>
         }
       />
     </Routes>
   );
+}
+
+function ProjectPlaceholder() {
+  const { projectId } = useParams();
+  return <div className="p-6 text-sm text-muted-foreground">Project {projectId}</div>;
+}
+function MilestonePlaceholder() {
+  const { milestoneId } = useParams();
+  return <div className="p-6 text-sm text-muted-foreground">Milestone {milestoneId}</div>;
+}
+function BoardPlaceholder() {
+  const { boardId } = useParams();
+  return <div className="p-6 text-sm text-muted-foreground">Board {boardId}</div>;
 }
