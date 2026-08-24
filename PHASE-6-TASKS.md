@@ -105,7 +105,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 6.5.1 | ✅ | [CL-02](#cl-02)<br>[Review-CL-02](#review-cl-02)<br>[QA-CL-09](#qa-cl-09) | 100 | P1 | Dokumentasikan kapabilitas PITR Turso aktual untuk proyek ini (plan `starter`, retensi 24 jam terkonfirmasi via Turso API `GET /v1/organizations/:slug` — lihat catatan header file ini) sebagai RTO/RPO konkret MVP (F.1 "RTO/RPO konkret ditetapkan sebelum rilis") di `docs/03-ENGINEERING.md` F.1 (amandemen SOT — tambah angka retensi aktual, bukan cuma prinsip umum). **[NEEDS-DECISION opsional, tidak blocking]:** apakah upgrade plan Turso untuk retensi lebih panjang (10/30/90 hari) — murni keputusan biaya/risiko bisnis, dicatat sebagai catatan terpisah untuk manusia, TIDAK menghalangi closure goal ini dengan baseline 24 jam. | [03-ENG F.1](docs/03-ENGINEERING.md) | — |
-| 6.5.2 | 🔎 | [CL-03](#cl-03) | 80 | P0 | Uji restore NYATA minimal satu kali di staging (F.1 "Restore MUST diuji minimal sekali sebelum rilis, bukan sekadar diasumsikan bekerja") — untuk Global DB DAN satu Project DB representative, via Turso API/dashboard PITR restore-to-point-in-time ke database baru, verifikasi data konsisten (row count/sample match), dokumentasikan prosedur + hasil di CL (bukti command/output, bukan klaim). | [03-ENG F.1](docs/03-ENGINEERING.md), F.6 poin 4 | 6.5.1 |
+| 6.5.2 | ✅ | [CL-03](#cl-03)<br>[QA-CL-02](#qa-cl-02)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Uji restore NYATA minimal satu kali di staging (F.1 "Restore MUST diuji minimal sekali sebelum rilis, bukan sekadar diasumsikan bekerja") — untuk Global DB DAN satu Project DB representative, via Turso API/dashboard PITR restore-to-point-in-time ke database baru, verifikasi data konsisten (row count/sample match), dokumentasikan prosedur + hasil di CL (bukti command/output, bukan klaim). | [03-ENG F.1](docs/03-ENGINEERING.md), F.6 poin 4 | 6.5.1 |
 
 **Test:** N/A (operational drill, bukan automated test) — bukti CL WAJIB memuat command Turso API yang dipakai + output yang menunjukkan restore sukses + verifikasi data.
 **DoD:** F.1 di `docs/03-ENGINEERING.md` memuat angka RTO/RPO konkret (bukan cuma "MUST punya backup terjadwal"); minimal satu restore drill terdokumentasi dengan bukti reproducible.
@@ -150,6 +150,17 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-10"></a>
+### QA-CL-10 — 2026-08-24 · goal 6.5.2 ditutup (🔎 80% → ✅ 100%) — dependency 6.5.1 terpenuhi
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Bukti teknis sudah diverifikasi independen sebelumnya (QA-CL-02)** — tidak diulang: `GET /organizations/{org}/databases` dijalankan ULANG sekarang, dikonfirmasi ulang HANYA 2 database asli (`kanban-global`, `kanban-global-stag`) tersisa, tidak ada resource drill sisa.
+
+**Dependency `6.5.1` sekarang ✅** (QA-CL-09) — satu-satunya alasan penahanan sebelumnya (keputusan manusia eksplisit untuk menegakkan dependency ketat) sudah tidak berlaku lagi.
+
+**Kesimpulan:** 6.5.2 ditutup `✅ 100%`. TASK-6.5 tuntas.
 
 <a id="qa-cl-09"></a>
 ### QA-CL-09 — 2026-08-24 · goal 6.5.1 — amandemen SOT F.1 diverifikasi — ✅ 100%
