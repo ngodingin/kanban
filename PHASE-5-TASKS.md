@@ -1,7 +1,7 @@
 # Phase 5 — Lifecycle · Task & Goal Breakdown
 
 > Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.11.0.
-> **Audit terbaru:** seluruh goal direview ulang terhadap SOT 4.0.0 melalui [Review-CL-04](#review-cl-04). Metadata di atas mempertahankan versi saat task awal digenerate; kesiapan terkini dilacak melalui TASK-5.5.
+> **Audit terbaru:** seluruh goal direview ulang terhadap SOT 4.1.0 melalui [Review-CL-04](#review-cl-04) dan [Review-CL-05](#review-cl-05). Metadata di atas mempertahankan versi saat task awal digenerate; kesiapan terkini dilacak melalui TASK-5.5.
 > Scope batas: [04-DELIVERY C.1 "Phase 5"](docs/04-DELIVERY.md). Acuan utama: [02-SPEC](docs/02-SPEC.md) A.3, A.4, A.14; B.11; C.4–C.8; [03-ENGINEERING](docs/03-ENGINEERING.md) C.6 (Data Retention & Deletion), F.2 (Provisioning).
 > **Konteks repo saat digenerate:** Phase 0–4 selesai (semua ✅). **State machine lifecycle penuh (archive/restore/delete) dan ancestor-chain validation (INV-LIFE-001/002) SUDAH DIBANGUN sejak Phase 2/3** — `packages/domain/src/lifecycle/effective-state.ts` (`resolveLifecycleState`/`isEffectivelyOperational`/`evaluateRestore`) dipakai konsisten oleh Milestone/Board/List/Card/MilestoneLabel/BoardLabel repository. **Phase 5 TIDAK membangun ulang mekanisme ini** — sesuai catatan Prinsip Phase 2 #1 ("Phase 5 nanti MENGERASKAN mekanisme ini — retention 30 hari, internal prune — bukan membangunnya dari nol"). Satu-satunya kapabilitas yang GENUINELY belum ada: **retention 30 hari + internal prune** (BR-016, BR-016A, FR-047, 03-ENG C.6) — permanent physical removal subtree entity DELETED setelah 30 hari, bukan endpoint user-triggered.
 
@@ -15,7 +15,7 @@
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
 >
-> **⏸️ GATE EKSPLISIT (keputusan manusia, 2026-08-24): JANGAN generate `PHASE-6-TASKS.md` atau mulai kerja Phase 6 apa pun sebelum SELURUH fase 0–5 genuinely tuntas sesuai SOT dan lolos code review dengan ketat.** Tiga keputusan Review-CL-23 sudah ditutup dalam [Review-CL-24](PHASE-0-TASKS.md#review-cl-24) dan SOT 4.0.0. Sebelum membuka Phase 6: (1) tuntaskan `TASK-0.15`–`TASK-0.21` sampai `✅`; (2) lakukan review ketat ulang Phase 1–5 terhadap SOT 4.0.0. Jangan anggap `✅` lama otomatis valid terhadap SOT baru tanpa reverifikasi eksplisit.
+> **⏸️ GATE EKSPLISIT (keputusan manusia, 2026-08-24): JANGAN generate `PHASE-6-TASKS.md` atau mulai kerja Phase 6 apa pun sebelum SELURUH fase 0–5 genuinely tuntas sesuai SOT dan lolos code review dengan ketat.** Sebelum membuka Phase 6: (1) tuntaskan `TASK-0.15`–`TASK-0.21` serta remediation 2.12.1/5.3.1/5.4.1 sampai `✅`; (2) lakukan review ketat ulang Phase 1–5 melalui TASK-5.5 terhadap SOT 4.1.0. Jangan anggap `✅` lama otomatis valid terhadap SOT baru tanpa reverifikasi eksplisit.
 
 ## Prinsip Phase 5
 
@@ -86,9 +86,9 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | `[NEEDS-DECISION][NEEDS-SPEC-AMENDMENT]` Hardening Project-level deprovision sebagai operasi retryable lintas Turso API + Global DB. Goal lama menghapus Turso DB lebih dulu lalu row registry; bila transaksi Global gagal sesudah delete Turso sukses, registry menunjuk DB yang sudah hilang dan DoD lama tidak mungkin dijamin tanpa state/journal rekonsiliasi. Rekomendasi reviewer: state machine deprovision persisten (`PENDING → DATABASE_DELETED → COMPLETED`) dengan operasi idempotent dan recovery pada tiap boundary. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A; [03-ENG F.2](docs/03-ENGINEERING.md), F.4 | 5.1 |
+| 5.3.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
-**Test:** Selain boundary retention dan kegagalan `deleteDatabase`, wajib fault-injection sesudah Turso delete sukses tetapi sebelum/ketika transaksi Global commit. Retry/restart harus menyelesaikan cleanup tanpa kehilangan jejak Project, tanpa menghapus Project yang belum eligible, dan tanpa bergantung pada Project DB yang sudah tidak ada.
+**Test:** AC-036 selain boundary retention dan kegagalan `deleteDatabase`: fault-injection setelah create `PENDING`, setelah Turso delete sebelum transition, pada `DATABASE_DELETED`, dan saat cleanup Global commit. Retry/restart menyelesaikan `COMPLETED` tanpa membuka Project DB hilang; HTTP 404 idempotent; dua worker konkuren tidak menggandakan cleanup/transisi.
 **DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
 
 ---
@@ -97,29 +97,39 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.4.1 | ⚠️ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron seperti implementasi lama, tetapi handoff belum valid lagi karena dependency 5.3.1 gagal-review. Setelah desain deprovision diputuskan, trigger MUST melanjutkan/reconcile state deprovision tertunda dan melaporkan outcome per Project tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.4 | 5.2, 5.3 |
+| 5.4.1 | ⚠️ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
 
 **Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
 **DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
 
 ---
 
-## TASK-5.5 — [GATING] Reverifikasi Phase 1–5 terhadap SOT 4.0.0  (dep: remediation Phase 0 + temuan review)
+## TASK-5.5 — [GATING] Reverifikasi Phase 1–5 terhadap SOT 4.1.0  (dep: remediation Phase 0 + temuan review)
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency 4.0.0, dan concurrency Global DB tanpa `version`. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.2 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md) | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.1 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.2 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, deprovision failure recovery, trigger isolation, dan kompatibilitas state operasional baru yang diputuskan untuk 5.3.1. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2, F.4 | 5.3.1, 5.4.1 |
+| 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
 
-**Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.0.0 jika seluruh remediation dependency sudah ✅.
+**Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.1.0 jika seluruh remediation dependency sudah ✅.
 **DoD:** 5.5.1–5.5.5 seluruhnya ✅ 100% dengan QA/reviewer evidence baru; tidak ada kontrak historis `snake_case`, response mentah Invitation, non-atomic idempotency, atau failure boundary lintas-DB yang belum teruji. Baru setelah itu gate Phase 6 dapat dipertimbangkan.
 
 ---
 
 ## Closure Log
+
+<a id="review-cl-05"></a>
+### Review-CL-05 — 2026-08-24 · keputusan manusia untuk remediation 5.3/5.4; SOT 4.1.0
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Keputusan:** manusia menyetujui journal persisten `PENDING → DATABASE_DELETED → COMPLETED`. Amandemen 4.1.0 menambahkan tabel control-plane `project_deprovision_jobs` tanpa FK, snapshot database, conditional transition, recovery dari setiap boundary, serta AC-036. State `DATABASE_DELETED` menjadi bukti durable untuk cleanup Global tanpa membuka Project DB yang sudah hilang.
+
+**Status:** 5.3.1 tetap ⚠️ 60% dan 5.4.1 tetap ⚠️ 70% sampai Dev mengimplementasikan migration/recovery dan test fault-injection+concurrency. `[NEEDS-DECISION]`/`[NEEDS-SPEC-AMENDMENT]` ditutup; Dev berikutnya melakukan ⚠️→🔄.
+
+**Bukti:** keputusan manusia “ya setuju”; impact scan BR-016/FR-047/B.2/F.2/F.4/AC-032; SOT 4.1.0 dan `git diff --check` wajib masuk commit review yang sama.
 
 <a id="review-cl-04"></a>
 ### Review-CL-04 — 2026-08-24 · audit seluruh goal Phase 0–5/7 terhadap SOT 4.0.0

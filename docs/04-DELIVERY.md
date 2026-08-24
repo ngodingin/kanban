@@ -177,6 +177,8 @@ Integration — sedang, per domain command (Card move, archive, delete, restore,
 16. Restore dependency — restore ditolak jika ancestor belum ACTIVE.
 17. Project lifecycle atomicity — state Project dan Activity Project selalu commit/rollback bersama dalam Project DB.
 18. Prune retention — entity/subtree DELETED tidak pernah di-prune sebelum 30 hari dan eligible setelah batas tersebut.
+19. Membership revoke lintas-DB — pending guard menutup assignment race; cleanup Card+Activity mendahului final revoke; setiap failure boundary dapat di-retry tanpa Activity ganda.
+20. Project deprovision recovery — crash/error pada setiap transisi `PENDING → DATABASE_DELETED → COMPLETED` dapat dilanjutkan tanpa registry aktif permanen menunjuk DB hilang.
 
 (Identik dengan Definition of Done di Part C.3.)
 
@@ -217,6 +219,8 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 - **AC-032 Prune Retention** — Given entity DELETED belum mencapai 30 hari; When internal prune berjalan; Then entity dan subtree MUST tetap ada. Given `deleted_at <= now - 30 days`; Then entity eligible untuk di-prune sebagai satu subtree tanpa orphan.
 - **AC-033 Idempotency Fingerprint** — Given key+scope sudah completed untuk payload A; When key yang sama dipakai payload B; Then `IDEMPOTENCY_CONFLICT`, tidak ada side-effect/Activity B. When payload A diulang; Then status+body sukses lama di-replay identik.
 - **AC-034 Idempotency Concurrent Claim** — Given dua request paralel memakai key+scope+payload identik; When keduanya tiba sebelum request pertama selesai; Then tepat satu handler/domain mutation berjalan, request lain mendapat `IDEMPOTENCY_IN_PROGRESS` tanpa side-effect kedua; retry setelah completion me-replay hasil pertama. Given lease direclaim, owner lama MUST tidak dapat complete/release claim owner baru karena claim token berbeda.
+- **AC-035 Membership Revoke Cross-DB Recovery** — Given User menjadi assignee beberapa Card; When revoke dimulai; Then `revocation_pending_at` memblok assignment baru, seluruh Card+Activity dibersihkan dalam satu transaksi Project DB, baru `revoked_at` difinalisasi. Given failure sebelum cleanup commit; Then Membership belum revoked dan tidak ada partial cleanup. Given failure sesudah cleanup tetapi sebelum finalisasi Global; Then retry menyelesaikan revoke tanpa Activity ganda dan assignment baru tetap diblokir.
+- **AC-036 Project Deprovision Recovery** — Given Project eligible dan journal `PENDING`; When Turso delete sukses tetapi proses gagal sebelum cleanup Global; Then journal tetap/dapat dipulihkan sebagai `DATABASE_DELETED`. Retry MUST menyelesaikan cleanup Global + `COMPLETED` tanpa membuka Project DB, dan dua worker konkuren tidak boleh menghasilkan transisi/cleanup ganda yang tidak konsisten.
 
 ## B.5 Strategi Test per Layer
 
@@ -226,6 +230,7 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 | Integration | Domain command/API end-to-end terhadap database test terisolasi | **Vitest** + database test terpisah per suite; transaksi di-rollback setelah test |
 | Concurrency | Dua request paralel pada entity sama | Test yang fire dua mutation dengan `expectedVersion` sama |
 | Idempotency | Retry sequential, payload mismatch, dan request in-flight paralel | Row-level side-effect count + exact replay + `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` |
+| Cross-DB recovery | Membership revoke dan Project deprovision pada setiap boundary | Fault injection + retry/restart + concurrent worker; assert state Global/Project/provider |
 | Authorization matrix | Group × Operation × Resource | Table-driven test dari matrix di 02-SPEC Part D |
 | Frontend component | React component/hooks | **Vitest + React Testing Library**; routing dan integrasi production build diuji lewat E2E |
 | E2E | Alur multi-langkah realistis pada build production-like | **Playwright**, skenario dari UX Flows Part A |
@@ -336,6 +341,8 @@ Implementasi domain compliant **hanya jika** seluruh berikut terpenuhi:
 - Test restore dependency ada.
 - Test atomicity mutation Project + Activity Project ada.
 - Test retention 30 hari dan subtree prune tanpa orphan ada.
+- Test membership revoke lintas-DB mencakup pending guard, cleanup-first, retry, dan semua failure boundary ada.
+- Test Project deprovision journal mencakup retry/restart serta worker konkuren pada setiap transisi ada.
 
 (Identik dengan Part B.3 — keduanya harus tetap sinkron.)
 

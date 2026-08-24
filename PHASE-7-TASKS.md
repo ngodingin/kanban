@@ -3,7 +3,7 @@
 > ⏸️ **BLOCKED — JANGAN DIKERJAKAN.** Phase 7 tidak boleh dimulai sebelum **Phase 0–6 selesai & terverifikasi** (semua Exit Criteria + Definition of Done [04-DELIVERY C.3](docs/04-DELIVERY.md) hijau). Seluruh goal di file ini berstatus ⏸️ sampai gate itu terbuka.
 >
 > Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.0.6. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
-> **Audit terbaru:** outline diselaraskan pada titik kontrak observable SOT 4.0.0 melalui [Review-CL-02](#review-cl-02), tetapi tetap bukan task implementation-ready sampai gate Phase 7 dibuka dan refresh penuh terhadap repo/API aktual dilakukan.
+> **Audit terbaru:** outline diselaraskan pada titik kontrak observable SOT 4.1.0 melalui [Review-CL-02](#review-cl-02); amandemen 4.1.0 bersifat control-plane internal dan tidak mengubah UI contract. File tetap bukan task implementation-ready sampai gate Phase 7 dibuka dan refresh penuh terhadap repo/API aktual dilakukan.
 >
 > **Catatan metodologi (C.6):** task granular idealnya di-*refresh* saat fase menjadi aktif, terhadap state repo nyata (scaffold Vite, API client, hook, dsb yang sudah ada). Daftar ini adalah **outline perencanaan** yang dibuat lebih awal atas permintaan; verifikasi & sesuaikan saat Phase 7 benar-benar dibuka.
 >

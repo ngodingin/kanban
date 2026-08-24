@@ -85,6 +85,7 @@ Entity DELETED MUST NOT menerima mutation apa pun, termasuk restore. Entity MAY 
 - **BR-015** Restore parent ARCHIVED MUST membuat descendant kembali operasional sesuai local state masing-masing; descendant yang local state-nya ARCHIVED/DELETED tetap non-ACTIVE.
 - **BR-016** Internal prune pada entity DELETED MUST menghapus seluruh subtree secara fisik sebagai satu unit agar tidak menghasilkan orphan. Prune bukan operasi user.
 - **BR-016A** Entity DELETED MUST disimpan minimal 30 hari penuh sejak `deleted_at` dan MUST NOT di-prune sebelum `deleted_at <= now - 30 days`. Setelah batas tersebut entity menjadi eligible untuk prune; sistem MAY mengeksekusinya kemudian sesuai jadwal internal.
+- **BR-016B** Deprovision Project DB setelah retention MUST memakai journal persisten Global DB dengan state `PENDING → DATABASE_DELETED → COMPLETED`. Journal MUST dibuat sebelum memanggil provider delete, transisi MUST conditional/idempotent, provider `not found` diperlakukan setara sukses, dan cleanup registry Global MUST dapat dilanjutkan dari `DATABASE_DELETED` tanpa membaca Project DB yang sudah hilang. Job `COMPLETED` menjadi tombstone operasional dan tidak memiliki FK ke row Project yang telah dihapus.
 
 ## A.5 Move Invariants
 
@@ -171,6 +172,7 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 - **BR-052A** Invitation MAY menentukan `expires_at` eksplisit (harus di masa depan); jika tidak diberikan, sistem MUST men-default ke **3 hari** dari waktu pembuatan.
 - **BR-053** Pencabutan membership MUST mencabut otorisasi berjalan, MUST NOT menghapus data historis (`creator_user_id`, `activity.actor_user_id` tetap utuh).
 - **BR-054** Jika Assignee kehilangan membership, sistem MUST men-set `assignee_user_id = NULL` & mencatat Activity `card.unassigned`. `creator_user_id` MUST NOT berubah.
+- **BR-054C** Revoke Membership yang memiliki Card ter-assign MUST memakai protokol lintas-DB retryable: (1) set `revocation_pending_at` secara conditional di Global DB setelah current-state/Owner validation; (2) selama pending, User tidak boleh dipilih sebagai assignee baru tetapi Membership tetap menjadi sumber authorization sampai `revoked_at` commit; (3) dalam satu transaksi Project DB, set seluruh Card terkait menjadi unassigned dan append satu Activity `card.unassigned` per Card; (4) baru finalisasi `revoked_at` dan clear `revocation_pending_at` secara conditional di Global DB. Retry/crash recovery MUST idempotent dan tidak boleh menggandakan Activity. Jika finalisasi Global gagal setelah cleanup, Card yang sudah unassigned tetap valid dan pending guard MUST mencegah assignment baru sampai retry menyelesaikan revoke.
 - **BR-054A** Accept Invitation MUST menolak jika email User yang menerima (ternormalisasi, konsisten `users.email`) tidak sama dengan `invitations.email` — mencegah privilege escalation lewat `invitation_id` yang bocor/diteruskan (invitation_id bukan token rahasia, dikirim ke pembuat undangan untuk diteruskan lewat email eksternal). Penolakan MUST NOT membocorkan alasan spesifik (mis. pakai kode generik, bukan pesan "email tidak cocok").
 - **BR-054B** Accept Invitation oleh User yang sebelumnya memiliki Membership ter-revoke pada Project yang sama MUST mengaktifkan ulang (reactivate) row Membership existing (set `revoked_at = NULL`) alih-alih ditolak permanen — `project_memberships` MUST tepat satu row per `(project_id, user_id)` selamanya (constraint schema, 03-ENG B.2), sehingga rejoin tidak dapat berupa row baru. Scoped Group assignment dari invitation MUST ditambahkan sebagai assignment baru; assignment lama yang sudah revoked (dari keanggotaan sebelumnya) TETAP revoked (riwayat utuh, BR-053) — TIDAK otomatis diaktifkan kembali.
 
@@ -278,7 +280,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-044** Sistem MUST memperlakukan entity local-ACTIVE sebagai tidak operasional jika ada ancestor Archived/Deleted.
 - **FR-045** Sistem MUST menolak restore entity ARCHIVED apabila ancestor belum sepenuhnya Active dan MUST selalu menolak restore entity DELETED.
 - **FR-046** Archive/delete parent MUST tidak mengubah local state descendant dan MUST tidak meminta child handling.
-- **FR-047** Internal prune entity DELETED MUST menghapus seluruh subtree secara permanen tanpa orphan, hanya setelah retention 30 hari terpenuhi; prune bukan endpoint user MVP.
+- **FR-047** Internal prune entity DELETED MUST menghapus seluruh subtree secara permanen tanpa orphan, hanya setelah retention 30 hari terpenuhi; prune bukan endpoint user MVP. Deprovision Project-level MUST recoverable terhadap kegagalan di setiap boundary provider/Global DB melalui journal BR-016B.
 
 ## B.12 Concurrency
 - **FR-048** Setiap entity domain versioned yang disebut BR-019 MUST punya `version` yang increment atomically pada tiap mutation; record Global DB yang dikecualikan BR-019 tidak diwajibkan memiliki `version` pada MVP.

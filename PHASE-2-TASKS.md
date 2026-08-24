@@ -189,9 +189,9 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | ⚠️ | [CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07) | 60 | P1 | `[NEEDS-DECISION]` Reconcile `revokeMembership` lintas-DB agar post-condition BR-054/FR-026 benar juga saat salah satu operasi gagal. Goal lama commit revoke Membership di Global DB lebih dulu lalu cleanup Card di Project DB secara best-effort; kegagalan sesudah commit dapat meninggalkan Card menunjuk assignee yang membership-nya sudah revoked. Rekomendasi reviewer: cleanup Card+Activity di Project DB lebih dulu, baru commit revoke Global. Alternatif retry/reconciliation persisten memerlukan desain operasi tambahan. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md) (cross-DB app-layer integrity) | 2.8, 1.10.2 |
+| 2.12.1 | ⚠️ | [CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
 
-**Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → ketiganya `assignee_user_id = NULL` + masing-masing mendapat Activity `card.unassigned`; Card lain dan `creator_user_id` tidak berubah. Wajib fault-injection pada kedua boundary: kegagalan cleanup Project DB tidak boleh menghasilkan Membership revoked; kegagalan commit revoke Global setelah cleanup tidak boleh menghasilkan Card yang menunjuk Membership revoked. Retry harus idempotent dan tidak menggandakan Activity.
+**Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → pending guard aktif sebelum cleanup; assignment baru terhadap User pending ditolak; ketiga Card menjadi NULL + masing-masing mendapat Activity. Wajib AC-035 fault-injection: kegagalan sebelum cleanup commit rollback seluruh Card/Activity dan belum revoked; kegagalan finalisasi Global mempertahankan pending serta Card unassigned; retry menyelesaikan revoke tanpa Activity ganda. Dua request revoke konkuren tidak boleh melewati conditional state transition.
 **DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
 
 ---
@@ -215,6 +215,16 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="review-cl-08"></a>
+### Review-CL-08 — 2026-08-24 · keputusan manusia untuk remediation 2.12.1; SOT 4.1.0
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Keputusan:** manusia menyetujui rekomendasi cleanup-first. Amandemen 4.1.0 menambahkan `revocation_pending_at` sebagai guard concurrency yang diperlukan: pending memblok assignment baru tetapi belum mencabut authorization; cleanup seluruh Card+Activity commit atomik di Project DB; final revoke baru commit setelahnya. Ini menutup race assignment di antara dua database dan menyediakan recovery idempotent bila proses gagal.
+
+**Status:** tetap ⚠️ 60% sampai Dev mengimplementasikan migration/protokol dan membuktikan AC-035 pada failure + concurrency boundary. `[NEEDS-DECISION]` ditutup; Dev berikutnya melakukan ⚠️→🔄 sesuai gate.
+
+**Bukti:** keputusan manusia “ya setuju”; impact scan BR-054/FR-026/A.5/B.2/B.5/AC-026; SOT 4.1.0 dan `git diff --check` wajib masuk commit review yang sama.
 
 <a id="review-cl-07"></a>
 ### Review-CL-07 — 2026-08-24 · audit SOT 4.0.0: goal 2.12.1 ✅ 100% → ⚠️ 60%

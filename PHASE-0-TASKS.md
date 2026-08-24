@@ -1,12 +1,12 @@
 # Phase 0 — Foundation · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 4.0.0.
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 4.1.0.
 > Scope batas: [04-DELIVERY C.1 "Phase 0"](docs/04-DELIVERY.md). Acuan utama: [03-ENGINEERING Part A/B/D](docs/03-ENGINEERING.md) + [02-SPEC C.2](docs/02-SPEC.md).
 > **Konteks:** implementasi MVP berjalan; Phase 0 aktif kembali untuk remediation lintas-fase setelah audit terhadap SOT terkini. State aktual wajib dibaca dari Git dan tabel goal. File ini working list, **terpisah dari SOT**.
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
 >
-> **⏸️ GATE Phase 6 (keputusan manusia, 2026-08-24, lihat [Review-CL-22](#review-cl-22) dan [Review-CL-24](#review-cl-24)):** `TASK-0.15`–`TASK-0.21` di file ini WAJIB `✅`, dan Phase 1–5 WAJIB direverifikasi ketat terhadap SOT 4.0.0 sebelum `PHASE-6-TASKS.md` boleh digenerate atau dikerjakan. Tiga keputusan Review-CL-23 telah ditutup manusia dan diamandemen dalam SOT 4.0.0. Detail di header [PHASE-5-TASKS.md](PHASE-5-TASKS.md).
+> **⏸️ GATE Phase 6 (keputusan manusia, 2026-08-24, lihat [Review-CL-22](#review-cl-22), [Review-CL-24](#review-cl-24), dan [PHASE-5 Review-CL-05](PHASE-5-TASKS.md#review-cl-05)):** `TASK-0.15`–`TASK-0.21` di file ini WAJIB `✅`, remediation 2.12.1/5.3.1/5.4.1 WAJIB `✅`, dan Phase 1–5 WAJIB direverifikasi ketat terhadap SOT 4.1.0 sebelum `PHASE-6-TASKS.md` boleh digenerate atau dikerjakan. Detail di header [PHASE-5-TASKS.md](PHASE-5-TASKS.md).
 
 ## Prinsip Phase 0
 Membangun **plumbing**, bukan domain endpoint. Endpoint domain (Project CRUD dst.) mulai Phase 1. Authorization *resolution* hanya disiapkan sebagai **seam kosong**; implementasi penuh di Phase 4.

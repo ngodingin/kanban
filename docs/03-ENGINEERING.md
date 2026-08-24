@@ -56,7 +56,7 @@ Project Database
 Domain resources
 ```
 
-**Global DB** (control plane lintas-Project): `users`, Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`), `projects` (registry), `project_memberships`, `permission_groups`, `permissions`, `group_permissions`, scoped Group/direct Permission assignments, invitation assignments, credential, `idempotency_keys`, dan `project_databases`.
+**Global DB** (control plane lintas-Project): `users`, Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`), `projects` (registry), `project_memberships`, `permission_groups`, `permissions`, `group_permissions`, scoped Group/direct Permission assignments, invitation assignments, credential, `idempotency_keys`, `project_deprovision_jobs`, dan `project_databases`.
 
 **Project DB** (domain Project-local): `project_state`, `milestones, milestone_labels, boards, board_labels, lists, cards, card_milestone_labels, card_board_labels, activities`.
 
@@ -77,7 +77,9 @@ Authentication → Identify User → Load Project → Verify Membership
 
 ## A.5 Cross-Database Referential Integrity
 
-`cards.creator_user_id` & `cards.assignee_user_id` menunjuk ke `users.id` di Global DB (database fisik berbeda). SQLite tidak menyediakan FK lintas database secara praktis. **Keputusan:** referential integrity terhadap User dilakukan di **application/domain layer**. Saat set `creator_user_id`/`assignee_user_id`, app layer MUST verifikasi User ada &, untuk assignee, punya membership aktif pada Project tersebut.
+`cards.creator_user_id` & `cards.assignee_user_id` menunjuk ke `users.id` di Global DB (database fisik berbeda). SQLite tidak menyediakan FK lintas database secara praktis. **Keputusan:** referential integrity terhadap User dilakukan di **application/domain layer**. Saat set `creator_user_id`/`assignee_user_id`, app layer MUST verifikasi User ada dan, untuk assignee, punya Membership dengan `revoked_at IS NULL` serta `revocation_pending_at IS NULL` pada Project tersebut.
+
+Revoke Membership memakai saga sinkron kecil tanpa transaksi lintas database: Global DB lebih dulu mencatat `revocation_pending_at` secara conditional; guard ini menutup race assignment baru tetapi belum mencabut authorization. Satu transaksi `BEGIN IMMEDIATE` Project DB kemudian membersihkan **seluruh** Card terkait dan menulis satu Activity `card.unassigned` per Card. Setelah commit Project DB, Global DB memfinalisasi `revoked_at` dan mengosongkan pending secara conditional. Retry dengan pending existing MUST melanjutkan cleanup/finalisasi, bukan membuat Activity ganda. Jika finalisasi Global gagal, Card yang sudah unassigned tetap valid dan pending guard tetap menutup assignment baru sampai retry selesai (BR-054C).
 
 ## A.6 Transaction Boundary
 
@@ -324,7 +326,8 @@ project_databases
   project_id(→projects.id) · database_id(logical, bukan nama file) · created_at
 
 project_memberships
-  id · project_id(→projects.id) · user_id(→users.id) · created_at · revoked_at
+  id · project_id(→projects.id) · user_id(→users.id) · created_at
+  revocation_pending_at(nullable) · revoked_at(nullable)
   UNIQUE(project_id, user_id)
 
 permissions          (global/static, tidak dimiliki Project)
@@ -382,6 +385,12 @@ idempotency_keys
   lease_expires_at(nullable) · expires_at · created_at · updated_at
   UNIQUE(key, scope)
   # atomic claim sebelum domain handler; completed result minimum 24 jam
+
+project_deprovision_jobs
+  id · project_id(snapshot, UNIQUE, tanpa FK) · database_id · database_name
+  state("PENDING"|"DATABASE_DELETED"|"COMPLETED")
+  last_error(nullable) · attempts · created_at · updated_at · completed_at(nullable)
+  # dibuat sebelum provider delete; conditional/idempotent transition; tombstone tetap
 ```
 
 ## B.3 Project Database — Schema
@@ -525,7 +534,7 @@ erDiagram
     PERMISSION_GROUPS   ||--o{ INVITATION_GROUP_ASSIGNMENTS : "referenced by"
 ```
 
-> `IDEMPOTENCY_KEYS` sengaja tidak memiliki FK ke User/Project: `scope` mengikat identity+method+normalized path sebagai string dan tetap dapat melindungi create Project sebelum Project DB tersedia. Ownership claim ditegakkan oleh `claim_token`, bukan relasi domain.
+> `IDEMPOTENCY_KEYS` sengaja tidak memiliki FK ke User/Project: `scope` mengikat identity+method+normalized path sebagai string dan tetap dapat melindungi create Project sebelum Project DB tersedia. Ownership claim ditegakkan oleh `claim_token`, bukan relasi domain. `PROJECT_DEPROVISION_JOBS` juga sengaja tanpa FK: tombstone dan snapshot database MUST tetap tersedia setelah row `projects`/`project_databases` dihapus agar recovery tidak bergantung pada data yang sedang dibersihkan.
 
 ### B.6.2 Project DB (mermaid)
 
@@ -725,6 +734,17 @@ Backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Pr
 - Provisioning MVP MUST berjalan **sinkron** dalam request create Project, sesuai hasil POC A.11 dan keputusan manusia. Respons sukses hanya boleh dikirim setelah Project DB siap, `project_state` serta Activity awal sudah commit, dan mapping Global tersedia.
 - `provisioning_state` pada registry Global hanya mencatat kesiapan operasional. Jalur async/queue tidak aktif pada MVP dan memerlukan amandemen SOT baru jika kelak diperkenalkan; state ini bukan lifecycle domain Project dan tidak menggantikan `project_state`.
 - Mapping hasil provisioning MUST dicatat di `project_databases` (Global DB) sebagai satu-satunya sumber resolusi (A.4). Kegagalan provisioning MUST menggagalkan/rollback create Project (tidak boleh ada Project tanpa database).
+
+### F.2.1 Deprovision Project DB setelah retention
+
+Project-level prune MUST memakai `project_deprovision_jobs` (BR-016B), bukan urutan fire-and-forget provider-delete lalu registry-delete:
+
+1. Setelah eligibility BR-016A dibuktikan dari `project_state`, transaksi Global membuat atau me-load job unik per `project_id` berisi snapshot `database_id`/`database_name`, state `PENDING`.
+2. Dari `PENDING`, panggil Turso delete. Sukses atau HTTP 404 bertransisi conditional ke `DATABASE_DELETED`; kegagalan lain mempertahankan `PENDING`, menaikkan `attempts`, dan mencatat technical `last_error` tanpa menghapus registry.
+3. Dari `DATABASE_DELETED`, transaksi Global menghapus seluruh row Project-dependent leaf-to-root dan mengubah job menjadi `COMPLETED` dalam commit yang sama. Job tidak ikut dihapus dan tidak punya FK ke Project.
+4. Retry/restart MUST memulai dari state journal. `DATABASE_DELETED` tidak boleh mencoba membuka Project DB atau membaca ulang `project_state`; langsung lanjut cleanup Global. Dua worker konkuren MUST memakai conditional state transition/constraint sehingga hasil akhirnya satu `COMPLETED`.
+
+State journal ini mekanisme durability operasi internal minimal, bukan background-job framework umum dan bukan lifecycle domain Project.
 
 ## F.3 Migration (Global DB & Project DB)
 - Migration dikelola drizzle-kit (A.12), MUST idempotent & version-tracked.
