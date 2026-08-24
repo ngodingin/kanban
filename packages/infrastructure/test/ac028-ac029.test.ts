@@ -1,26 +1,8 @@
 import { describe, expect, it } from "vitest";
 
-/**
- * AC-028 — Co-Owner BUKAN Owner: tidak bisa revoke owner asli,
- * tidak muncul sebagai ownerUserId, membership owner tetap utuh.
- * Test level fungsi produksi `revokeMembership` — guard Owner sudah ada
- * (`INVALID_STATE 409`) dan diverifikasi di revoke-recovery.test.ts;
- * goal ini menambah assert eksplisit sesuai AC-028.
- */
-describe("AC-028 — Co-Owner bukan Owner (goal 6.8.6)", () => {
-  it("[AC-028][regresi] revokeMembership guard Owner aktif — tercakup revoke-recovery.test.ts", () => {
-    // Guard sudah ada di project-admin.ts:
-    // "Owner Membership tidak dapat di-revoke — Project wajib memiliki tepat satu Owner aktif (FR-002)."
-    // Regression test revoke-recovery.test.ts menguji seluruh flow.
-    // Goal ini menambah assert eksplisit bahwa guard message ada di source:
-    const fs = require("node:fs");
-    const src = require("fs").readFileSync(
-      new URL("../src/database/project-admin.ts", import.meta.url), "utf8",
-    );
-    expect(src).toContain("Owner Membership tidak dapat di-revoke");
-    expect(src).toContain("FR-002");
-  });
-});
+// Catatan (goal 6.8.6 / QA-CL-16): blok string-grep AC-028 yang dulu ada di
+// file ini DIHAPUS — digantikan test behavioral sungguhan di
+// `apps/api/test/ac028-coowner-not-owner.test.ts`.
 
 /**
  * AC-029 — PATCH Card field BR-062 ditolak/diabaikan. AllowedFields loop
