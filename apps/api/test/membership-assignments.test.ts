@@ -132,19 +132,19 @@ describe("GET .../members/:membership_id/assignments — goal 4.6.1", () => {
     const res = await getAssignments("m-reader", "user-reader");
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(Array.isArray(json.data.group_assignments)).toBe(true);
-    expect(json.data.group_assignments).toEqual([
+    expect(Array.isArray(json.data.groupAssignments)).toBe(true);
+    expect(json.data.groupAssignments).toEqual([
       expect.objectContaining({ id: "ga_reader", groupId: "g_readers", scopeType: "project", revokedAt: null }),
     ]);
-    expect(json.data.permission_assignments).toHaveLength(1);
-    expect(json.data.permission_assignments[0]).toMatchObject({
+    expect(json.data.permissionAssignments).toHaveLength(1);
+    expect(json.data.permissionAssignments[0]).toMatchObject({
       id: "da_mix_a",
       scopeType: "project",
       revokedAt: "2026-08-02T00:00:00.000Z",
     });
     // DoD: tidak membawa definisi permission/Group penuh
-    expect(json.data.permission_assignments[0].key).toBeUndefined();
-    expect(json.data.group_assignments[0].permissions).toBeUndefined();
+    expect(json.data.permissionAssignments[0].key).toBeUndefined();
+    expect(json.data.groupAssignments[0].permissions).toBeUndefined();
   });
 
   it("[C.12] Membership tanpa assignment → kedua array kosong", async () => {
@@ -155,8 +155,8 @@ describe("GET .../members/:membership_id/assignments — goal 4.6.1", () => {
     const res = await getAssignments("m-empty", "user-reader");
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.data.group_assignments).toEqual([]);
-    expect(json.data.permission_assignments).toEqual([]);
+    expect(json.data.groupAssignments).toEqual([]);
+    expect(json.data.permissionAssignments).toEqual([]);
   });
 
   it("[boundary] membership_id milik Project lain → RESOURCE_NOT_FOUND 404", async () => {

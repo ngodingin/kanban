@@ -455,10 +455,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
           404,
         );
       }
-      return {
-        group_assignments: data.groupAssignments,
-        permission_assignments: data.permissionAssignments,
-      };
+      return data;
     });
   });
 
