@@ -108,11 +108,11 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
-| 5.5.2 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.3 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.4 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
+| 5.5.1 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.2 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.3 | ⏸️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.4 | ⏸️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
 
 **Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.1.0 jika seluruh remediation dependency sudah ✅.
 **DoD:** 5.5.1–5.5.5 seluruhnya ✅ 100% dengan QA/reviewer evidence baru; tidak ada kontrak historis `snake_case`, response mentah Invitation, non-atomic idempotency, atau failure boundary lintas-DB yang belum teruji. Baru setelah itu gate Phase 6 dapat dipertimbangkan.
@@ -120,6 +120,16 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-04"></a>
+### QA-CL-04 — 2026-08-24 · audit gate TASK-5.5 lintas Phase 1–5 (status tetap ⏸️)
+**Role:** AI-QA · **Model:** Codex
+
+**Scope dikonfirmasi manusia:** seluruh verifikasi yang dibutuhkan untuk semua phase. Baseline SOT 4.1.0, task Phase 0–5/7, implementation diff terbaru, suite penuh, suite fault-injection, route/API surface, Activity payload, idempotency, Membership revoke, retention, dan deprovision journal diperiksa.
+
+**Gate:** 5.5.1 tetap blocked oleh 0.17.6/0.21.2/0.21.3/2.12.1; 5.5.2 oleh 2.12.1/0.21.2/0.21.3; 5.5.3 dan 5.5.4 oleh 0.17.6/0.21.2/0.21.3; 5.5.5 oleh 5.3.1/5.4.1. Karena dependency berstatus ⚠️, tidak ada transisi `⏸️ → ⬜️` yang sah dan reverifikasi final Phase 1–5 belum boleh dinyatakan lulus.
+
+**Temuan lintas-phase yang sudah dirutekan ke remediation:** credential API Phase 4 masih memakai JSON snake_case; beberapa mutation Phase 1/3/4 belum idempotent dan satu GET salah dibungkus idempotency; BR-054C belum punya overlap test dua revoke; AC-036 belum punya dua worker nyata; lint repo gagal. Phase 7 tetap blocked dan `PHASE-6-TASKS.md` belum boleh digenerate.
 
 <a id="qa-cl-03"></a>
 ### QA-CL-03 — 2026-08-24 · 5.3.1/5.4.1 gagal handoff dan bukti concurrency SOT 4.1.0
