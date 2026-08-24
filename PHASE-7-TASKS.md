@@ -158,7 +158,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.10.1 | 🔎 | [CL-37](#cl-37)<br>[CL-38](#cl-38) | 80 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.10.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
+| 7.10.2 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39) | 0 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
 **DoD:** Members & Invitation patuh invitation flow.
@@ -345,6 +345,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
 **Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-39"></a>
+### CL-39 — 2026-08-25 · 7.10.2 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `766ef03`, row 7.10.2 dibaca ulang dari disk `⬜️ 0%` (dependency 7.10.1 🔎 sisi Dev); kontrak diverifikasi dari source: `POST /invitations` body `{email, assignments:[{groupId, scopeType?, scopeId?}], expiresAt?}` → 201 `{invitation}` (project-admin.ts:318-340, core-schemas invitationCreateSchema), `POST /invitations/:id/revoke` → `{invitation}` (:429), list → `{invitations}`.
+**Catatan:** UI create+revoke (accept = alur invitee flat endpoint, bukan layar admin). Scope lima level ditawarkan sesuai goal; non-project saat ini dijawab server INVALID_STATE dan ditampilkan jujur (lihat CL-29 untuk keputusan backend hierarchy-scope).
 
 <a id="cl-38"></a>
 ### CL-38 — 2026-08-25 · 7.10.1 → 🔎 80%
