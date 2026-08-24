@@ -197,7 +197,7 @@ describe("POST /api/v1/projects — endpoint provisioning (goal 1.3.1)", () => {
     if (calls !== 2) throw new Error(`createProject dipanggil ${calls}x, harusnya 2 (belum ada dedupe store di Phase 1)`);
   });
 
-  it("[F.2] kegagalan provisioning mengembalikan envelope error (fallback 500 INVALID_STATE), bukan crash handler", async () => {
+  it("[F.2][C.2 amandemen 2.12.0] kegagalan provisioning mengembalikan envelope error (fallback 500 INTERNAL_ERROR — INVALID_STATE terkunci 409, MUST NOT dipasangkan 500), bukan crash handler", async () => {
     const app = makeApp({
       ...ctx.deps,
       createProject: async () => {
@@ -207,6 +207,6 @@ describe("POST /api/v1/projects — endpoint provisioning (goal 1.3.1)", () => {
     const res = await post(app, { name: "Gagal Provision" }, { "x-test-user": "user-owner" });
     if (res.status !== 500) throw new Error(`status ${res.status}`);
     const json = await res.json();
-    if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
+    if (json.error?.code !== "INTERNAL_ERROR") throw new Error(`code ${json.error?.code}`);
   });
 });

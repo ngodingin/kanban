@@ -122,7 +122,10 @@ export function toApiErrorResponse(error: unknown): { status: number; body: Erro
   }
   const message = error instanceof Error ? error.message : String(error);
   console.error("[api] unhandled error:", message);
-  return { status: 500, body: apiError("INVALID_STATE", message) };
+  // C.2 (amandemen 2.12.0) — INVALID_STATE terkunci HTTP 409 (konflik state
+  // domain), MUST NOT dipasangkan 500. Kegagalan tak terduga pakai
+  // INTERNAL_ERROR (500).
+  return { status: 500, body: apiError("INTERNAL_ERROR", message) };
 }
 
 export function readJsonObject(body: unknown): Record<string, unknown> {

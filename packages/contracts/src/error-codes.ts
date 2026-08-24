@@ -12,6 +12,7 @@ export const ERROR_CODES = [
   "TOKEN_REVOKED",
   "INVITATION_EXPIRED",
   "INVITATION_ALREADY_USED",
+  "INTERNAL_ERROR",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];

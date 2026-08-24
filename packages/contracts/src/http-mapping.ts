@@ -15,6 +15,7 @@ export const CODE_TO_HTTP: Record<ErrorCode, number> = {
   TOKEN_REVOKED: 401,
   INVITATION_EXPIRED: 410,
   INVITATION_ALREADY_USED: 409,
+  INTERNAL_ERROR: 500,
 };
 
 export interface DomainErrorLike {
@@ -28,7 +29,10 @@ export function toErrorResponse(error: DomainErrorLike): { status: number; body:
     const status = error.httpStatus ?? CODE_TO_HTTP[error.code];
     return { status, body: apiError(error.code, error.message) };
   }
-  return { status: 500, body: apiError("INVALID_STATE", error.message) };
+  // C.2 (amandemen 2.12.0) — INVALID_STATE terkunci HTTP 409 (konflik state
+  // domain), MUST NOT dipasangkan 500. Kegagalan tak terduga/error tak
+  // dikenal pakai INTERNAL_ERROR (500).
+  return { status: 500, body: apiError("INTERNAL_ERROR", error.message) };
 }
 
 export const IDEMPOTENCY_HEADER = "Idempotency-Key";

@@ -303,10 +303,14 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     try {
       return await ensure().auth.handler(c.req.raw);
     } catch (error) {
+      // C.2 (amandemen 2.12.0) — INVALID_STATE terkunci HTTP 409 (konflik
+      // state domain), MUST NOT dipasangkan 500. Kegagalan tak terduga
+      // (config tidak lengkap, exception tak tertangani) pakai
+      // INTERNAL_ERROR (500).
       return c.json(
         {
           error: {
-            code: "INVALID_STATE",
+            code: "INTERNAL_ERROR",
             message: `auth tidak tersedia: ${String(error instanceof Error ? error.message : error)}`,
           },
         },

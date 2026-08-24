@@ -38,10 +38,10 @@ describe("C.2 error -> HTTP mapping", () => {
     expect(status).toBe(410);
   });
 
-  it("C.2: unknown error code falls back to 500 INVALID_STATE without leaking", () => {
+  it("C.2 (amandemen 2.12.0): unknown error code falls back to 500 INTERNAL_ERROR (not INVALID_STATE — that code is locked to 409) without leaking", () => {
     const { status, body } = toErrorResponse({ code: "WEIRD_INTERNAL_BUG", message: "boom" });
     expect(status).toBe(500);
-    expect(body).toEqual({ error: { code: "INVALID_STATE", message: "boom" } });
+    expect(body).toEqual({ error: { code: "INTERNAL_ERROR", message: "boom" } });
   });
 });
 

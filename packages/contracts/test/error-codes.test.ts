@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ERROR_CODES, isErrorCode, type ErrorCode } from "../src/error-codes.ts";
 
 describe("C.2 canonical error codes", () => {
-  it("C.2: exposes exactly the 13 canonical codes", () => {
+  it("C.2 (amandemen 2.12.0): exposes exactly the 14 canonical codes (adds INTERNAL_ERROR)", () => {
     expect(ERROR_CODES).toEqual([
       "PROJECT_ACCESS_DENIED",
       "PERMISSION_DENIED",
@@ -17,6 +17,7 @@ describe("C.2 canonical error codes", () => {
       "TOKEN_REVOKED",
       "INVITATION_EXPIRED",
       "INVITATION_ALREADY_USED",
+      "INTERNAL_ERROR",
     ]);
   });
 
