@@ -144,8 +144,8 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.8.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-006 (nol test).** Test: Given User creator Card tapi `card.read` TIDAK applicable untuk User itu di scope manapun (tidak ada Group/direct grant apa pun, termasuk default `CREATED_BY_ME` yang butuh grant eksplisit — bukan otomatis dari status creator); When User itu coba baca/list Card yang dibuatnya sendiri; Then MUST ditolak (bukan otomatis terlihat karena jadi creator). Reuse helper `setVisibilityGlobal("")` yang sudah ada di `card-visibility.test.ts` tapi belum pernah dipanggil test manapun. | [02-SPEC A.11](docs/02-SPEC.md) (BR-045 dst); [04-DELIVERY AC-006](docs/04-DELIVERY.md) | — |
-| 6.8.2 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-007 (nol test).** Sama seperti 6.8.1 untuk assignee: Given User di-assign ke Card tapi `card.read` tidak applicable; When baca Card itu; Then MUST ditolak. | [02-SPEC A.11](docs/02-SPEC.md); [04-DELIVERY AC-007](docs/04-DELIVERY.md) | — |
+| 6.8.1 | 🔎 | [CL-21](#cl-21)<br>[CL-20](#cl-20) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-006 (nol test).** Test: Given User creator Card tapi `card.read` TIDAK applicable untuk User itu di scope manapun (tidak ada Group/direct grant apa pun, termasuk default `CREATED_BY_ME` yang butuh grant eksplisit — bukan otomatis dari status creator); When User itu coba baca/list Card yang dibuatnya sendiri; Then MUST ditolak (bukan otomatis terlihat karena jadi creator). Reuse helper `setVisibilityGlobal("")` yang sudah ada di `card-visibility.test.ts` tapi belum pernah dipanggil test manapun. | [02-SPEC A.11](docs/02-SPEC.md) (BR-045 dst); [04-DELIVERY AC-006](docs/04-DELIVERY.md) | — |
+| 6.8.2 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-007 (nol test).** Sama seperti 6.8.1 untuk assignee: Given User di-assign ke Card tapi `card.read` tidak applicable; When baca Card itu; Then MUST ditolak. | [02-SPEC A.11](docs/02-SPEC.md); [04-DELIVERY AC-007](docs/04-DELIVERY.md) | — |
 | 6.8.3 | ⬜️ | — | 0 | P1 | **AC-012 (nol test).** Test: Given Card punya Comment (Activity `comment.added`/`comment.edited`); When Card di-delete (DELETED, terminal); Then Comment historis TETAP terbaca via `GET /activities`/endpoint per-entity, sesuai akses baca yang berlaku (bukan ikut hilang/tersembunyi karena Card-nya sudah DELETED — konsisten BR-028 konteks historis + Activity immutability). | [02-SPEC A.8](docs/02-SPEC.md) (BR-028); [04-DELIVERY AC-012](docs/04-DELIVERY.md) | — |
 | 6.8.4 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-019 (nol test untuk kombinasi spesifik).** Failure-injection test pada `moveCard`: Given move Card lintas List/Board (dengan label association ikut berubah); When Activity append/salah satu langkah GAGAL di tengah transaksi; Then `listId`, `version`, label association, DAN Activity MUST seluruhnya rollback bersama (bukan cuma diuji terpisah-pisah seperti pola generik Card update/Project yang sudah ada di `audit-consistency-mutation-activity.test.ts`). | [02-SPEC A.16](docs/02-SPEC.md) poin 9; [04-DELIVERY AC-019](docs/04-DELIVERY.md) | — |
 | 6.8.5 | ⬜️ | — | 0 | P1 **[MODEL LEBIH KUAT WAJIB]** | **AC-025 (jalur sukses belum teruji).** Test: Given Invitation dengan scoped assignment (Group Contributor di Milestone X); When invitation di-accept; Then Membership MUST punya Group assignment TEPAT di Milestone X — assert eksplisit assignment TIDAK muncul di scope Project/Milestone lain. Test existing (`invitations-create.test.ts`) hanya menguji jalur negatif (scope invalid ditolak), belum kasus sukses ini. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054A/B); [04-DELIVERY AC-025](docs/04-DELIVERY.md) | — |
@@ -274,6 +274,23 @@ Draft dari `CL-02` (AI-Dev, `claude-sonnet-5`) dibaca penuh dan dikonfirmasi sol
 **Status goal:** `⏸️ 70% → 🔎 80%` — bukan `✅` (role AI-Planning & Review tidak berwenang `🔎→✅` sesuai [AGENTS.md §11.1](AGENTS.md)). Tidak ada pekerjaan Dev tersisa untuk goal ini (murni dokumentasi, substansi sudah tuntas) — siap diverifikasi QA berikutnya sebagai pengecekan administratif (dokumen sesuai draft yang sudah mereka baca di `QA-CL-02`), bukan verifikasi teknis baru. `6.5.2` TETAP `🔎/80` sesuai keputusan ketat `QA-CL-02` (dependency formal ditegakkan) sampai `6.5.1` mencapai `✅`.
 
 <a id="qa-cl-08"></a>
+<a id="cl-21"></a>
+### CL-21 — 2026-08-24 · goal 6.8.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — AC-006 card.read eksplisit
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **105 file / 637 test lulus**; typecheck+lint bersih. Perbaikan kode: GET single & list Card kini mengecek `hasPermission(effective,"card.read")` EKSPLISIT sebelum visibility filter — creator/assignee tanpa grant apapun ditolak (404/empty). Test `ac006-card-read.test.ts`: creator tanpa card.read GET kartu sendiri 404; assignee 404; list kosong; Owner kontrol 200.
+**Catatan:** Gap genuine ditemukan: implementasi lama hanya visibility filter (CREATED_BY_ME default) TANPA cek permission eksplisit.
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-24 · goal 6.8.2 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — AC-007 assignee tanpa card.read
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Sama file test, kasus assignee: u-assignee di-assign ke cd1 oleh owner, TANPA card.read → GET 404 RESOURCE_NOT_FOUND; list tidak menyertakan card tsb. Kontrol: Owner tetap membaca.
+**Catatan:** Fix sama dengan CL-21 (hasPermission eksplisit); test memisahkan skenario creator vs assignee untuk coverage AC berbeda.
+
+<a id="cl-20"></a><a id="cl-20"></a>
+### CL-20 — 2026-08-24 · goal 6.8.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness disk: row ⬜️/0, dep —. AC-006: creator tanpa grant card.read apapun MUST ditolak baca.
+<a id="cl-21"></a>
 ### QA-CL-08 — 2026-08-24 · goal 6.7.1 — dokumentasi rate limiting diverifikasi — ✅ 100%
 
 **Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)

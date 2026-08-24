@@ -21,7 +21,7 @@ import {
   type OpenProjectContext,
 } from "./projects.ts";
 import { parseBody, cardCreateSchema, cardPatchSchema, cardMoveSchema } from "./core-schemas.ts";
-import { loadEntityHierarchy } from "@kanban/infrastructure";
+import { hasPermission, loadEntityHierarchy } from "@kanban/infrastructure";
 import { resolveCardVisibilityFilter } from "@kanban/domain";
 
 export interface CardRoutesDeps {
@@ -109,6 +109,9 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const records = await repository.listCards(listId);
       const path = await loadEntityHierarchy(ctx.database, "list", listId);
       const effective = await ctx.effectiveFor(path ?? { listId });
+      if (!hasPermission(effective, "card.read")) {
+        return { cards: [] }; // anti-enumeration: list kosong, bukan error
+      }
       const isVisible = resolveCardVisibilityFilter(effective, ctx.userId);
       const visible = records.filter((r) => isVisible({ creatorUserId: r.creatorUserId, assigneeUserId: r.assigneeUserId }));
       const labelsByCard = await listCardLabelsForCards(ctx.database, visible.map((r) => r.id));
@@ -136,6 +139,15 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       // dengan tidak-ada (anti-enumeration, konsisten BR-054A).
       const path = await loadEntityHierarchy(ctx.database, "card", record.id);
       const effective = await ctx.effectiveFor(path ?? { cardId: record.id });
+      // AC-006/AC-007 — tanpa grant card.read apapun (termasuk creator/assignee),
+      // baca ditolak: status creator/assignee TIDAK otomatis memberi read.
+      if (!hasPermission(effective, "card.read")) {
+        throw new PipelineError(
+          "RESOURCE_NOT_FOUND",
+          `Card ${c.req.param("card_id")} tidak ditemukan.`,
+          404,
+        );
+      }
       const isVisible = resolveCardVisibilityFilter(effective, ctx.userId);
       if (!isVisible({ creatorUserId: record.creatorUserId, assigneeUserId: record.assigneeUserId })) {
         throw new PipelineError(
