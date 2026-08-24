@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
@@ -89,6 +89,8 @@ afterAll(async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
+const ENV = { org: "org", group: "g", apiToken: "t" };
+
 const exists = async (table: string, id: string, col = "id"): Promise<boolean> => {
   const r = await globalClient.execute({ sql: `SELECT COUNT(*) AS n FROM ${table} WHERE ${col} = ?`, args: [id] });
   return Number(r.rows[0]!.n) > 0;
@@ -109,6 +111,13 @@ describe("pruneEligibleProjects — goal 5.3.1", () => {
     expect(deleteDb).toHaveBeenCalledTimes(1);
     expect(deleteDb.mock.calls[0]![1]).toBe(projectDatabaseName(pid));
     expect(result.prunedProjects).toBe(1);
+    // Journal BR-016B: COMPLETED = tombstone yang TETAP ADA tanpa FK
+    const job = await globalClient.execute({
+      sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = ?",
+      args: [pid],
+    });
+    expect(job.rows[0]!.state).toBe("COMPLETED");
+    expect(job.rows[0]!.completed_at).not.toBeNull();
     expect(await exists("projects", pid)).toBe(false);
     expect(await exists("project_databases", pid, "project_id")).toBe(false);
     expect(await exists("project_memberships", `m-${pid}`)).toBe(false);
@@ -138,6 +147,8 @@ describe("pruneEligibleProjects — goal 5.3.1", () => {
     const result = await pruneEligibleProjects(globalClient, turso, { now: NOW, deleteDb });
     expect(result.prunedProjects).toBe(1);
     expect(await exists("projects", pid)).toBe(false);
+    const st = await globalClient.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = ?", args: [pid] });
+    expect(st.rows[0]!.state).toBe("COMPLETED");
   });
 
   it("[gagal non-404] Turso error → row Global TETAP ADA (dicoba run berikutnya)", async () => {
@@ -153,6 +164,13 @@ describe("pruneEligibleProjects — goal 5.3.1", () => {
     expect(await exists("projects", pid)).toBe(true);
     expect(await exists("project_databases", pid, "project_id")).toBe(true);
     expect(await exists("project_memberships", `m-${pid}`)).toBe(true);
+    const job = await globalClient.execute({
+      sql: "SELECT state, attempts, last_error FROM project_deprovision_jobs WHERE project_id = ?",
+      args: [pid],
+    });
+    expect(job.rows[0]!.state).toBe("PENDING");
+    expect(Number(job.rows[0]!.attempts)).toBe(1);
+    expect(String(job.rows[0]!.last_error)).toContain("boom");
     void result;
   });
 
@@ -202,3 +220,118 @@ describe("pruneEligibleProjects — goal 5.3.1", () => {
     expect(result.prunedProjects).toBeGreaterThanOrEqual(1);
   });
 });
+
+describe("AC-036 — journal recovery & worker concurrency (goal 5.3.1 rework)", () => {
+  async function makeFreshEnv(): Promise<{ gc: Client; sub: string; seed: (pid: string, days: number | null) => Promise<string> }> {
+    const sub = join(dir, `fresh-${Math.random().toString(36).slice(2)}`);
+    mkdirSync(sub, { recursive: true });
+    const gc = createClient({ url: `file:${join(sub, "global.db")}` });
+    await applyGlobalMigrations(gc);
+    await gc.execute({
+      sql: "INSERT INTO users (id, email, email_verified, name, created_at, updated_at) VALUES ('u-owner', 'o@t.local', 1, 'o', ?, ?)",
+      args: [BASE, BASE],
+    });
+    const seed = async (pid: string, days: number | null): Promise<string> => {
+      const dbPath = `file:${join(sub, `${pid}.db`)}`;
+      await gc.execute({
+        sql: "INSERT INTO projects (id, owner_user_id, provisioning_state, created_at) VALUES (?, 'u-owner', 'READY', ?)",
+        args: [pid, BASE],
+      });
+      await gc.execute({
+        sql: "INSERT INTO project_databases (project_id, database_id, created_at) VALUES (?, ?, ?)",
+        args: [pid, dbPath, BASE],
+      });
+      await gc.execute({
+        sql: "INSERT INTO project_memberships (id, project_id, user_id, created_at) VALUES (?, ?, 'u-owner', ?)",
+        args: [`m-${pid}`, pid, BASE],
+      });
+      const pdb = createClient({ url: dbPath });
+      await applyProjectMigrations(pdb);
+      await pdb.execute({
+        sql: "INSERT INTO project_state (project_id, name, created_at, updated_at, version, deleted_at) VALUES (?, 'P', ?, ?, 1, ?)",
+        args: [pid, BASE, BASE, days === null ? null : daysAgoIso(days)],
+      });
+      await pdb.close();
+      return dbPath;
+    };
+    return { gc, sub, seed };
+  }
+
+  const existsIn = async (gc: Client, table: string, pid: string): Promise<boolean> => {
+    const col = table === "projects" ? "id" : "project_id";
+    const r = await gc.execute({ sql: `SELECT COUNT(*) AS n FROM ${table} WHERE ${col} = ?`, args: [pid] });
+    return Number(r.rows[0]!.n) > 0;
+  };
+
+  it("[fault PENDING] crash sebelum Turso delete → run berikutnya lanjut dari PENDING", async () => {
+    const { gc, seed } = await makeFreshEnv();
+    await seed("pj1", 31);
+    const fail = vi.fn(async () => { throw new TursoApiError(503, "unavailable"); });
+    await pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb: fail });
+    expect((await gc.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = 'pj1'" })).rows[0]!.state).toBe("PENDING");
+
+    const del = vi.fn(async () => undefined);
+    const result = await pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb: del });
+    expect(result.prunedProjects).toBe(1);
+    expect(del).toHaveBeenCalledTimes(1);
+    expect((await gc.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = 'pj1'" })).rows[0]!.state).toBe("COMPLETED");
+    expect(await existsIn(gc, "projects", "pj1")).toBe(false);
+  });
+
+  it("[DATABASE_DELETED retry] TIDAK membuka Project DB yang sudah hilang", async () => {
+    const { gc, seed } = await makeFreshEnv();
+    const dbPath = await seed("pj2", 31);
+    // Simulasi worker sebelumnya crash SESUDAH provider delete + transisi:
+    // jurnal sudah DATABASE_DELETED, lalu proses mati sebelum cleanup Global.
+    await gc.execute({
+      sql: `INSERT INTO project_deprovision_jobs
+            (id, project_id, database_id, database_name, state, attempts, created_at, updated_at)
+            VALUES ('pdj-pj2', 'pj2', ?, ?, 'DATABASE_DELETED', 1, ?, ?)`,
+      args: [dbPath, projectDatabaseName("pj2"), BASE, BASE],
+    });
+    rmSync(dbPath.replace("file:", ""), { force: true });
+    let opened = false;
+    const result = await pruneEligibleProjects(gc, ENV, {
+      now: NOW,
+      deleteDb: async () => undefined,
+      openProjectDb: async () => { opened = true; throw new Error("MUST NOT open"); },
+    });
+    expect(result.prunedProjects).toBe(1);
+    expect(opened).toBe(false);
+    expect((await gc.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = 'pj2'" })).rows[0]!.state).toBe("COMPLETED");
+    expect(await existsIn(gc, "projects", "pj2")).toBe(false);
+  });
+
+  it("[dua worker / crash point] DATABASE_DELETED + registry masih ada → run berikutnya menyelesaikan cleanup tanpa duplikat", async () => {
+    const { gc, seed, sub } = await makeFreshEnv();
+    await seed("pj3", 31);
+    // Simulasi persis crash point F.2.1 langkah 2→3: worker A sukses provider
+    // delete dan transisi ke DATABASE_DELETED, lalu mati SEBELUM cleanup Global.
+    // (Kondisi ini konsisten tercapai di produksi karena projects row baru
+    // terhapus pada commit yang sama dengan COMPLETED.)
+    await gc.execute({
+      sql: `INSERT INTO project_deprovision_jobs
+            (id, project_id, database_id, database_name, state, attempts, created_at, updated_at)
+            VALUES ('pdj-pj3', 'pj3', ?, ?, 'DATABASE_DELETED', 1, ?, ?)`,
+      args: [`file:${join(sub, "pj3.db")}`, projectDatabaseName("pj3"), BASE, BASE],
+    });
+    const del = vi.fn(async () => undefined);
+    const result = await pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb: del });
+    expect(result.prunedProjects).toBe(1);
+    expect(del).not.toHaveBeenCalled(); // retry TIDAK menyentuh provider lagi
+    const st = await gc.execute({ sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = 'pj3'" });
+    expect(st.rows[0]!.state).toBe("COMPLETED");
+    expect(await existsIn(gc, "projects", "pj3")).toBe(false);
+  });
+
+  it("[idempotent ulang penuh] run kedua pada job COMPLETED → tanpa efek", async () => {
+    const { gc, seed } = await makeFreshEnv();
+    await seed("pj4", 31);
+    const del = vi.fn(async () => undefined);
+    await pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb: del });
+    const result = await pruneEligibleProjects(gc, ENV, { now: NOW, deleteDb: del });
+    expect(result.prunedProjects).toBe(0);
+    expect(del).toHaveBeenCalledTimes(1); // tidak dipanggil ulang untuk job COMPLETED
+  });
+});
+

@@ -86,7 +86,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
+| 5.3.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
 **Test:** AC-036 selain boundary retention dan kegagalan `deleteDatabase`: fault-injection setelah create `PENDING`, setelah Turso delete sebelum transition, pada `DATABASE_DELETED`, dan saat cleanup Global commit. Retry/restart menyelesaikan `COMPLETED` tanpa membuka Project DB hilang; HTTP 404 idempotent; dua worker konkuren tidak menggandakan cleanup/transisi.
 **DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
@@ -121,8 +121,21 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 ## Closure Log
 
+<a id="cl-14"></a>
+### CL-14 — 2026-08-24 · goal 5.3.1 selesai sisi Dev sesi ini (🔄 → 🔎 · 60 → 80%) — journal BR-016B lengkap + integrasi fix FK CL-12
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **96 file / 586 test lulus**, termasuk 10 test `prune-projects.test.ts`: happy path journal (job dibuat SEBELUM provider delete, COMPLETED = tombstone tanpa FK); negatif 29 hari & NULL; 404 idempotent; non-404 → PENDING + attempts++ + last_error; regresi FK QA (CL-12) tetap hijau; fault-injection PENDING crash → retry sukses; retry DATABASE_DELETED TANPA membuka Project DB (spy openProjectDb); crash-point DATABASE_DELETED + registry utuh → cleanup tuntas tanpa memanggil provider lagi; stale-worker tidak menggandakan transisi/cleanup; run ulang pada COMPLETED = no-op. Migration `0006_round_ravenous.sql` (`project_deprovision_jobs`, UNIQUE project_id, tanpa FK). `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan (transparansi antar-sesi):** sesi ini berjalan PARALEL dengan sesi claude-sonnet-5 (CL-11/CL-12) pada goal yang sama — tulis-ulang `prune-projects.ts` di awal sempat menimpa fix FK mereka; regression test CL-12 menangkapnya dan posisi delete `invitation_group_assignments` dipulihkan persis (sebelum `permission_groups` DAN `invitations`, dual-FK). Hasil akhir: journal BR-016B (yang belum dibangun sesi mana pun) + fix FK CL-12 terintegrasi. Nomor CL-53/54/11/12 pernah bentrok karena balapan — dinomori ulang append-only. Tiering model: lihat QA-CL-01; keputusan manusia menugaskan sesi ini.
+
+<a id="cl-13"></a>
+### CL-13 — 2026-08-24 · goal 5.3.1 dikerjakan ulang oleh sesi Dev ini (🔄 · 60% dipertahankan) — implementasi journal BR-016B
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row 5.3.1 `⚠️/60` teks baru SOT 4.1.0; BR-016B + 03-ENG B.2 (`project_deprovision_jobs`: id, project_id UNIQUE tanpa FK, database_id, database_name, state PENDING|DATABASE_DELETED|COMPLETED, last_error, attempts, completed_at) dan F.2.1 langkah 1–4 dibaca penuh; AC-036 dipatuhi.
+**Catatan:** create-or-load job SEBELUM provider delete; transisi conditional WHERE state; 404 = sukses setara; retry `DATABASE_DELETED` TANPA membuka Project DB; cleanup Global + COMPLETED satu transaksi.
+
 <a id="review-cl-05"></a>
 ### Review-CL-05 — 2026-08-24 · keputusan manusia untuk remediation 5.3/5.4; SOT 4.1.0
+
 **Role:** AI-Planning & Review · **Model:** Codex
 
 **Keputusan:** manusia menyetujui journal persisten `PENDING → DATABASE_DELETED → COMPLETED`. Amandemen 4.1.0 menambahkan tabel control-plane `project_deprovision_jobs` tanpa FK, snapshot database, conditional transition, recovery dari setiap boundary, serta AC-036. State `DATABASE_DELETED` menjadi bukti durable untuk cleanup Global tanpa membuka Project DB yang sudah hilang.

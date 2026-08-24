@@ -270,6 +270,29 @@ export const apiKeys = sqliteTable(
   (t) => [index("api_keys_project_idx").on(t.projectId)],
 );
 
+/**
+ * BR-016B — journal deprovision Project DB (control-plane, tanpa FK):
+ * state PENDING → DATABASE_DELETED → COMPLETED; COMPLETED = tombstone.
+ */
+export const projectDeprovisionJobs = sqliteTable(
+  "project_deprovision_jobs",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id").notNull(),
+    databaseId: text("database_id").notNull(),
+    databaseName: text("database_name").notNull(),
+    state: text("state", { enum: ["PENDING", "DATABASE_DELETED", "COMPLETED"] })
+      .notNull()
+      .default("PENDING"),
+    lastError: text("last_error"),
+    attempts: integer("attempts").notNull().default(0),
+    createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
+    completedAt: text("completed_at"),
+  },
+  (t) => [uniqueIndex("project_deprovision_jobs_project_unique").on(t.projectId)],
+);
+
 export const personalAccessTokens = sqliteTable(
   "personal_access_tokens",
   {
