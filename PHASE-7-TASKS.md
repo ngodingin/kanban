@@ -132,7 +132,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.8.1 | 🔄 | [CL-24](#cl-24) | 0 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
+| 7.8.1 | 🔎 | [CL-24](#cl-24)<br>[CL-25](#cl-25) | 80 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
 | 7.8.2 | ⬜️ | — | 0 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
 
 **Test:** Activity read-only; entity terhapus tetap terbaca via payload historis.
@@ -238,6 +238,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/board-move-guard.test.tsx` **4/4 PASS** — positif: `siblingBoards(boards,"m1","b1")` hanya mengembalikan board Milestone sama non-diri (`Sprint 1 — Backup`); `useBoards` mengambil `GET /api/v1/projects/p1/milestones/m1/boards` (scoping per-Milestone struktural, boards.ts:80). Commit: `4adf434`. Suite penuh 700 PASS (lihat CL-21).
 **Catatan:** kandidat move antar Board dijamin same-Milestone dua lapis: endpoint sudah scoped + filter UI mengecualikan board asal.
+
+<a id="cl-25"></a>
+### CL-25 — 2026-08-25 · 7.8.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/activity-timeline.test.tsx` **4/4 PASS** — positif: `groupByDay` menghasilkan grup `["Hari ini","Kemarin"]` dengan urutan waktu menurun (a2→a1) + label jam; timeline merender action + entity type + `<time>`; tanpa context → pesan netral. Negatif: nol `<button>` dan regex mutasi (`delete|edit|archive|restore|unread`) nol kemunculan — read-only murni. Koreksi test: tanggal dibangun via konstruktor lokal agar deterministik lintas TZ. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **123 file / 709 PASS**, exit 0. Commit: `0a3d66d`.
+**Catatan:** view audit murni (A.8/A.16 #8) — tidak ada jalur mutasi Activity di UI; payload historis dirender apa adanya (`data` belum diformat naratif — itu 7.8.2).
 
 <a id="cl-24"></a>
 ### CL-24 — 2026-08-25 · 7.8.1 → 🔄
