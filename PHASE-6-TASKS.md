@@ -163,7 +163,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.9.1 | 🔎 | [CL-53](#cl-53)<br>[CL-52](#cl-52)<br>[QA-CL-25](#qa-cl-25)<br>[CL-30](#cl-30)<br>[CL-28](#cl-28) | 80 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
+| 6.9.1 | ✅ | [QA-CL-27](#qa-cl-27)<br>[CL-53](#cl-53)<br>[CL-52](#cl-52)<br>[QA-CL-25](#qa-cl-25)<br>[CL-30](#cl-30)<br>[CL-28](#cl-28) | 100 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
 | 6.9.2 | ✅ | [QA-CL-24](#qa-cl-24)<br>[CL-49](#cl-49)<br>[CL-48](#cl-48)<br>[QA-CL-17](#qa-cl-17)<br>[CL-37](#cl-37)<br>[CL-31](#cl-31)<br>[CL-29](#cl-29)<br>[CL-36](#cl-36) | 100 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
 
 **Test:** 6.9.1 — jalankan `node scripts/release-check.mjs` → seluruh poin applicable `PASS`, nol `DEFERRED` yang sebenarnya sudah applicable (poin 3 boleh tetap `DEFERRED` by design). 6.9.2 — script smoke baru dijalankan reproducible (`pnpm --filter @kanban/infrastructure test:smoke-<nama>`), seluruh langkah PASS terhadap Project nyata di database test.
@@ -516,6 +516,21 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `scripts/release-check.mjs` poin 2 diganti dari DEFERRED-pesan-stale menjadi PASS dengan verifikasi nyata (pola poin 6): cek eksistensi `apps/api/test/core-flow-smoke.test.ts` + referensi konkret TASK-6.9.2/QA-CL-24; fallback FAIL eksplisit jika file hilang. Rerun sesuai resep QA-CL-25: `node scripts/release-check.mjs` → **5 PASS / 0 FAIL / 1 DEFERRED** — persis target QA. DoD terpenuhi: output tidak lagi memuat frasa yang merujuk state Phase 0/1 ("belum ada — mulai Phase 1" dihapus); satu-satunya DEFERRED tersisa adalah poin 3 yang by-design manual-per-fase (pesan sudah generik, izin eksplisit goal).
 **Catatan:** Tidak ada perubahan lain; poin 4/5/6 tidak disentuh. Siap verifikasi QA — setelah goal ini ✅, seluruh Task 6.1–6.9 tuntas dan Exit Criteria Phase 6 siap diverifikasi lane QA/Review.
+
+<a id="qa-cl-27"></a>
+### QA-CL-27 — 2026-08-25 · goal 6.9.1 closed ✅ (🔎 80% → ✅ 100%) — poin 2 genuinely PASS via cek nyata; TASK-6.1–6.9 seluruhnya tuntas
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Fix dikonfirmasi minimal & tepat sasaran:** `git show b24b355 -- scripts/release-check.mjs` — satu-satunya perubahan adalah poin 2 (DEFERRED-pesan-stale → verifikasi nyata via `fs.accessSync` pada `apps/api/test/core-flow-smoke.test.ts`, dengan fallback `FAIL` eksplisit jika file hilang, pola persis poin 6 yang sudah terbukti benar sebelumnya). Poin 4/5/6 tidak tersentuh.
+
+**Dijalankan langsung:** `node scripts/release-check.mjs` → **5 PASS / 0 FAIL / 1 DEFERRED** — persis target QA-CL-25. Poin 2 kini berbunyi "TASK-6.9.2 selesai (QA-CL-24) — core-flow-smoke.test.ts mencakup seluruh 9 langkah wajib F.6 poin 2 dan lulus dalam suite penuh" — tidak lagi menyebut Phase 0/1. Poin 3 tetap `DEFERRED` dengan pesan generik (izin eksplisit goal, tidak perlu diubah).
+
+**Tidak ada bug produksi** — murni checklist ops yang kini jujur mencerminkan state sebenarnya.
+
+**Dengan ini, seluruh TASK-6.1 sampai TASK-6.9 Phase 6 closed ✅ (23/23 goal).** Exit Criteria Phase 6 (Review-CL-03: Task 6.1–6.9 seluruhnya `✅` sebelum Phase 7) kini genuinely terpenuhi dari sisi status goal — pembukaan gate `⏸️` Phase 7 tetap memerlukan konfirmasi eksplisit manusia terpisah sesuai protokol (§11.4), bukan otomatis oleh QA.
+
+**Verdict:** `✅ 100%`.
 
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)
