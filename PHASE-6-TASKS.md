@@ -82,7 +82,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.3.1 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P1 | Audit SATU PASS lintas SELURUH endpoint (13 file route): setiap error path memetakan ke kode kanonik `02-SPEC C.2` yang benar (status HTTP + code pair sesuai definisi terkunci — `INVALID_STATE` selalu 409, `INTERNAL_ERROR` untuk kegagalan tak terduga, `VALIDATION_ERROR` untuk payload invalid, dst). Beda dari `TASK-0.15`/`0.19`/`0.20`/`0.21` (fix titik spesifik yang sudah ditemukan) — goal ini adalah sweep akhir memastikan TIDAK ADA titik lain yang lolos. Jika ditemukan gap baru, perbaiki di goal ini. | [02-SPEC C.2](docs/02-SPEC.md) | — |
+| 6.3.1 | ✅ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[QA-CL-04](#qa-cl-04) | 100 | P1 | Audit SATU PASS lintas SELURUH endpoint (13 file route): setiap error path memetakan ke kode kanonik `02-SPEC C.2` yang benar (status HTTP + code pair sesuai definisi terkunci — `INVALID_STATE` selalu 409, `INTERNAL_ERROR` untuk kegagalan tak terduga, `VALIDATION_ERROR` untuk payload invalid, dst). Beda dari `TASK-0.15`/`0.19`/`0.20`/`0.21` (fix titik spesifik yang sudah ditemukan) — goal ini adalah sweep akhir memastikan TIDAK ADA titik lain yang lolos. Jika ditemukan gap baru, perbaiki di goal ini. | [02-SPEC C.2](docs/02-SPEC.md) | — |
 
 **Test:** Untuk setiap route, picu minimal satu error case per kategori applicable (not-found, validation, state-conflict, unexpected) → assert code+status pair sesuai C.2, bukan cuma "response bukan 500 mentah".
 **DoD:** `grep -rn 'apiError(' apps/api/src packages/contracts/src` dikonfirmasi manual — setiap pemanggilan memakai code+status pair yang valid sesuai `CODE_TO_HTTP`; tidak ada string literal status yang menyimpang dari mapping kanonik.
@@ -150,6 +150,19 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-04"></a>
+### QA-CL-04 — 2026-08-24 · verifikasi independen 6.3.1 (audit error-mapping) — ✅ 100%
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Audit ulang independen (bukan percaya angka "79 throw-site" di CL-10):** ekstraksi sendiri seluruh panggilan `new PipelineError(...)` di `apps/api/src`+`packages/infrastructure/src` → **108 total call site**; 76 di antaranya menyertakan status HTTP eksplisit (sisanya mengandalkan fallback `CODE_TO_HTTP[code]` di `toErrorResponse` — inherently aman, tidak mungkin mismatch karena tidak override). Cross-check SELURUH 76 status eksplisit terhadap `CODE_TO_HTTP` kanonik (`http-mapping.ts`) — **nol mismatch** (`INVALID_STATE`→409 ×20 ✓, `VALIDATION_ERROR`→400 ×25 ✓, `RESOURCE_NOT_FOUND`→404 ×20 ✓, `PERMISSION_DENIED`→403 ×6 ✓, `INVITATION_EXPIRED`→410 ×2 ✓ [fix goal ini], `INVITATION_ALREADY_USED`→409 ✓, `PROJECT_ACCESS_DENIED`→403 ✓, `TOKEN_EXPIRED`→401 ✓).
+
+**Fix `INVITATION_EXPIRED` 409→410 dikonfirmasi genuinely diterapkan** — dibaca langsung `project-admin.ts:695` dan `:702`, keduanya sekarang `410`, cocok `CODE_TO_HTTP.INVITATION_EXPIRED`.
+
+**Test dijalankan ulang independen:** `invitations-accept.test.ts` (5), `invalid-state-locked.test.ts` (1) → 6/6 PASS. `eslint` langsung `project-admin.ts` → bersih.
+
+**Kesimpulan:** 6.3.1 ditutup `✅ 100%`. Audit exhaustive dikonfirmasi genuinely tuntas, bukan asumsi.
 
 <a id="qa-cl-03"></a>
 ### QA-CL-03 — 2026-08-24 · verifikasi independen 6.2.1–6.2.4 (Zod validation layer) — ✅ 100% keempatnya
