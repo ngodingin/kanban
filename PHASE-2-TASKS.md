@@ -189,7 +189,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | 🔎 | [CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
+| 2.12.1 | ⚠️ | [CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
 
 **Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → pending guard aktif sebelum cleanup; assignment baru terhadap User pending ditolak; ketiga Card menjadi NULL + masing-masing mendapat Activity. Wajib AC-035 fault-injection: kegagalan sebelum cleanup commit rollback seluruh Card/Activity dan belum revoked; kegagalan finalisasi Global mempertahankan pending serta Card unassigned; retry menyelesaikan revoke tanpa Activity ganda. Dua request revoke konkuren tidak boleh melewati conditional state transition.
 **DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
@@ -213,6 +213,16 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-26"></a>
+### QA-CL-26 — 2026-08-24 · goal 2.12.1 gagal handoff/verifikasi SOT 4.1.0 (🔎 60% → ⚠️ 60%)
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti lulus:** `packages/infrastructure/test/revoke-recovery.test.ts` dijalankan ulang melalui host `envdev` → **5/5 PASS**. Happy path, pending guard, rollback batch, retry tanpa Activity ganda, dan idempotent repeat terbukti pada Global DB + Project DB nyata. Full repo juga menghasilkan 590/590 test PASS, typecheck/build PASS (lint repo gagal pada test TASK-0.21, bukan file goal ini).
+
+**Temuan blocking:** handoff Dev tidak valid secara prosedural: row goal tetap `🔎 60%`, sedangkan CL-63 mengklaim transisi ke tepat 80%; Gate B mewajibkan row `🔎/80%` dan bukti tersebut masuk commit yang sama. Lebih substantif, Test goal mewajibkan “dua request revoke konkuren”, tetapi `revoke-recovery.test.ts` tidak memanggil `Promise.all`, barrier, atau dua revoke overlap. Kode juga membiarkan caller yang kalah claim pending tetap masuk cleanup/finalize dan mengembalikan timestamp lokal walau conditional finalize dapat memengaruhi nol row; perilaku overlap belum dibuktikan.
+
+**Remediasi:** Dev harus melakukan ⚠️→🔄, menambahkan test konkuren deterministik yang menahan worker pertama setelah pending claim, menjalankan worker kedua saat overlap, lalu membuktikan satu cleanup/Activity per Card, state final dari DB, dan hasil caller yang kalah konsisten. Handoff ulang wajib `🔎 80%` pada row dan CL.
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
 
