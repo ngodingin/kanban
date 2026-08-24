@@ -108,7 +108,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | 🔎 | [CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07) | 80 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.1 | ⚠️ | [CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07)<br>[QA-CL-13](#qa-cl-13) | 75 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
 | 5.5.2 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-09](#qa-cl-09) | 100 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
@@ -120,6 +120,24 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-13"></a>
+### QA-CL-13 — 2026-08-24 · goal 5.5.1 remediasi (CL-23/24) — fix produksi CONFIRMED benar, tapi lint gagal (🔎 80% → ⚠️ 75%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Fix produksi dibaca line-by-line untuk seluruh 5 fungsi yang ditandai QA-CL-07 — SEMUA genuinely benar:**
+- `deletePermissionGroup`, `revokeGroupAssignment`, `revokePermissionAssignment`: `UPDATE ... WHERE ... AND <state>_at IS NULL` conditional + `.returning()` untuk deteksi ownership; race-loser membaca ULANG state dari DB (bukan timestamp lokal) — pola identik `revokeMembership` (BR-054C) yang sudah benar sejak awal.
+- `acceptInvitation`: SELURUH validasi state (`revokedAt`/`acceptedAt`/`expiresAt`) dipindah ke DALAM `runInDrizzleWriteTransaction`, membaca ULANG row `invitations` setelah write-lock (`BEGIN IMMEDIATE`/`client.transaction("write")`) diperoleh — window TOCTOU asli (baca-sebelum-tx, tulis-di-dalam-tx) genuinely tertutup: begitu write-lock diperoleh, TIDAK ADA transaksi tulis lain (termasuk `revokeInvitation`) yang bisa commit sampai transaksi ini selesai — dijamin semantik SQLite `BEGIN IMMEDIATE`, bukan cuma asumsi. Finalize (`acceptedAt`) tetap conditional `WHERE isNull(acceptedAt) AND isNull(revokedAt)` sebagai lapis pertahanan tambahan.
+- `revokeInvitation`: conditional `WHERE ... AND revoked_at IS NULL AND accepted_at IS NULL` — simetris dengan guard `acceptInvitation`, kombinasi accepted+revoked genuinely mustahil dari kedua arah.
+
+**Temuan test-quality (dicatat, BUKAN alasan reject sendiri):** dicoba `git checkout 1c45e13~1` (kode SEBELUM fix) terhadap test baru `global-state-guards.test.ts` — test `[QA-CL-07 skenario]` **TETAP LULUS** bahkan terhadap kode lama, karena struktur gate-nya menahan PEMANGGILAN `acceptInvitation` secara keseluruhan (bukan window sempit ANTARA pre-check dan tulis-di-dalam-tx yang jadi celah asli) — revoke sudah genuinely commit SEBELUM `acceptInvitation` bahkan mulai dipanggil, sehingga pre-check LAMA-nya pun sudah cukup menangkapnya. Klaim commit message "dibuktikan kedua arah skenario QA-CL-07" TIDAK didukung reproduksi genuine terhadap window sempit yang sebenarnya. **Tidak dijadikan alasan reject** karena korektnes fix sudah diverifikasi independen via pembacaan kode + penalaran semantik `BEGIN IMMEDIATE` (window race yang saya khawatirkan di QA-CL-07 TIDAK MUNGKIN terjadi begitu validasi dipindah ke dalam transaksi write-mode, terlepas dari apakah test spesifik ini membuktikannya) — tapi dicatat sebagai catatan kualitas test untuk perbaikan lanjutan jika diminta.
+
+**Blocker aktual — `pnpm lint` GAGAL:** `packages/infrastructure/test/global-state-guards.test.ts:23` — helper `exists()` didefinisikan tapi tidak pernah dipakai (`@typescript-eslint/no-unused-vars`). Ini pelanggaran DoD (`pnpm lint... hijau`) yang genuinely ada saat ini, trivial untuk diperbaiki (hapus fungsi atau pakai di salah satu assertion) tapi TETAP blocker — tidak saya perbaiki sendiri (batas lane).
+
+**Full suite tetap dijalankan untuk konteks:** `pnpm exec vitest run` → **99 file/602 test PASS**; `pnpm -r typecheck` → 6/6 Done. Hanya lint yang merah.
+
+**Verdict:** `⚠️ 75%` (turun dari 80 — fix produksi solid tapi DoD lint-clean genuinely belum terpenuhi). Dev tinggal: (1) hapus/pakai helper `exists()` yang unused, (2) opsional — perkuat test race ke window sempit sebenarnya (gate persis sebelum `tx.update` internal, bukan sebelum pemanggilan fungsi) kalau ingin bukti reproduksi yang lebih presisi.
 
 <a id="qa-cl-12"></a>
 ### QA-CL-12 — 2026-08-24 · buka gate 5.5.5 (⏸️ → ⬜️) + reverifikasi Phase 5 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap baru
