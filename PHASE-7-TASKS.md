@@ -81,7 +81,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
-| 7.4.2 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
+| 7.4.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61) | 80 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
 **DoD:** Home terasa work-management tool, bukan admin panel.
@@ -557,6 +557,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ### CL-58 — 2026-08-25 · 7.2.2 → 🔎 80%
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/design-tokens-2.test.ts` **6/6 PASS** — positif: `@import "@fontsource-variable/inter"` self-host exact-pin `5.3.0` di package.json; `--font-sans: "Inter Variable"`; skala §2.2 lengkap 12 token (H1 32/40 w700, H2 24/32 w600, H3 20/28 w600, Body 14/20, Small 12/16); body memakai `font-sans`. Koreksi test: asersi placeholder diganti daftar substring eksplisit. Suite penuh **133 file / 764 PASS**, exit 0. Commit: `24f9859`.
+
+<a id="cl-61"></a>
+### CL-61 — 2026-08-25 · 7.4.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `recent.test.tsx` **3/3 PASS** + `recent-activity-url.test.tsx` **1/1 PASS** (modul asli, tanpa mock) — positif: `recordProjectVisit` menyimpan urutan kunjungan di localStorage (p1,p2→visit p1 → ["p1","p2"]); `orderRecentFirst` recent duluan sisanya urutan API; Recent Activity merender 5 event terakhir per konteks. Negatif: bukti BR-010 — seluruh URL `/api/v1/projects/p7/activities`, nol pola search/cross-project; expired invitation dsb tidak relevan di sini. Koreksi test: referensi container render kedua + unwrap `{activities}` sesuai kontrak. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **135 file / 768 PASS**, exit 0. Commit: `54536b5`.
+**Catatan:** "Recent" = UI-state localStorage (interaksi murni, bukan data domain); Activity tetap per konteks Project.
 
 <a id="cl-60"></a>
 ### CL-60 — 2026-08-25 · 7.4.2 → 🔄
