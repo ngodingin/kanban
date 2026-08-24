@@ -108,7 +108,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | 🔎 | [CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07)<br>[QA-CL-13](#qa-cl-13) | 80 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.1 | ✅ | [CL-26](#cl-26)<br>[CL-25](#cl-25)<br>[CL-24](#cl-24)<br>[CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07)<br>[QA-CL-13](#qa-cl-13)<br>[QA-CL-14](#qa-cl-14) | 100 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
 | 5.5.2 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-09](#qa-cl-09) | 100 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
@@ -120,6 +120,17 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-14"></a>
+### QA-CL-14 — 2026-08-24 · goal 5.5.1 ditutup (⚠️ 75% → ✅ 100%) — blocker lint diperbaiki, fix produksi sudah CONFIRMED sebelumnya
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**CL-25/CL-26 (Dev):** menghapus helper `exists()` yang tidak terpakai (blocker lint QA-CL-13), DAN secara jujur mengoreksi klaim berlebihan "reproduksi dua arah" di commit sebelumnya menjadi "test barrier membuktikan invariant end-to-end, bukan window race sempit" — selaras persis dengan temuan test-quality QA-CL-13.
+
+**Tidak diulang dari nol** — logika produksi (5 fungsi) sudah diverifikasi line-by-line CONFIRMED benar di QA-CL-13 dan tidak berubah pada commit ini (`git show a54b830` dikonfirmasi hanya menyentuh test file + task file). Diverifikasi ulang: `pnpm lint` → **bersih**; `pnpm exec vitest run` → **99 file/602 test PASS**; `pnpm -r typecheck` → 6/6 Done; `global-state-guards.test.ts` re-run → 5/5 PASS.
+
+**Kesimpulan:** 5.5.1 ditutup `✅ 100%`. **TASK-5.5 SELESAI PENUH (5/5 goal ✅)** — reverifikasi Phase 1–5 terhadap SOT 4.1.0 tuntas.
 
 <a id="qa-cl-13"></a>
 ### QA-CL-13 — 2026-08-24 · goal 5.5.1 remediasi (CL-23/24) — fix produksi CONFIRMED benar, tapi lint gagal (🔎 80% → ⚠️ 75%)
