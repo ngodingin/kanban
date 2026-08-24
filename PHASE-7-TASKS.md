@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | 🔎 | [CL-11](#cl-11)<br>[CL-12](#cl-12) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | 🔎 | [CL-13](#cl-13)<br>[CL-14](#cl-14) | 80 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -310,6 +310,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** freshness check: HEAD `85cf15b`, row 7.3.2 dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.1 🔎 sisi Dev); Reference `05-FRONTEND §5` dibaca dari disk (header breadcrumb Project › Milestone › Board; context switch antar Project).
 **Catatan:** mulai Header + query hooks konsumen endpoint nyata yang SUDAH ada (C.4 GET /projects, C.4 detail, C.5/C.6 detail) — tanpa data demo; nama entity diambil via TanStack Query (§3.2).
+
+<a id="qa-cl-06"></a>
+### QA-CL-06 — 2026-08-25 · goal 7.3.1 closed ✅ (🔎 80% → ✅ 100%) — dependency 7.2.1 kini ✅, sidebar genuinely context-aware tanpa Inbox
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Dependency terpenuhi:** 7.2.1 sudah `✅` (QA-CL-05) — goal ini sekarang genuinely closeable (Dev sempat mulai saat 7.2.1 masih 🔎 sisi Dev, dicatat jujur di CL-11, tidak masalah karena hanya *closure* ke `✅` yang digate dependency, bukan mulai kerja paralel).
+
+**`sidebar.tsx` dibaca penuh:** seluruh 8 item wajib §5 ada (Home/My Tasks/Activity/PROJECTS ▾/Members/Permissions/API Keys/Settings), NOL Inbox. `NavLink` React Router genuinely context-aware (styling + `aria-current="page"` otomatis dari `isActive`), `end: true` khusus Home mencegah false-positive match di sub-path. `App.tsx` genuinely merutekan `/login` TANPA `Shell` (standalone, sesuai klaim), rute domain lain terbungkus `Shell` (Header+Sidebar).
+
+**Re-run independen:** `npx vitest run apps/web/test/sidebar.test.tsx` → **4/4 PASS** — dibaca penuh: seluruh 8 item render; guard negatif regex (`revenue|analytics|billing|admin panel|notification`) nol match pada container, plus `queryByText(/inbox/i)` null; `/members` → Members `aria-current="page"`; Home aktif hanya di `/` (bukan di `/tasks`, end-matching genuinely bekerja). `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` → 0 error.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-12"></a>
 ### CL-12 — 2026-08-25 · 7.3.1 → 🔎 80%
