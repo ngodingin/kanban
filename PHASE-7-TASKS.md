@@ -192,7 +192,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.13.1 | 🔎 | [CL-30](#cl-30)<br>[CL-31](#cl-31) | 80 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
+| 7.13.1 | ✅ | [QA-CL-15](#qa-cl-15)<br>[CL-30](#cl-30)<br>[CL-31](#cl-31) | 100 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
 | 7.13.2 | 🔎 | [CL-32](#cl-32)<br>[CL-33](#cl-33) | 80 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
 | 7.13.3 | 🔎 | [CL-32](#cl-32)<br>[CL-34](#cl-34) | 80 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
 | 7.13.4 | 🔎 | [CL-35](#cl-35)<br>[CL-36](#cl-36) | 80 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
@@ -232,6 +232,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-15"></a>
+### QA-CL-15 — 2026-08-25 · goal 7.13.1 closed ✅ (🔎 80% → ✅ 100%) — endpoint mapping + body shape genuinely cocok seluruh 5 entity kind
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`lifecycle/hooks.ts`'s `endpoint()` dicocokkan satu-satu ke source route seluruh 5 entity:** Project `/v1/projects/:id/{action}` (`projects.ts:414/421/428`), Milestone/Board/List/Card masing-masing `/v1/projects/:p/{segment}/:id/{action}` (dicek `milestones.ts:154`, `boards.ts:149`, `lists.ts:145`, dan pola sama `cards.ts:241`) — genuinely identik, termasuk pengecualian path Project yang tidak bernested. Body `{expectedVersion}` dicocokkan ke `readExpectedVersionField` di handler (`lists.ts:151`) — genuinely benar, bukan field karangan.
+
+**`confirm-lifecycle-dialog.tsx` dibaca penuh:** generik lintas 5 `LifecycleEntityKind`, TIDAK ada child-handling apa pun (sesuai goal — descendant local state tidak disentuh UI, hanya di-invalidate query agar reload). Tombol delete genuinely `bg-destructive` + label "Ya, hapus permanen"; error via `role="alert"` TANPA auto-close (dialog tetap terbuka, tombol konfirmasi tetap ada) — keputusan tetap di tangan pengguna, sesuai 04-DELIVERY A.4.
+
+**Re-run independen:** `npx vitest run apps/web/test/lifecycle-dialog.test.tsx` → **6/6 PASS** — seluruh test genuinely mock di level `fetch` (bukan hook), assertion synchronous/awaited dengan benar (tidak ada pola floating-promise seperti QA-CL-14). `pnpm --filter @kanban/web typecheck`/`pnpm lint`/`pnpm --filter @kanban/web build` → seluruhnya bersih.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-14"></a>
 ### QA-CL-14 — 2026-08-25 · goal 7.10.1 — field/envelope contract genuinely benar, TAPI satu test punya assertion vacuous (floating promise) (🔎 80% → ⚠️ 65%)
