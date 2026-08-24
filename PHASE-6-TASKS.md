@@ -70,7 +70,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 6.2.1 | 🔎 | [CL-05](#cl-05)<br>[CL-04](#cl-04) | 80 | P1 | Ganti parsing manual (`readTitleField`/`readOptionalStringField`/dst, `apps/api/src/routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`) dengan skema Zod eksplisit per payload (create/update/move) — validasi tipe, required/optional, dan batas (mis. `title` non-empty string) di satu titik per entity, error digabung ke `VALIDATION_ERROR.details` (sudah ada pola collect-all dari `TASK-0.17.4`, reuse helper yang sama — JANGAN bikin mekanisme kedua). | [02-SPEC C.2](docs/02-SPEC.md) (VALIDATION_ERROR), C.5, C.8; [03-ENG A.8](docs/03-ENGINEERING.md) (Zod terkunci) | — |
 | 6.2.2 | 🔎 | [CL-06](#cl-06) | 80 | P1 | Sama seperti 6.2.1 untuk `labels.ts`, `card-labels.ts`, `comments.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.9–C.11 | — |
-| 6.2.3 | 🔄 | [CL-07](#cl-07) | 0 | P1 | Sama seperti 6.2.1 untuk `project-admin.ts` (Membership/Permission Group/scoped assignment/Invitation) dan `api-keys.ts`/`personal-access-tokens.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.12–C.14 | — |
+| 6.2.3 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | Sama seperti 6.2.1 untuk `project-admin.ts` (Membership/Permission Group/scoped assignment/Invitation) dan `api-keys.ts`/`personal-access-tokens.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.12–C.14 | — |
 | 6.2.4 | ⬜️ | — | 0 | P2 | Sama seperti 6.2.1 untuk `projects.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.4 | — |
 
 **Test:** Body dengan field bertipe salah (mis. `title` berupa number) atau field wajib hilang → `400 VALIDATION_ERROR` dengan `details` menyebut field spesifik, BUKAN generic `500`/crash parsing. Body valid → berperilaku identik dengan parsing manual lama (regresi behavioral nihil — hanya mekanisme validasi yang berubah). Field terlarang generic PATCH (`BR-062`) tetap tertolak (regresi test existing tetap hijau).
@@ -217,7 +217,13 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-07 — 2026-08-24 · goal 6.2.3 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`; dependency `—`. Scope dipetakan: api-keys.ts + personal-access-tokens.ts (konversi penuh, termasuk detail `unknownField:*` yang dipertahankan) dan project-admin.ts (create/update Permission Group, group/permission assignment create, invitation create — pesan & urutan details dipertahankan persis agar test Phase 1 yang sudah ✅ tidak berubah).
-<a id="cl-06"></a><a id="cl-06"></a>
+<a id="cl-08"></a>
+### CL-08 — 2026-08-24 · goal 6.2.3 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — Zod admin/credential
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **102 file / 628 test lulus**; typecheck+lint bersih. Implementasi: skema groupCreate/Update, groupAssignmentCreate, permissionAssignmentCreate, invitationCreateSchema(projectId) (urutan assignments→expiresAt menjaga urutan details yang di-assert test Phase 1), apiKeyCreateSchema/patCreateSchema + bridge parseCredentialBody (kontrak unknownField:* per-key). Handler: create/update Permission Group, group/permission assignment create, invitation create, api-keys create, PAT create.
+**Catatan:** Helper read* manual superseded dihapus; aturan allowed-keys & minimal-satu-field update-group tetap diverifikasi post-parse dengan pesan persis versi lama.
+
+<a id="cl-06"></a><a id="cl-06"></a><a id="cl-06"></a>
 ### CL-06 — 2026-08-24 · goal 6.2.2 selesai sisi Dev (⬜️ → 🔎 · 0 → 80%) — Zod labels/card-labels/comments
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `pnpm exec vitest run` → **102 file / 628 test lulus** (semua test existing hijau tanpa modifikasi = parity); typecheck+lint bersih. Implementasi: skema `labelCreateSchema`/`labelPatchSchema`, `cardLabelAssignSchema`, `commentCreateSchema` di core-schemas.ts; handler ms/bd label create+patch, card-label assign, comment create/edit memakai `parseBody`. **Detail penting:** unknown-field loop C.11/C.15 kini mengiterasi `rawBody` (bukan hasil Zod strip) agar penolakan field tak dikenal tetap berfungsi — ditemukan lewat verifikasi mandiri saat test existing `{name:"Ok",extra:1}` sempat lolos.
