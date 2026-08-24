@@ -54,7 +54,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.2.1 | 🔄 | [CL-09](#cl-09) | 0 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.1 | 🔎 | [CL-09](#cl-09)<br>[CL-10](#cl-10) | 80 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.2.2 | ⬜️ | — | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.2.3 | ⬜️ | — | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
 
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-10"></a>
+### CL-10 — 2026-08-25 · 7.2.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/design-tokens.test.ts` **3/3 PASS** — positif: seluruh token §2.1 terdefinisi di `:root` dengan nilai oklch sesuai tabel SOT (primary indigo-500, primary-active indigo-600, foreground slate-800, muted-foreground slate-500, border/muted slate-200, success emerald-500, warning amber-500, destructive red-500) + terekspose ke utility Tailwind (`--color-primary-active/success/warning`) + blok `.dark` tersedia; negatif: guard scan `src/**` — nol warna hard-coded (`#hex`/`rgb`/`hsl`) di luar index.css. Koreksi test batas blok `:root` (`.dark` di custom-variant) → commit susulan `54112ad`; suite penuh **116 file / 681 PASS**, exit code diverifikasi eksplisit.
+**Catatan:** nilai dark memakai hue keluarga sama (indigo/slate/emerald/amber/red) sebagai keputusan teknis; penerapan radius/density light+dark penuh tetap goal 7.2.3. Proses koreksi: commit pertama (`980e59f`) sempat menyertakan 1 test gagal akibat rantai perintah yang menelan exit-code — diperbaiki dan diverifikasi ulang sebelum handoff.
 
 <a id="cl-09"></a>
 ### CL-09 — 2026-08-25 · 7.2.1 → 🔄
