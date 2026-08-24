@@ -183,7 +183,7 @@ describe("Idempotency-Key wiring end-to-end (goal 0.16.3) — lifecycle Mileston
       milestoneApp().request(`http://localhost/v1/projects/${projectIdValue}/milestones/${milestoneId}/archive`, {
         method: "POST",
         headers: { "x-test-user": "user-a", "content-type": "application/json", "Idempotency-Key": idempotencyKey },
-        body: JSON.stringify({ expected_version: 1 }),
+        body: JSON.stringify({ expectedVersion: 1 }),
       });
 
     const res1 = await archiveOnce("key-archive-1");

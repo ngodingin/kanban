@@ -120,7 +120,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       for (const key of Object.keys(body)) {
-        if (key !== "name" && key !== "expected_version") {
+        if (key !== "name" && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
             `Field '${key}' tidak dapat diubah via PATCH Label (C.15).`,
@@ -229,7 +229,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       for (const key of Object.keys(body)) {
-        if (key !== "name" && key !== "expected_version") {
+        if (key !== "name" && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
             `Field '${key}' tidak dapat diubah via PATCH Label (C.15).`,

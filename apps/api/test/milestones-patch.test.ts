@@ -134,10 +134,10 @@ function patch(body: unknown, user = "user-a"): Promise<Response> {
 describe("PATCH /api/v1/projects/:project_id/milestones/:milestone_id — goal 2.3.2", () => {
   it("[C.5][C.2][B.5] Owner update field → 200 payload baru + Activity changes {before, after}", async () => {
     const res = await patch({
-      expected_version: 1,
+      expectedVersion: 1,
       title: "Diperbarui",
       progress: 60,
-      due_date: "2026-09-30",
+      dueDate: "2026-09-30",
     });
     expect(res.status).toBe(200);
     const json = await res.json();
@@ -172,11 +172,11 @@ describe("PATCH /api/v1/projects/:project_id/milestones/:milestone_id — goal 2
 
   it("[C.15] negatif: field domain-controlled tidak dapat diubah via PATCH → VALIDATION_ERROR", async () => {
     for (const body of [
-      { expected_version: 2, id: "ms_lain" },
-      { expected_version: 2, version: 99 },
-      { expected_version: 2, archived_at: null },
-      { expected_version: 2, deleted_at: null },
-      { expected_version: 2, list_id: "ls_x" },
+      { expectedVersion: 2, id: "ms_lain" },
+      { expectedVersion: 2, version: 99 },
+      { expectedVersion: 2, archived_at: null },
+      { expectedVersion: 2, deleted_at: null },
+      { expectedVersion: 2, list_id: "ls_x" },
     ]) {
       const res = await patch(body);
       expect(res.status, JSON.stringify(body)).toBe(400);
@@ -187,8 +187,8 @@ describe("PATCH /api/v1/projects/:project_id/milestones/:milestone_id — goal 2
   it("[SOT 2.3.0] negatif: payload invalid bentuk → VALIDATION_ERROR 400 (bukan INVALID_STATE)", async () => {
     for (const body of [
       { title: "" },
-      { expected_version: 2, progress: 101 },
-      { expected_version: true },
+      { expectedVersion: 2, progress: 101 },
+      { expectedVersion: true },
       {},
       "bukan-json",
     ]) {
@@ -199,13 +199,13 @@ describe("PATCH /api/v1/projects/:project_id/milestones/:milestone_id — goal 2
   });
 
   it("[AC-020] negatif: version mismatch → VERSION_CONFLICT 409 tanpa perubahan", async () => {
-    const res = await patch({ expected_version: 999, title: "Tabrakan" });
+    const res = await patch({ expectedVersion: 999, title: "Tabrakan" });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("VERSION_CONFLICT");
   });
 
   it("[Authz interim] non-Owner → PERMISSION_DENIED 403", async () => {
-    const res = await patch({ expected_version: 2, title: "Bukan milikku" }, "user-b");
+    const res = await patch({ expectedVersion: 2, title: "Bukan milikku" }, "user-b");
     expect(res.status).toBe(403);
     expect((await res.json()).error?.code).toBe("PERMISSION_DENIED");
   });
@@ -222,7 +222,7 @@ describe("PATCH /api/v1/projects/:project_id/milestones/:milestone_id — goal 2
     } finally {
       await projectDb.close();
     }
-    const res = await patch({ expected_version: 3, title: "Gagal" });
+    const res = await patch({ expectedVersion: 3, title: "Gagal" });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("INVALID_STATE");
   });

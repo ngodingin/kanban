@@ -115,7 +115,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         title: readTitleField(body),
         subtitle: readOptionalString(body, "subtitle") ?? null,
         description: readOptionalString(body, "description") ?? null,
-        dueDate: readOptionalString(body, "due_date") ?? null,
+        dueDate: readOptionalString(body, "dueDate") ?? null,
         assigneeUserId: readAssigneeField(body),
         actorUserId: ctx.userId,
       });
@@ -183,12 +183,12 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
-      const allowedFields = ["title", "subtitle", "description", "due_date", "assignee"] as const;
+      const allowedFields = ["title", "subtitle", "description", "dueDate", "assignee"] as const;
       for (const key of Object.keys(body)) {
-        if (!(allowedFields as readonly string[]).includes(key) && key !== "expected_version") {
+        if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
-            `Field '${key}' tidak dapat diubah via PATCH Card${key === "list_id" ? " — move wajib via /cards/:id/move (BR-017)" : " (C.15)"}.`,
+            `Field '${key}' tidak dapat diubah via PATCH Card${key === "listId" ? " — move wajib via /cards/:id/move (BR-017)" : " (C.15)"}.`,
             400,
           );
         }
@@ -203,7 +203,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         ...(body.title === undefined ? {} : { title: readTitleField(body) }),
         subtitle: readOptionalString(body, "subtitle"),
         description: readOptionalString(body, "description"),
-        dueDate: readOptionalString(body, "due_date"),
+        dueDate: readOptionalString(body, "dueDate"),
         assigneeUserId: body.assignee === undefined ? undefined : readAssigneeField(body),
       });
       return { card: cardPayload(updated) };
@@ -219,7 +219,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       await authorize(ctx, "card.move", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       for (const key of Object.keys(body)) {
-        if (key !== "destination_list_id" && key !== "expected_version") {
+        if (key !== "destinationListId" && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
             `Field '${key}' tidak dikenal pada payload move (C.8).`,
@@ -227,9 +227,9 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
           );
         }
       }
-      const rawDestination = body.destination_list_id;
+      const rawDestination = body.destinationListId;
       if (typeof rawDestination !== "string" || rawDestination.trim().length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field destination_list_id wajib string non-kosong.", 400);
+        throw new PipelineError("VALIDATION_ERROR", "Field destinationListId wajib string non-kosong.", 400);
       }
       const expectedVersion = readExpectedVersionField(body);
       const repository = new DrizzleCardRepository(ctx.database, {

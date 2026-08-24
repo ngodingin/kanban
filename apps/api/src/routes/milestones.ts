@@ -102,8 +102,8 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
         title,
         description: readOptionalStringField(body, "description") ?? null,
         progress: readProgressField(body) ?? 0,
-        startDate: readOptionalStringField(body, "start_date") ?? null,
-        dueDate: readOptionalStringField(body, "due_date") ?? null,
+        startDate: readOptionalStringField(body, "startDate") ?? null,
+        dueDate: readOptionalStringField(body, "dueDate") ?? null,
         actorUserId: ctx.userId,
       });
       return { milestone: milestonePayload(created) };
@@ -146,9 +146,9 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       await authorize(ctx, "milestone.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
-      const allowedFields = ["title", "description", "progress", "start_date", "due_date"] as const;
+      const allowedFields = ["title", "description", "progress", "startDate", "dueDate"] as const;
       for (const key of Object.keys(body)) {
-        if (!(allowedFields as readonly string[]).includes(key) && key !== "expected_version") {
+        if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
             `Field '${key}' tidak dapat diubah via PATCH Milestone (C.15).`,
@@ -164,8 +164,8 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
         ...(body.title === undefined ? {} : { title: readTitleField(body) }),
         description: readOptionalStringField(body, "description"),
         progress: readProgressField(body),
-        startDate: readOptionalStringField(body, "start_date"),
-        dueDate: readOptionalStringField(body, "due_date"),
+        startDate: readOptionalStringField(body, "startDate"),
+        dueDate: readOptionalStringField(body, "dueDate"),
       });
       return { milestone: milestonePayload(updated) };
     });

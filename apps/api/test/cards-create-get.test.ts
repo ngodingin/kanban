@@ -127,7 +127,7 @@ describe("POST /api/v1/projects/:project_id/lists/:list_id/cards — goal 2.9.1"
         title: "Kartu Pertama",
         subtitle: "sub",
         description: "desc",
-        due_date: "2026-09-15",
+        dueDate: "2026-09-15",
         assignee: "user-member",
       }),
     });

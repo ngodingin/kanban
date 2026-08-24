@@ -142,7 +142,7 @@ function patch(body: unknown, user?: string) {
 
 describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal 1.3.4)", () => {
   it("[BR-035][C.4] owner rename dengan expected_version benar → 200, name baru, version+1, Activity project.updated", async () => {
-    const res = await patch({ name: "Nama Baru", expected_version: 1 }, "user-a");
+    const res = await patch({ name: "Nama Baru", expectedVersion: 1 }, "user-a");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     const p = json.data.project;
@@ -166,14 +166,14 @@ describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal
   });
 
   it("[C.4][interim-authz] member non-owner ditolak PERMISSION_DENIED 403 — bukan hanya PROJECT_ACCESS_DENIED", async () => {
-    const res = await patch({ name: "Coba Rebut", expected_version: 2 }, "user-b");
+    const res = await patch({ name: "Coba Rebut", expectedVersion: 2 }, "user-b");
     if (res.status !== 403) throw new Error(`status ${res.status}, harusnya 403`);
     const json = await res.json();
     if (json.error?.code !== "PERMISSION_DENIED") throw new Error(`code ${json.error?.code}`);
   });
 
   it("[AC-020][INV-07] PATCH dengan expected_version stale ditolak VERSION_CONFLICT 409 tanpa mengubah state", async () => {
-    const res = await patch({ name: "Tulis Lama", expected_version: 1 }, "user-a");
+    const res = await patch({ name: "Tulis Lama", expectedVersion: 1 }, "user-a");
     if (res.status !== 409) throw new Error(`status ${res.status}`);
     const json = await res.json();
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
@@ -187,9 +187,9 @@ describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal
   it("[C.15][C.2] payload invalid: expected_version hilang / bukan integer / name kosong → VALIDATION_ERROR 400", async () => {
     for (const [label, body] of [
       ["tanpa expected_version", { name: "X" }],
-      ["expected_version nol", { name: "X", expected_version: 0 }],
-      ["expected_version pecahan", { name: "X", expected_version: 1.5 }],
-      ["name kosong", { name: " ", expected_version: 2 }],
+      ["expected_version nol", { name: "X", expectedVersion: 0 }],
+      ["expected_version pecahan", { name: "X", expectedVersion: 1.5 }],
+      ["name kosong", { name: " ", expectedVersion: 2 }],
     ] as const) {
       const res = await patch(body as unknown, "user-a");
       if (res.status !== 400) throw new Error(`${label}: status ${res.status}, harusnya 400`);
@@ -199,7 +199,7 @@ describe("PATCH /api/v1/projects/:project_id — rename Owner-only interim (goal
   });
 
   it("[C.2] PATCH tanpa identitas ditolak TOKEN_EXPIRED 401 sebelum otorisasi", async () => {
-    const res = await patch({ name: "Anonim", expected_version: 2 });
+    const res = await patch({ name: "Anonim", expectedVersion: 2 });
     if (res.status !== 401) throw new Error(`status ${res.status}`);
     const json = await res.json();
     if (json.error?.code !== "TOKEN_EXPIRED") throw new Error(`code ${json.error?.code}`);

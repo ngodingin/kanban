@@ -141,8 +141,8 @@ describe("POST /api/v1/projects/:project_id/milestones — goal 2.3.1", () => {
         title: "MVP",
         description: "fase awal",
         progress: 25,
-        start_date: "2026-08-17",
-        due_date: "2026-09-30",
+        startDate: "2026-08-17",
+        dueDate: "2026-09-30",
       }),
     });
     expect(res.status).toBe(201);

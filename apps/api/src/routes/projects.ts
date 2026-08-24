@@ -151,9 +151,9 @@ function readProjectNameField(body: unknown): string {
 }
 
 export function readExpectedVersionField(body: unknown): number {
-  const raw = readJsonObject(body).expected_version;
+  const raw = readJsonObject(body).expectedVersion;
   if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 1) {
-    throw new PipelineError("VALIDATION_ERROR", "Field expected_version wajib integer >= 1.", 400);
+    throw new PipelineError("VALIDATION_ERROR", "Field expectedVersion wajib integer >= 1.", 400);
   }
   return raw;
 }

@@ -142,7 +142,7 @@ function move(body: unknown, cardId = "cd_move", user = "user-a"): Promise<Respo
 
 describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1", () => {
   it("[C.8][C.2] sukses same-board → 200 data.card.listId baru + Activity card.moved payload from/to", async () => {
-    const res = await move({ destination_list_id: "ls_d", expected_version: 1 });
+    const res = await move({ destinationListId: "ls_d", expectedVersion: 1 });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.card).toMatchObject({ id: "cd_move", listId: "ls_d", version: 2 });
@@ -160,18 +160,18 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1"
     }
 
     // kembalikan ke ls_s untuk test berikutnya (version sekarang 3)
-    const back = await move({ destination_list_id: "ls_s", expected_version: 2 });
+    const back = await move({ destinationListId: "ls_s", expectedVersion: 2 });
     expect(back.status).toBe(200);
   });
 
   it("[BR-018] cross-Milestone → INVALID_DESTINATION 422 walau Owner; row tidak berubah", async () => {
-    const res = await move({ destination_list_id: "ls_m2", expected_version: 3 });
+    const res = await move({ destinationListId: "ls_m2", expectedVersion: 3 });
     expect(res.status).toBe(422);
     expect((await res.json()).error?.code).toBe("INVALID_DESTINATION");
   });
 
   it("[AC-020][regresi 2.10] version mismatch → VERSION_CONFLICT tanpa perubahan/activity baru", async () => {
-    const res = await move({ destination_list_id: "ls_d", expected_version: 999 });
+    const res = await move({ destinationListId: "ls_d", expectedVersion: 999 });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("VERSION_CONFLICT");
 
@@ -194,11 +194,11 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1"
 
   it("[C.8 persis] payload invalid → VALIDATION_ERROR 400 (field asing, destination bukan string, kosong)", async () => {
     for (const body of [
-      { expected_version: 3 }, // destination_list_id hilang
-      { destination_list_id: "" , expected_version: 3 },
-      { destination_list_id: 42, expected_version: 3 },
-      { destination_list_id: "ls_d" }, // expected_version hilang
-      { destination_list_id: "ls_d", expected_version: 3, extra: true }, // field asing
+      { expectedVersion: 3 }, // destination_list_id hilang
+      { destinationListId: "" , expectedVersion: 3 },
+      { destinationListId: 42, expectedVersion: 3 },
+      { destinationListId: "ls_d" }, // expected_version hilang
+      { destinationListId: "ls_d", expectedVersion: 3, extra: true }, // field asing
       "bukan-json",
     ]) {
       const res = await move(body as unknown as Record<string, unknown>);
@@ -208,7 +208,7 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1"
   });
 
   it("[Authz interim] non-Owner member → PERMISSION_DENIED; tanpa identitas → TOKEN_EXPIRED; card tidak ada → 404", async () => {
-    const denied = await move({ destination_list_id: "ls_d", expected_version: 3 }, "cd_move", "user-b");
+    const denied = await move({ destinationListId: "ls_d", expectedVersion: 3 }, "cd_move", "user-b");
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
@@ -216,12 +216,12 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1"
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ destination_list_id: "ls_d", expected_version: 3 }),
+        body: JSON.stringify({ destinationListId: "ls_d", expectedVersion: 3 }),
       },
     );
     expect(noIdentity.status).toBe(401);
 
-    const missing = await move({ destination_list_id: "ls_d", expected_version: 3 }, "cd_none");
+    const missing = await move({ destinationListId: "ls_d", expectedVersion: 3 }, "cd_none");
     expect(missing.status).toBe(404);
   });
 });

@@ -114,7 +114,7 @@ function patch(body: unknown, user = "user-a"): Promise<Response> {
 
 describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () => {
   it("[C.7][B.5] Owner update title → 200 + Activity changes {before, after}", async () => {
-    const res = await patch({ expected_version: 1, title: "Baru" });
+    const res = await patch({ expectedVersion: 1, title: "Baru" });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.list).toMatchObject({ id: "ls_patch", title: "Baru", version: 2 });
@@ -122,10 +122,10 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
 
   it("[C.15][FR-023] field selain title → VALIDATION_ERROR", async () => {
     for (const body of [
-      { expected_version: 2, board_id: "bd_lain" },
-      { expected_version: 2, status: "ACTIVE" },
-      { expected_version: 2, position: 3 },
-      { expected_version: 2, wip_limit: 5 },
+      { expectedVersion: 2, board_id: "bd_lain" },
+      { expectedVersion: 2, status: "ACTIVE" },
+      { expectedVersion: 2, position: 3 },
+      { expectedVersion: 2, wip_limit: 5 },
     ]) {
       const res = await patch(body);
       expect(res.status, JSON.stringify(body)).toBe(400);
@@ -134,19 +134,19 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
   });
 
   it("[AC-020] version mismatch → VERSION_CONFLICT 409 tanpa perubahan", async () => {
-    const res = await patch({ expected_version: 999, title: "Tabrak" });
+    const res = await patch({ expectedVersion: 999, title: "Tabrak" });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("VERSION_CONFLICT");
   });
 
   it("[Authz interim] non-Owner member → PERMISSION_DENIED 403; tanpa identitas → TOKEN_EXPIRED", async () => {
-    const denied = await patch({ expected_version: 2, title: "X" }, "user-b");
+    const denied = await patch({ expectedVersion: 2, title: "X" }, "user-b");
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_patch`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ expected_version: 2, title: "X" }),
+      body: JSON.stringify({ expectedVersion: 2, title: "X" }),
     });
     expect(noIdentity.status).toBe(401);
   });
@@ -162,7 +162,7 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
     } finally {
       await projectDb.close();
     }
-    const res = await patch({ expected_version: 2, title: "Gagal" });
+    const res = await patch({ expectedVersion: 2, title: "Gagal" });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("INVALID_STATE");
   });
@@ -171,7 +171,7 @@ describe("PATCH /api/v1/projects/:project_id/lists/:list_id — goal 2.7.2", () 
     const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/lists/ls_none`, {
       method: "PATCH",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
-      body: JSON.stringify({ expected_version: 1, title: "X" }),
+      body: JSON.stringify({ expectedVersion: 1, title: "X" }),
     });
     expect(res.status).toBe(404);
   });

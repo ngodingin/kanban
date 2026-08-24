@@ -146,7 +146,7 @@ const patchMs = (mid: string, user: string): Promise<Response> =>
     {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },
-      body: JSON.stringify({ expected_version: 1, title: `${mid} by ${user}` }),
+      body: JSON.stringify({ expectedVersion: 1, title: `${mid} by ${user}` }),
     },
   );
 
@@ -156,7 +156,7 @@ const patchBd = (bid: string, user: string): Promise<Response> =>
     {
       method: "PATCH",
       headers: { "x-test-user": user, "content-type": "application/json" },
-      body: JSON.stringify({ expected_version: 1, title: `${bid} by ${user}` }),
+      body: JSON.stringify({ expectedVersion: 1, title: `${bid} by ${user}` }),
     },
   );
 

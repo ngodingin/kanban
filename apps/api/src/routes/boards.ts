@@ -132,7 +132,7 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const expectedVersion = readExpectedVersionField(body);
       const allowedFields = ["title", "description"] as const;
       for (const key of Object.keys(body)) {
-        if (!(allowedFields as readonly string[]).includes(key) && key !== "expected_version") {
+        if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
             `Field '${key}' tidak dapat diubah via PATCH Board (C.15).`,

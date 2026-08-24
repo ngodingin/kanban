@@ -120,21 +120,21 @@ function post(action: string, listId: string, body: unknown, user = "user-a"): P
 
 describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () => {
   it("[A.3] archive ACTIVE → archivedAt terisi; archive ulang → INVALID_STATE", async () => {
-    const res = await post("archive", "ls_arc", { expected_version: 1 });
+    const res = await post("archive", "ls_arc", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     expect((await res.json()).data.list.archivedAt).toEqual(expect.any(String));
 
-    const again = await post("archive", "ls_arc", { expected_version: 2 });
+    const again = await post("archive", "ls_arc", { expectedVersion: 2 });
     expect(again.status).toBe(409);
   });
 
   it("[INV-LIFE-002] restore ARCHIVED saat chain ACTIVE → sukses; Board di-archive → restore List ditolak", async () => {
-    const okRes = await post("restore", "ls_res", { expected_version: 1 });
+    const okRes = await post("restore", "ls_res", { expectedVersion: 1 });
     expect(okRes.status).toBe(200);
     expect((await okRes.json()).data.list.archivedAt).toBeNull();
 
     // archive ulang untuk uji blokade ancestor
-    const reArchive = await post("archive", "ls_res", { expected_version: 2 });
+    const reArchive = await post("archive", "ls_res", { expectedVersion: 2 });
     expect(reArchive.status).toBe(200);
 
     const dbRow = await ctx.globalClient.execute({
@@ -147,7 +147,7 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
     } finally {
       await projectDb.close();
     }
-    const blocked = await post("restore", "ls_res", { expected_version: 3 });
+    const blocked = await post("restore", "ls_res", { expectedVersion: 3 });
     expect(blocked.status).toBe(409);
     expect((await blocked.json()).error?.code).toBe("INVALID_STATE");
   });
@@ -156,7 +156,7 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
     const rows = await ctx.globalClient.execute({ sql: "SELECT id FROM projects WHERE owner_user_id = 'user-a' LIMIT 1" });
     void rows;
     for (const action of ["archive", "restore", "delete"]) {
-      const res = await post(action, "ls_arc", { expected_version: 9999 });
+      const res = await post(action, "ls_arc", { expectedVersion: 9999 });
       expect(res.status, action).toBe(409);
       expect((await res.json()).error?.code, action).toBe("VERSION_CONFLICT");
     }
@@ -178,11 +178,11 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
       await projectDb.close();
     }
 
-    const archRes = await post("archive", "ls_rev", { expected_version: 1 });
+    const archRes = await post("archive", "ls_rev", { expectedVersion: 1 });
     expect(archRes.status).toBe(409);
     expect((await archRes.json()).error?.code).toBe("INVALID_STATE");
 
-    const delRes = await post("delete", "ls_rev", { expected_version: 1 });
+    const delRes = await post("delete", "ls_rev", { expectedVersion: 1 });
     expect(delRes.status).toBe(409);
     expect((await delRes.json()).error?.code).toBe("INVALID_STATE");
 
@@ -201,7 +201,7 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
     } finally {
       await projectDb3.close();
     }
-    const delOk = await post("delete", "ls_rev", { expected_version: 1 });
+    const delOk = await post("delete", "ls_rev", { expectedVersion: 1 });
     expect(delOk.status).toBe(200);
   });
 
@@ -209,7 +209,7 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
     const missingVersion = await post("archive", "ls_arc", {});
     expect(missingVersion.status).toBe(400);
 
-    const denied = await post("archive", "ls_arc", { expected_version: 2 }, "user-b");
+    const denied = await post("archive", "ls_arc", { expectedVersion: 2 }, "user-b");
     expect(denied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
@@ -217,12 +217,12 @@ describe("POST .../lists/:list_id/{archive,restore,delete} — goal 2.7.3", () =
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 2 }),
+        body: JSON.stringify({ expectedVersion: 2 }),
       },
     );
     expect(noIdentity.status).toBe(401);
 
-    const missing = await post("archive", "ls_none", { expected_version: 1 });
+    const missing = await post("archive", "ls_none", { expectedVersion: 1 });
     expect(missing.status).toBe(404);
   });
 });

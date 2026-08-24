@@ -134,11 +134,11 @@ function post(action: string, boardId: string, body: unknown, user = "user-a"): 
 
 describe("POST .../boards/:board_id/{archive,restore,delete} — goal 2.5.3", () => {
   it("[A.3] archive ACTIVE → archivedAt terisi; archive ulang → INVALID_STATE", async () => {
-    const res = await post("archive", "bd_arc", { expected_version: 1 });
+    const res = await post("archive", "bd_arc", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     expect((await res.json()).data.board.archivedAt).toEqual(expect.any(String));
 
-    const again = await post("archive", "bd_arc", { expected_version: 2 });
+    const again = await post("archive", "bd_arc", { expectedVersion: 2 });
     expect(again.status).toBe(409);
     expect((await again.json()).error?.code).toBe("INVALID_STATE");
   });
@@ -154,7 +154,7 @@ describe("POST .../boards/:board_id/{archive,restore,delete} — goal 2.5.3", ()
     } finally {
       await projectDb.close();
     }
-    const res = await post("restore", "bd_res", { expected_version: 1 });
+    const res = await post("restore", "bd_res", { expectedVersion: 1 });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("INVALID_STATE");
   });
@@ -170,23 +170,23 @@ describe("POST .../boards/:board_id/{archive,restore,delete} — goal 2.5.3", ()
     } finally {
       await projectDb.close();
     }
-    const res = await post("restore", "bd_res", { expected_version: 1 });
+    const res = await post("restore", "bd_res", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     expect((await res.json()).data.board.archivedAt).toBeNull();
   });
 
   it("[A.3] delete ACTIVE → deletedAt terisi; delete ulang → INVALID_STATE", async () => {
-    const res = await post("delete", "bd_del", { expected_version: 1 });
+    const res = await post("delete", "bd_del", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     expect((await res.json()).data.board.deletedAt).toEqual(expect.any(String));
 
-    const again = await post("delete", "bd_del", { expected_version: 2 });
+    const again = await post("delete", "bd_del", { expectedVersion: 2 });
     expect(again.status).toBe(409);
   });
 
   it("[AC-020] version mismatch pada semua action → VERSION_CONFLICT 409", async () => {
     for (const action of ["archive", "restore", "delete"]) {
-      const res = await post(action, "bd_arc", { expected_version: 9999 });
+      const res = await post(action, "bd_arc", { expectedVersion: 9999 });
       expect(res.status, action).toBe(409);
       expect((await res.json()).error?.code, action).toBe("VERSION_CONFLICT");
     }
@@ -201,18 +201,18 @@ describe("POST .../boards/:board_id/{archive,restore,delete} — goal 2.5.3", ()
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 2 }),
+        body: JSON.stringify({ expectedVersion: 2 }),
       },
     );
     expect(noIdentity.status).toBe(401);
 
-    const denied = await post("archive", "bd_arc", { expected_version: 2 }, "user-b");
+    const denied = await post("archive", "bd_arc", { expectedVersion: 2 }, "user-b");
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
   });
 
   it("[C.2] board tidak ada → RESOURCE_NOT_FOUND 404", async () => {
-    const res = await post("archive", "bd_none", { expected_version: 1 });
+    const res = await post("archive", "bd_none", { expectedVersion: 1 });
     expect(res.status).toBe(404);
     expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
   });

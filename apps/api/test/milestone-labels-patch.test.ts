@@ -130,7 +130,7 @@ function patch(body: unknown, user = "user-a"): Promise<Response> {
 
 describe("PATCH .../milestones/:milestone_id/labels/:label_id — goal 3.4.2", () => {
   it("[C.11][B.5] Owner update name → 200 + Activity milestone_label.updated changes", async () => {
-    const res = await patch({ expected_version: 1, name: "Baru" });
+    const res = await patch({ expectedVersion: 1, name: "Baru" });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.label).toMatchObject({ id: "ml_patch", name: "Baru", version: 2 });
@@ -150,8 +150,8 @@ describe("PATCH .../milestones/:milestone_id/labels/:label_id — goal 3.4.2", (
 
   it("[C.15] field selain name → VALIDATION_ERROR; payload invalid bentuk → VALIDATION_ERROR", async () => {
     for (const body of [
-      { expected_version: 2, milestone_id: "ms_lain" },
-      { expected_version: 2, color: "#ff0000" },
+      { expectedVersion: 2, milestone_id: "ms_lain" },
+      { expectedVersion: 2, color: "#ff0000" },
       {},
       { name: "" },
       "bukan-json",
@@ -163,13 +163,13 @@ describe("PATCH .../milestones/:milestone_id/labels/:label_id — goal 3.4.2", (
   });
 
   it("[AC-020] version mismatch → VERSION_CONFLICT 409 tanpa perubahan", async () => {
-    const res = await patch({ expected_version: 999, name: "Tabrak" });
+    const res = await patch({ expectedVersion: 999, name: "Tabrak" });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("VERSION_CONFLICT");
   });
 
   it("[Authz interim] non-Owner member → PERMISSION_DENIED 403; label tidak ada → RESOURCE_NOT_FOUND 404", async () => {
-    const denied = await patch({ expected_version: 2, name: "X" }, "user-b");
+    const denied = await patch({ expectedVersion: 2, name: "X" }, "user-b");
     expect(denied.status).toBe(403);
 
     const missing = await makeApp().request(
@@ -177,7 +177,7 @@ describe("PATCH .../milestones/:milestone_id/labels/:label_id — goal 3.4.2", (
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 1, name: "X" }),
+        body: JSON.stringify({ expectedVersion: 1, name: "X" }),
       },
     );
     expect(missing.status).toBe(404);

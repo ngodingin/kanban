@@ -130,7 +130,7 @@ function del(body: unknown, user?: string) {
 
 describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 1.4.3)", () => {
   it("[A.3][C.4] owner delete dari ACTIVE → 200, deleted_at terisi + Activity project.deleted", async () => {
-    const res = await del({ expected_version: 1 }, "user-a");
+    const res = await del({ expectedVersion: 1 }, "user-a");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     const p = json.data.project;
@@ -155,7 +155,7 @@ describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 
     const res = await makeApp().request(`http://localhost/v1/projects/${idA1}/restore`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
-      body: JSON.stringify({ expected_version: 2 }),
+      body: JSON.stringify({ expectedVersion: 2 }),
     });
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
@@ -163,7 +163,7 @@ describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 
   });
 
   it("[AC-020][INV-07] delete dengan expected_version stale → VERSION_CONFLICT 409 tanpa perubahan state", async () => {
-    const res = await del({ expected_version: 1 }, "user-a");
+    const res = await del({ expectedVersion: 1 }, "user-a");
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
@@ -175,11 +175,11 @@ describe("POST /api/v1/projects/:project_id/delete — terminal lifecycle (goal 
   });
 
   it("[C.4][interim-authz][C.2] non-owner → PERMISSION_DENIED; anonim → TOKEN_EXPIRED; delete ulang → INVALID_STATE", async () => {
-    const forbidden = await del({ expected_version: 2 }, "user-b");
+    const forbidden = await del({ expectedVersion: 2 }, "user-b");
     if (forbidden.status !== 403) throw new Error(`status ${forbidden.status}, harusnya 403`);
-    const anon = await del({ expected_version: 2 });
+    const anon = await del({ expectedVersion: 2 });
     if (anon.status !== 401) throw new Error(`status ${anon.status}, harusnya 401`);
-    const again = await del({ expected_version: 2 }, "user-a");
+    const again = await del({ expectedVersion: 2 }, "user-a");
     if (again.status !== 409) throw new Error(`status ${again.status}, harusnya 409 (sudah DELETED)`);
     const json = await again.json();
     if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);

@@ -120,7 +120,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const body = readJsonObject(await c.req.json().catch(() => null));
       const expectedVersion = readExpectedVersionField(body);
       for (const key of Object.keys(body)) {
-        if (key !== "title" && key !== "expected_version") {
+        if (key !== "title" && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
             `Field '${key}' tidak dapat diubah via PATCH List (C.15/FR-023).`,

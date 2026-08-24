@@ -131,7 +131,7 @@ function patch(body: unknown, user = "user-a"): Promise<Response> {
 
 describe("PATCH /api/v1/projects/:project_id/boards/:board_id — goal 2.5.2", () => {
   it("[C.6][B.5] Owner update title/description → 200 + Activity changes {before, after}", async () => {
-    const res = await patch({ expected_version: 1, title: "Baru", description: null });
+    const res = await patch({ expectedVersion: 1, title: "Baru", description: null });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.board).toMatchObject({
@@ -144,10 +144,10 @@ describe("PATCH /api/v1/projects/:project_id/boards/:board_id — goal 2.5.2", (
 
   it("[C.15][FR-019] field di luar title/description → VALIDATION_ERROR", async () => {
     for (const body of [
-      { expected_version: 2, progress: 50 },
-      { expected_version: 2, wip_limit: 3 },
-      { expected_version: 2, status: "ACTIVE" },
-      { expected_version: 2, milestone_id: "ms_lain" },
+      { expectedVersion: 2, progress: 50 },
+      { expectedVersion: 2, wip_limit: 3 },
+      { expectedVersion: 2, status: "ACTIVE" },
+      { expectedVersion: 2, milestone_id: "ms_lain" },
     ]) {
       const res = await patch(body);
       expect(res.status, JSON.stringify(body)).toBe(400);
@@ -156,13 +156,13 @@ describe("PATCH /api/v1/projects/:project_id/boards/:board_id — goal 2.5.2", (
   });
 
   it("[AC-020] version mismatch → VERSION_CONFLICT 409 tanpa perubahan", async () => {
-    const res = await patch({ expected_version: 999, title: "Tabrak" });
+    const res = await patch({ expectedVersion: 999, title: "Tabrak" });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("VERSION_CONFLICT");
   });
 
   it("[Authz interim] non-Owner member → PERMISSION_DENIED 403", async () => {
-    const res = await patch({ expected_version: 2, title: "Bukan milikku" }, "user-b");
+    const res = await patch({ expectedVersion: 2, title: "Bukan milikku" }, "user-b");
     expect(res.status).toBe(403);
     expect((await res.json()).error?.code).toBe("PERMISSION_DENIED");
   });
@@ -176,7 +176,7 @@ describe("PATCH /api/v1/projects/:project_id/boards/:board_id — goal 2.5.2", (
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 1, title: "X" }),
+        body: JSON.stringify({ expectedVersion: 1, title: "X" }),
       },
     );
     expect(resMissing.status).toBe(404);

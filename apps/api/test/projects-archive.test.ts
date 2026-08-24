@@ -130,7 +130,7 @@ function archive(body: unknown, user?: string) {
 
 describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHIVED (goal 1.4.1)", () => {
   it("[A.3][C.4][B.5] owner archive → 200, archived_at terisi, version+1, Activity project.archived dengan previous_state", async () => {
-    const res = await archive({ expected_version: 1 }, "user-a");
+    const res = await archive({ expectedVersion: 1 }, "user-a");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     const p = json.data.project;
@@ -157,7 +157,7 @@ describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHI
   });
 
   it("[C.4][interim-authz] member non-owner ditolak PERMISSION_DENIED 403", async () => {
-    const res = await archive({ expected_version: 3 }, "user-b");
+    const res = await archive({ expectedVersion: 3 }, "user-b");
     if (res.status !== 403) throw new Error(`status ${res.status}, harusnya 403`);
     const json = await res.json();
     if (json.error?.code !== "PERMISSION_DENIED") throw new Error(`code ${json.error?.code}`);
@@ -171,7 +171,7 @@ describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHI
         args: [idA1],
       });
       const staleVersion = Number(before.rows[0]!.version) - 1;
-      const res = await archive({ expected_version: staleVersion }, "user-a");
+      const res = await archive({ expectedVersion: staleVersion }, "user-a");
       if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
       const json = await res.json();
       if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
@@ -192,7 +192,7 @@ describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHI
       headers: { "x-test-user": "user-a" },
     });
     const version = (await current.json()).data.project.version;
-    const res = await archive({ expected_version: version }, "user-a");
+    const res = await archive({ expectedVersion: version }, "user-a");
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
     if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
@@ -203,7 +203,7 @@ describe("POST /api/v1/projects/:project_id/archive — lifecycle ACTIVE→ARCHI
     if (noBody.status !== 400) throw new Error(`status ${noBody.status}, harusnya 400`);
     const jsonNoBody = await noBody.json();
     if (jsonNoBody.error?.code !== "VALIDATION_ERROR") throw new Error(`code ${jsonNoBody.error?.code}`);
-    const anon = await archive({ expected_version: 99 });
+    const anon = await archive({ expectedVersion: 99 });
     if (anon.status !== 401) throw new Error(`status ${anon.status}, harusnya 401`);
     const json = await anon.json();
     if (json.error?.code !== "TOKEN_EXPIRED") throw new Error(`code ${json.error?.code}`);

@@ -136,52 +136,52 @@ function post(action: string, milestoneId: string, body: unknown, user = "user-a
 
 describe("POST .../milestones/:milestone_id/{archive,restore,delete} — goal 2.3.3", () => {
   it("[A.3][B.5] archive dari ACTIVE → archivedAt terisi + Activity previous_state ACTIVE", async () => {
-    const res = await post("archive", "ms_arc", { expected_version: 1 });
+    const res = await post("archive", "ms_arc", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.milestone).toMatchObject({ archivedAt: expect.any(String), deletedAt: null, version: 2 });
   });
 
   it("[A.3] archive ulang dari ARCHIVED → INVALID_STATE 409", async () => {
-    const res = await post("archive", "ms_arc", { expected_version: 2 });
+    const res = await post("archive", "ms_arc", { expectedVersion: 2 });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("INVALID_STATE");
   });
 
   it("[INV-LIFE-002] restore ARCHIVED saat Project ACTIVE → sukses + Activity previous_state ARCHIVED", async () => {
-    const res = await post("restore", "ms_res", { expected_version: 1 });
+    const res = await post("restore", "ms_res", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.milestone.archivedAt).toBeNull();
   });
 
   it("[INV-LIFE-004] restore milestone DELETED → ditolak (terminal)", async () => {
-    const res = await post("restore", "ms_term", { expected_version: 1 });
+    const res = await post("restore", "ms_term", { expectedVersion: 1 });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("INVALID_STATE");
   });
 
   it("[A.3] delete dari ACTIVE → deletedAt terisi + previous_state ACTIVE; delete ulang → INVALID_STATE", async () => {
-    const res = await post("delete", "ms_del", { expected_version: 1 });
+    const res = await post("delete", "ms_del", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.data.milestone.deletedAt).toEqual(expect.any(String));
 
-    const again = await post("delete", "ms_del", { expected_version: 2 });
+    const again = await post("delete", "ms_del", { expectedVersion: 2 });
     expect(again.status).toBe(409);
     expect((await again.json()).error?.code).toBe("INVALID_STATE");
   });
 
   it("[AC-020] version mismatch pada semua action → VERSION_CONFLICT 409", async () => {
     for (const action of ["archive", "restore", "delete"]) {
-      const res = await post(action, "ms_arc", { expected_version: 9999 });
+      const res = await post(action, "ms_arc", { expectedVersion: 9999 });
       expect(res.status, action).toBe(409);
       expect((await res.json()).error?.code, action).toBe("VERSION_CONFLICT");
     }
   });
 
   it("[C.5] expected_version hilang/salah bentuk → VALIDATION_ERROR 400", async () => {
-    for (const body of [{}, { expected_version: 0 }, { expected_version: "satu" }, null]) {
+    for (const body of [{}, { expectedVersion: 0 }, { expectedVersion: "satu" }, null]) {
       const res = await post("archive", "ms_arc", body);
       expect(res.status).toBe(400);
       expect((await res.json()).error?.code).toBe("VALIDATION_ERROR");
@@ -194,7 +194,7 @@ describe("POST .../milestones/:milestone_id/{archive,restore,delete} — goal 2.
       args: [projectIdValue],
     });
     void dbRow;
-    const resDenied = await post("archive", "ms_arc", { expected_version: 2 }, "user-b");
+    const resDenied = await post("archive", "ms_arc", { expectedVersion: 2 }, "user-b");
     expect(resDenied.status).toBe(403);
 
     const noIdentity = await makeApp().request(
@@ -202,7 +202,7 @@ describe("POST .../milestones/:milestone_id/{archive,restore,delete} — goal 2.
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 2 }),
+        body: JSON.stringify({ expectedVersion: 2 }),
       },
     );
     expect(noIdentity.status).toBe(401);
@@ -210,7 +210,7 @@ describe("POST .../milestones/:milestone_id/{archive,restore,delete} — goal 2.
   });
 
   it("[C.2] milestone tidak ada → RESOURCE_NOT_FOUND 404", async () => {
-    const res = await post("archive", "ms_none", { expected_version: 1 });
+    const res = await post("archive", "ms_none", { expectedVersion: 1 });
     expect(res.status).toBe(404);
     expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
   });

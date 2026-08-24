@@ -126,9 +126,9 @@ function patch(body: unknown, user = "user-a"): Promise<Response> {
 describe("PATCH /api/v1/projects/:project_id/cards/:card_id — goal 2.9.2", () => {
   it("[C.8][B.5] Owner update field + assignee → 200 + Activity changes", async () => {
     const res = await patch({
-      expected_version: 1,
+      expectedVersion: 1,
       title: "Diperbarui",
-      due_date: "2026-10-01",
+      dueDate: "2026-10-01",
       assignee: "user-member",
     });
     expect(res.status).toBe(200);
@@ -143,7 +143,7 @@ describe("PATCH /api/v1/projects/:project_id/cards/:card_id — goal 2.9.2", () 
   });
 
   it("[BR-017][BR-061][uji eksplisit] PATCH dengan list_id di body → DITOLAK VALIDATION_ERROR", async () => {
-    const res = await patch({ expected_version: 2, list_id: "ls_lain" });
+    const res = await patch({ expectedVersion: 2, list_id: "ls_lain" });
     expect(res.status).toBe(400);
     expect((await res.json()).error?.code).toBe("VALIDATION_ERROR");
 
@@ -161,16 +161,16 @@ describe("PATCH /api/v1/projects/:project_id/cards/:card_id — goal 2.9.2", () 
   });
 
   it("[03-ENG A.5] negatif: ganti assignee ke non-member → PERMISSION_DENIED 403", async () => {
-    const res = await patch({ expected_version: 2, assignee: "orang-luar" });
+    const res = await patch({ expectedVersion: 2, assignee: "orang-luar" });
     expect(res.status).toBe(403);
     expect((await res.json()).error?.code).toBe("PERMISSION_DENIED");
   });
 
   it("[AC-020] version mismatch → VERSION_CONFLICT 409; [Authz interim] non-Owner → PERMISSION_DENIED", async () => {
-    const conflict = await patch({ expected_version: 999, title: "Tabrak" });
+    const conflict = await patch({ expectedVersion: 999, title: "Tabrak" });
     expect(conflict.status).toBe(409);
 
-    const denied = await patch({ expected_version: 2, title: "X" }, "user-b");
+    const denied = await patch({ expectedVersion: 2, title: "X" }, "user-b");
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
   });

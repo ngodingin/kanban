@@ -123,13 +123,13 @@ function post(action: string, cardId: string, body: unknown, user = "user-a"): P
 
 describe("POST .../cards/:card_id/{archive,restore,delete} — goal 2.9.3", () => {
   it("[A.3][BR-045A] archive ACTIVE → sukses; restore oleh User BERBEDA → sukses (blanket)", async () => {
-    const archRes = await post("archive", "cd_arc", { expected_version: 1 }, "user-a");
+    const archRes = await post("archive", "cd_arc", { expectedVersion: 1 }, "user-a");
     expect(archRes.status).toBe(200);
     expect((await archRes.json()).data.card.archivedAt).toEqual(expect.any(String));
 
     // restore oleh user-b (member non-Owner? tetap Owner-only interim di route,
     // jadi gunakan user-a untuk memenuhi gate; blanket sudah terbukti unit CL-30)
-    const resRes = await post("restore", "cd_arc", { expected_version: 2 });
+    const resRes = await post("restore", "cd_arc", { expectedVersion: 2 });
     expect(resRes.status).toBe(200);
     expect((await resRes.json()).data.card.archivedAt).toBeNull();
   });
@@ -144,7 +144,7 @@ describe("POST .../cards/:card_id/{archive,restore,delete} — goal 2.9.3", () =
 
     // cd_arc local ACTIVE v3 (archive lalu restore di test sebelumnya)
     for (const action of ["archive", "delete"]) {
-      const res = await post(action, "cd_arc", { expected_version: 3 });
+      const res = await post(action, "cd_arc", { expectedVersion: 3 });
       expect(res.status, action).toBe(409);
       expect((await res.json()).error?.code, action).toBe("INVALID_STATE");
     }
@@ -164,14 +164,14 @@ describe("POST .../cards/:card_id/{archive,restore,delete} — goal 2.9.3", () =
     } finally {
       await projectDb2.close();
     }
-    const delOk = await post("delete", "cd_res", { expected_version: 1 });
+    const delOk = await post("delete", "cd_res", { expectedVersion: 1 });
     expect(delOk.status).toBe(200); // delete dari ARCHIVED local diizinkan (A.3)
     expect((await delOk.json()).data.card.deletedAt).toEqual(expect.any(String));
   });
 
   it("[AC-020] version mismatch semua action → VERSION_CONFLICT; payload invalid → VALIDATION_ERROR; authz lengkap", async () => {
     for (const action of ["archive", "restore", "delete"]) {
-      const res = await post(action, "cd_res", { expected_version: 9999 });
+      const res = await post(action, "cd_res", { expectedVersion: 9999 });
       expect(res.status, action).toBe(409);
       expect((await res.json()).error?.code, action).toBe("VERSION_CONFLICT");
     }
@@ -179,7 +179,7 @@ describe("POST .../cards/:card_id/{archive,restore,delete} — goal 2.9.3", () =
     const missingVersion = await post("archive", "cd_res", {});
     expect(missingVersion.status).toBe(400);
 
-    const denied = await post("archive", "cd_res", { expected_version: 1 }, "user-b");
+    const denied = await post("archive", "cd_res", { expectedVersion: 1 }, "user-b");
     expect(denied.status).toBe(403);
     expect(((await denied.json()).error ?? {}).code).toBe("PERMISSION_DENIED");
 
@@ -188,12 +188,12 @@ describe("POST .../cards/:card_id/{archive,restore,delete} — goal 2.9.3", () =
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 1 }),
+        body: JSON.stringify({ expectedVersion: 1 }),
       },
     );
     expect(noIdentity.status).toBe(401);
 
-    const missing = await post("archive", "cd_none", { expected_version: 1 });
+    const missing = await post("archive", "cd_none", { expectedVersion: 1 });
     expect(missing.status).toBe(404);
   });
 });

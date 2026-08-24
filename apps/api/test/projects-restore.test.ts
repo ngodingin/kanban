@@ -141,7 +141,7 @@ describe("POST /api/v1/projects/:project_id/restore — lifecycle ARCHIVED→ACT
   it("[INV-LIFE-002][C.4] restore pada project ACTIVE ditolak INVALID_STATE 409 (hanya valid dari ARCHIVED)", async () => {
     const version = await currentStateVersion();
     if (version !== 1) throw new Error(`fixture harus masih ACTIVE v1, dapat v${version}`);
-    const res = await restore({ expected_version: version }, "user-a");
+    const res = await restore({ expectedVersion: version }, "user-a");
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
     if (json.error?.code !== "INVALID_STATE") throw new Error(`code ${json.error?.code}`);
@@ -165,7 +165,7 @@ describe("POST /api/v1/projects/:project_id/restore — lifecycle ARCHIVED→ACT
       await proj.close();
     }
 
-    const res = await restore({ expected_version: fixtureVersion }, "user-a");
+    const res = await restore({ expectedVersion: fixtureVersion }, "user-a");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     const p = json.data.project;
@@ -186,16 +186,16 @@ describe("POST /api/v1/projects/:project_id/restore — lifecycle ARCHIVED→ACT
   });
 
   it("[AC-020][INV-07] restore dengan expected_version stale → VERSION_CONFLICT 409", async () => {
-    const res = await restore({ expected_version: 1 }, "user-a");
+    const res = await restore({ expectedVersion: 1 }, "user-a");
     if (res.status !== 409) throw new Error(`status ${res.status}, harusnya 409`);
     const json = await res.json();
     if (json.error?.code !== "VERSION_CONFLICT") throw new Error(`code ${json.error?.code}`);
   });
 
   it("[C.4][interim-authz][C.2] non-owner → PERMISSION_DENIED 403; tanpa identitas → TOKEN_EXPIRED 401; tanpa expected_version → VALIDATION_ERROR", async () => {
-    const forbidden = await restore({ expected_version: 4 }, "user-b");
+    const forbidden = await restore({ expectedVersion: 4 }, "user-b");
     if (forbidden.status !== 403) throw new Error(`status ${forbidden.status}, harusnya 403`);
-    const anon = await restore({ expected_version: 4 });
+    const anon = await restore({ expectedVersion: 4 });
     if (anon.status !== 401) throw new Error(`status ${anon.status}, harusnya 401`);
     const noVersion = await restore({}, "user-a");
     if (noVersion.status !== 400) throw new Error(`status ${noVersion.status}, harusnya 400`);

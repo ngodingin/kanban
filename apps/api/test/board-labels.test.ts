@@ -212,7 +212,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
-        body: JSON.stringify({ name: "Renamed", expected_version: 1 }),
+        body: JSON.stringify({ name: "Renamed", expectedVersion: 1 }),
       },
     );
     expect(res.status).toBe(200);
@@ -223,7 +223,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
-        body: JSON.stringify({ boardId: "other", expected_version: 2 }),
+        body: JSON.stringify({ boardId: "other", expectedVersion: 2 }),
       },
     );
     expect(foreignField.status).toBe(400);
@@ -234,7 +234,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
       {
         method: "PATCH",
         headers: { "x-test-user": "user-b", "content-type": "application/json" },
-        body: JSON.stringify({ name: "X", expected_version: 2 }),
+        body: JSON.stringify({ name: "X", expectedVersion: 2 }),
       },
     );
     expect(denied.status).toBe(403);
@@ -246,7 +246,7 @@ describe("PATCH .../boards/:board_id/labels/:label_id — goal 3.6.2", () => {
       {
         method: "PATCH",
         headers: { "x-test-user": "user-a", "content-type": "application/json" },
-        body: JSON.stringify({ name: "Gagal", expected_version: 999 }),
+        body: JSON.stringify({ name: "Gagal", expectedVersion: 999 }),
       },
     );
     expect(res.status).toBe(409);
@@ -267,28 +267,28 @@ describe("POST .../boards/:board_id/labels/:label_id/{archive,restore,delete} �
   }
 
   it("[A.3] archive ACTIVE → archivedAt terisi; archive ulang → INVALID_STATE", async () => {
-    const res = await post("archive", "bl_arc", { expected_version: 1 });
+    const res = await post("archive", "bl_arc", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     expect((await res.json()).data.label.archivedAt).toEqual(expect.any(String));
 
-    const again = await post("archive", "bl_arc", { expected_version: 2 });
+    const again = await post("archive", "bl_arc", { expectedVersion: 2 });
     expect(again.status).toBe(409);
     expect((await again.json()).error?.code).toBe("INVALID_STATE");
   });
 
   it("[INV-LIFE-002][transitive] restore ARCHIVED saat chain ACTIVE → sukses; Milestone di-archive (bukan Board langsung) → restore tetap ditolak", async () => {
-    const okRes = await post("restore", "bl_res", { expected_version: 1 });
+    const okRes = await post("restore", "bl_res", { expectedVersion: 1 });
     expect(okRes.status).toBe(200);
     expect((await okRes.json()).data.label.archivedAt).toBeNull();
 
-    await post("archive", "bl_res", { expected_version: 2 });
+    await post("archive", "bl_res", { expectedVersion: 2 });
     const projectDb = createClient({ url: ctx.projectDbPathValue });
     try {
       await projectDb.execute("UPDATE milestones SET archived_at = ? WHERE id = 'ms_1'", [T0]);
     } finally {
       await projectDb.close();
     }
-    const blocked = await post("restore", "bl_res", { expected_version: 3 });
+    const blocked = await post("restore", "bl_res", { expectedVersion: 3 });
     expect(blocked.status).toBe(409);
     expect((await blocked.json()).error?.code).toBe("INVALID_STATE");
 
@@ -301,14 +301,14 @@ describe("POST .../boards/:board_id/labels/:label_id/{archive,restore,delete} �
   });
 
   it("[AC-020][Authz] version mismatch → VERSION_CONFLICT; non-Owner → PERMISSION_DENIED; tidak ada → RESOURCE_NOT_FOUND", async () => {
-    const res = await post("delete", "bl_arc", { expected_version: 9999 });
+    const res = await post("delete", "bl_arc", { expectedVersion: 9999 });
     expect(res.status).toBe(409);
     expect((await res.json()).error?.code).toBe("VERSION_CONFLICT");
 
-    const denied = await post("archive", "bl_arc", { expected_version: 2 }, "user-b");
+    const denied = await post("archive", "bl_arc", { expectedVersion: 2 }, "user-b");
     expect(denied.status).toBe(403);
 
-    const missing = await post("archive", "bl_none", { expected_version: 1 });
+    const missing = await post("archive", "bl_none", { expectedVersion: 1 });
     expect(missing.status).toBe(404);
     expect((await missing.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
   });

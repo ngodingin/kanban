@@ -111,7 +111,7 @@ describe("Memoisasi loadEffectivePermissionInputs per-request (Review-CL-05, P2)
     const res = await app.request(`http://localhost/v1/projects/${projectIdValue}/milestones/ms_1`, {
       method: "PATCH",
       headers: { "x-test-user": "user-ms", "content-type": "application/json" },
-      body: JSON.stringify({ expected_version: 1, title: "diubah" }),
+      body: JSON.stringify({ expectedVersion: 1, title: "diubah" }),
     });
 
     expect(res.status).toBe(200); // buktikan authorize() dgn entity tetap ALLOW seperti sebelum fix

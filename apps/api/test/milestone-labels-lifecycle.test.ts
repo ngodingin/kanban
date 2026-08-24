@@ -133,29 +133,29 @@ function post(action: string, labelId: string, body: unknown, user = "user-a"): 
 
 describe("POST .../milestones/:milestone_id/labels/:label_id/{archive,restore,delete} — goal 3.4.3", () => {
   it("[A.3] archive ACTIVE → archivedAt terisi + previous_state ACTIVE; archive ulang → INVALID_STATE", async () => {
-    const res = await post("archive", "ml_arc", { expected_version: 1 });
+    const res = await post("archive", "ml_arc", { expectedVersion: 1 });
     expect(res.status).toBe(200);
     expect((await res.json()).data.label.archivedAt).toEqual(expect.any(String));
 
-    const again = await post("archive", "ml_arc", { expected_version: 2 });
+    const again = await post("archive", "ml_arc", { expectedVersion: 2 });
     expect(again.status).toBe(409);
     expect((await again.json()).error?.code).toBe("INVALID_STATE");
   });
 
   it("[INV-LIFE-002] restore ARCHIVED saat chain ACTIVE → sukses + previous_state ARCHIVED; Milestone di-archive → restore ditolak", async () => {
-    const okRes = await post("restore", "ml_res", { expected_version: 1 });
+    const okRes = await post("restore", "ml_res", { expectedVersion: 1 });
     expect(okRes.status).toBe(200);
     expect((await okRes.json()).data.label.archivedAt).toBeNull();
 
     // archive ulang lalu blokade via Milestone
-    await post("archive", "ml_res", { expected_version: 2 });
+    await post("archive", "ml_res", { expectedVersion: 2 });
     const projectDb = createClient({ url: projectDbPathValue });
     try {
       await projectDb.execute("UPDATE milestones SET archived_at = '2026-08-20T00:00:00.000Z' WHERE id = 'ms_l'");
     } finally {
       await projectDb.close();
     }
-    const blocked = await post("restore", "ml_res", { expected_version: 3 });
+    const blocked = await post("restore", "ml_res", { expectedVersion: 3 });
     expect(blocked.status).toBe(409);
     expect((await blocked.json()).error?.code).toBe("INVALID_STATE");
 
@@ -170,7 +170,7 @@ describe("POST .../milestones/:milestone_id/labels/:label_id/{archive,restore,de
 
   it("[AC-020] version mismatch semua action → VERSION_CONFLICT; payload invalid → VALIDATION_ERROR", async () => {
     for (const action of ["archive", "restore", "delete"]) {
-      const res = await post(action, "ml_arc", { expected_version: 9999 });
+      const res = await post(action, "ml_arc", { expectedVersion: 9999 });
       expect(res.status, action).toBe(409);
       expect((await res.json()).error?.code, action).toBe("VERSION_CONFLICT");
     }
@@ -180,7 +180,7 @@ describe("POST .../milestones/:milestone_id/labels/:label_id/{archive,restore,de
   });
 
   it("[Authz interim] non-Owner member → PERMISSION_DENIED; tanpa identitas → TOKEN_EXPIRED; tidak ada → 404", async () => {
-    const denied = await post("archive", "ml_arc", { expected_version: 2 }, "user-b");
+    const denied = await post("archive", "ml_arc", { expectedVersion: 2 }, "user-b");
     expect(denied.status).toBe(403);
     expect(((await denied.json()).error ?? {}).code).toBe("PERMISSION_DENIED");
 
@@ -189,12 +189,12 @@ describe("POST .../milestones/:milestone_id/labels/:label_id/{archive,restore,de
       {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ expected_version: 2 }),
+        body: JSON.stringify({ expectedVersion: 2 }),
       },
     );
     expect(noIdentity.status).toBe(401);
 
-    const missing = await post("archive", "ml_none", { expected_version: 1 });
+    const missing = await post("archive", "ml_none", { expectedVersion: 1 });
     expect(missing.status).toBe(404);
     expect(((await missing.json()).error ?? {}).code).toBe("RESOURCE_NOT_FOUND");
   });
