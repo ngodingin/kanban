@@ -169,7 +169,7 @@ Integration — sedang, per domain command (Card move, archive, delete, restore,
 8. Cross-project isolation — reject eksplisit tiap upaya cross-project.
 9. Activity immutability — tidak ada jalur update/delete Activity.
 10. Comment rules — tidak bisa dihapus; ditolak pada Card deleted/archived; edit → Activity baru tanpa ubah lama.
-11. Optimistic concurrency — version conflict terdeteksi & ditolak; tidak ada silent overwrite.
+11. Optimistic concurrency — version conflict pada entity domain versioned terdeteksi & ditolak; mutation Global control/authorization memakai transactional current-state validation/constraint; tidak ada silent overwrite.
 12. Transaction rollback — mutation entity + Activity dan Card move tidak meninggalkan partial state.
 13. API Key scope — tidak bisa lintas Project.
 14. PAT authorization — tunduk membership & permission real-time, bukan snapshot.
@@ -215,6 +215,8 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 - **AC-030 Project Move Prohibition** — Given Project A & B; When upaya pindah descendant A ke B; Then MUST menolak.
 - **AC-031 Project Activity Atomicity** — Given mutation lifecycle/update pada Project; When Activity append gagal; Then `project_state` MUST rollback. When mutation gagal; Then tidak ada Activity Project baru. Kedua operasi MUST terjadi dalam satu transaksi Project DB.
 - **AC-032 Prune Retention** — Given entity DELETED belum mencapai 30 hari; When internal prune berjalan; Then entity dan subtree MUST tetap ada. Given `deleted_at <= now - 30 days`; Then entity eligible untuk di-prune sebagai satu subtree tanpa orphan.
+- **AC-033 Idempotency Fingerprint** — Given key+scope sudah completed untuk payload A; When key yang sama dipakai payload B; Then `IDEMPOTENCY_CONFLICT`, tidak ada side-effect/Activity B. When payload A diulang; Then status+body sukses lama di-replay identik.
+- **AC-034 Idempotency Concurrent Claim** — Given dua request paralel memakai key+scope+payload identik; When keduanya tiba sebelum request pertama selesai; Then tepat satu handler/domain mutation berjalan, request lain mendapat `IDEMPOTENCY_IN_PROGRESS` tanpa side-effect kedua; retry setelah completion me-replay hasil pertama. Given lease direclaim, owner lama MUST tidak dapat complete/release claim owner baru karena claim token berbeda.
 
 ## B.5 Strategi Test per Layer
 
@@ -223,6 +225,7 @@ ID `AC-xxx` MUST dipakai sebagai referensi nama test agar tertelusur balik ke ru
 | Domain/Unit | Permission resolution, lifecycle helper, scope ordering, version comparator | **Vitest** |
 | Integration | Domain command/API end-to-end terhadap database test terisolasi | **Vitest** + database test terpisah per suite; transaksi di-rollback setelah test |
 | Concurrency | Dua request paralel pada entity sama | Test yang fire dua mutation dengan `expectedVersion` sama |
+| Idempotency | Retry sequential, payload mismatch, dan request in-flight paralel | Row-level side-effect count + exact replay + `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` |
 | Authorization matrix | Group × Operation × Resource | Table-driven test dari matrix di 02-SPEC Part D |
 | Frontend component | React component/hooks | **Vitest + React Testing Library**; routing dan integrasi production build diuji lewat E2E |
 | E2E | Alur multi-langkah realistis pada build production-like | **Playwright**, skenario dari UX Flows Part A |

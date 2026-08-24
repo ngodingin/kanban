@@ -14,7 +14,7 @@
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
 >
-> **⏸️ GATE EKSPLISIT (keputusan manusia, 2026-08-24): JANGAN generate `PHASE-6-TASKS.md` atau mulai kerja Phase 6 apa pun sebelum SELURUH fase 0–5 genuinely tuntas sesuai SOT dan lolos code review dengan ketat** — bukan cukup seluruh goal bertanda `✅` di file masing-masing. Phase 5 di file ini SUDAH 5/5 `✅`, TAPI Phase 0 memiliki remediation `TASK-0.15`–`TASK-0.20` dan keputusan terbuka di [Review-CL-23](PHASE-0-TASKS.md#review-cl-23) yang ditemukan lewat review lanjutan. Sebelum membuka Phase 6: (1) tuntaskan `TASK-0.15`–`TASK-0.20` sampai `✅`; (2) putuskan dan, bila perlu, amend seluruh `[NEEDS-DECISION]` Review-CL-23; (3) lakukan review ketat ulang atas Phase 1–5 terhadap SOT versi TERKINI (`3.0.1`, bukan versi ketika fase awalnya dibuat). Jangan anggap `✅` lama otomatis valid terhadap SOT baru tanpa reverifikasi eksplisit.
+> **⏸️ GATE EKSPLISIT (keputusan manusia, 2026-08-24): JANGAN generate `PHASE-6-TASKS.md` atau mulai kerja Phase 6 apa pun sebelum SELURUH fase 0–5 genuinely tuntas sesuai SOT dan lolos code review dengan ketat.** Tiga keputusan Review-CL-23 sudah ditutup dalam [Review-CL-24](PHASE-0-TASKS.md#review-cl-24) dan SOT 4.0.0. Sebelum membuka Phase 6: (1) tuntaskan `TASK-0.15`–`TASK-0.21` sampai `✅`; (2) lakukan review ketat ulang Phase 1–5 terhadap SOT 4.0.0. Jangan anggap `✅` lama otomatis valid terhadap SOT baru tanpa reverifikasi eksplisit.
 
 ## Prinsip Phase 5
 

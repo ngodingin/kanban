@@ -2,7 +2,7 @@
 
 > Status: **Content ready — IMPLEMENTASI BLOCKED.** Pekerjaan frontend (PHASE-7-TASKS.md) TIDAK dimulai sebelum Phase 0–6 selesai & terverifikasi.
 > Related: 01-PRODUCT.md, 02-SPEC.md, 03-ENGINEERING.md, 04-DELIVERY.md (Part A UX Flows)
-> SOT version: 3.0.1
+> SOT version: 4.0.0
 
 ---
 

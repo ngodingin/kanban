@@ -56,7 +56,7 @@ Project Database
 Domain resources
 ```
 
-**Global DB** (control plane lintas-Project): `users`, Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`), `projects` (registry), `project_memberships`, `permission_groups`, `permissions`, `group_permissions`, scoped Group/direct Permission assignments, invitation assignments, credential, dan `project_databases`.
+**Global DB** (control plane lintas-Project): `users`, Better Auth core tables (`auth_sessions`, `auth_accounts`, `auth_verifications`), `projects` (registry), `project_memberships`, `permission_groups`, `permissions`, `group_permissions`, scoped Group/direct Permission assignments, invitation assignments, credential, `idempotency_keys`, dan `project_databases`.
 
 **Project DB** (domain Project-local): `project_state`, `milestones, milestone_labels, boards, board_labels, lists, cards, card_milestone_labels, card_board_labels, activities`.
 
@@ -374,6 +374,14 @@ api_keys
 personal_access_tokens
   id · user_id(→users.id) · name · token_hash(never plaintext)
   expires_at · revoked_at · created_at · last_used_at
+
+idempotency_keys
+  id · key · scope · request_fingerprint · claim_token
+  state("IN_PROGRESS"|"COMPLETED")
+  response_status(nullable) · result(nullable JSON)
+  lease_expires_at(nullable) · expires_at · created_at · updated_at
+  UNIQUE(key, scope)
+  # atomic claim sebelum domain handler; completed result minimum 24 jam
 ```
 
 ## B.3 Project Database — Schema
@@ -517,6 +525,8 @@ erDiagram
     PERMISSION_GROUPS   ||--o{ INVITATION_GROUP_ASSIGNMENTS : "referenced by"
 ```
 
+> `IDEMPOTENCY_KEYS` sengaja tidak memiliki FK ke User/Project: `scope` mengikat identity+method+normalized path sebagai string dan tetap dapat melindungi create Project sebelum Project DB tersedia. Ownership claim ditegakkan oleh `claim_token`, bukan relasi domain.
+
 ### B.6.2 Project DB (mermaid)
 
 ```mermaid
@@ -601,8 +611,8 @@ Tidak ada implicit cross-project access, bahkan untuk User anggota banyak Projec
 ## C.5 Input Validation & API Hardening
 
 - Generic `PATCH` MUST NOT terima field domain (`version`, `archivedAt`, `deletedAt`, `listId`, `creatorUserId`, dst.) — 02-SPEC C.15. Cegah client melewati domain rules. Nama `snake_case` hanya berlaku pada kolom database.
-- Semua mutation command MUST divalidasi terhadap `expectedVersion` untuk cegah silent overwrite oleh request usang.
-- Idempotency key SHOULD dipakai pada mutation berisiko tinggi untuk cegah efek ganda akibat retry.
+- Semua command client terhadap entity domain versioned BR-019 MUST divalidasi terhadap `expectedVersion`; command internal melakukan conditional version check ekuivalen. Mutation record control/authorization Global DB memakai current-state validation dalam transaksi dan constraint database, bukan menambah version field pada MVP.
+- Idempotency key SHOULD dipakai client pada mutation berisiko tinggi. Server MUST melakukan atomic claim + request fingerprint sesuai 02-SPEC C.3; pola non-atomik `get → handler → put` dilarang karena dua request in-flight dapat mengeksekusi side-effect ganda.
 
 ## C.6 Data Retention & Deletion
 
@@ -619,7 +629,8 @@ Delete = **logical** (`deleted_at`), bukan physical destruction langsung. Retent
 | Privilege escalation via data ownership | BR-045 — creator/assignee bukan permission grant |
 | Bypass business rule lewat generic PATCH | BR-062 — field domain diblokir dari PATCH |
 | Cross-project data leakage | Isolation di level arsitektur (database-per-project) + validasi membership tiap request |
-| Silent overwrite concurrent request | Optimistic locking per-entity (BR-019..023) |
+| Silent overwrite concurrent request | Optimistic locking pada versioned domain entity; transactional current-state validation + constraint untuk Global DB control/auth record (BR-019..023) |
+| Duplicate side effect dari retry/concurrent request | Request fingerprint + atomic idempotency claim + lease/claim-token ownership (02-SPEC C.3) |
 | Move Card sebagai jalan bypass otorisasi destination | INV-MOVE-003 — destination auth independen dari source dan hierarchy terkini selalu di-resolve |
 | Kebocoran credential | Secret hash; expiration & revocation wajib |
 | Manipulasi audit trail | Activity immutable append-only; actor reference historis tidak berubah |

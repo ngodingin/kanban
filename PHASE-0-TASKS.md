@@ -1,12 +1,12 @@
 # Phase 0 — Foundation · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 3.0.1.
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 4.0.0.
 > Scope batas: [04-DELIVERY C.1 "Phase 0"](docs/04-DELIVERY.md). Acuan utama: [03-ENGINEERING Part A/B/D](docs/03-ENGINEERING.md) + [02-SPEC C.2](docs/02-SPEC.md).
 > **Konteks:** implementasi MVP berjalan; Phase 0 aktif kembali untuk remediation lintas-fase setelah audit terhadap SOT terkini. State aktual wajib dibaca dari Git dan tabel goal. File ini working list, **terpisah dari SOT**.
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
 >
-> **⏸️ GATE Phase 6 (keputusan manusia, 2026-08-24, lihat [Review-CL-22](#review-cl-22) dan [Review-CL-23](#review-cl-23)):** `TASK-0.15`–`TASK-0.20` di file ini WAJIB `✅`, seluruh `[NEEDS-DECISION]` Review-CL-23 WAJIB diputuskan serta diamandemen bila perlu, dan Phase 1–5 WAJIB direverifikasi ketat terhadap SOT versi terkini sebelum `PHASE-6-TASKS.md` boleh digenerate atau dikerjakan. Detail di header [PHASE-5-TASKS.md](PHASE-5-TASKS.md).
+> **⏸️ GATE Phase 6 (keputusan manusia, 2026-08-24, lihat [Review-CL-22](#review-cl-22) dan [Review-CL-24](#review-cl-24)):** `TASK-0.15`–`TASK-0.21` di file ini WAJIB `✅`, dan Phase 1–5 WAJIB direverifikasi ketat terhadap SOT 4.0.0 sebelum `PHASE-6-TASKS.md` boleh digenerate atau dikerjakan. Tiga keputusan Review-CL-23 telah ditutup manusia dan diamandemen dalam SOT 4.0.0. Detail di header [PHASE-5-TASKS.md](PHASE-5-TASKS.md).
 
 ## Prinsip Phase 0
 Membangun **plumbing**, bukan domain endpoint. Endpoint domain (Project CRUD dst.) mulai Phase 1. Authorization *resolution* hanya disiapkan sebagai **seam kosong**; implementasi penuh di Phase 4.
@@ -284,10 +284,10 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 0.19.1 | ⬜️ | [Review-CL-21](#review-cl-21) | 0 | P1 | Ditemukan saat review total 2026-08-24: `GET .../assignments` (`apps/api/src/routes/project-admin.ts:458-461`) secara AKTIF meng-konversi `MembershipAssignmentsList` yang SUDAH camelCase (`groupAssignments`/`permissionAssignments`, `packages/infrastructure/src/database/project-admin.ts:815-816`) menjadi `group_assignments`/`permission_assignments` snake_case — bertentangan langsung dengan contoh eksplisit `02-SPEC C.12` (`{ groupAssignments: [...], permissionAssignments: [...] }`). Ini regresi arah konversi, BUKAN sekadar belum-migrasi seperti 0.17.3 (yang soal request body) — response sudah benar di infra layer, route-nya sendiri yang merusak. Hapus transformasi tersebut, teruskan objek `MembershipAssignmentsList` apa adanya. | [02-SPEC C.2.1](docs/02-SPEC.md), C.12 (amandemen 3.0.0) | — |
-| 0.19.2 | ⏸️ | [Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23) | 0 | P1 | `[NEEDS-DECISION]` Usulan membungkus response accept/list/revoke menjadi `{ invitation }`/`{ invitations }` belum normatif di C.13 dan bertentangan dengan changelog 3.0.0 yang menyatakan response body tidak berubah. Dev MUST NOT mengerjakan goal ini sebelum manusia memilih: pertahankan bentuk mentah existing, atau amend C.13 dan terima perubahan breaking ke wrapper bernama. Rekomendasi reviewer: amend C.13 dan gunakan wrapper konsisten karena belum ada consumer produksi. | [01-PRODUCT 0.4](docs/01-PRODUCT.md), [02-SPEC C.2.1](docs/02-SPEC.md), C.13 | keputusan manusia + amandemen SOT jika wrapper dipilih |
+| 0.19.2 | ⬜️ | [Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23)<br>[Review-CL-24](#review-cl-24) | 0 | P1 | Implementasikan kontrak SOT 4.0.0: response Invitation create/accept/revoke di dalam envelope `data` MUST `{ invitation }`; list MUST `{ invitations }`. Accept/list/revoke yang saat ini mengembalikan object/array mentah wajib dibungkus tanpa mengubah field entity selain migrasi camelCase terpisah 0.17.3. | [02-SPEC C.2](docs/02-SPEC.md), C.13 (amandemen 4.0.0) | — |
 
-**Test:** 0.19.1 — `GET /projects/:id/members/:userId/assignments` menghasilkan `{ groupAssignments: [...], permissionAssignments: [...] }` (camelCase, bukan `group_assignments`/`permission_assignments`). 0.19.2 — setelah keputusan manusia dan, bila perlu, amandemen C.13: test accept/list/revoke wajib mengunci tepat bentuk response yang dipilih; test tidak boleh diubah sebelum kontraknya diputuskan.
-**DoD:** `pnpm exec vitest run` 100% hijau; 0.19.2 tetap `⏸️` sampai keputusan dan SOT sinkron, kemudian test kontrak diperbarui tanpa menghapus coverage lama.
+**Test:** 0.19.1 — `GET /projects/:id/members/:userId/assignments` menghasilkan `{ groupAssignments: [...], permissionAssignments: [...] }` (camelCase, bukan `group_assignments`/`permission_assignments`). 0.19.2 — create/accept/revoke menghasilkan `data.invitation`, list menghasilkan `data.invitations`; object/array mentah langsung di bawah `data` ditolak oleh contract test.
+**DoD:** `pnpm exec vitest run` 100% hijau; keempat endpoint Invitation konsisten dengan C.13 dan test lama diperbarui tanpa menghapus coverage authorization/lifecycle.
 
 ---
 
@@ -300,6 +300,19 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 
 **Test:** 0.20.1 — smoke scripts tetap berfungsi setelah refactor/hapus (jalankan manual atau CI kalau ter-cover). 0.20.2 — hasil prune identik sebelum/sesudah (regression test existing `prune-descendants.test.ts`/`prune-no-orphan.test.ts` tetap hijau), cukup buktikan query SQL yang berubah, bukan perilaku.
 **DoD:** Tidak breaking apa pun yang sudah `✅` di Phase 5 — ini optimisasi/cleanup di atas fondasi yang sudah benar, bukan reopen goal Phase 5.
+
+---
+
+## TASK-0.21 — [GATING][CRITICAL] Hardening Idempotency-Key sesuai SOT 4.0.0  (dep: 0.16 ✅)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 0.21.1 | ⬜️ | [Review-CL-24](#review-cl-24) | 0 | P0 | Migrasikan `idempotency_keys` dan `DbIdempotencyStore` dari cache `get/put` menjadi state machine atomic claim: simpan `request_fingerprint`, unguessable `claim_token`, `state` (`IN_PROGRESS`/`COMPLETED`), `response_status`, `result`, `lease_expires_at`, `expires_at`, timestamps; UNIQUE `(key,scope)` tetap. Sediakan operasi atomik claim/complete/release/reclaim-expired; complete/release MUST compare claim token dan reclaim MUST merotasinya agar worker lama tidak dapat overwrite owner baru. Completed retention minimum 24 jam. | [02-SPEC C.3](docs/02-SPEC.md), [03-ENG B.2](docs/03-ENGINEERING.md), C.5 (amandemen 4.0.0) | — |
+| 0.21.2 | ⬜️ | [Review-CL-24](#review-cl-24) | 0 | P0 | Perbarui kontrak/wrapper route generik: hitung fingerprint deterministik canonical request, atomic claim sebelum handler, exact replay untuk completed fingerprint sama, `409 IDEMPOTENCY_CONFLICT` untuk payload berbeda, `409 IDEMPOTENCY_IN_PROGRESS` untuk fingerprint sama yang masih leased, dan release claim saat handler gagal/non-2xx. Tambahkan kedua kode ke katalog dan HTTP mapping. Scope wajib mengikat identity+method+normalized path. | [02-SPEC C.2](docs/02-SPEC.md), C.3 (amandemen 4.0.0) | 0.21.1 |
+| 0.21.3 | ⬜️ | [Review-CL-24](#review-cl-24) | 0 | P0 | Tambahkan regression/property-style integration test AC-033/AC-034: replay sequential identik; same key+scope payload berbeda; dua request benar-benar paralel dengan barrier sehingga keduanya overlap; failure melepaskan claim; lease expired dapat direclaim dan merotasi token; stale owner tidak dapat complete/release claim baru; completed expiry memproses sebagai request baru. Assert row-level tepat satu side-effect/Activity dan exact stored status/body. | [04-DELIVERY AC-033](docs/04-DELIVERY.md), AC-034, [02-SPEC C.3](docs/02-SPEC.md) | 0.21.2 |
+
+**Test:** AC-033 dan AC-034 wajib memakai barrier/controllable handler agar overlap konkuren terbukti, bukan dua `await` sequential. Payload mismatch tidak menjalankan handler. Request in-flight kedua tidak menghasilkan entity/Activity. Handler throw/non-2xx dapat di-retry. Completed replay identik byte/status. Tanpa header tetap berfungsi normal.
+**DoD:** migration idempotent; suite store + API integration hijau; `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` terdaftar di error catalog/mapping; tidak ada jalur produksi `get → handler → put`; `pnpm exec vitest run`, typecheck, dan lint hijau. TASK-0.16 tetap ✅ sebagai baseline lama—0.21 adalah kapabilitas breaking baru SOT 4.0.0, bukan retroaktif mengubah bukti QA lama.
 
 ---
 
@@ -324,9 +337,9 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 - Transaction helper + repository boundary siap dipakai domain command.
 
 ## Flag terbuka (sesuai C.6.5)
-- `[NEEDS-DECISION]` **Cakupan optimistic concurrency:** BR-019/BR-021 saat ini berbunyi universal, tetapi schema/API Global DB (Permission Group, Membership, Invitation, API Key, PAT) tidak memiliki `version`/`expectedVersion`. Rekomendasi Review-CL-23: batasi aturan ke entity domain versioned di Project DB; alternatifnya adalah perubahan breaking besar untuk menambah versioning seluruh record Global DB.
-- `[NEEDS-DECISION]` **Semantik idempotency:** C.3 belum menentukan same-key/different-payload dan dua request in-flight konkuren. Rekomendasi Review-CL-23: simpan fingerprint request, tolak reuse key dengan payload berbeda memakai error kanonik, dan pastikan hanya satu eksekusi side-effect untuk key+scope yang sama.
-- `[NEEDS-DECISION]` **Response Invitation:** goal 0.19.2 diblokir sampai manusia memilih mempertahankan response mentah atau mengamandemen C.13 ke wrapper bernama; rekomendasi reviewer adalah wrapper.
+- ~~`[NEEDS-DECISION]` Cakupan optimistic concurrency~~ → **DIPUTUSKAN 2026-08-24 (manusia):** hanya entity domain versioned BR-019; Global control/authorization records memakai transactional current-state validation/constraint. SOT 4.0.0, Review-CL-24.
+- ~~`[NEEDS-DECISION]` Semantik idempotency~~ → **DIPUTUSKAN 2026-08-24 (manusia):** fingerprint + atomic claim; mismatch `IDEMPOTENCY_CONFLICT`; in-flight identik `IDEMPOTENCY_IN_PROGRESS`; implementasi TASK-0.21. SOT 4.0.0, Review-CL-24.
+- ~~`[NEEDS-DECISION]` Response Invitation~~ → **DIPUTUSKAN 2026-08-24 (manusia):** wrapper `{ invitation }`/`{ invitations }`; 0.19.2 dibuka `⏸️ → ⬜️`. SOT 4.0.0, Review-CL-24.
 - ~~`[NEEDS-DECISION]` 0.2.4 — provisioning sinkron vs async~~ → **DIPUTUSKAN 2026-08-18 (manusia): Turso GO + provisioning SINKRON** (tercatat CL-07).
 - ~~`[NEEDS-SPEC-AMENDMENT]` A.11/F.2 — finalisasi hasil POC Turso dan provisioning sinkron~~ → **DISELESAIKAN 2026-08-21:** SOT 2.0.8 menetapkan Turso GO dan provisioning sinkron melalui Review-CL-06.
 - ~~`[NEEDS-SPEC-AMENDMENT]` D.7 — canonical origin staging~~ → **DISELESAIKAN 2026-08-21 (manusia):** staging memakai `https://kanban-ngodingin.vercel.app`; SOT dinaikkan ke 2.0.7 melalui Review-CL-05. Implementasi loader/Magic Link dikembalikan ke Dev melalui 0.1.4 dan 0.8.4 ⚠️.
@@ -336,6 +349,17 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-24"></a>
+### Review-CL-24 — 2026-08-24 · keputusan manusia menutup tiga gate Review-CL-23; SOT 4.0.0 + TASK-0.21
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Keputusan manusia:** “setuju semua rekomendasi” diberikan setelah tiga opsi dijelaskan eksplisit. Dikunci: (1) optimistic concurrency hanya untuk entity domain versioned BR-019; Global control/authorization records memakai transactional current-state validation dan constraint; (2) idempotency memakai request fingerprint + atomic claim, menolak payload berbeda dan eksekusi in-flight kedua; (3) response Invitation memakai wrapper bernama.
+
+**Amandemen:** `SPEC_VERSION 3.0.1 → 4.0.0` karena response Invitation dan retry semantics berubah secara observable. `02-SPEC` mengubah BR-019–021, invariant #7, FR-048–050, C.2/C.3/C.13; `03-ENGINEERING` mendokumentasikan stateful idempotency store dan melarang `get → handler → put`; `04-DELIVERY` menambah AC-033/AC-034; consumer metadata diperbarui. 0.19.2 dibuka `⏸️ → ⬜️` 0%; TASK-0.21 dibuat sebagai remediation P0/GATING. Tidak ada kode implementasi disentuh lane ini.
+
+**Bukti:** keputusan manusia pada sesi 2026-08-24; impact scan lintas-SOT melalui `rg` atas BR-019/BR-021/expectedVersion/idempotency/Invitation; `git diff --check` wajib lulus sebelum commit. Phase 6 tetap blocked sampai TASK-0.15–0.21 ✅ dan reverifikasi Phase 1–5 terhadap SOT 4.0.0 selesai.
 
 <a id="cl-70"></a>
 ### CL-70 — 2026-08-24 · goal 0.17.1+0.17.5 migrasi camelCase request body Project/Milestone/Board/List/Card (⬜️/⬜️ → 🔎/🔎 · 0/0 → 80/80%)

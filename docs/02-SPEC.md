@@ -100,9 +100,9 @@ Entity DELETED MUST NOT menerima mutation apa pun, termasuk restore. Entity MAY 
 
 ## A.7 Concurrency (Optimistic Locking)
 
-- **BR-019** Setiap entity mutable MUST memiliki `version`.
-- **BR-020** Concurrency MUST dievaluasi **per-entity**, bukan per-Project/global — mutation Card A tidak boleh menyebabkan konflik pada Card B.
-- **BR-021** Mutation membawa `expected_version`; jika `current_version != expected_version` → `409 VERSION_CONFLICT`, tanpa perubahan state, tanpa Activity domain untuk request yang ditolak.
+- **BR-019** Setiap entity domain versioned di Project DB—Project (`project_state`), Milestone, Board, List, Card, Milestone Label, dan Board Label—MUST memiliki `version`. Record control/authorization di Global DB (Membership, Permission Group/assignment, Invitation, API Key, PAT) tidak memakai optimistic version pada MVP; mutation-nya tetap MUST memvalidasi current state dalam transaksi dan mengandalkan constraint database/idempotency yang applicable.
+- **BR-020** Concurrency entity domain versioned MUST dievaluasi **per-entity**, bukan per-Project/global — mutation Card A tidak boleh menyebabkan konflik pada Card B.
+- **BR-021** Command client yang memutasi entity domain versioned membawa `expectedVersion`; jika `currentVersion != expectedVersion` → `409 VERSION_CONFLICT`, tanpa perubahan state dan tanpa Activity domain. Command internal/system-initiated yang memutasi entity versioned tidak memerlukan field request client, tetapi MUST melakukan conditional update/version check ekuivalen terhadap version yang dibaca dalam transaksi.
 - **BR-022** Prinsip: **"Last valid write wins"**, bukan "last write wins".
 - **BR-023** MVP pakai **entity-level locking**, bukan field-level — dua mutation pada field berbeda di entity sama tetap saling konflik jika version sama.
 
@@ -199,7 +199,7 @@ Semua kondisi harus TRUE. Tidak ada komponen yang boleh dilewati hanya karena ko
 4. Resources MUST NOT cross Project boundaries.
 5. Only Card is movable; it MAY move between Boards only inside the same Milestone.
 6. Mutations MUST validate current state before committing.
-7. Concurrent mutations MUST use optimistic concurrency/version checking.
+7. Concurrent mutations of versioned domain entities MUST use optimistic concurrency/version checking; Global control/authorization records MUST use transactional current-state validation and database constraints.
 8. Activity MUST be immutable and append-only.
 9. Entity mutation and its Activity MUST commit atomically.
 10. Authorization MUST be evaluated against the entity's current hierarchy, per operation.
@@ -253,7 +253,7 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-027** Sistem MUST mengizinkan Card pindah List via domain operation khusus (move), bukan update field biasa.
 - **FR-028** Sistem MUST mengizinkan Card pindah Board hanya jika Board sumber & tujuan dalam Milestone sama.
 - **FR-029** Sistem MUST NOT mengizinkan Card pindah lintas Project.
-- **FR-030** Sistem MUST menolak move Card jika `expected_version` tidak sesuai versi terkini.
+- **FR-030** Sistem MUST menolak move Card jika `expectedVersion` tidak sesuai versi terkini.
 
 ## B.8 Label
 - **FR-031** Sistem MUST mendukung dua scope Label: Milestone Label & Board Label.
@@ -281,9 +281,9 @@ Requirement fungsional per modul. Setiap FR dapat ditelusuri ke BR/INV terkait d
 - **FR-047** Internal prune entity DELETED MUST menghapus seluruh subtree secara permanen tanpa orphan, hanya setelah retention 30 hari terpenuhi; prune bukan endpoint user MVP.
 
 ## B.12 Concurrency
-- **FR-048** Setiap entity mutable MUST punya `version` yang increment atomically pada tiap mutation.
-- **FR-049** Mutation SHOULD menyertakan `expected_version`; sistem MUST menolak dengan `VERSION_CONFLICT` jika tidak sesuai.
-- **FR-050** Concurrency check MUST per-entity (bukan per-Project/global).
+- **FR-048** Setiap entity domain versioned yang disebut BR-019 MUST punya `version` yang increment atomically pada tiap mutation; record Global DB yang dikecualikan BR-019 tidak diwajibkan memiliki `version` pada MVP.
+- **FR-049** Command client terhadap entity domain versioned MUST menyertakan `expectedVersion`; sistem MUST menolak dengan `VERSION_CONFLICT` jika tidak sesuai. Command internal memakai conditional version check ekuivalen.
+- **FR-050** Concurrency check untuk entity domain versioned MUST per-entity (bukan per-Project/global).
 
 ## B.13 Credential
 - **FR-051** Sistem MUST mendukung API Key per Project, dengan expiration & revocation.
@@ -330,12 +330,14 @@ Error codes kanonik minimum:
 ```text
 PROJECT_ACCESS_DENIED · PERMISSION_DENIED · RESOURCE_NOT_FOUND · RESOURCE_ARCHIVED
 RESOURCE_DELETED · INVALID_STATE · INVALID_DESTINATION · VALIDATION_ERROR
-VERSION_CONFLICT · TOKEN_EXPIRED · TOKEN_REVOKED · INVITATION_EXPIRED · INVITATION_ALREADY_USED
-INTERNAL_ERROR
+VERSION_CONFLICT · IDEMPOTENCY_CONFLICT · IDEMPOTENCY_IN_PROGRESS
+TOKEN_EXPIRED · TOKEN_REVOKED · INVITATION_EXPIRED · INVITATION_ALREADY_USED · INTERNAL_ERROR
 ```
 `VALIDATION_ERROR` (HTTP 400) MUST dipakai untuk payload/transport request yang tidak valid secara bentuk (field wajib hilang, tipe salah, body bukan JSON object) — kesalahan di sisi pengirim sebelum sistem sempat mengevaluasi state domain apa pun. `INVALID_STATE` (HTTP 409) tetap khusus untuk payload yang valid bentuknya tetapi tidak dapat diproses karena konflik state domain saat ini. `INTERNAL_ERROR` (HTTP 500) MUST dipakai KHUSUS untuk kegagalan tak terduga/infrastruktur (mis. config tidak lengkap, exception tak tertangani, dependency eksternal gagal) — MUST NOT dipakai untuk apa pun yang punya kode kanonik lain yang lebih spesifik yang applicable. Ketiga kode ini TIDAK boleh saling menggantikan — `INVALID_STATE` MUST NOT dipasangkan dengan HTTP 500 atau dipakai untuk kegagalan yang bukan konflik state domain; kasus semacam itu WAJIB `INTERNAL_ERROR`.
 
 `VALIDATION_ERROR` MUST mengumpulkan SELURUH field yang gagal validasi dalam satu response (bukan fail-fast berhenti di field pertama), via `details` array: `{ "error": { "code": "VALIDATION_ERROR", "message": "...", "details": [{ "field": "title", "reason": "wajib string non-kosong" }] } }`. `details` opsional untuk kode error lain (tidak applicable di luar validasi bentuk payload).
+
+`IDEMPOTENCY_CONFLICT` (HTTP 409) MUST dipakai ketika kombinasi `Idempotency-Key`+scope sudah diklaim oleh fingerprint request berbeda. `IDEMPOTENCY_IN_PROGRESS` (HTTP 409) MUST dipakai ketika request identik masih diproses oleh eksekusi pertama; response MAY menyertakan `Retry-After`. Keduanya MUST dikembalikan tanpa mengeksekusi domain handler atau menulis Activity.
 
 ### C.2.1 Konvensi Struktur Data (WAJIB, amandemen 3.0.0)
 
@@ -345,11 +347,22 @@ Query parameter (`?status=...&entity_type=...`) MAY tetap `snake_case`/lowercase
 
 **Field lifecycle universal** — setiap entity dengan lifecycle (Project, Milestone, Board, List, Card, Milestone Label, Board Label) response-nya MUST menyertakan minimal: `id` (string, ULID), `createdAt` (string, ISO 8601), `updatedAt` (string, ISO 8601), `archivedAt` (string ISO 8601 atau `null`), `deletedAt` (string ISO 8601 atau `null`), `version` (integer). Field domain-spesifik (title, description, dst) ditambahkan di atas field universal ini, tidak menggantikannya.
 
-**Mutation command yang butuh `expected_version`** (`PATCH`, archive/restore/delete/move) MUST menerima field `expectedVersion` (integer) — bukan `expected_version`.
+**Mutation command terhadap entity domain versioned** (`PATCH`, archive/restore/delete/move) MUST menerima field `expectedVersion` (integer). Record Global DB yang dikecualikan BR-019 tidak memperoleh field ini pada MVP.
 
 ## C.3 Idempotency
 
-Untuk mutation yang berpotensi diulang akibat network retry, gunakan `Idempotency-Key: <client-generated-key>`, terutama untuk `POST` yang membuat resource atau menjalankan domain command berisiko (create, move, archive, delete).
+Untuk mutation yang berpotensi diulang akibat network retry, client SHOULD mengirim `Idempotency-Key: <client-generated-key>`, terutama untuk `POST` yang membuat resource atau menjalankan domain command berisiko (create, move, archive, restore, delete). Tanpa header, request tetap diproses normal tanpa jaminan replay.
+
+Kontrak server ketika header ada:
+
+1. Scope MUST sekurang-kurangnya mengikat identity pemanggil, HTTP method, dan normalized route/path sehingga key tidak dapat di-replay lintas-User atau endpoint.
+2. Server MUST menghitung fingerprint deterministik atas request efektif (method, normalized route/path, dan canonical request body). Secret mentah MUST NOT dimasukkan ke log.
+3. Kombinasi key+scope pertama MUST diklaim atomik **sebelum** domain handler dijalankan. Claim MUST memiliki owner token yang tidak dapat ditebak; complete/release hanya boleh berhasil jika token masih cocok. Reclaim lease expired MUST merotasi token sehingga worker lama tidak dapat menyelesaikan claim baru. Hanya pemilik claim aktif yang boleh mengeksekusi side-effect.
+4. Key+scope sama dan fingerprint berbeda MUST ditolak `409 IDEMPOTENCY_CONFLICT`, baik claim masih in-flight maupun sudah completed.
+5. Key+scope dan fingerprint sama yang masih in-flight MUST ditolak `409 IDEMPOTENCY_IN_PROGRESS`; request kedua MUST NOT menjalankan handler. Client MAY retry dengan key yang sama.
+6. Key+scope dan fingerprint sama yang sudah completed MUST me-replay status dan response body sukses tersimpan secara identik tanpa menjalankan handler.
+7. Hanya response sukses 2xx yang menjadi completed replay. Jika handler gagal/throw atau transaksi domain rollback, claim MUST dilepas atau ditandai retryable secara atomik agar retry berikutnya dapat mencoba lagi; response gagal tidak boleh dikunci permanen.
+8. Claim in-flight MUST memakai lease/expiry agar crash worker tidak memblokir key selamanya. Completed result MUST disimpan minimal 24 jam; setelah expiry, key MAY diproses sebagai request baru.
 
 ## C.4 Project
 ```http
@@ -521,7 +534,21 @@ Create:
 ```
 Setelah accept: `Invitation → Membership → scoped Permission Group assignments` otomatis, tanpa assignment kedua kali. Accept MUST menegakkan BR-054A (email match) dan BR-054B (reactivate Membership ter-revoke, bukan row baru).
 
-`GET /invitations` mengembalikan seluruh Invitation Project (termasuk yang sudah accepted/revoked/expired) untuk keperluan manajemen Owner — tidak ada endpoint terpisah untuk "pending only", client MAY filter dari `accepted_at`/`revoked_at`/`expires_at` pada response. `POST /invitations/:invitation_id/revoke` (nested di bawah `:project_id`, simetris dengan create/list — hanya `accept` yang flat karena dipanggil invitee tanpa konteks project) men-set `invitations.revoked_at`; invitation yang sudah accepted MUST NOT dapat di-revoke (`INVALID_STATE`).
+`GET /invitations` mengembalikan seluruh Invitation Project (termasuk yang sudah accepted/revoked/expired) untuk keperluan manajemen Owner — tidak ada endpoint terpisah untuk "pending only", client MAY filter dari `acceptedAt`/`revokedAt`/`expiresAt` pada response. `POST /invitations/:invitation_id/revoke` (nested di bawah `:project_id`, simetris dengan create/list — hanya `accept` yang flat karena dipanggil invitee tanpa konteks project) men-set kolom internal `invitations.revoked_at`; invitation yang sudah accepted MUST NOT dapat di-revoke (`INVALID_STATE`).
+
+Di dalam envelope sukses C.2, response Invitation MUST memakai wrapper bernama berikut (field entity tetap `camelCase` sesuai C.2.1):
+
+POST create, POST accept, dan POST revoke:
+
+```json
+{ "data": { "invitation": { "id": "01...", "email": "eko@example.com", "expiresAt": "...", "acceptedAt": null, "revokedAt": null, "createdAt": "..." } } }
+```
+
+GET list:
+
+```json
+{ "data": { "invitations": [{ "id": "01...", "email": "eko@example.com", "expiresAt": "...", "acceptedAt": null, "revokedAt": null, "createdAt": "..." }] } }
+```
 
 ## C.14 API Key & PAT
 ```http
