@@ -92,10 +92,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.5.1 | 🔎 | [CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
-| 7.5.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
-| 7.5.3 | 🔎 | [CL-19](#cl-19)<br>[CL-20](#cl-20) | 80 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
-| 7.5.4 | 🔎 | [CL-19](#cl-19)<br>[CL-21](#cl-21) | 80 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.1 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
+| 7.5.2 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
+| 7.5.3 | ⚠️ | [QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20) | 40 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.4 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-19](#cl-19)<br>[CL-21](#cl-21) | 80 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
 **Test:** Drag memicu move API benar; opsi Board lintas-Milestone tidak muncul; conflict ditampilkan, tidak menimpa.
 **DoD:** Interaksi Board tunduk domain command + optimistic locking; List tanpa makna status sistem.
@@ -106,8 +106,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.6.1 | 🔎 | [CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.6.2 | 🔎 | [CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.6.1 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.6.2 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
 
 **Test:** Card hanya menampilkan field domain yang valid; tidak ada priority/progress/status.
 **DoD:** Komponen Card patuh [05-FRONTEND §4](docs/05-FRONTEND.md).
@@ -232,6 +232,39 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-10"></a>
+### QA-CL-10 — 2026-08-25 · goal 7.5.3 — kandidat Board tujuan genuinely benar (same-Milestone), TAPI nama Board selalu blank (field-name mismatch sama seperti QA-CL-07) (🔎 80% → ⚠️ 40%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Bug genuine, pola PERSIS sama dengan QA-CL-07 (7.3.2) — dikonfirmasi langsung dari source API:** `apps/web/src/features/boards/hooks.ts:4-7` mendeklarasikan `BoardSummary { id, milestoneId, name }` dan `siblingBoards()` (baris 22-30) mem-map `.name`. Field asli Board (`apps/api/src/routes/boards.ts:30-40`, `boardPayload`) adalah **`title`**, BUKAN `name` — dikonfirmasi ulang persis sama seperti temuan di 7.3.2. Akibatnya `siblingBoards()` genuinely mengembalikan kandidat board yang BENAR secara struktural (same-Milestone, exclude board asal — logic filter-nya sendiri tidak salah), tapi setiap kandidat akan punya `name: undefined` terhadap API sungguhan — daftar pilihan Board tujuan di UI akan tampil KOSONG/blank untuk seluruh opsi, meski jumlah opsi dan pemilihannya (Milestone sama) benar.
+
+**Test TIDAK menangkap bug ini — bahkan test yang mock di level `fetch` (lapisan benar) ikut membawa field salah:** `board-move-guard.test.tsx:43-58` (`"positif: hook useBoards mengambil endpoint scoping per-Milestone"`) memock response `fetch` dengan `{ boards: [{ id: "b2", milestoneId: "m1", name: "Backup" }] }` — payload buatan test sendiri yang TIDAK PERNAH keluar dari API asli (asli: `title`, bukan `name`). Ini lebih halus dari kelas bug mock-di-level-hook di QA-CL-07 — di sini mocking levelnya sudah benar (fetch, bukan hook), tapi payload isinya tetap salah karena disalin dari asumsi field yang keliru sejak awal (kemungkinan reuse pola `ProjectSummary`/ide "name" generik untuk seluruh entity, bukan per-entity field asli).
+
+**7.5.1/7.5.2/7.5.4 dan 7.6.1/7.6.2 diperiksa terpisah untuk pola bug yang sama — TIDAK ditemukan masalah serupa** (lihat QA-CL-09) — bug ini terisolasi pada `boards/hooks.ts` (konsumen Board), tidak menyebar ke List/Card yang field-nya sudah dicek benar (`title` dipakai konsisten di `lists/hooks.ts` dan `card.tsx`).
+
+**Rekomendasi fix untuk Dev (tidak saya kerjakan sendiri, sesuai batas lane AI-QA):** ganti field `name` → `title` di `BoardSummary` interface DAN di `siblingBoards()`'s return mapping DAN di `board-move-guard.test.tsx`'s seluruh fixture/mock (baris 24-27 test-data lokal, DAN baris 47 mock `fetch`) agar payload test genuinely merepresentasikan bentuk API asli.
+
+**Verdict:** `⚠️ 40%` (logic filtering same-Milestone genuinely benar dan sudah scoped dua lapis sesuai klaim — hanya presentasi nama yang gagal, mirip tingkat keparahan 7.3.2 tapi scope lebih sempit/terisolasi).
+
+<a id="qa-cl-09"></a>
+### QA-CL-09 — 2026-08-25 · goal 7.5.1/7.5.2/7.5.4/7.6.1/7.6.2 — verifikasi teknis bersih, DITAHAN di 🔎 80% menunggu dependency 7.3.2 (bukan ditutup ✅)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Konteks:** rantai dependency `7.3.2 → 7.5.1 → 7.5.2 → {7.5.3, 7.5.4}` dan `7.5.1 → 7.6.1 → 7.6.2` — 7.3.2 saat ini `⚠️/35` (QA-CL-07, breadcrumb belum berfungsi terhadap API asli). Dev sah memulai kelima goal ini secara paralel saat 7.3.2 masih 🔎 sisi Dev (dicatat jujur di tiap CL awal masing-masing goal) — TAPI dependency mengalahkan Prior/kesiapan untuk *closure* ke `✅`, jadi kelima goal ini DITAHAN di `🔎/80` sampai 7.3.2 genuinely `✅`, meski secara teknis sudah diverifikasi bersih di bawah ini.
+
+**Diperiksa dengan perhatian khusus pada kelas bug yang baru ditemukan di 7.3.2 (envelope/field-name mismatch tersembunyi di balik mock-di-level-hook) — hasil per goal:**
+- **7.5.1** (`board-view.tsx`/`lists/hooks.ts`/`cards/hooks.ts`): `ListSummary.title`/`CardSummary.title` dicocokkan langsung ke `listPayload`/`cardPayload` produksi — genuinely benar. `npx vitest run apps/web/test/board-view.test.tsx` → 3/3 PASS.
+- **7.5.2** (`cards/mutations.ts`, `useMoveCard`): field `destinationListId`/`expectedVersion` dicocokkan ke `MoveCardInput` domain — benar (bukan `toListId` seperti bug lama 6.8.4). Test genuinely mock di level `fetch` (bukan hook) — metodologi benar. `npx vitest run apps/web/test/board-dnd.test.tsx` → 4/4 PASS.
+- **7.5.4** (VERSION_CONFLICT handling di `mutations.ts` + banner `BoardView`): `onError` meng-invalidasi query (bukan overwrite manual), banner+tombol Tutup genuinely dirender saat konflik. Test sama `board-dnd.test.tsx`/`board-move-guard.test.tsx` bagian VERSION_CONFLICT → PASS, genuinely mock `fetch`.
+- **7.6.1/7.6.2** (`card.tsx`, `KanbanCardData`): seluruh field (`title`/`description`/`dueDate`/`assigneeUserId`/`labels[{id,name}]`) dicocokkan ke `cardPayload` produksi — genuinely benar termasuk `labels[].name` (labels memang punya field `name`, beda dari Board/Milestone yang pakai `title`). Guard negatif (nol priority/progress/status) genuinely diverifikasi via regex + DOM query. `npx vitest run apps/web/test/card.test.tsx` → 5/5 PASS. Catatan non-blocking: `CardSummary` (di `cards/hooks.ts`) tipenya hanya `{id, title}`, tidak mendeklarasikan `description/dueDate/assigneeUserId/labels` walau API asli genuinely mengembalikannya (dan `KanbanCard` genuinely menerimanya di runtime karena field itu opsional di `KanbanCardData`) — gap type-safety kosmetik, bukan bug fungsional, tidak menghalangi closure.
+- **7.5.3 diperiksa terpisah — DITEMUKAN bug genuine**, dilaporkan di [QA-CL-10](#qa-cl-10) (entry di atas), status diubah `⚠️` independen dari isu dependency ini.
+
+**Re-run independen tambahan (mencakup seluruh batch):** `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` (repo-level) → 0 error. `pnpm --filter @kanban/web build` → sukses.
+
+**Tindakan:** 7.5.1/7.5.2/7.5.4/7.6.1/7.6.2 tetap `🔎/80` (bukan `✅`, bukan `⚠️`) — akan ditutup segera setelah 7.3.2 closed `✅`, tanpa perlu re-verifikasi teknis ulang kecuali ada perubahan kode baru pada file-file ini di antara waktu itu.
 
 <a id="cl-20"></a>
 ### CL-20 — 2026-08-25 · 7.5.3 → 🔎 80%
