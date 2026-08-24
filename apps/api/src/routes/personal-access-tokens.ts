@@ -86,21 +86,21 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
   );
 
   router.get("/v1/me/personal-access-tokens", async (c) =>
-    withIdempotentHandling(c, getDeps(), async () => {
+    withErrorHandling(c, async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const tokens = await deps.listPersonalAccessTokens(identity.userId);
       return { personal_access_tokens: tokens };
-    }, 200, getDeps().idempotencyStore),
+    }),
   );
 
   router.post("/v1/me/personal-access-tokens/:token_id/revoke", async (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const revoked = await deps.revokePersonalAccessToken(identity.userId, c.req.param("token_id"));
       return { personal_access_token: revoked };
-    }),
+      }, 200, getDeps().idempotencyStore),
   );
 
   return router;

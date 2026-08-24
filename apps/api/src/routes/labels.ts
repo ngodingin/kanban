@@ -163,7 +163,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
 
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id/${action}`, async (c) => {
-      return withErrorHandling(c, async () => {
+      return withIdempotentHandling(c, getDeps(), async () => {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -176,7 +176,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
           actorUserId: ctx.userId,
         });
         return { label: labelPayload(record) };
-      });
+      }, 200, getDeps().idempotencyStore);
     });
   }
 
@@ -271,7 +271,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
 
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/boards/:board_id/labels/:label_id/${action}`, async (c) => {
-      return withErrorHandling(c, async () => {
+      return withIdempotentHandling(c, getDeps(), async () => {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -284,7 +284,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
           actorUserId: ctx.userId,
         });
         return { label: boardLabelPayload(record) };
-      });
+      }, 200, getDeps().idempotencyStore);
     });
   }
 

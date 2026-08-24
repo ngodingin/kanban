@@ -509,7 +509,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   });
 
   router.post("/v1/invitations/:invitation_id/accept", (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
@@ -517,7 +517,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       // Accept tidak Owner-only — pemanggil adalah invitee yang terautentikasi.
       const result = await deps.acceptInvitation(c.req.param("invitation_id"), identity.userId, identity.email);
       return { invitation: result.invitation };
-    }),
+      }, 200, getDeps().idempotencyStore),
   );
 
   router.get("/v1/projects/:project_id/invitations", async (c) => {

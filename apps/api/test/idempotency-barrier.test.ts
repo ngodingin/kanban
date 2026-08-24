@@ -20,16 +20,39 @@ beforeAll(async () => {
     sql: "INSERT INTO users (id, email, email_verified, name, created_at, updated_at) VALUES (?, ?, 1, ?, ?, ?)",
     args: [USER, `${USER}@t.local`, USER, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z"],
   });
-  await globalClient.execute("CREATE TABLE effect_rows (id INTEGER PRIMARY KEY AUTOINCREMENT, marker TEXT NOT NULL)");
+});
+
+let projectDb: Client;
+
+/** Side-effect domain sungguhan: SATU entity (Milestone) + SATU Activity-nya. */
+async function insertMilestoneWithActivity(id: string): Promise<void> {
+  const now = "2026-01-01T00:00:00.000Z";
+  await projectDb.execute({
+    sql: "INSERT INTO milestones (id, title, progress, created_at, updated_at, version) VALUES (?, 'M', 0, ?, ?, 1)",
+    args: [id, now, now],
+  });
+  await projectDb.execute({
+    sql: "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'milestone', ?, 1, ?, 'milestone.created', '{}', ?)",
+    args: [`act-${id}`, id, USER, now],
+  });
+}
+
+const countIn = async (sql: string): Promise<number> =>
+  Number((await projectDb.execute({ sql })).rows[0]!.n);
+
+beforeAll(async () => {
+  projectDb = createClient({ url: `file:${join(dir, "proj.db")}` });
+  const { applyProjectMigrations } = await import("@kanban/infrastructure");
+  await applyProjectMigrations(projectDb);
 });
 
 afterAll(async () => {
+  await projectDb.close();
   await globalClient.close();
   rmSync(dir, { recursive: true, force: true });
 });
 
-const effects = async (): Promise<number> =>
-  Number((await globalClient.execute("SELECT COUNT(*) AS n FROM effect_rows")).rows[0]!.n);
+const crypto = globalThis.crypto;
 
 function makeApp(store: DbIdempotencyStore, hooks: {
   onHandlerStarted?: () => void;
@@ -42,10 +65,8 @@ function makeApp(store: DbIdempotencyStore, hooks: {
       { resolveIdentity: async () => ({ userId: USER }) },
       async () => {
         hooks.onHandlerStarted?.();
-        await hooks.holdHandler ?? Promise.resolve();
-        await globalClient.execute({
-          sql: "INSERT INTO effect_rows (marker) VALUES ('side-effect')",
-        });
+        await (hooks.holdHandler ?? Promise.resolve());
+        await insertMilestoneWithActivity(`ms-${crypto.randomUUID().slice(0, 8)}`);
         return { ok: true };
       },
       201,
@@ -89,15 +110,17 @@ describe("AC-034 concurrency barrier sungguhan (goal 0.21.3)", () => {
     const r1 = await r1Promise;
     expect(r1.status).toBe(201);
 
-    // Row-level: TEPAT SATU side-effect
-    expect(await effects()).toBe(1);
+    // Row-level: TEPAT SATU entity DAN SATU Activity
+    expect(await countIn("SELECT COUNT(*) AS n FROM milestones")).toBe(1);
+    expect(await countIn("SELECT COUNT(*) AS n FROM activities")).toBe(1);
   });
 
   it("[AC-033/0.21.3] completed expired → diproses sebagai request BARU (dua side-effect)", async () => {
     const shortTtl = new DbIdempotencyStore(globalClient, { completedTtlMs: 50 });
     const app = makeApp(shortTtl, {});
     expect((await call(app, "key-expire")).status).toBe(201);
-    expect(await effects()).toBe(2); // satu dari test barrier + satu ini
+    expect(await countIn("SELECT COUNT(*) AS n FROM milestones")).toBe(2);
+    expect(await countIn("SELECT COUNT(*) AS n FROM activities")).toBe(2);
 
     // Paksa expires_at lewat (retention selesai)
     await globalClient.execute(
@@ -107,6 +130,7 @@ describe("AC-034 concurrency barrier sungguhan (goal 0.21.3)", () => {
 
     const second = await call(app, "key-expire");
     expect(second.status).toBe(201);
-    expect(await effects()).toBe(3); // dieksekusi ulang sebagai request baru
+    expect(await countIn("SELECT COUNT(*) AS n FROM milestones")).toBe(3);
+    expect(await countIn("SELECT COUNT(*) AS n FROM activities")).toBe(3);
   });
 });

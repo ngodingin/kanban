@@ -387,7 +387,7 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
   });
 
   router.patch("/v1/projects/:project_id", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       // Authorization first (Implementation Rule 3), lihat QA-CL-06.
@@ -412,7 +412,7 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         name: name!,
       });
       return { project: projectStatePayload(state) };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   router.post("/v1/projects/:project_id/archive", async (c) => {
