@@ -108,8 +108,8 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | ⚠️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07) | 40 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
-| 5.5.2 | ⬜️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.1 | 🔄 | [CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07) | 40 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.2 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-09](#qa-cl-09) | 100 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
@@ -120,6 +120,26 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-09"></a>
+### QA-CL-09 — 2026-08-24 · goal 5.5.2 — reverifikasi Phase 2 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**5 area scope goal — seluruhnya dikonfirmasi BERSIH dengan bukti fresh:**
+1. **camelCase** — `grep body\.(start_date|due_date|expected_version|destination_list_id)` di `milestones.ts`/`boards.ts`/`lists.ts`/`cards.ts` → nol hasil.
+2. **Activity payload** — sudah diverifikasi mendalam QA-CL-70 (0.18.1: `card.moved` from/to, `assigneeUserId`, dst); dibaca ulang `card-repository.ts:moveCard` — payload `card.moved` genuinely camelCase (`listId`/`listTitle`/`boardId`/`boardTitle`).
+3. **Optimistic-lock scope (BR-019/invariant #7)** — `moveCard` dibaca penuh: `expectedVersion` dicek DUA KALI (pre-check di awal fungsi + `WHERE id=? AND version=?` kondisional pada UPDATE itu sendiri di dalam SATU `runInWriteTransaction`) — pola BENAR, kontras dengan gap yang saya temukan di Global DB (QA-CL-07). Ini domain entity versioned (Project DB), BUKAN Global DB record — cakupan `expectedVersion` memang benar hanya di sini per BR-019.
+4. **Failure boundary BR-054C** — sudah diverifikasi mendalam QA-CL-27 di [PHASE-2-TASKS.md](PHASE-2-TASKS.md) sesi ini (AC-035 fault-injection + overlap konkuren dua worker, reproduksi before/after).
+5. **Project isolation** — dikonfirmasi test eksplisit `[INV-MOVE-001][Project-boundary] move ke List Project lain → ditolak INVALID_DESTINATION tanpa menyentuh DB lain` di `card-move.test.ts`; struktural juga terjamin arsitektur database-per-project (destination di-resolve dalam `Client` yang SUDAH terikat satu Project, tidak mungkin merujuk Project lain).
+
+**Same-Milestone/cross-Board invariant (#5) dibaca ulang line-by-line:** `if (sourceChain.boardId !== destination.boardId && sourceChain.milestoneId !== destination.milestoneId)` — logika benar (De Morgan): tolak HANYA kalau board BEDA dan milestone BEDA; board sama (trivial) atau milestone sama (BR-018, lintas-Board diizinkan) tetap lolos.
+
+**Test dijalankan ulang independen** (SEBELUM `project-admin.ts` disentuh sesi Dev lain yang sedang merespons temuan 5.5.1 — dicatat sebagai batas waktu bukti): `card-move.test.ts` (10), `cards-move.test.ts` (5), `card-move-label-orphan.test.ts` (4), `revoke-recovery.test.ts` (6) → **25/25 PASS**, termasuk test konkurensi `[AC-020] mover kedua beroperasi pada snapshot stale → satu sukses, satu VERSION_CONFLICT`.
+
+**Catatan transparansi soal bukti "full suite hijau":** saat menyelesaikan verifikasi ini, `packages/infrastructure/src/database/project-admin.ts` sedang dalam status EDIT AKTIF oleh sesi Dev lain (merespons temuan QA-CL-07 di 5.5.1 — file BERBEDA scope, tidak terkait konten Phase 2), sehingga `pnpm -r typecheck` repo-wide TIDAK bisa dijalankan bersih pada saat ini (error sintaks sementara, bukan milik pekerjaan yang saya verifikasi). Bukti kelulusan 5.5.2 didasarkan pada 25 test TARGETED di atas yang genuinely dijalankan bersih sebelum file itu disentuh, bukan klaim full-suite yang tidak bisa saya buktikan saat ini.
+
+**Kesimpulan:** 5.5.2 ditutup `✅ 100%`. Reverifikasi Phase 2 terhadap SOT 4.1.0 tidak menemukan gap.
 
 <a id="qa-cl-08"></a>
 ### QA-CL-08 — 2026-08-24 · verifikasi independen 5.4.1 pasca-dependency 5.3.1/2.12.1 ✅ — ✅ 100%
@@ -264,6 +284,12 @@ Invariant #7 (AGENTS.md) / BR-019 ([02-SPEC](docs/02-SPEC.md):204): "Global cont
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: dependency `5.3` kini **✅100%** (QA-CL-05, commit 750daa3) dan `2.12` ✅ — gerbang dependency terpenuhi sesuai direktori QA-CL-03. Driver `driveDeprovision` yang dipakai trigger sudah diperbaiki & terverifikasi bersama 5.3.1 (ownership RETURNING, mutex, tx-tunggal).
 **Catatan:** Sisa pekerjaan: bukti end-to-end trigger memproses journal existing + isolasi kegagalan pada kode pasca-fix, lalu Gate B.
+
+<a id="cl-23"></a>
+### CL-23 — 2026-08-24 · goal 5.5.1 remediasi dimulai (⚠️ → 🔄 · 40% dipertahankan) — guard current-state Global DB
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row `⚠️/40`; QA-CL-07 dibaca penuh — 4 mutation Global DB tanpa guard kondisional di UPDATE (`revokeGroupAssignment`, `revokePermissionAssignment`, `deletePermissionGroup`, `revokeInvitation`) dan `acceptInvitation` yang validasi state SEBELUM transaksi (race accepted+revoked).
+**Catatan:** Pola fix mengikuti arahan QA = persis pola `revokeMembership` (BR-054C): conditional UPDATE + deteksi race-loser; `acceptInvitation` re-validasi DI DALAM transaksi. Kontrak publik existing (idempotensi/pesan) dijaga selagi memungkinkan.
 
 <a id="cl-22"></a>
 ### CL-22 — 2026-08-24 · goal 5.4.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 70 → 80%) — trigger journal-aware terverifikasi pasca-dependency ✅
