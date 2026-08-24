@@ -68,10 +68,10 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.2.1 | 🔎 | [CL-05](#cl-05)<br>[CL-04](#cl-04) | 80 | P1 | Ganti parsing manual (`readTitleField`/`readOptionalStringField`/dst, `apps/api/src/routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`) dengan skema Zod eksplisit per payload (create/update/move) — validasi tipe, required/optional, dan batas (mis. `title` non-empty string) di satu titik per entity, error digabung ke `VALIDATION_ERROR.details` (sudah ada pola collect-all dari `TASK-0.17.4`, reuse helper yang sama — JANGAN bikin mekanisme kedua). | [02-SPEC C.2](docs/02-SPEC.md) (VALIDATION_ERROR), C.5, C.8; [03-ENG A.8](docs/03-ENGINEERING.md) (Zod terkunci) | — |
-| 6.2.2 | 🔎 | [CL-06](#cl-06) | 80 | P1 | Sama seperti 6.2.1 untuk `labels.ts`, `card-labels.ts`, `comments.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.9–C.11 | — |
-| 6.2.3 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | Sama seperti 6.2.1 untuk `project-admin.ts` (Membership/Permission Group/scoped assignment/Invitation) dan `api-keys.ts`/`personal-access-tokens.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.12–C.14 | — |
-| 6.2.4 | 🔎 | [CL-13](#cl-13) | 80 | P2 | Sama seperti 6.2.1 untuk `projects.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.4 | — |
+| 6.2.1 | ✅ | [CL-05](#cl-05)<br>[CL-04](#cl-04)<br>[QA-CL-03](#qa-cl-03) | 100 | P1 | Ganti parsing manual (`readTitleField`/`readOptionalStringField`/dst, `apps/api/src/routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`) dengan skema Zod eksplisit per payload (create/update/move) — validasi tipe, required/optional, dan batas (mis. `title` non-empty string) di satu titik per entity, error digabung ke `VALIDATION_ERROR.details` (sudah ada pola collect-all dari `TASK-0.17.4`, reuse helper yang sama — JANGAN bikin mekanisme kedua). | [02-SPEC C.2](docs/02-SPEC.md) (VALIDATION_ERROR), C.5, C.8; [03-ENG A.8](docs/03-ENGINEERING.md) (Zod terkunci) | — |
+| 6.2.2 | ✅ | [CL-06](#cl-06)<br>[QA-CL-03](#qa-cl-03) | 100 | P1 | Sama seperti 6.2.1 untuk `labels.ts`, `card-labels.ts`, `comments.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.9–C.11 | — |
+| 6.2.3 | ✅ | [CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[QA-CL-03](#qa-cl-03) | 100 | P1 | Sama seperti 6.2.1 untuk `project-admin.ts` (Membership/Permission Group/scoped assignment/Invitation) dan `api-keys.ts`/`personal-access-tokens.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.12–C.14 | — |
+| 6.2.4 | ✅ | [CL-13](#cl-13)<br>[QA-CL-03](#qa-cl-03) | 100 | P2 | Sama seperti 6.2.1 untuk `projects.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.4 | — |
 
 **Test:** Body dengan field bertipe salah (mis. `title` berupa number) atau field wajib hilang → `400 VALIDATION_ERROR` dengan `details` menyebut field spesifik, BUKAN generic `500`/crash parsing. Body valid → berperilaku identik dengan parsing manual lama (regresi behavioral nihil — hanya mekanisme validasi yang berubah). Field terlarang generic PATCH (`BR-062`) tetap tertolak (regresi test existing tetap hijau).
 **DoD:** `grep -rn "^function read.*Field" apps/api/src/routes` → nol hasil (seluruh parsing manual tergantikan Zod); `pnpm exec vitest run` 100% hijau, test lama diperbarui mengikuti mekanisme baru bukan dihapus.
@@ -150,6 +150,21 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-03"></a>
+### QA-CL-03 — 2026-08-24 · verifikasi independen 6.2.1–6.2.4 (Zod validation layer) — ✅ 100% keempatnya
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`core-schemas.ts` dibaca penuh** (satu file, dipakai bersama keempat goal): bridge `parseBody` (VALIDATION_ERROR + details collect-all, reuse semantik TASK-0.17.4 — SATU mekanisme, bukan kedua, sesuai larangan eksplisit teks goal) dan `parseCredentialBody` (kontrak `unknownField:*` per-key untuk API Key/PAT dipertahankan). Skema per entity (Milestone/Board/List/Card/Label/Comment/Permission Group/Assignment/Invitation/API Key/PAT/Project) dicocokkan terhadap pesan validasi lama — identik.
+
+**Wiring dikonfirmasi** — `milestones.ts` dibaca: `parseBody(milestonePatchSchema, rawBody)` dipanggil, loop unknown-field C.15/BR-017 TETAP terpisah mengiterasi `rawBody` mentah (bukan hasil Zod strip) — dikonfirmasi ini genuinely perlu (CL-06 mencatat regresi mandiri yang mereka temukan dan perbaiki sendiri: `{name:"Ok",extra:1}` sempat lolos kalau iterasi memakai hasil Zod).
+
+**Test dijalankan ulang independen** (bukan cuma percaya angka di CL): `core-schemas-validation.test.ts` (2), `validation-collect-all-0.17.6.test.ts` (6), `personal-access-tokens-route.test.ts` (5), `board-labels.test.ts` (8), `card-labels.test.ts` (7), `comments-create.test.ts` (5) → **33/33 PASS**, termasuk test unknown-field/collect-all spesifik yang jadi fokus perhatian.
+
+**Full re-run independen:** `pnpm exec vitest run` → **104 file/633 test PASS** (parity behavioral terbukti — SELURUH test existing lulus tanpa modifikasi berarti kontrak error tidak berubah); `pnpm -r typecheck` → 6/6 Done; `eslint` langsung terhadap seluruh file+route yang disentuh (13 file) → bersih.
+
+**Kesimpulan:** 6.2.1, 6.2.2, 6.2.3, 6.2.4 ditutup `✅ 100%`. TASK-6.2 tuntas penuh.
 
 <a id="qa-cl-02"></a>
 ### QA-CL-02 — 2026-08-24 · goal 6.5.2 — bukti teknis drill diverifikasi independen, TETAP `🔎` menunggu dependency formal 6.5.1
