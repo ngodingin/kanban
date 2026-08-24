@@ -151,6 +151,17 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="qa-cl-06"></a>
+### QA-CL-06 — 2026-08-24 · goal 6.6.2 — konten diverifikasi, TETAP `🔎` menunggu dependency 6.6.1
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`operations/log-metrics.md` dibaca penuh.** Contoh Node fallback (baris 57-72) dijalankan ulang independen terhadap sampel 3-baris buatan sendiri (201/8ms, 409 VERSION_CONFLICT/10ms, 500 INTERNAL_ERROR/12ms) — `errorRatePerCode`/`versionConflict` cocok persis pola yang diklaim; `p50`/`p95` TIDAK bisa direproduksi persis (dapat `p50:10` bukan `8`) karena sampel asli mereka tidak disertakan dalam file — TAPI formula (`floor(length*0.5)`/`floor(length*0.95)` atas array durasi terurut) genuinely benar secara matematis, dikonfirmasi via test independen sendiri, bukan salah logika.
+
+**Temuan minor:** baris 22 (contoh `jq` "Request rate per menit") — `jq -r '...' | --strip` bukan perintah shell valid (`--strip` dipipe sebagai command, bukan flag jq) — tampak seperti fragmen tersisa/typo. Tidak menghalangi (bagian request-rate punya baris agregasi alternatif yang benar di baris 24), tapi sebaiknya dibersihkan.
+
+**Dependency formal `6.6.1` sekarang `⚠️`** (QA-CL-05, lint blocker) — **status TETAP `🔎/80`**, tidak dinaikkan ke `✅`, konsisten keputusan manusia sebelumnya untuk 6.5.2 (tegakkan dependency ketat). Siap ditutup begitu 6.6.1 ✅, dengan catatan opsional membersihkan baris jq yang rusak.
+
 <a id="qa-cl-05"></a>
 ### QA-CL-05 — 2026-08-24 · goal 6.6.1 — mekanisme benar, tapi 3 lint error nyata di scope goal ini sendiri (🔎 80% → ⚠️ 70%)
 
