@@ -86,7 +86,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | 🔎 | [CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
+| 5.3.1 | ⚠️ | [CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
 **Test:** AC-036 selain boundary retention dan kegagalan `deleteDatabase`: fault-injection setelah create `PENDING`, setelah Turso delete sebelum transition, pada `DATABASE_DELETED`, dan saat cleanup Global commit. Retry/restart menyelesaikan `COMPLETED` tanpa membuka Project DB hilang; HTTP 404 idempotent; dua worker konkuren tidak menggandakan cleanup/transisi.
 **DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
@@ -97,7 +97,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.4.1 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
+| 5.4.1 | ⚠️ | [CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
 
 **Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
 **DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
@@ -120,6 +120,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-03"></a>
+### QA-CL-03 — 2026-08-24 · 5.3.1/5.4.1 gagal handoff dan bukti concurrency SOT 4.1.0
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti lulus:** melalui host `envdev`, `prune-projects.test.ts`, `internal-prune.test.ts`, dan `revoke-recovery.test.ts` menghasilkan **3 file/21 test PASS**. Recovery PENDING/DATABASE_DELETED, 404 idempotent, no-open setelah DB hilang, auth secret internal route, recovery journal, dan isolasi failure antar-Project terbukti pada skenario sequential.
+
+**5.3.1 — ⚠️ 60%:** row handoff tetap `🔎 60%` walau CL-14 mengklaim 80%, sehingga Gate B/commit handoff tidak valid. Test bernama “dua worker” tidak menjalankan dua worker konkuren; ia hanya menanam state `DATABASE_DELETED` lalu memanggil satu worker. Tidak ada `Promise.all`/barrier. Impact scan kode menemukan `driveDeprovision()` memungkinkan dua worker yang sama-sama membaca `PENDING` memanggil provider delete sebelum conditional transition; `transitionJob()`/`finalizeProjectCleanup()` menilai sukses dari state akhir, bukan ownership `rowsAffected`, sehingga caller yang kalah race dapat ikut melaporkan selesai. AC-036 belum terbukti dan berpotensi double-count/double-provider-call.
+
+**5.4.1 — ⚠️ 70%:** row tetap `🔎 70%` walau CL-16 mengklaim 80%, dan Dev memulai goal ketika dependency 5.3 baru `🔎`, bukan ✅. Test endpoint/isolation lulus, tetapi driver yang dipanggil mewarisi gap concurrency 5.3.1; goal ini tidak dapat diterima sebelum dependency diperbaiki dan diverifikasi.
+
+**Remediasi:** tambah barrier dua worker nyata pada PENDING dan DATABASE_DELETED; pastikan hanya pemilik transisi yang memanggil tahap berikut/menghitung completion, cleanup+COMPLETED tetap satu transaksi, dan provider/summary tidak diduplikasi. Handoff ulang wajib row `🔎 80%` serta dependency ✅ sebelum 5.4 dikerjakan ulang.
 
 <a id="cl-16"></a>
 ### CL-16 — 2026-08-24 · goal 5.4.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 70 → 80%) — trigger journal-aware + isolasi kegagalan
