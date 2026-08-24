@@ -68,7 +68,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
-| 7.3.2 | 🔎 | [CL-13](#cl-13)<br>[CL-14](#cl-14) | 80 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.2 | ⚠️ | [QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14) | 35 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
@@ -298,6 +298,27 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** freshness check: HEAD `c77e3f5`, row 7.5.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.2 🔎 sisi Dev); Reference `05-FRONTEND §5` + `02-SPEC A.1`; bentuk endpoint diverifikasi langsung dari kode route: `GET /v1/projects/:p/boards/:b/lists` → `{lists:[...]}` (lists.ts:78,85) dan `GET /v1/projects/:p/lists/:l/cards` → `{cards:[...]}` (cards.ts:100,118 — visibility server-side + anti-enumeration).
 **Catatan:** mulai BoardView (kolom = List nama bebas + count + card list); drag/move adalah goal 7.5.2+, Card compact 7.6.1.
+
+<a id="qa-cl-07"></a>
+### QA-CL-07 — 2026-08-25 · goal 7.3.2 — breadcrumb TIDAK PERNAH menampilkan nama nyata (envelope + field-name mismatch, terbukti langsung dari source), test menutupinya via hook mock (🔎 80% → ⚠️ 35%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Bug genuine, dikonfirmasi langsung dari source API (bukan diasumsikan) — DUA lapis kesalahan bersamaan:**
+
+1. **Salah kedalaman unwrap envelope, di SEMUA TIGA level (Project/Milestone/Board).** `ok(data)` (`packages/contracts/src/api-response.ts:14-16`) membungkus `{data}` apa adanya, dan setiap route GET single-resource membungkus payload lagi di bawah key bernama: `apps/api/src/routes/projects.ts:410` → `return { project: projectStatePayload(state) };`, `apps/api/src/routes/milestones.ts:108` → `return { milestone: milestonePayload(record) };`, `apps/api/src/routes/boards.ts:105` → `return { board: boardPayload(record) };`. Jadi response nyata `GET /v1/projects/:id` adalah `{ data: { project: { id, name, ... } } }` — `apiRequest()` (client) meng-unwrap SATU level (`.data`), menyisakan `{ project: {...} }`, BUKAN objek entity langsung. Namun `hooks.ts` (`useProject`/`useMilestone`/`useBoard`) mendeklarasikan `apiRequest<ProjectSummary>(...)` seolah hasilnya sudah objek entity flat — seharusnya `apiRequest<{ project: ProjectSummary }>(...)` lalu ambil `.project` (pola sama seperti `useProjects` yang SUDAH benar menangani `{projects: [...]}` di `header.tsx:22-24`).
+
+2. **Salah nama field, khusus Milestone & Board.** Field asli API (dikonfirmasi `milestones.ts:31`/`boards.ts:34`) adalah **`title`**, bukan `name` — hanya Project yang genuinely punya field `name` (`projects.ts:203`). `header.tsx:35`/`:41` membaca `milestoneQuery.data?.name`/`boardQuery.data?.name` — field yang tidak pernah ada pada Milestone/Board.
+
+**Dampak gabungan: breadcrumb Project/Milestone/Board TIDAK PERNAH menampilkan nama asli terhadap API sungguhan** — `projectQuery.data?.name` selalu `undefined` (salah kedalaman unwrap saja sudah cukup membuatnya gagal), `milestoneQuery.data?.name`/`boardQuery.data?.name` gagal DUA kali lipat (unwrap salah DAN field salah). Fallback `"…"` (`header.tsx:31/35/41`) akan tampil selamanya di production untuk ketiga level — inti deliverable goal ini ("breadcrumb Project › Milestone › Board" menampilkan nama nyata) tidak pernah berfungsi.
+
+**Kenapa 4/4 test tetap lulus — root cause ditemukan:** `header.test.tsx` memakai `vi.mock` pada modul `hooks.ts` ITU SENDIRI (bukan pada `apiRequest`/`fetch`), lalu mock langsung mengembalikan objek flat siap-pakai `{ id: "m1", name: "Beta" }`/`{ id: "b1", name: "Gamma" }` (baris 65-66) — bentuk yang TIDAK PERNAH keluar dari API sungguhan. Test genuinely menguji rendering breadcrumb DIBERI data yang benar bentuknya, tapi tidak pernah menguji bahwa `hooks.ts` benar-benar MENGHASILKAN bentuk itu dari response API asli — celah yang sama persis dengan kelas bug yang berulang ditemukan di Phase 6 (mock/kontrak-nyata divergence).
+
+**Bagian lain goal ini dikonfirmasi genuinely benar** (tidak terdampak bug di atas): context-switch `<select>` (navigasi ke `/projects/:id` terpilih, diverifikasi via `LocationProbe` — genuinely mengecek URL berubah, bukan cuma `onChange` terpanggil); brand-only tanpa separator saat tanpa context; guard negatif nol Inbox/non-MVP. `useProjects`/list handling SUDAH benar menangani `{projects: [...]}`.
+
+**Rekomendasi fix untuk Dev (tidak saya kerjakan sendiri, sesuai batas lane AI-QA):** (1) di `hooks.ts`, ubah `useProject`/`useMilestone`/`useBoard` agar generic type & ekstraksi mencerminkan wrapper asli (`apiRequest<{ project: ProjectSummary }>(...)` lalu `.project`, dst — atau tambah tipe terpisah `MilestoneSummary { id, title }`/`BoardSummary { id, title }` alih-alih reuse `ProjectSummary`); (2) di `header.tsx`, baca `.title` untuk Milestone/Board crumb, bukan `.name`; (3) tulis ulang/tambah test yang genuinely memanggil `apiRequest` (mock `fetch`, bukan mock `hooks.ts`) dengan payload berbentuk PERSIS respons API asli (`{data: {milestone: {title: "Beta"}}}`) untuk membuktikan `useMilestone` mengekstrak nama dengan benar — pola sama `apps/web/test/api-client.test.tsx` yang sudah benar (mock di level `fetch`, bukan di level layer yang diuji).
+
+**Verdict:** `⚠️ 35%` (context-switch/no-Inbox solid, tapi breadcrumb — deliverable inti goal — genuinely tidak pernah berfungsi terhadap API sungguhan, bug di DUA lapis sekaligus, ditemukan di ketiga level Project/Milestone/Board).
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-25 · 7.3.2 → 🔎 80%
