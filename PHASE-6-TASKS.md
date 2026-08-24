@@ -223,6 +223,23 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 **Verdict:** `⚠️ 40%` (turun dari 80 — bukan cuma lint/nitpick, DoD inti goal belum tercapai sama sekali; % lebih rendah dari pola pelanggaran lint biasa karena test tidak menguji apa pun yang diklaim).
 
+<a id="qa-cl-15"></a>
+### QA-CL-15 — 2026-08-25 · goal 6.8.5 closed ✅ (🔎 80% → ✅ 100%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Kode dibaca langsung (bukan percaya CL-26):** `acceptInvitation` (`packages/infrastructure/src/database/project-admin.ts:661-770`) — untuk tiap `invitationGroupAssignments` row, `membershipGroupAssignments` di-insert dengan `scopeType`/`scopeId` disalin VERBATIM dari assignment invitation (baris 730-739), bukan di-default ke scope Project. Ini genuinely benar per BR-054A/B.
+
+**Test `ac025-scoped-invite.test.ts` dikonfirmasi valid** — seed satu invitation dengan `invitation_group_assignments.scope_type='milestone'`/`scope_id='ms-x'`, accept, lalu query SEMUA `membership_group_assignments` aktif milik membership itu dan assert loop di atas SELURUH row bahwa `scope_type='milestone'`/`scope_id='ms-x'`. Karena loop mencakup seluruh row aktif (bukan hanya row pertama), ini secara efektif memenuhi requirement eksplisit goal ("assignment TIDAK muncul di scope Project/Milestone lain") — kalau ada row nyasar di scope lain, assertion akan gagal.
+
+**Bukan bug fix, murni penambahan test coverage** (dikonfirmasi via `git show --stat` pada commit `0df6820` — tidak ada perubahan `project-admin.ts` menyertai test baru ini), jadi teknik reproduksi git-checkout before/after tidak applicable di sini (tidak ada versi "sebelum" yang berbeda perilakunya) — verifikasi dilakukan via pembacaan kode + re-run test independen.
+
+**Re-run independen:** `pnpm exec vitest run packages/infrastructure/test/ac025-scoped-invite.test.ts` → 1/1 PASS. `pnpm exec eslint packages/infrastructure/test/ac025-scoped-invite.test.ts` → bersih (0 error). Full suite `pnpm exec vitest run --exclude "**/core-flow-smoke.test.ts"` (mengecualikan WIP goal 6.9.2 yang belum tuntas, tidak terkait) → **109 file/642 test PASS**. `pnpm -r typecheck` → 6/6 Done, bersih.
+
+**Catatan kecil (tidak blocking):** link CL kolom tabel goal sebelumnya berisi `[CL-26](#cl-26)` dua kali (duplikat kosmetik, bukan collision penomoran) — dirapikan jadi sekali saat entry ini ditulis.
+
+**Verdict:** `✅ 100%`.
+
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)
 
