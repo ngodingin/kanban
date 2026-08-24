@@ -80,7 +80,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.4.1 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
+| 7.4.1 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52) | 0 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
 | 7.4.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
@@ -157,7 +157,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.10.1 | 🔎 | [QA-CL-14](#qa-cl-14)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45) | 80 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.10.1 | ✅ | [QA-CL-14](#qa-cl-14)<br>[QA-CL-20](#qa-cl-20)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45) | 100 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.10.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 80 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
@@ -194,8 +194,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.13.1 | ✅ | [QA-CL-15](#qa-cl-15)<br>[CL-30](#cl-30)<br>[CL-31](#cl-31) | 100 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
 | 7.13.2 | ✅ | [QA-CL-16](#qa-cl-16)<br>[CL-32](#cl-32)<br>[CL-33](#cl-33) | 100 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
-| 7.13.3 | 🔎 | [CL-32](#cl-32)<br>[CL-34](#cl-34) | 80 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
-| 7.13.4 | 🔎 | [CL-35](#cl-35)<br>[CL-36](#cl-36) | 80 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.2 | ✅ | [QA-CL-17](#qa-cl-17)<br>[CL-32](#cl-32)<br>[CL-34](#cl-34) | 100 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
+| 7.13.3 | ✅ | [QA-CL-18](#qa-cl-18)<br>[CL-35](#cl-35)<br>[CL-36](#cl-36) | 100 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
 **Test:** Tidak ada child handling; restore hanya untuk ARCHIVED dengan ancestor ACTIVE; DELETED terminal; local state descendant tidak berubah.
 **DoD:** Lifecycle UI patuh effective ancestor state dan menjelaskan dampak terminal delete.
@@ -232,6 +232,50 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-20"></a>
+### QA-CL-20 — 2026-08-25 · goal 7.10.1 closed ✅ (🔎 80% → ✅ 100%) — members list + pending invitation status benar pada UI dengan real fetch contract
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Verifikasi langsung pada real code path:** `apps/web/src/features/members/members-table.tsx` memetakan `membersQuery.data` dan `pending = ...filter(isPendingInvitation(...))`, lalu merender baris pending `Status = Pending`; `memberStatus` mengembalikan `Revoked` bila `revokedAt` ada, `Active` bila tidak. `apps/web/test/members-table.test.tsx` dibaca ulang, test #2 dijadikan `async` dan `await findByText(...)` seperti yang direkomendasikan — pola sebelumnya yang floating promise sudah diperbaiki. 
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/members-table.test.tsx"'` → **4/4 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-19"></a>
+### QA-CL-19 — 2026-08-25 · goal 7.13.4 closed ✅ (🔎 80% → ✅ 100%) — audit view read-only + lifecycle filter benar
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Verifikasi langsung:** `apps/web/test/lifecycle-audit.test.tsx` dibaca ulang dan di-run ulang; helper `selectLifecycleEvents` hanya menyaring event `.archived`/`.deleted` dan view bersifat read-only tanpa tombol. Skenario negatif (empty state / render tabel tanpa aksi) juga benar.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/lifecycle-audit.test.tsx"'` → **5/5 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-18"></a>
+### QA-CL-18 — 2026-08-25 · goal 7.13.3 closed ✅ (🔎 80% → ✅ 100%) — restore guard + ancestor ACTIVE enforcement benar
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Verifikasi langsung:** `apps/web/test/lifecycle-guards.test.tsx` mengonfirmasi `availableLifecycleActions` menghasilkan `restore` hanya untuk `ARCHIVED`, mencegah `restore` pada `DELETED`, serta menampilkan pesan dan shortcut yang benar ketika ancestor belum ACTIVE. 
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/lifecycle-guards.test.tsx"'` → **6/6 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-17"></a>
+### QA-CL-17 — 2026-08-25 · goal 7.13.2 closed ✅ (🔎 80% → ✅ 100%) — archived restore rule and DELETED terminal rule pass
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Verifikasi langsung:** `apps/web/test/lifecycle-guards.test.tsx` benar pada semua scenario state machine: `ACTIVE` menampilkan archive/delete; `ARCHIVED` menampilkan restore; `DELETED` menampilkan nol aksi. Ini sesuai invariant lifecycle dan requirement restore parent first.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/lifecycle-guards.test.tsx"'` → **6/6 PASS**.
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-15"></a>
 ### QA-CL-15 — 2026-08-25 · goal 7.13.1 closed ✅ (🔎 80% → ✅ 100%) — endpoint mapping + body shape genuinely cocok seluruh 5 entity kind
@@ -402,6 +446,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** test yang sama **13/13 PASS** — negatif: `buildCardPatch` melempar untuk `listId`/`version`/`id`; positif: whitelist `title|subtitle|description|dueDate|assignee` + `expectedVersion`; integrasi: simpan description mengirim PATCH body persis `{expectedVersion:4, description:"Desk revisi"}` (field domain tak pernah dikirim). Commit: `e80f492`.
 **Catatan:** guard ganda — UI memfilter sebelum kirim, server menegakkan C.15 (cards.ts:172-177).
+
+<a id="cl-52"></a>
+### CL-52 — 2026-08-25 · 7.4.1 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `cb88f09`, row 7.4.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.1 ✅); Reference 05-FRONTEND §5 + BR-010; endpoint hierarki Project-scoped terverifikasi dari source (`GET /milestones` milestones.ts:83, boards/lists/cards per parent — pola C.5–C.8); TIDAK ada endpoint lintas-Project dan tidak akan dibuat.
+**Catatan:** agregasi "My work" = walk hierarki per Project dari klien (milestones→boards→lists→cards) memakai endpoint existing saja; filter assignee/creator/dueDate sisi klien; visibility tetap ditegakkan server.
 
 <a id="cl-51"></a>
 ### CL-51 — 2026-08-25 · 7.8.2 → 🔎 80%
