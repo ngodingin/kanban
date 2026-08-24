@@ -80,7 +80,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.4.1 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 80 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
+| 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
 | 7.4.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
@@ -118,10 +118,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.7.1 | 🔎 | [CL-46](#cl-46)<br>[CL-47](#cl-47) | 80 | P1 | Tab Details: description, assignee, due date, labels, **current List** (bukan "status") | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.6.1 |
-| 7.7.2 | 🔎 | [CL-46](#cl-46)<br>[CL-48](#cl-48) | 80 | P1 | Tab Activity: timeline immutable | [02-SPEC A.8](docs/02-SPEC.md) | 7.8.1 |
-| 7.7.3 | 🔎 | [CL-46](#cl-46)<br>[CL-49](#cl-49) | 80 | P0 | Comments: add + edit (tanpa delete); tolak pada card deleted/archived | [02-SPEC A.9](docs/02-SPEC.md), [BR-033](docs/02-SPEC.md) | 7.7.1 |
-| 7.7.4 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-46](#cl-46)<br>[CL-50](#cl-50) | 80 | P0 | Edit field via generic update hanya untuk field mutable; `listId` dan domain field `version` dilarang, sedangkan command metadata `expectedVersion` tetap wajib | [02-SPEC C.8, C.15](docs/02-SPEC.md) | 7.7.1 |
+| 7.7.1 | ✅ | [QA-CL-22](#qa-cl-22)<br>[CL-46](#cl-46)<br>[CL-47](#cl-47) | 100 | P1 | Tab Details: description, assignee, due date, labels, **current List** (bukan "status") | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.7.2 | ✅ | [QA-CL-23](#qa-cl-23)<br>[CL-46](#cl-46)<br>[CL-48](#cl-48) | 100 | P1 | Tab Activity: timeline immutable | [02-SPEC A.8](docs/02-SPEC.md) | 7.8.1 |
+| 7.7.3 | ✅ | [QA-CL-24](#qa-cl-24)<br>[CL-46](#cl-46)<br>[CL-49](#cl-49) | 100 | P0 | Comments: add + edit (tanpa delete); tolak pada card deleted/archived | [02-SPEC A.9](docs/02-SPEC.md), [BR-033](docs/02-SPEC.md) | 7.7.1 |
+| 7.7.4 | ✅ | [QA-CL-25](#qa-cl-25)<br>[Review-CL-02](#review-cl-02)<br>[CL-46](#cl-46)<br>[CL-50](#cl-50) | 100 | P0 | Edit field via generic update hanya untuk field mutable; `listId` dan domain field `version` dilarang, sedangkan command metadata `expectedVersion` tetap wajib | [02-SPEC C.8, C.15](docs/02-SPEC.md) | 7.7.1 |
 
 **Test:** "current List" tidak dimodelkan sebagai status; comment tak bisa dihapus & ditolak pada card non-active; PATCH tak bisa ubah field domain.
 **DoD:** Card Detail patuh domain; tidak ada priority/progress.
@@ -133,7 +133,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.8.1 | ✅ | [QA-CL-08](#qa-cl-08)<br>[CL-24](#cl-24)<br>[CL-25](#cl-25) | 100 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
-| 7.8.2 | 🔎 | [CL-46](#cl-46)<br>[CL-51](#cl-51) | 80 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
+| 7.8.2 | ✅ | [QA-CL-26](#qa-cl-26)<br>[CL-46](#cl-46)<br>[CL-51](#cl-51) | 100 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
 
 **Test:** Activity read-only; entity terhapus tetap terbaca via payload historis.
 **DoD:** Timeline = audit trail, immutable, bermakna historis.
@@ -158,7 +158,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.10.1 | ✅ | [QA-CL-14](#qa-cl-14)<br>[QA-CL-20](#qa-cl-20)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45) | 100 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.10.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 80 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
+| 7.10.2 | ✅ | [QA-CL-27](#qa-cl-27)<br>[Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 100 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
 **DoD:** Members & Invitation patuh invitation flow.
@@ -169,8 +169,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.11.1 | 🔎 | [CL-41](#cl-41)<br>[CL-42](#cl-42) | 80 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
-| 7.11.2 | 🔎 | [CL-41](#cl-41)<br>[CL-43](#cl-43) | 80 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
+| 7.11.1 | ✅ | [QA-CL-28](#qa-cl-28)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42) | 100 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
+| 7.11.2 | ✅ | [QA-CL-29](#qa-cl-29)<br>[CL-41](#cl-41)<br>[CL-43](#cl-43) | 100 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
 
 **Test:** Secret hanya tampil sekali; revoke berfungsi; PAT di User Settings bukan Project.
 **DoD:** Credential UI patuh security model.
@@ -206,8 +206,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.14.1 | ⬜️ | — | 0 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.14.2 | ⬜️ | — | 0 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
+| 7.14.1 | 🔄 | [CL-54](#cl-54) | 0 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.14.2 | 🔄 | [CL-54](#cl-54) | 0 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
 
 **Test:** Mobile tidak menumpuk kolom vertikal; card detail full-screen.
 **DoD:** Responsive sesuai [05-FRONTEND §7](docs/05-FRONTEND.md).
@@ -232,6 +232,107 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-29"></a>
+### QA-CL-29 — 2026-08-24 · goal 7.11.2 closed ✅ (🔎 80% → ✅ 100%) — PAT tetap di `/me`, token tampil sekali, dan otorisasi tetap user-scoped
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi UI:** `apps/web/src/features/credentials/hooks.ts` dan `apps/web/src/features/credentials/credential-panels.tsx` dibaca ulang; PAT hanya memakai `/api/v1/me/personal-access-tokens` dan revoke nested `/revoke`, tidak menyentuh path `/projects/*`.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx apps/api/test/personal-access-tokens-route.test.ts apps/api/test/personal-access-tokens-route.test.ts packages/infrastructure/test/pat.test.ts"'` → **UI 4/4 PASS, API/domain 12/12 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-28"></a>
+### QA-CL-28 — 2026-08-24 · goal 7.11.1 closed ✅ (🔎 80% → ✅ 100%) — API Keys Project-scoped, secret sekali tampil, revoke nested
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi UI:** `apps/web/src/features/credentials/hooks.ts` dan `apps/web/src/features/credentials/credential-panels.tsx` meng-unwarp `data.apiKey`, hanya menampilkan secret dari response create, dan list metadata tidak merender secret/hash.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx"'` → **4/4 PASS**. `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/api/test/api-keys-route.test.ts packages/infrastructure/test/api-key.test.ts"'` → **12/12 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-27"></a>
+### QA-CL-27 — 2026-08-24 · goal 7.10.2 closed ✅ (🔎 80% → ✅ 100%) — invite create/revoke UI patuh C.13, scope hierarchy benar, accept flow dibuktikan backend
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi UI:** `apps/web/src/features/invitations/invites-panel.tsx` dan `apps/web/src/features/invitations/hooks.ts` dibaca ulang; payload create mengirim `assignments[{groupId,scopeType,scopeId}]`, memakai envelope `data.invitation`/`data.invitations`, dan revoke menuju endpoint nested Project-scoped.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/invites-panel.test.tsx apps/api/test/invitations-accept.test.ts apps/api/test/invitations-list-revoke.test.ts packages/infrastructure/test/ac025-scoped-invite.test.ts"'` → **UI 4/4 PASS, API/domain 10/10 PASS**.
+
+**Catatan:** layar admin memang tidak melakukan `accept`; kontrak accept diverifikasi via API/infrastructure test, termasuk `AC-025` scoped assignment tepat pada resource hierarchy yang diundang.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-26"></a>
+### QA-CL-26 — 2026-08-24 · goal 7.8.2 closed ✅ (🔎 80% → ✅ 100%) — timeline memakai payload historis, bukan lookup state kini
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` memakai `describeActivity()` yang membaca `data.from.listTitle`, `data.to.listTitle`, `data.after`, dan `previousState` dari payload activity.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx"'` → **13/13 PASS**. Regressi historis `comment.added/comment.edited` tetap utuh lewat `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run packages/infrastructure/test/ac012-comment-persist.test.ts"'` → **1/1 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-25"></a>
+### QA-CL-25 — 2026-08-24 · goal 7.7.4 closed ✅ (🔎 80% → ✅ 100%) — generic PATCH hanya field mutable + `expectedVersion`
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi langsung:** `apps/web/src/features/cards/detail-hooks.ts` memblok `listId`, `version`, dan field domain lain di sisi klien, lalu selalu menambahkan `expectedVersion` untuk PATCH detail.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/cards-patch.test.ts packages/infrastructure/test/ac028-ac029.test.ts"'` → **UI 13/13 PASS, API/domain 10/10 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-24"></a>
+### QA-CL-24 — 2026-08-24 · goal 7.7.3 closed ✅ (🔎 80% → ✅ 100%) — comments add/edit own, tanpa delete, dan ditolak pada Card non-active
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` hanya menampilkan tombol Edit untuk actor pemilik komentar; tidak ada jalur delete. `apps/web/src/features/comments/thread.ts` merangkai rantai `comment.added`/`comment.edited` tanpa menimpa activity historis.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/comments-create.test.ts apps/api/test/comments-edit.test.ts packages/infrastructure/test/ac012-comment-persist.test.ts"'` → **UI 13/13 PASS, API/domain 13/13 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-23"></a>
+### QA-CL-23 — 2026-08-24 · goal 7.7.2 closed ✅ (🔎 80% → ✅ 100%) — tab Activity read-only dan immutable
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` merender timeline dari `useCardActivities()` sebagai daftar baca-saja; tidak ada tombol aksi di section timeline.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/activities-list.test.ts"'` → **UI 13/13 PASS, API 7/7 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-22"></a>
+### QA-CL-22 — 2026-08-24 · goal 7.7.1 closed ✅ (🔎 80% → ✅ 100%) — Details menampilkan field domain dan current List, bukan status
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` merender `Description`, `Due date`, `Assignee`, `Labels`, dan label `List`; `CurrentListTitle` mengambil judul list dari endpoint Project-scoped. Worktree lokal menambah class responsive untuk `7.14.2`, tetapi tidak mengubah perilaku detail domain goal ini.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx"'` → **13/13 PASS**.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-21"></a>
+### QA-CL-21 — 2026-08-24 · goal 7.4.1 closed ✅ (🔎 80% → ✅ 100%) — Your work tetap Project-scoped dan bukan admin dashboard
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi langsung:** `apps/web/src/features/home/your-work.ts` dan `apps/web/src/features/home/your-work-panel.tsx` dibaca ulang; bucket hanya mengikutkan card efektif aktif milik user sekarang, dan data dikumpulkan melalui walk endpoint Project-scoped.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/your-work.test.tsx"'` → **4/4 PASS**.
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-20"></a>
 ### QA-CL-20 — 2026-08-25 · goal 7.10.1 closed ✅ (🔎 80% → ✅ 100%) — members list + pending invitation status benar pada UI dengan real fetch contract
@@ -446,6 +547,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** test yang sama **13/13 PASS** — negatif: `buildCardPatch` melempar untuk `listId`/`version`/`id`; positif: whitelist `title|subtitle|description|dueDate|assignee` + `expectedVersion`; integrasi: simpan description mengirim PATCH body persis `{expectedVersion:4, description:"Desk revisi"}` (field domain tak pernah dikirim). Commit: `e80f492`.
 **Catatan:** guard ganda — UI memfilter sebelum kirim, server menegakkan C.15 (cards.ts:172-177).
+
+<a id="cl-54"></a>
+### CL-54 — 2026-08-25 · 7.14.1 + 7.14.2 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `0f30b93`, kedua row dibaca ulang dari disk `⬜️ 0%` (dependency 7.5.1/7.7.1 🔎 sisi Dev); Reference 05-FRONTEND §7 dibaca dari disk: Desktop `Sidebar|Board` · Tablet collapsed sidebar · Mobile List horizontal-scroll + Card detail full-screen; dilarang menumpuk kolom vertikal di mobile.
+**Catatan:** implementasi via utility Tailwind responsif (breakpoint md/lg) pada shell + board view; verifikasi class-level (bukan visual) karena happy-dom tidak menghitung layout.
 
 <a id="cl-53"></a>
 ### CL-53 — 2026-08-25 · 7.4.1 → 🔎 80%

@@ -23,7 +23,9 @@ export function Sidebar() {
     <aside
       aria-label="Sidebar navigasi"
       data-collapsed={collapsed}
-      className="flex w-56 shrink-0 flex-col border-r border-border bg-background"
+      className={`hidden shrink-0 flex-col border-r border-border bg-background md:flex ${
+        collapsed ? "md:w-14" : "md:w-56"
+      }`}
     >
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {NAV_ITEMS.map((item) => (

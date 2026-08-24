@@ -55,6 +55,7 @@ function BoardColumn({
       aria-label={`List ${title}`}
       className="flex w-64 shrink-0 flex-col gap-2 rounded-md bg-muted p-2"
     >
+      {/* Kolom tidak menumpuk vertikal di mobile — wajib horizontal (§7). */}
       <header className="flex items-center justify-between px-1">
         <h3 className="text-sm font-semibold">{title}</h3>
         <span className="text-xs text-muted-foreground" aria-label={`Jumlah kartu ${title}`}>
@@ -137,7 +138,7 @@ export function BoardView({
             </button>
           </div>
         ) : null}
-        <div className="flex flex-1 items-start gap-4 overflow-x-auto p-4">
+        <div className="flex flex-1 flex-nowrap items-start gap-4 overflow-x-auto p-4">
           {lists.map((list) => (
             <BoardColumn key={list.id} projectId={projectId} listId={list.id} title={list.title} />
           ))}

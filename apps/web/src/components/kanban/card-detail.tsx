@@ -161,7 +161,10 @@ export function CardDetailPanel({
   const groups = groupByDay(activities.data ?? []);
 
   return (
-    <section aria-label="Detail kartu" className="flex flex-col gap-3 p-4">
+    <section
+      aria-label="Detail kartu"
+      className="flex flex-col gap-3 bg-background p-4 max-md:fixed max-md:inset-0 max-md:z-40 md:relative"
+    >
       <h2 className="text-lg font-semibold">{card.title}</h2>
 
       <nav aria-label="Tab detail kartu" className="flex gap-2 text-sm">
