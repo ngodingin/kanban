@@ -169,8 +169,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.11.1 | 🔄 | [CL-41](#cl-41) | 0 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
-| 7.11.2 | 🔄 | [CL-41](#cl-41) | 0 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
+| 7.11.1 | 🔎 | [CL-41](#cl-41)<br>[CL-42](#cl-42) | 80 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
+| 7.11.2 | 🔎 | [CL-41](#cl-41)<br>[CL-43](#cl-43) | 80 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
 
 **Test:** Secret hanya tampil sekali; revoke berfungsi; PAT di User Settings bukan Project.
 **DoD:** Credential UI patuh security model.
@@ -345,6 +345,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
 **Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-42"></a>
+### CL-42 — 2026-08-25 · 7.11.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/credentials.test.tsx` **4/4 PASS** (fetch-stub) — positif: create POST `/api-keys` dan secret `sk-live-1` dirender via `role="status"` dengan peringatan "hanya tampil sekali"; list hanya metadata (nol kemunculan `sk-`); revoke memanggil `/api-keys/k9/revoke`. Koreksi selama pengerjaan: mutationFn meng-unwrap `{apiKey}` dari envelope agar secret sampai ke UI. Suite penuh **129 file / 738 PASS**, exit 0. Commit: `c0e4b0a`.
+
+<a id="cl-43"></a>
+### CL-43 — 2026-08-25 · 7.11.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **4/4 PASS** — PAT create POST `/api/v1/me/personal-access-tokens`, token `pat-abc` tampil sekali; seluruh URL yang diakses panel TIDAK mengandung `/projects/` (terpisah dari Project sesuai goal); negatif: payload list tanpa hash/token tidak dirender. Commit: `c0e4b0a`.
+**Catatan:** secret/token hidup hanya di state komponen sampai diganti — tidak ada penyimpanan lokal; hash tidak pernah dikirim server maupun dirender (C.14).
 
 <a id="cl-41"></a>
 ### CL-41 — 2026-08-25 · 7.11.1 + 7.11.2 → 🔄
