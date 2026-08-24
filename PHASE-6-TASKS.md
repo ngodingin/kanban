@@ -164,7 +164,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 6.9.1 | 🔎 | [CL-30](#cl-30)<br>[CL-28](#cl-28) | 80 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
-| 6.9.2 | 🔎 | [CL-33](#cl-33)<br>[CL-31](#cl-31)<br>[CL-29](#cl-29)<br>[CL-36](#cl-36) | 80 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
+| 6.9.2 | 🔎 | [CL-37](#cl-37)<br>[CL-31](#cl-31)<br>[CL-29](#cl-29)<br>[CL-36](#cl-36) | 80 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
 
 **Test:** 6.9.1 — jalankan `node scripts/release-check.mjs` → seluruh poin applicable `PASS`, nol `DEFERRED` yang sebenarnya sudah applicable (poin 3 boleh tetap `DEFERRED` by design). 6.9.2 — script smoke baru dijalankan reproducible (`pnpm --filter @kanban/infrastructure test:smoke-<nama>`), seluruh langkah PASS terhadap Project nyata di database test.
 **DoD:** `scripts/release-check.mjs` output tidak lagi memuat frasa yang merujuk state Phase 0/1 yang sudah lewat; smoke script baru terdaftar di `package.json` mengikuti pola `smoke-*` existing.
@@ -612,11 +612,12 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-18 — 2026-08-24 · goal 6.7.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`; F.5 eksplisit: pakai fasilitas platform (Vercel Firewall), bukan infrastruktur kustom/Redis.
-<a id="cl-33"></a>
-### CL-33 — 2026-08-24 · goal 6.9.2 selesai sisi Dev (🔄 → 🔎 · 70 → 80%) — smoke alur inti 7/7 lulus
+<a id="cl-37"></a>
+### CL-37 — 2026-08-24 · goal 6.9.2 selesai sisi Dev (🔄 → 🔎 · 70 → 80%) — smoke alur inti 7/7 lulus
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** core-flow-smoke 7/7 PASS; suite 104/633; lint bersih. Root cause delete 404: expectedVersion salah di test.
 **Catatan:** DELETED card masih terlihat via GET — remediasi lifecycle-filter terpisah.
+**Catatan:** **[Koreksi QA]:** entry ini semula bernomor CL-33, bertabrakan dengan CL-33 yang sudah dipakai lebih dulu (commit `6c3cf8b`, goal 6.8.1 selesai sisi Dev) — direnumbering ke CL-37 (append-only, isi tidak berubah).
 
 <a id="cl-20"></a><a id="cl-20"></a>
 ### CL-20 — 2026-08-24 · goals 6.6.1 & 6.6.3 remediasi dimulai (⚠️ → 🔄 · 70/60% dipertahankan)
