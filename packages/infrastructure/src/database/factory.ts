@@ -21,12 +21,3 @@ export function createGlobalClient(env: NodeJS.ProcessEnv = process.env): Client
   const { GLOBAL_DB_URL, GLOBAL_DB_TOKEN } = parseGlobalDbEnv(env);
   return createClient({ url: GLOBAL_DB_URL, authToken: GLOBAL_DB_TOKEN });
 }
-export function createProjectClient(opts: { url: string; authToken: string }): Client {
-  if (!opts.url.startsWith("libsql://")) {
-    throw new Error("Project DB url wajib memakai skema libsql:// (remote Turso)");
-  }
-  if (opts.authToken.length === 0) {
-    throw new Error("Project DB authToken wajib diisi (JWT per-DB)");
-  }
-  return createClient({ url: opts.url, authToken: opts.authToken });
-}

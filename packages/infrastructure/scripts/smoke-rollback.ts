@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client";
 import { applyGlobalMigrations } from "../src/database/migrate.ts";
-import { deleteProjectRegistry, registerProject } from "../src/database/global-store.ts";
+import { deleteProjectRegistry, registerProject } from "./smoke-global-store-helpers.ts";
 import { provisionProjectWithMapping, ProjectProvisioningError } from "../src/provisioning/provision.ts";
 import {
   createDatabase,

@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client";
 import { applyGlobalMigrations } from "../src/database/migrate.ts";
-import { registerProject, recordProjectDatabaseMapping, deleteProjectRegistry } from "../src/database/global-store.ts";
+import { registerProject, recordProjectDatabaseMapping, deleteProjectRegistry } from "./smoke-global-store-helpers.ts";
 import { createDatabase, deleteDatabase, getDatabase, mintDatabaseToken, projectDatabaseName } from "../src/provisioning/turso.ts";
 import { migrateProjectFanOut } from "./migrate-projects.ts";
 

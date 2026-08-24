@@ -1,6 +1,6 @@
 import { createClient } from "@libsql/client";
 import { applyGlobalMigrations } from "../src/database/migrate.ts";
-import { recordProjectDatabaseMapping, registerProject, MappingAlreadyExistsError } from "../src/database/global-store.ts";
+import { recordProjectDatabaseMapping, registerProject, MappingAlreadyExistsError } from "./smoke-global-store-helpers.ts";
 import { drizzle } from "drizzle-orm/libsql";
 import { projectDatabases, projects, users } from "../src/database/global-schema.ts";
 import { eq } from "drizzle-orm";

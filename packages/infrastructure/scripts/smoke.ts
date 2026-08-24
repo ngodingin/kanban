@@ -1,4 +1,21 @@
-import { createGlobalClient, createProjectClient, parseGlobalDbEnv } from "../src/database/factory.ts";
+import { createClient, type Client } from "@libsql/client";
+import { createGlobalClient, parseGlobalDbEnv } from "../src/database/factory.ts";
+
+// TASK-0.20.1 — helper LOKAL script ini saja (sebelumnya `createProjectClient`
+// diekspor dari src/database/factory.ts/index.ts, padahal hanya dipakai di
+// sini). Mewajibkan skema `libsql://` sengaja BERBEDA dari jalur produksi
+// (`project-client.ts` pakai `https://` setelah resolusi hostname+token via
+// Turso API) — smoke script ini menguji client construction MENTAH dari
+// url+token yang sudah diberikan langsung, bukan alur resolusi produksi.
+function createProjectClient(opts: { url: string; authToken: string }): Client {
+  if (!opts.url.startsWith("libsql://")) {
+    throw new Error("Project DB url wajib memakai skema libsql:// (remote Turso)");
+  }
+  if (opts.authToken.length === 0) {
+    throw new Error("Project DB authToken wajib diisi (JWT per-DB)");
+  }
+  return createClient({ url: opts.url, authToken: opts.authToken });
+}
 
 const dbUrl = process.env.TURSO_DB_URL;
 const dbToken = process.env.TURSO_DB_TOKEN;

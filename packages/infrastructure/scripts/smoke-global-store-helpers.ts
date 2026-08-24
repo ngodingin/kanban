@@ -1,7 +1,18 @@
 import type { Client } from "@libsql/client";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
-import { projectDatabases, projects } from "./global-schema.ts";
+import { projectDatabases, projects } from "../src/database/global-schema.ts";
+
+// TASK-0.20.1 — helper smoke-script LOKAL, BUKAN bagian API produksi.
+// Sebelumnya hidup di src/database/global-store.ts dan diekspor lewat
+// paket, padahal hanya dipakai skrip smoke di direktori ini (grep
+// dikonfirmasi: apps/api tidak pernah mengimpornya). Operasinya TIDAK
+// atomic (deleteProjectRegistry: 2 DELETE terpisah tanpa transaksi;
+// deteksi duplikat via substring-match pesan error) — berisiko kalau
+// suatu saat direuse tanpa sadar di jalur produksi, melanggar F.2
+// ("tidak boleh ada Project tanpa database"). Jalur produksi sesungguhnya
+// (registerProjectWithOwnerMembership, provisioning/provision.ts) sudah
+// benar secara transaksional dan TIDAK terpengaruh relokasi ini.
 
 export class MappingAlreadyExistsError extends Error {}
 

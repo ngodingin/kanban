@@ -6,7 +6,7 @@ export {
   type SessionIdentity,
 } from "./auth/resolve-identity.ts";
 export { loadAppConfig, type AppConfig, type AppEnv } from "./config/env.ts";
-export { createGlobalClient, createProjectClient } from "./database/factory.ts";
+export { createGlobalClient } from "./database/factory.ts";
 export {
   createCachedProjectDbClientFactory,
   readTursoEnvFromProcess,

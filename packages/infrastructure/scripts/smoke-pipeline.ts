@@ -2,7 +2,7 @@ import { createClient } from "@libsql/client";
 import { applyGlobalMigrations, applyProjectMigrations } from "../src/database/migrate.ts";
 import { createAuth } from "../src/auth/auth.ts";
 import { BetterAuthIdentityResolver } from "../src/auth/resolve-identity.ts";
-import { registerProject, recordProjectDatabaseMapping } from "../src/database/global-store.ts";
+import { registerProject, recordProjectDatabaseMapping } from "./smoke-global-store-helpers.ts";
 import { SqliteProjectDatabaseResolver, type ProjectDatabaseResolver } from "../src/database/project-resolver.ts";
 import { RequestPipeline } from "../src/pipeline/pipeline.ts";
 import { PipelineError } from "../src/pipeline/errors.ts";
