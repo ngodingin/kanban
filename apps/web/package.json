@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@tanstack/react-query": "5.102.2",
     "better-auth": "1.6.30",
     "clsx": "2.1.1",
     "react": "19.2.8",
