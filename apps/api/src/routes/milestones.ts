@@ -7,12 +7,22 @@ import {
   type MilestoneRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import {
+  authorize,
+  readExpectedVersionField,
+  readJsonObject,
+  toApiErrorResponse,
+  withIdempotentHandling,
+  type IdempotencyStoreLike,
+  type OpenProjectContext,
+} from "./projects.ts";
 
 export interface MilestoneRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
   newMilestoneId(): string;
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
+  /** C.3 (TASK-0.16) — opsional, lihat catatan `ProjectRoutesDeps`. */
+  idempotencyStore?: IdempotencyStoreLike;
 }
 
 function milestonePayload(record: MilestoneRecord) {
@@ -79,8 +89,8 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
   const router = new Hono();
 
   router.post("/v1/projects/:project_id/milestones", async (c) => {
-    return withErrorHandling(c, async () => {
-      const deps = getDeps();
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone.create", projectId);
@@ -97,7 +107,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
         actorUserId: ctx.userId,
       });
       return { milestone: milestonePayload(created) };
-    }, 201);
+    }, 201, deps.idempotencyStore);
   });
 
   router.get("/v1/projects/:project_id/milestones", async (c) => {
@@ -172,8 +182,8 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
 
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/milestones/:milestone_id/${action}`, async (c) => {
-      return withErrorHandling(c, async () => {
-        const deps = getDeps();
+      const deps = getDeps();
+      return withIdempotentHandling(c, deps, async () => {
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
         await authorize(ctx, `milestone.${action}`, projectId, { type: "milestone", id: c.req.param("milestone_id") });
@@ -185,7 +195,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
           actorUserId: ctx.userId,
         });
         return { milestone: milestonePayload(record) };
-      });
+      }, 200, deps.idempotencyStore);
     });
   }
 

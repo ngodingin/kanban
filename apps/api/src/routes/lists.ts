@@ -8,12 +8,22 @@ import {
   type ListRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import {
+  authorize,
+  readExpectedVersionField,
+  readJsonObject,
+  toApiErrorResponse,
+  withIdempotentHandling,
+  type IdempotencyStoreLike,
+  type OpenProjectContext,
+} from "./projects.ts";
 
 export interface ListRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
   newListId(): string;
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
+  /** C.3 (TASK-0.16) — opsional, lihat catatan `ProjectRoutesDeps`. */
+  idempotencyStore?: IdempotencyStoreLike;
 }
 
 function listPayload(record: ListRecord) {
@@ -55,8 +65,8 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
   const router = new Hono();
 
   router.post("/v1/projects/:project_id/boards/:board_id/lists", async (c) => {
-    return withErrorHandling(c, async () => {
-      const deps = getDeps();
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "list.create", projectId, { type: "board", id: c.req.param("board_id") });
@@ -69,7 +79,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
         actorUserId: ctx.userId,
       });
       return { list: listPayload(created) };
-    }, 201);
+    }, 201, deps.idempotencyStore);
   });
 
   router.get("/v1/projects/:project_id/boards/:board_id/lists", async (c) => {
@@ -140,8 +150,8 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
 
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/lists/:list_id/${action}`, async (c) => {
-      return withErrorHandling(c, async () => {
-        const deps = getDeps();
+      const deps = getDeps();
+      return withIdempotentHandling(c, deps, async () => {
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
         await authorize(ctx, `list.${action}`, projectId, { type: "list", id: c.req.param("list_id") });
@@ -153,7 +163,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
           actorUserId: ctx.userId,
         });
         return { list: listPayload(record) };
-      });
+      }, 200, deps.idempotencyStore);
     });
   }
 

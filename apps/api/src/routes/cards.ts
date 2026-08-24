@@ -11,7 +11,15 @@ import {
   type CardRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import {
+  authorize,
+  readExpectedVersionField,
+  readJsonObject,
+  toApiErrorResponse,
+  withIdempotentHandling,
+  type IdempotencyStoreLike,
+  type OpenProjectContext,
+} from "./projects.ts";
 import { loadEntityHierarchy } from "@kanban/infrastructure";
 import { resolveCardVisibilityFilter } from "@kanban/domain";
 
@@ -21,6 +29,8 @@ export interface CardRoutesDeps {
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
   /** 03-ENG A.5 — validator assignee member aktif (Global DB). */
   assertAssigneeActiveMember(projectId: string, userId: string): Promise<void>;
+  /** C.3 (TASK-0.16) — opsional, lihat catatan `ProjectRoutesDeps`. */
+  idempotencyStore?: IdempotencyStoreLike;
 }
 
 function cardPayload(record: CardRecord, labels?: CardLabelSummary[]) {
@@ -90,8 +100,8 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
   const router = new Hono();
 
   router.post("/v1/projects/:project_id/lists/:list_id/cards", async (c) => {
-    return withErrorHandling(c, async () => {
-      const deps = getDeps();
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.create", projectId, { type: "list", id: c.req.param("list_id") });
@@ -110,7 +120,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         actorUserId: ctx.userId,
       });
       return { card: cardPayload(created) };
-    }, 201);
+    }, 201, deps.idempotencyStore);
   });
 
   router.get("/v1/projects/:project_id/lists/:list_id/cards", async (c) => {
@@ -201,8 +211,8 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
   });
 
   router.post("/v1/projects/:project_id/cards/:card_id/move", async (c) => {
-    return withErrorHandling(c, async () => {
-      const deps = getDeps();
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       // BR-044 — card.move permission terpisah dari card.update; interim Owner-only.
@@ -233,7 +243,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         actorUserId: ctx.userId,
       });
       return { card: cardPayload(record) };
-    });
+    }, 200, deps.idempotencyStore);
   });
 
   const lifecycleCommands = {
@@ -247,8 +257,8 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
 
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/cards/:card_id/${action}`, async (c) => {
-      return withErrorHandling(c, async () => {
-        const deps = getDeps();
+      const deps = getDeps();
+      return withIdempotentHandling(c, deps, async () => {
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
         await authorize(ctx, `card.${action}`, projectId, { type: "card", id: c.req.param("card_id") });
@@ -262,7 +272,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
           actorUserId: ctx.userId,
         });
         return { card: cardPayload(record) };
-      });
+      }, 200, deps.idempotencyStore);
     });
   }
 

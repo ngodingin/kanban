@@ -82,6 +82,14 @@ export interface ProjectRoutesDeps {
   createProject(input: CreateProjectInput): Promise<void>;
   listProjects(userId: string, statusFilter?: readonly ProjectStatus[]): Promise<ProjectSummary[]>;
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
+  /** C.3 (TASK-0.16) — opsional: tanpa ini, endpoint create/move/archive/restore/delete berjalan tanpa proteksi idempotency (backward-compatible untuk deps yang belum di-wire). */
+  idempotencyStore?: IdempotencyStoreLike;
+}
+
+/** Shape minimal `IdempotencyStore` (`@kanban/contracts`) — lihat catatan boundary di `DbIdempotencyStore`. */
+export interface IdempotencyStoreLike {
+  get(key: string, scope: string): Promise<unknown | null>;
+  put(key: string, scope: string, result: unknown): Promise<void>;
 }
 
 const MAX_PROJECT_NAME_LENGTH = 255;
@@ -203,14 +211,59 @@ async function withErrorHandling<T>(
   }
 }
 
+/**
+ * Wrapper idempotency-aware (C.3, TASK-0.16) — SATU TITIK generik dipakai
+ * SELURUH route create/move/archive/restore/delete (bukan copy-paste per
+ * route, Review-CL-19's kelas masalah DRY yang sama seperti 11 `xPayload()`
+ * terpisah). Tanpa header `Idempotency-Key` (opsional, C.3 "gunakan" bukan
+ * "wajib") ATAU tanpa `idempotencyStore` di-wire → berjalan identik
+ * `withErrorHandling` biasa, nol overhead.
+ *
+ * Scope WAJIB mencakup `userId` (bukan cuma method+path) — Idempotency-Key
+ * di-generate CLIENT, jadi TANPA userId, User A bisa "menebak"/reuse key
+ * User B untuk endpoint yang sama dan mendapat replay respons User B
+ * (kebocoran lintas-user). `userId` di-resolve via `deps.resolveIdentity`
+ * (operasi ringan — session/token lookup tunggal, BUKAN permission-
+ * resolution berat seperti CL-30) — TERPISAH dari resolve identity yang
+ * handler sendiri lakukan lagi di dalam (duplikasi kecil, diterima sebagai
+ * trade-off: overhead HANYA terjadi saat klien genuinely mengirim header,
+ * bukan di setiap request).
+ */
+export async function withIdempotentHandling<T>(
+  c: Context,
+  deps: { resolveIdentity(request: Request): Promise<{ userId: string } | null> },
+  handler: () => Promise<T>,
+  successStatus: ContentfulStatusCode = 200,
+  idempotencyStore?: IdempotencyStoreLike,
+): Promise<Response> {
+  if (!idempotencyStore) return withErrorHandling(c, handler, successStatus);
+  const key = extractIdempotencyKey(c.req.raw.headers);
+  if (!key) return withErrorHandling(c, handler, successStatus);
+
+  const identity = await deps.resolveIdentity(c.req.raw);
+  if (!identity) return withErrorHandling(c, handler, successStatus);
+
+  const scope = `${identity.userId}:${c.req.method}:${c.req.path}`;
+  const cached = await idempotencyStore.get(key, scope);
+  if (cached !== null && typeof cached === "object") {
+    const { status, body } = cached as { status: number; body: unknown };
+    return c.json(body as Record<string, unknown>, status as ContentfulStatusCode);
+  }
+
+  const response = await withErrorHandling(c, handler, successStatus);
+  if (response.status >= 200 && response.status < 300) {
+    const body = await response.clone().json();
+    await idempotencyStore.put(key, scope, { status: response.status, body });
+  }
+  return response;
+}
+
 export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
   const router = new Hono();
 
   router.post("/v1/projects", async (c) => {
-    return withErrorHandling(c, async () => {
-      const deps = getDeps();
-      const idempotencyKey = extractIdempotencyKey(c.req.raw.headers);
-      void idempotencyKey;
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, async () => {
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
@@ -222,7 +275,7 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
         creatorUserId: identity.userId,
       });
       return { id: projectId, name, status: "ACTIVE", version: 1 };
-    }, 201);
+    }, 201, deps.idempotencyStore);
   });
 
   router.get("/v1/projects", async (c) => {
@@ -283,21 +336,24 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
   });
 
   router.post("/v1/projects/:project_id/archive", async (c) => {
-    return withErrorHandling(c, () =>
-      handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
-        repository.archiveProject(input)));
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, () =>
+      handleLifecycle(c, deps, c.req.param("project_id"), (repository, input) =>
+        repository.archiveProject(input)), 200, deps.idempotencyStore);
   });
 
   router.post("/v1/projects/:project_id/restore", async (c) => {
-    return withErrorHandling(c, () =>
-      handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
-        repository.restoreProject(input)));
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, () =>
+      handleLifecycle(c, deps, c.req.param("project_id"), (repository, input) =>
+        repository.restoreProject(input)), 200, deps.idempotencyStore);
   });
 
   router.post("/v1/projects/:project_id/delete", async (c) => {
-    return withErrorHandling(c, () =>
-      handleLifecycle(c, getDeps(), c.req.param("project_id"), (repository, input) =>
-        repository.deleteProject(input)));
+    const deps = getDeps();
+    return withIdempotentHandling(c, deps, () =>
+      handleLifecycle(c, deps, c.req.param("project_id"), (repository, input) =>
+        repository.deleteProject(input)), 200, deps.idempotencyStore);
   });
 
   return router;

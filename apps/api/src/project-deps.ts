@@ -6,6 +6,7 @@ import {
   createInvitation,
   createPermissionAssignment,
   createPermissionGroup,
+  DbIdempotencyStore,
   deletePermissionGroup,
   listPermissionGroups,
   listProjectInvitations,
@@ -52,9 +53,11 @@ export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): Proj
   const { identityResolver, globalClient, turso } = input;
   const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
   const projectClientFactory = createCachedProjectDbClientFactory({ turso });
+  const idempotencyStore = new DbIdempotencyStore(globalClient);
   return {
     resolveIdentity: (request) => identityResolver.resolveIdentity(request),
     newProjectId,
+    idempotencyStore,
     createProject: async (projInput) => {
       // Provisioning membuat database Turso nyata per Project — tanpa
       // kredensial tidak ada jalur create yang valid (test memakai DI sendiri).
@@ -225,11 +228,14 @@ function buildProjectContextDeps(
 ): {
   resolveIdentity: ProjectRoutesDeps["resolveIdentity"];
   openProjectContext: ProjectRoutesDeps["openProjectContext"];
+  idempotencyStore: DbIdempotencyStore;
 } {
   const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
   const projectClientFactory = createCachedProjectDbClientFactory({ turso });
+  const idempotencyStore = new DbIdempotencyStore(globalClient);
   return {
     resolveIdentity: (request) => identityResolver.resolveIdentity(request),
+    idempotencyStore,
     openProjectContext: async (request, projectId) => {
       const pipeline = new RequestPipeline({
         identityResolver,
