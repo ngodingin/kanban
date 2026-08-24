@@ -291,18 +291,33 @@ export const personalAccessTokens = sqliteTable(
 // dan berlaku juga untuk mutasi Global DB murni (create Project, Invitation).
 // Tanpa FK — `scope` adalah string bebas ditentukan pemanggil (mis. gabungan
 // userId+endpoint), bukan relasi formal ke entity lain.
+// C.3/TASK-0.21 (amandemen SOT 4.0.0) — state machine atomic claim, BUKAN
+// cache get/put (dilarang eksplisit 03-ENG: dua request in-flight bisa
+// eksekusi side-effect ganda). `state` IN_PROGRESS -> COMPLETED; claimToken
+// unguessable dibandingkan pada setiap complete/release (stale owner tidak
+// bisa menimpa claim baru setelah reclaim merotasinya).
 export const idempotencyKeys = sqliteTable(
   "idempotency_keys",
   {
     id: text("id").primaryKey(),
     key: text("key").notNull(),
     scope: text("scope").notNull(),
-    /** JSON stringified {status, body} — replay respons persis sama saat key+scope cocok. */
-    result: text("result").notNull(),
+    requestFingerprint: text("request_fingerprint").notNull(),
+    claimToken: text("claim_token").notNull(),
+    state: text("state", { enum: ["IN_PROGRESS", "COMPLETED"] }).notNull(),
+    responseStatus: integer("response_status"),
+    /** JSON stringified response body — hanya terisi saat state = COMPLETED. */
+    result: text("result"),
+    /** Hanya relevan saat IN_PROGRESS — batas waktu sebelum claim boleh direclaim. */
+    leaseExpiresAt: text("lease_expires_at"),
+    /** Hanya relevan saat COMPLETED — retensi minimum 24 jam (C.3 poin 8). */
+    expiresAt: text("expires_at"),
     createdAt: text("created_at").notNull(),
+    updatedAt: text("updated_at").notNull(),
   },
   (t) => [
     uniqueIndex("idempotency_keys_key_scope_unique").on(t.key, t.scope),
-    index("idempotency_keys_created_at_idx").on(t.createdAt),
+    index("idempotency_keys_lease_idx").on(t.leaseExpiresAt),
+    index("idempotency_keys_expires_idx").on(t.expiresAt),
   ],
 );

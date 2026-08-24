@@ -149,6 +149,37 @@ describe("Idempotency-Key wiring end-to-end (goal 0.16.3) — create Milestone",
     expect(jsonA.data.milestone.id).not.toBe(jsonB.data.milestone.id); // dua resource berbeda, bukan replay lintas-user
     expect(await countMilestones("Idem D")).toBe(2);
   });
+
+  it("[AC-033, C.3 poin 4] key SAMA, payload BEDA -> 409 IDEMPOTENCY_CONFLICT, TIDAK ada Milestone baru", async () => {
+    const first = await createMilestone("Idem E1", "user-a", "key-idem-conflict");
+    expect(first.status).toBe(201);
+
+    const second = await createMilestone("Idem E2", "user-a", "key-idem-conflict"); // title BEDA, key SAMA
+    expect(second.status).toBe(409);
+    const json = await second.json();
+    expect(json.error?.code).toBe("IDEMPOTENCY_CONFLICT");
+    expect(await countMilestones("Idem E2")).toBe(0); // tidak ada side-effect dari request kedua
+  });
+
+  it("[AC-033] key SAMA, payload SAMA, dikirim ULANG -> tetap replay (bukan conflict, terlepas urutan)", async () => {
+    const first = await createMilestone("Idem F", "user-a", "key-idem-samepayload");
+    const second = await createMilestone("Idem F", "user-a", "key-idem-samepayload");
+    expect(second.status).toBe(201); // bukan 409 — fingerprint identik
+    expect(await countMilestones("Idem F")).toBe(1);
+    expect(await first.clone().json()).toEqual(await second.json());
+  });
+
+  it("[AC-034, concurrency SUNGGUHAN] dua request PARALEL key+payload SAMA -> TEPAT SATU 201, lainnya 409 IDEMPOTENCY_IN_PROGRESS, HANYA SATU Milestone", async () => {
+    const [res1, res2] = await Promise.all([
+      createMilestone("Idem G", "user-a", "key-idem-concurrent"),
+      createMilestone("Idem G", "user-a", "key-idem-concurrent"),
+    ]);
+    const statuses = [res1.status, res2.status].sort();
+    expect(statuses).toEqual([201, 409]);
+    const failed = res1.status === 409 ? res1 : res2;
+    expect((await failed.json()).error?.code).toBe("IDEMPOTENCY_IN_PROGRESS");
+    expect(await countMilestones("Idem G")).toBe(1); // TEPAT satu side-effect, bukan dua
+  });
 });
 
 describe("Idempotency-Key wiring end-to-end (goal 0.16.3) — create Project", () => {

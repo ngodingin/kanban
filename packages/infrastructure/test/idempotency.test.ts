@@ -19,55 +19,137 @@ afterAll(async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe("DbIdempotencyStore — goal 0.16.2", () => {
-  it("[C.3] key/scope belum pernah di-put -> get() null", async () => {
+describe("DbIdempotencyStore — TASK-0.21 state machine atomic claim", () => {
+  it("[C.3 poin 3] key/scope baru -> claimed, claimToken unik", async () => {
     const store = new DbIdempotencyStore(globalClient);
-    expect(await store.get("k-fresh", "s-fresh")).toBeNull();
+    const result = await store.claim("k1", "s1", "fp-a");
+    expect(result.status).toBe("claimed");
+    expect(result.status === "claimed" && result.claimToken.length).toBeGreaterThan(10);
   });
 
-  it("[C.3] put() lalu get() -> hasil identik (replay respons)", async () => {
+  it("[C.3 poin 5] fingerprint SAMA, masih in-flight -> in_progress, handler TIDAK dijalankan ulang", async () => {
     const store = new DbIdempotencyStore(globalClient);
-    const result = { status: 201, body: { data: { id: "card-1" } } };
-    await store.put("k1", "s1", result);
-    expect(await store.get("k1", "s1")).toEqual(result);
+    await store.claim("k2", "s1", "fp-a");
+    const second = await store.claim("k2", "s1", "fp-a");
+    expect(second.status).toBe("in_progress");
+  });
+
+  it("[C.3 poin 4] fingerprint BEDA, masih in-flight -> conflict", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    await store.claim("k3", "s1", "fp-a");
+    const second = await store.claim("k3", "s1", "fp-b");
+    expect(second.status).toBe("conflict");
+  });
+
+  it("[C.3 poin 6] complete() lalu claim key+fingerprint SAMA -> replay respons identik", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    const claimed = await store.claim("k4", "s1", "fp-a");
+    expect(claimed.status).toBe("claimed");
+    const claimToken = claimed.status === "claimed" ? claimed.claimToken : "";
+    const completed = await store.complete("k4", "s1", claimToken, { status: 201, body: { id: "x1" } });
+    expect(completed).toBe(true);
+
+    const replay = await store.claim("k4", "s1", "fp-a");
+    expect(replay).toEqual({ status: "replay", response: { status: 201, body: { id: "x1" } } });
+  });
+
+  it("[C.3 poin 4] completed lalu claim fingerprint BEDA -> conflict (bukan replay)", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    const claimed = await store.claim("k5", "s1", "fp-a");
+    const claimToken = claimed.status === "claimed" ? claimed.claimToken : "";
+    await store.complete("k5", "s1", claimToken, { status: 200, body: { v: 1 } });
+    const result = await store.claim("k5", "s1", "fp-DIFFERENT");
+    expect(result.status).toBe("conflict");
+  });
+
+  it("[C.3 poin 7] release() setelah kegagalan -> retry berikutnya diproses sebagai request BARU", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    const claimed = await store.claim("k6", "s1", "fp-a");
+    const claimToken = claimed.status === "claimed" ? claimed.claimToken : "";
+    await store.release("k6", "s1", claimToken);
+
+    const retry = await store.claim("k6", "s1", "fp-a");
+    expect(retry.status).toBe("claimed"); // bukan in_progress/conflict — row lama sudah bersih total
+  });
+
+  it("[stale owner] complete() dengan claimToken SALAH -> false, TIDAK menimpa state", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    const claimed = await store.claim("k7", "s1", "fp-a");
+    expect(claimed.status).toBe("claimed");
+    const ok = await store.complete("k7", "s1", "token-salah-total", { status: 200, body: {} });
+    expect(ok).toBe(false);
+    // Row masih in-flight (belum completed oleh token asli) -> claim ulang fingerprint sama = in_progress
+    const stillInProgress = await store.claim("k7", "s1", "fp-a");
+    expect(stillInProgress.status).toBe("in_progress");
+  });
+
+  it("[stale owner] release() dengan claimToken SALAH -> no-op, TIDAK menghapus claim orang lain", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    await store.claim("k8", "s1", "fp-a");
+    await store.release("k8", "s1", "token-salah-total");
+    const stillThere = await store.claim("k8", "s1", "fp-a");
+    expect(stillThere.status).toBe("in_progress"); // claim asli TIDAK terhapus oleh token salah
   });
 
   it("[isolasi] key sama, scope beda -> tidak saling collide", async () => {
     const store = new DbIdempotencyStore(globalClient);
-    await store.put("k-shared", "scope-a", { v: "a" });
-    await store.put("k-shared", "scope-b", { v: "b" });
-    expect(await store.get("k-shared", "scope-a")).toEqual({ v: "a" });
-    expect(await store.get("k-shared", "scope-b")).toEqual({ v: "b" });
+    const a = await store.claim("k-shared", "scope-a", "fp-a");
+    const b = await store.claim("k-shared", "scope-b", "fp-b");
+    expect(a.status).toBe("claimed");
+    expect(b.status).toBe("claimed");
   });
 
-  it("[TTL] key kadaluarsa -> get() null lagi (diproses ulang seperti baru), row fisik ikut bersih", async () => {
+  it("[C.3 poin 8, reclaim IN_PROGRESS] lease expired -> direclaim otomatis, token dirotasi", async () => {
     let clock = new Date("2026-08-24T00:00:00.000Z");
-    const store = new DbIdempotencyStore(globalClient, { ttlMs: 1000, now: () => clock });
-    await store.put("k-ttl", "s-ttl", { v: 1 });
-    expect(await store.get("k-ttl", "s-ttl")).toEqual({ v: 1 });
+    const store = new DbIdempotencyStore(globalClient, { leaseMs: 1000, now: () => clock });
+    const first = await store.claim("k9", "s1", "fp-a");
+    const firstToken = first.status === "claimed" ? first.claimToken : "";
+
+    clock = new Date(clock.getTime() + 1000); // tepat di boundary lease
+    const reclaimed = await store.claim("k9", "s1", "fp-b"); // fingerprint BEDA — reclaim tetap menang karena lease sudah expired, bukan conflict
+    expect(reclaimed.status).toBe("claimed");
+    const reclaimedToken = reclaimed.status === "claimed" ? reclaimed.claimToken : "";
+    expect(reclaimedToken).not.toBe(firstToken);
+
+    // Token LAMA (worker yang di-reclaim) tidak bisa complete lagi.
+    const staleComplete = await store.complete("k9", "s1", firstToken, { status: 200, body: {} });
+    expect(staleComplete).toBe(false);
+
+    // [AC-034 poin 2] token LAMA juga tidak bisa release claim owner BARU.
+    await store.release("k9", "s1", firstToken);
+    const stillOwnedByReclaimer = await store.claim("k9", "s1", "fp-b");
+    expect(stillOwnedByReclaimer.status).toBe("in_progress"); // claim reclaimer TETAP utuh, tidak terhapus token lama
+  });
+
+  it("[C.3 poin 8, completed TTL] result kadaluarsa (>TTL) -> diproses sebagai request BARU", async () => {
+    let clock = new Date("2026-08-24T00:00:00.000Z");
+    const store = new DbIdempotencyStore(globalClient, { completedTtlMs: 1000, now: () => clock });
+    const claimed = await store.claim("k10", "s1", "fp-a");
+    const claimToken = claimed.status === "claimed" ? claimed.claimToken : "";
+    await store.complete("k10", "s1", claimToken, { status: 200, body: { v: "old" } });
 
     clock = new Date(clock.getTime() + 1000); // tepat di boundary TTL
-    expect(await store.get("k-ttl", "s-ttl")).toBeNull();
-
-    const row = await globalClient.execute({
-      sql: "SELECT COUNT(*) AS n FROM idempotency_keys WHERE key = ? AND scope = ?",
-      args: ["k-ttl", "s-ttl"],
-    });
-    expect(Number(row.rows[0]!.n)).toBe(0);
+    const afterExpiry = await store.claim("k10", "s1", "fp-a");
+    expect(afterExpiry.status).toBe("claimed"); // bukan replay lagi — dianggap request baru
   });
 
-  it("[TTL negatif] belum lewat TTL -> get() tetap mengembalikan hasil", async () => {
-    let clock = new Date("2026-08-24T00:00:00.000Z");
-    const store = new DbIdempotencyStore(globalClient, { ttlMs: 60_000, now: () => clock });
-    await store.put("k-fresh2", "s-fresh2", { v: "still-valid" });
-    clock = new Date(clock.getTime() + 59_000); // 1 detik sebelum TTL
-    expect(await store.get("k-fresh2", "s-fresh2")).toEqual({ v: "still-valid" });
-  });
-
-  it("[upsert] put() dua kali dengan key+scope sama -> tidak crash, hasil TERBARU yang tersimpan", async () => {
+  it("[AC-034, concurrency SUNGGUHAN] dua claim() PARALEL key+scope+fingerprint sama -> TEPAT SATU claimed, lainnya in_progress", async () => {
     const store = new DbIdempotencyStore(globalClient);
-    await store.put("k-dup", "s-dup", { v: 1 });
-    await store.put("k-dup", "s-dup", { v: 2 });
-    expect(await store.get("k-dup", "s-dup")).toEqual({ v: 2 });
+    const [r1, r2] = await Promise.all([
+      store.claim("k-concurrent", "s1", "fp-same"),
+      store.claim("k-concurrent", "s1", "fp-same"),
+    ]);
+    const statuses = [r1.status, r2.status].sort();
+    expect(statuses).toEqual(["claimed", "in_progress"]);
+  });
+
+  it("[AC-034, concurrency SUNGGUHAN] dua claim() PARALEL key+scope sama, fingerprint BEDA -> tepat satu claimed, lainnya conflict", async () => {
+    const store = new DbIdempotencyStore(globalClient);
+    const [r1, r2] = await Promise.all([
+      store.claim("k-concurrent-diff", "s1", "fp-x"),
+      store.claim("k-concurrent-diff", "s1", "fp-y"),
+    ]);
+    const statuses = [r1.status, r2.status].sort();
+    expect(statuses).toEqual(["claimed", "conflict"]);
   });
 });

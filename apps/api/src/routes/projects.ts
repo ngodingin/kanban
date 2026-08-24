@@ -86,11 +86,18 @@ export interface ProjectRoutesDeps {
   idempotencyStore?: IdempotencyStoreLike;
 }
 
-/** Shape minimal `IdempotencyStore` (`@kanban/contracts`) — lihat catatan boundary di `DbIdempotencyStore`. */
+/** Shape minimal `DbIdempotencyStore` state-machine (`@kanban/infrastructure`, TASK-0.21) — structural typing, lihat catatan boundary di `DbIdempotencyStore`. */
 export interface IdempotencyStoreLike {
-  get(key: string, scope: string): Promise<unknown | null>;
-  put(key: string, scope: string, result: unknown): Promise<void>;
+  claim(key: string, scope: string, fingerprint: string): Promise<IdempotencyClaimResultLike>;
+  complete(key: string, scope: string, claimToken: string, response: { status: number; body: unknown }): Promise<boolean>;
+  release(key: string, scope: string, claimToken: string): Promise<void>;
 }
+
+export type IdempotencyClaimResultLike =
+  | { status: "claimed"; claimToken: string }
+  | { status: "replay"; response: { status: number; body: unknown } }
+  | { status: "conflict" }
+  | { status: "in_progress" };
 
 const MAX_PROJECT_NAME_LENGTH = 255;
 
@@ -214,23 +221,40 @@ async function withErrorHandling<T>(
   }
 }
 
+/** Deterministic stringify — sort key objek rekursif, supaya payload yang secara semantik sama TIDAK menghasilkan fingerprint berbeda cuma karena urutan field beda. */
+function canonicalJson(value: unknown): string {
+  const sort = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(sort);
+    if (v !== null && typeof v === "object") {
+      const obj = v as Record<string, unknown>;
+      const sorted: Record<string, unknown> = {};
+      for (const k of Object.keys(obj).sort()) sorted[k] = sort(obj[k]);
+      return sorted;
+    }
+    return v;
+  };
+  return JSON.stringify(sort(value));
+}
+
 /**
- * Wrapper idempotency-aware (C.3, TASK-0.16) — SATU TITIK generik dipakai
- * SELURUH route create/move/archive/restore/delete (bukan copy-paste per
- * route, Review-CL-19's kelas masalah DRY yang sama seperti 11 `xPayload()`
- * terpisah). Tanpa header `Idempotency-Key` (opsional, C.3 "gunakan" bukan
- * "wajib") ATAU tanpa `idempotencyStore` di-wire → berjalan identik
- * `withErrorHandling` biasa, nol overhead.
+ * Wrapper idempotency-aware (C.3/TASK-0.21, amandemen SOT 4.0.0) — SATU
+ * TITIK generik dipakai SELURUH route create/move/archive/restore/delete
+ * (bukan copy-paste per route, Review-CL-19's kelas masalah DRY yang sama
+ * seperti 11 `xPayload()` terpisah). Tanpa header `Idempotency-Key`
+ * (opsional, C.3 "SHOULD" bukan wajib) ATAU tanpa `idempotencyStore`
+ * di-wire → berjalan identik `withErrorHandling` biasa, nol overhead.
+ *
+ * State machine atomic claim (BUKAN cache get/put — dilarang eksplisit
+ * 03-ENG, dua request in-flight bisa eksekusi side-effect ganda):
+ * claim() SEBELUM handler dijalankan, complete() HANYA untuk 2xx,
+ * release() untuk kegagalan (supaya retry berikutnya diproses sebagai
+ * request baru, bukan terkunci permanen sebagai gagal — C.3 poin 7).
  *
  * Scope WAJIB mencakup `userId` (bukan cuma method+path) — Idempotency-Key
  * di-generate CLIENT, jadi TANPA userId, User A bisa "menebak"/reuse key
- * User B untuk endpoint yang sama dan mendapat replay respons User B
- * (kebocoran lintas-user). `userId` di-resolve via `deps.resolveIdentity`
- * (operasi ringan — session/token lookup tunggal, BUKAN permission-
- * resolution berat seperti CL-30) — TERPISAH dari resolve identity yang
- * handler sendiri lakukan lagi di dalam (duplikasi kecil, diterima sebagai
- * trade-off: overhead HANYA terjadi saat klien genuinely mengirim header,
- * bukan di setiap request).
+ * User B untuk endpoint yang sama. Fingerprint dihitung dari method+path+
+ * canonical body (C.3 poin 2) — payload BERBEDA dengan key+scope SAMA
+ * ditolak `IDEMPOTENCY_CONFLICT`, baik masih diproses maupun sudah selesai.
  */
 export async function withIdempotentHandling<T>(
   c: Context,
@@ -247,16 +271,35 @@ export async function withIdempotentHandling<T>(
   if (!identity) return withErrorHandling(c, handler, successStatus);
 
   const scope = `${identity.userId}:${c.req.method}:${c.req.path}`;
-  const cached = await idempotencyStore.get(key, scope);
-  if (cached !== null && typeof cached === "object") {
-    const { status, body } = cached as { status: number; body: unknown };
-    return c.json(body as Record<string, unknown>, status as ContentfulStatusCode);
+  // c.req.json() di-cache Hono (bodyCache) — handler yang memanggilnya lagi
+  // di dalam mendapat hasil parse YANG SAMA, bukan re-read stream kosong.
+  const body = await c.req.json().catch(() => null);
+  const fingerprint = canonicalJson({ method: c.req.method, path: c.req.path, body });
+
+  const claim = await idempotencyStore.claim(key, scope, fingerprint);
+  if (claim.status === "conflict") {
+    return c.json(
+      apiError("IDEMPOTENCY_CONFLICT", "Idempotency-Key ini sudah dipakai untuk request dengan payload berbeda."),
+      409,
+    );
+  }
+  if (claim.status === "in_progress") {
+    return c.json(
+      apiError("IDEMPOTENCY_IN_PROGRESS", "Request dengan Idempotency-Key ini masih diproses eksekusi pertama."),
+      409,
+    );
+  }
+  if (claim.status === "replay") {
+    return c.json(claim.response.body as Record<string, unknown>, claim.response.status as ContentfulStatusCode);
   }
 
+  // claim.status === "claimed"
   const response = await withErrorHandling(c, handler, successStatus);
   if (response.status >= 200 && response.status < 300) {
-    const body = await response.clone().json();
-    await idempotencyStore.put(key, scope, { status: response.status, body });
+    const responseBody = await response.clone().json();
+    await idempotencyStore.complete(key, scope, claim.claimToken, { status: response.status, body: responseBody });
+  } else {
+    await idempotencyStore.release(key, scope, claim.claimToken);
   }
   return response;
 }

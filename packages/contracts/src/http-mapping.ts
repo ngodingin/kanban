@@ -16,6 +16,8 @@ export const CODE_TO_HTTP: Record<ErrorCode, number> = {
   INVITATION_EXPIRED: 410,
   INVITATION_ALREADY_USED: 409,
   INTERNAL_ERROR: 500,
+  IDEMPOTENCY_CONFLICT: 409,
+  IDEMPOTENCY_IN_PROGRESS: 409,
 };
 
 export interface DomainErrorLike {

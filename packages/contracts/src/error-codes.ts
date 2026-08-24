@@ -13,6 +13,8 @@ export const ERROR_CODES = [
   "INVITATION_EXPIRED",
   "INVITATION_ALREADY_USED",
   "INTERNAL_ERROR",
+  "IDEMPOTENCY_CONFLICT",
+  "IDEMPOTENCY_IN_PROGRESS",
 ] as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[number];
