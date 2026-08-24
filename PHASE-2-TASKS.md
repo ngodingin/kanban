@@ -189,10 +189,10 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | ✅ | [CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23) | 100 | P1 | Perluas `revokeMembership` (`packages/infrastructure/src/database/project-admin.ts`, Phase 1 TASK-1.10.2, Global DB) agar memicu side-effect ke Project DB: untuk User yang di-revoke, cari seluruh Card di Project tsb dengan `assignee_user_id` = User itu (query lintas-DB — Global membership-revoke → Project DB cleanup, app-layer, tidak ada transaksi tunggal lintas-DB per 03-ENG A.5) → set `assignee_user_id = NULL` + Activity `card.unassigned` (`{previous_assignee_user_id, reason:"membership_revoked"}`, B.5) per Card, masing-masing atomik (mutation+Activity per Card, BUKAN satu Activity borongan) | [02-SPEC A.12](docs/02-SPEC.md) (BR-054), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md) (cross-DB app-layer integrity) | 2.8, 1.10.2 |
+| 2.12.1 | ⚠️ | [CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07) | 60 | P1 | `[NEEDS-DECISION]` Reconcile `revokeMembership` lintas-DB agar post-condition BR-054/FR-026 benar juga saat salah satu operasi gagal. Goal lama commit revoke Membership di Global DB lebih dulu lalu cleanup Card di Project DB secara best-effort; kegagalan sesudah commit dapat meninggalkan Card menunjuk assignee yang membership-nya sudah revoked. Rekomendasi reviewer: cleanup Card+Activity di Project DB lebih dulu, baru commit revoke Global. Alternatif retry/reconciliation persisten memerlukan desain operasi tambahan. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md) (cross-DB app-layer integrity) | 2.8, 1.10.2 |
 
-**Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → ketiganya `assignee_user_id = NULL` + masing-masing dapat Activity `card.unassigned` sendiri (bukan 1 Activity gabungan); Card yang assignee-nya BUKAN User yang di-revoke tidak tersentuh; `creator_user_id` Card manapun TIDAK berubah (BR-054 eksplisit); kegagalan di tengah proses (mis. Card ke-2 dari 3 gagal) tidak meninggalkan Activity `card.unassigned` tanpa mutation Card yang sesuai (atomik per-Card, bukan all-or-nothing borongan — dicatat karena revoke Membership Global DB sendiri sudah commit duluan, cleanup Project DB adalah proses terpisah best-effort per Card).
-**DoD:** FR-026 (assignee otomatis NULL saat membership dicabut) terbukti test lintas-DB nyata (Global revoke → Project DB Card berubah); tidak ada Card assignee yatim (menunjuk User yang membership-nya sudah revoked) yang lolos tanpa cleanup.
+**Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → ketiganya `assignee_user_id = NULL` + masing-masing mendapat Activity `card.unassigned`; Card lain dan `creator_user_id` tidak berubah. Wajib fault-injection pada kedua boundary: kegagalan cleanup Project DB tidak boleh menghasilkan Membership revoked; kegagalan commit revoke Global setelah cleanup tidak boleh menghasilkan Card yang menunjuk Membership revoked. Retry harus idempotent dan tidak menggandakan Activity.
+**DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
 
 ---
 
@@ -215,6 +215,16 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Ikuti format & aturan penamaan CL sesuai [AGENTS.md §6](AGENTS.md) (namespace CL/QA-CL/Review-CL terpisah per fase — entry Phase 2 dimulai dari CL-01/QA-CL-01/Review-CL-01 pada file ini).
+
+<a id="review-cl-07"></a>
+### Review-CL-07 — 2026-08-24 · audit SOT 4.0.0: goal 2.12.1 ✅ 100% → ⚠️ 60%
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Temuan:** BR-054/FR-026 adalah post-condition setelah Membership dicabut. Goal dan implementasi aktual commit `project_memberships.revoked_at` di Global DB sebelum cleanup Card Project DB secara best-effort. Jika cleanup gagal, Membership sudah revoked tetapi Card masih dapat menunjuk User tersebut. Atomik per-Card tidak membuktikan post-condition lintas-DB yang diklaim DoD.
+
+**Keputusan dibutuhkan:** rekomendasi reviewer adalah cleanup Project DB lebih dulu lalu commit revoke Global karena kegagalan langkah kedua hanya meninggalkan Card unassigned—state yang diizinkan—bukan referensi assignee invalid. Alternatifnya reconciliation persisten/retry journal. Sampai diputuskan dan fault-injection dua boundary lulus, goal tidak sesuai SOT.
+
+**Bukti:** task 2.12.1 dan QA-CL-23 dibaca ulang; `project-admin.ts` menjalankan update Global sebelum `cleanupAssigneesForRevokedMembership`; `card-assignee-cleanup.ts` mendokumentasikan urutan tersebut sebagai best-effort; `git diff --check` wajib lulus sebelum commit review.
 
 <a id="qa-cl-25"></a>
 ### QA-CL-25 — 2026-08-23 · goals 2.3.4/2.5.4/2.7.4/2.9.4 🔎 → ✅ — GET list-children Milestone/Board/List/Card

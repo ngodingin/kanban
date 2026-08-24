@@ -1,6 +1,7 @@
 # Phase 5 — Lifecycle · Task & Goal Breakdown
 
 > Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.11.0.
+> **Audit terbaru:** seluruh goal direview ulang terhadap SOT 4.0.0 melalui [Review-CL-04](#review-cl-04). Metadata di atas mempertahankan versi saat task awal digenerate; kesiapan terkini dilacak melalui TASK-5.5.
 > Scope batas: [04-DELIVERY C.1 "Phase 5"](docs/04-DELIVERY.md). Acuan utama: [02-SPEC](docs/02-SPEC.md) A.3, A.4, A.14; B.11; C.4–C.8; [03-ENGINEERING](docs/03-ENGINEERING.md) C.6 (Data Retention & Deletion), F.2 (Provisioning).
 > **Konteks repo saat digenerate:** Phase 0–4 selesai (semua ✅). **State machine lifecycle penuh (archive/restore/delete) dan ancestor-chain validation (INV-LIFE-001/002) SUDAH DIBANGUN sejak Phase 2/3** — `packages/domain/src/lifecycle/effective-state.ts` (`resolveLifecycleState`/`isEffectivelyOperational`/`evaluateRestore`) dipakai konsisten oleh Milestone/Board/List/Card/MilestoneLabel/BoardLabel repository. **Phase 5 TIDAK membangun ulang mekanisme ini** — sesuai catatan Prinsip Phase 2 #1 ("Phase 5 nanti MENGERASKAN mekanisme ini — retention 30 hari, internal prune — bukan membangunnya dari nol"). Satu-satunya kapabilitas yang GENUINELY belum ada: **retention 30 hari + internal prune** (BR-016, BR-016A, FR-047, 03-ENG C.6) — permanent physical removal subtree entity DELETED setelah 30 hari, bukan endpoint user-triggered.
 
@@ -85,10 +86,10 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | ✅ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02) | 100 | P0 **[MODEL LEBIH KUAT WAJIB]** | `pruneEligibleProjects(globalClient, turso): Promise<PruneResult>` — iterasi SELURUH `projects` terdaftar (pola sama `project-list.ts`, TAPI tanpa filter membership — prune adalah operasi sistem-lebar, bukan per-user), untuk masing-masing buka `project_state` di Project DB-nya dan cek `isPruneEligible` (5.1) atas `deletedAt`. Jika eligible: (1) `deleteDatabase` (`turso.ts`, SUDAH diperbaiki cross-cutting — pastikan pakai `.status` numerik bukan string-match sebelum goal ini mulai); (2) hapus row `project_databases` + `projects` (Global DB) DALAM transaksi yang sama dengan langkah (1) secara logis (Turso API call tidak bisa ikut SQL transaction — urutan WAJIB: sukses deprovision Turso DULU, baru hapus row Global DB; jika step 1 gagal, JANGAN lanjut ke step 2, biarkan project tetap terdaftar untuk dicoba prune lagi run berikutnya — lebih aman "tertunda" daripada row Global DB yatim menunjuk DB yang sudah tidak ada). `projectMemberships`/`membershipGroupAssignments`/dst yang merujuk `projectId` ini ikut dihapus (FK cleanup Global DB, physical — BR-059/060 sama berlaku di sini). | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A; [03-ENG F.2](docs/03-ENGINEERING.md) (provisioning symmetry) | 5.1 |
+| 5.3.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | `[NEEDS-DECISION][NEEDS-SPEC-AMENDMENT]` Hardening Project-level deprovision sebagai operasi retryable lintas Turso API + Global DB. Goal lama menghapus Turso DB lebih dulu lalu row registry; bila transaksi Global gagal sesudah delete Turso sukses, registry menunjuk DB yang sudah hilang dan DoD lama tidak mungkin dijamin tanpa state/journal rekonsiliasi. Rekomendasi reviewer: state machine deprovision persisten (`PENDING → DATABASE_DELETED → COMPLETED`) dengan operasi idempotent dan recovery pada tiap boundary. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A; [03-ENG F.2](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
-**Test:** Project `deleted_at` (di `project_state`, Project DB-nya) 31 hari lalu → `deleteDatabase` dipanggil dengan `databaseId` yang benar, row `projects`/`project_databases`/`project_memberships`/assignment terkait terhapus dari Global DB. Project 29 hari lalu → tidak disentuh sama sekali. Simulasi `deleteDatabase` gagal (network/API error) → row Global DB TETAP ADA (tidak orphan-pointing ke DB yang sudah terhapus sebagian), project tetap muncul di run prune berikutnya. Project ARCHIVED (bukan DELETED) → tidak pernah eligible, tidak disentuh berapa lama pun.
-**DoD:** Urutan operasi (Turso API dulu, baru Global DB) dijaga ketat, tidak ada kondisi yang bisa menghasilkan row Global DB menunjuk database yang sudah tidak ada.
+**Test:** Selain boundary retention dan kegagalan `deleteDatabase`, wajib fault-injection sesudah Turso delete sukses tetapi sebelum/ketika transaksi Global commit. Retry/restart harus menyelesaikan cleanup tanpa kehilangan jejak Project, tanpa menghapus Project yang belum eligible, dan tanpa bergantung pada Project DB yang sudah tidak ada.
+**DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
 
 ---
 
@@ -96,14 +97,41 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.4.1 | ✅ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02) | 100 | P1 **[MODEL LEBIH KUAT WAJIB]** | `POST /api/internal/prune` (`apps/api/src/routes/internal.ts` baru) — cek header `Authorization: Bearer <secret>` dibandingkan `process.env.CRON_SECRET` via `crypto.timingSafeEqual` (Prinsip #6 — konstanta-waktu genuinely diperlukan di sini, bandingkan secret mentah langsung, BUKAN kasus lookup-hash-via-index seperti API Key Phase 4); tolak `401` jika tidak cocok/header tidak ada — **TIDAK melalui `RequestPipeline`/`OpenProjectContext`** (bukan user-facing, tidak ada identity/membership User yang relevan). Panggil `pruneDescendantSubtrees` (5.2) untuk SETIAP Project DB yang masih terdaftar (iterasi sama seperti 5.3.1) DAN `pruneEligibleProjects` (5.3) — urutan: descendant-level dulu untuk Project yang MASIH ada (biar tidak sia-sia buka Project DB yang sebentar lagi ikut di-deprovision), baru Project-level. Return ringkasan `{prunedEntities: {milestones, boards, lists, cards, labels}, prunedProjects}` untuk observability (log, bukan expose ke user). `vercel.json` ditambah `crons: [{path: "/api/internal/prune", schedule: "0 3 * * *"}]` (harian jam 03:00 UTC — off-peak, technical decision C.6.5 poin 3, mudah diubah). | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md) | 5.2, 5.3 |
+| 5.4.1 | ⚠️ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron seperti implementasi lama, tetapi handoff belum valid lagi karena dependency 5.3.1 gagal-review. Setelah desain deprovision diputuskan, trigger MUST melanjutkan/reconcile state deprovision tertunda dan melaporkan outcome per Project tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.4 | 5.2, 5.3 |
 
 **Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
 **DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
 
 ---
 
+## TASK-5.5 — [GATING] Reverifikasi Phase 1–5 terhadap SOT 4.0.0  (dep: remediation Phase 0 + temuan review)
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 5.5.1 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency 4.0.0, dan concurrency Global DB tanpa `version`. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.2 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md) | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.3 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.4 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, deprovision failure recovery, trigger isolation, dan kompatibilitas state operasional baru yang diputuskan untuk 5.3.1. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2, F.4 | 5.3.1, 5.4.1 |
+
+**Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.0.0 jika seluruh remediation dependency sudah ✅.
+**DoD:** 5.5.1–5.5.5 seluruhnya ✅ 100% dengan QA/reviewer evidence baru; tidak ada kontrak historis `snake_case`, response mentah Invitation, non-atomic idempotency, atau failure boundary lintas-DB yang belum teruji. Baru setelah itu gate Phase 6 dapat dipertimbangkan.
+
+---
+
 ## Closure Log
+
+<a id="review-cl-04"></a>
+### Review-CL-04 — 2026-08-24 · audit seluruh goal Phase 0–5/7 terhadap SOT 4.0.0
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Hasil pemetaan:** seluruh identifier BR/FR/AC/INV yang dirujuk task masih memiliki definisi SOT. Drift 3.0.0/4.0.0 pada request JSON, Activity payload, response admin/Invitation, dan idempotency sudah memiliki remediation Phase 0 (0.17–0.19/0.21), tetapi gate “reverifikasi Phase 1–5” sebelumnya belum mempunyai goal yang dapat dilacak. TASK-5.5 dibuat untuk menutup gap tracking itu; seluruh goal tetap `⏸️` sampai dependency remediasi selesai.
+
+**Kegagalan konkret:** (1) 2.12.1 tidak menjamin BR-054/FR-026 pada kegagalan lintas-DB; dicatat Review-CL-07 Phase 2. (2) 5.3.1 mengklaim DoD yang mustahil dengan urutan Turso-delete lalu Global-delete tanpa state rekonsiliasi; 5.3.1 diturunkan ke ⚠️ 60% dan downstream 5.4.1 ke ⚠️ 70%. Keduanya memerlukan keputusan manusia sebelum Dev.
+
+**Phase 7:** tetap blocked dan bukan implementation-ready; outline diselaraskan pada titik observable SOT 4.0.0, tetapi wajib refresh penuh terhadap repo/API aktual saat gate dibuka.
+
+**Bukti:** scan seluruh `PHASE-*-TASKS.md`; pemetaan identifier rule tidak menemukan reference ID hilang; impact scan `snake_case`/idempotency/Invitation/concurrency; inspeksi langsung `project-admin.ts`, `card-assignee-cleanup.ts`, dan `prune-projects.ts`; `git diff --check` wajib lulus sebelum commit.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
