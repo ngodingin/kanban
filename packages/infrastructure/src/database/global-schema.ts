@@ -284,3 +284,25 @@ export const personalAccessTokens = sqliteTable(
   },
   (t) => [index("personal_access_tokens_user_idx").on(t.userId)],
 );
+
+// C.3 — Idempotency-Key protection untuk mutasi berisiko (create/move/
+// archive/delete/restore). Global DB (bukan Project DB) karena check WAJIB
+// bisa dilakukan SEBELUM Project DB ter-resolve di pipeline (03-ENG A.6/A.7),
+// dan berlaku juga untuk mutasi Global DB murni (create Project, Invitation).
+// Tanpa FK — `scope` adalah string bebas ditentukan pemanggil (mis. gabungan
+// userId+endpoint), bukan relasi formal ke entity lain.
+export const idempotencyKeys = sqliteTable(
+  "idempotency_keys",
+  {
+    id: text("id").primaryKey(),
+    key: text("key").notNull(),
+    scope: text("scope").notNull(),
+    /** JSON stringified {status, body} — replay respons persis sama saat key+scope cocok. */
+    result: text("result").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (t) => [
+    uniqueIndex("idempotency_keys_key_scope_unique").on(t.key, t.scope),
+    index("idempotency_keys_created_at_idx").on(t.createdAt),
+  ],
+);

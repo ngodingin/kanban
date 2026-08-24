@@ -129,6 +129,11 @@ export {
   type PruneProjectsOptions,
   type CombinedPruneSummary,
 } from "./database/prune-projects.ts";
+export {
+  DbIdempotencyStore,
+  IDEMPOTENCY_DEFAULT_TTL_MS,
+  type DbIdempotencyStoreOptions,
+} from "./database/idempotency.ts";
 export { ApiKeyIdentityResolver } from "./auth/api-key-identity-resolver.ts";
 export { PersonalAccessTokenIdentityResolver } from "./auth/pat-identity-resolver.ts";
 export {
