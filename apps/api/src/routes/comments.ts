@@ -9,7 +9,7 @@ import {
   type EditCommentRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readJsonObject, toApiErrorResponse, ValidationCollector, type OpenProjectContext } from "./projects.ts";
 
 export interface CommentRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -75,8 +75,11 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.comment", projectId, { type: "card", id: c.req.param("card_id") });
-      const body = readBodyField(await c.req.json().catch(() => null));
-      const created = await addComment(ctx.database, c.req.param("card_id"), body, ctx.userId);
+      const rawBody = await c.req.json().catch(() => null);
+      const collector = new ValidationCollector();
+      const body = collector.collect("body", () => readBodyField(rawBody));
+      collector.throwIfAny();
+      const created = await addComment(ctx.database, c.req.param("card_id"), body!, ctx.userId);
       return { comment: commentPayload(created) };
     }, 201);
   });
@@ -87,12 +90,15 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.comment.update", projectId, { type: "card", id: c.req.param("card_id") });
-      const body = readBodyField(await c.req.json().catch(() => null));
+      const rawBody = await c.req.json().catch(() => null);
+      const collector = new ValidationCollector();
+      const body = collector.collect("body", () => readBodyField(rawBody));
+      collector.throwIfAny();
       const edited = await editComment(
         ctx.database,
         c.req.param("card_id"),
         c.req.param("activity_id"),
-        body,
+        body!,
         ctx.userId,
       );
       return { comment: editedCommentPayload(edited) };

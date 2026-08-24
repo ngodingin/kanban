@@ -8,7 +8,7 @@ import {
   type CardLabelAssociationRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readJsonObject, toApiErrorResponse, ValidationCollector, type OpenProjectContext } from "./projects.ts";
 
 export interface CardLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -58,8 +58,11 @@ export function createCardLabelsRouter(getDeps: () => CardLabelRoutesDeps): Hono
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
-      const labelId = readLabelIdField(await c.req.json().catch(() => null));
-      const created = await assignLabelToCard(ctx.database, c.req.param("card_id"), labelId, ctx.userId);
+      const rawBody = await c.req.json().catch(() => null);
+      const collector = new ValidationCollector();
+      const labelId = collector.collect("labelId", () => readLabelIdField(rawBody));
+      collector.throwIfAny();
+      const created = await assignLabelToCard(ctx.database, c.req.param("card_id"), labelId!, ctx.userId);
       return { association: associationPayload(created) };
     }, 201);
   });

@@ -10,7 +10,14 @@ import {
   type MilestoneLabelRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, ValidationCollector, type OpenProjectContext } from "./projects.ts";
+
+function readLabelNameField(rawName: unknown): string {
+  if (typeof rawName !== "string" || rawName.trim().length === 0) {
+    throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
+  }
+  return rawName.trim();
+}
 
 export interface MilestoneLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -88,10 +95,9 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone_label.create", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const rawName = body.name;
-      if (typeof rawName !== "string" || rawName.trim().length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-      }
+      const collector = new ValidationCollector();
+      const name = collector.collect("name", () => readLabelNameField(body.name));
+      collector.throwIfAny();
       for (const key of Object.keys(body)) {
         if (key !== "name") {
           throw new PipelineError(
@@ -104,7 +110,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const repository = new DrizzleMilestoneLabelRepository(ctx.database);
       const created = await repository.createMilestoneLabel(projectId, c.req.param("milestone_id"), {
         id: deps.newMilestoneLabelId(),
-        name: rawName.trim(),
+        name: name!,
         actorUserId: ctx.userId,
       });
       return { label: labelPayload(created) };
@@ -118,7 +124,10 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone_label.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      const name = body.name === undefined ? undefined : collector.collect("name", () => readLabelNameField(body.name));
+      collector.throwIfAny();
       for (const key of Object.keys(body)) {
         if (key !== "name" && key !== "expectedVersion") {
           throw new PipelineError(
@@ -128,15 +137,12 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
           );
         }
       }
-      if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim().length === 0)) {
-        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-      }
       const repository = new DrizzleMilestoneLabelRepository(ctx.database);
       const updated = await repository.updateMilestoneLabel(projectId, {
         labelId: c.req.param("label_id"),
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        ...(body.name === undefined ? {} : { name: (body.name as string).trim() }),
+        ...(name === undefined ? {} : { name }),
       });
       return { label: labelPayload(updated) };
     });
@@ -197,10 +203,9 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board_label.create", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const rawName = body.name;
-      if (typeof rawName !== "string" || rawName.trim().length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-      }
+      const collector = new ValidationCollector();
+      const name = collector.collect("name", () => readLabelNameField(body.name));
+      collector.throwIfAny();
       for (const key of Object.keys(body)) {
         if (key !== "name") {
           throw new PipelineError(
@@ -213,7 +218,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const repository = new DrizzleBoardLabelRepository(ctx.database);
       const created = await repository.createBoardLabel(projectId, c.req.param("board_id"), {
         id: deps.newBoardLabelId(),
-        name: rawName.trim(),
+        name: name!,
         actorUserId: ctx.userId,
       });
       return { label: boardLabelPayload(created) };
@@ -227,7 +232,10 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board_label.update", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      const name = body.name === undefined ? undefined : collector.collect("name", () => readLabelNameField(body.name));
+      collector.throwIfAny();
       for (const key of Object.keys(body)) {
         if (key !== "name" && key !== "expectedVersion") {
           throw new PipelineError(
@@ -237,15 +245,12 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
           );
         }
       }
-      if (body.name !== undefined && (typeof body.name !== "string" || body.name.trim().length === 0)) {
-        throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-      }
       const repository = new DrizzleBoardLabelRepository(ctx.database);
       const updated = await repository.updateBoardLabel(projectId, {
         labelId: c.req.param("label_id"),
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        ...(body.name === undefined ? {} : { name: (body.name as string).trim() }),
+        ...(name === undefined ? {} : { name }),
       });
       return { label: boardLabelPayload(updated) };
     });

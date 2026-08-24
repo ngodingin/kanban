@@ -7,7 +7,7 @@ import {
   type PersonalAccessTokenSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse } from "./projects.ts";
+import { toApiErrorResponse, ValidationCollector } from "./projects.ts";
 
 export interface PersonalAccessTokensRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -61,20 +61,24 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const body = readJsonObject(await c.req.json().catch(() => null));
+      const collector = new ValidationCollector();
+      const name = collector.collect("name", () => readNameField(body));
+      const expiresAtRaw = collector.collect("expires_at", () => {
+        if (body.expires_at !== undefined && body.expires_at !== null && typeof body.expires_at !== "string") {
+          throw new PipelineError("VALIDATION_ERROR", "expires_at wajib string ISO date-time.", 400);
+        }
+        return body.expires_at as string | null | undefined;
+      });
+      collector.throwIfAny();
       for (const key of Object.keys(body)) {
         if (key !== "name" && key !== "expires_at") {
           throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
         }
       }
-      const name = readNameField(body);
-      const expiresAtRaw = body.expires_at;
-      if (expiresAtRaw !== undefined && expiresAtRaw !== null && typeof expiresAtRaw !== "string") {
-        throw new PipelineError("VALIDATION_ERROR", "expires_at wajib string ISO date-time.", 400);
-      }
       const created = await deps.createPersonalAccessToken({
         userId: identity.userId,
-        name,
-        ...(expiresAtRaw ? { expiresAt: expiresAtRaw as string } : {}),
+        name: name!,
+        ...(expiresAtRaw ? { expiresAt: expiresAtRaw } : {}),
       });
       return { personal_access_token: created };
     }, 201),
