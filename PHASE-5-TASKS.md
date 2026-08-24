@@ -86,7 +86,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | 🔎 | [CL-19](#cl-19)<br>[CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
+| 5.3.1 | ✅ | [CL-20](#cl-20)<br>[CL-19](#cl-19)<br>[CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03)<br>[QA-CL-05](#qa-cl-05) | 100 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
 **Test:** AC-036 selain boundary retention dan kegagalan `deleteDatabase`: fault-injection setelah create `PENDING`, setelah Turso delete sebelum transition, pada `DATABASE_DELETED`, dan saat cleanup Global commit. Retry/restart menyelesaikan `COMPLETED` tanpa membuka Project DB hilang; HTTP 404 idempotent; dua worker konkuren tidak menggandakan cleanup/transisi.
 **DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
@@ -120,6 +120,27 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-05"></a>
+### QA-CL-05 — 2026-08-24 · verifikasi independen 5.3.1 pasca-remediasi QA-CL-03 (BR-016B journal + ownership transisi) — ✅ 100%
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Konteks:** QA-CL-03 (Codex) menolak 5.3.1 dengan temuan spesifik: test "dua worker" bukan konkurensi sungguhan, tidak ada double-provider-call guard di dalam transaksi, dan ownership dinilai dari state akhir bukan `rowsAffected`. CL-17/CL-18/CL-19/CL-20 meremediasi. Koreksi `%` 60→80 (CL-20) diverifikasi dulu — substansinya sudah ada di CL-18 (98 file/597 test, ownership RETURNING, barrier Promise.all), CL-20 murni memperbaiki kolom tabel yang tertinggal saat Gate B; diterima.
+
+**Desain dibaca penuh (`prune-projects.ts`) dan dicocokkan baris-per-baris terhadap F.2.1 poin 1–4:** (1) journal dibuat via `createOrLoadJob` SEBELUM provider delete, `ON CONFLICT (project_id) DO NOTHING` — genuinely atomik, dua worker concurrent menghasilkan TEPAT SATU row; (2) provider delete + transisi PENDING→DATABASE_DELETED dalam SATU `runInWriteTransaction` (`client.transaction("write")` — write-mode = `BEGIN IMMEDIATE` semantics, pola sama yang sudah diaudit di seluruh mutation command lain sejak Phase 1), state DI-RE-CHECK di dalam tx sebelum memanggil provider — worker kedua yang masuk setelah commit worker pertama akan melihat state bukan lagi `PENDING` dan no-op; (3) DATABASE_DELETED→cleanup+COMPLETED tetap satu transaksi, `UPDATE ... WHERE state='DATABASE_DELETED' RETURNING project_id` — ownership dibuktikan `rows.length > 0`, bukan diasumsikan dari state akhir (tepat menutup celah race QA-CL-03 poin 3); (4) path `job.state === "DATABASE_DELETED"` (recovery) TIDAK PERNAH memanggil `openProjectDb`/`readDeletedAt` — langsung ke blok cleanup, dikonfirmasi baca kode (bukan cuma percaya komentar).
+
+**Delete list cleanup Global (baris 209-219) diaudit ulang terhadap graf FK `global-schema.ts`** (pola sama QA-CL-01/02 sebelumnya) — `invitation_group_assignments` tetap di posisi benar (sebelum `group_permissions`/`permission_groups`/`invitations`), tidak ada regresi dari fix FK yang saya verifikasi Fase 5 sebelumnya.
+
+**Reproduksi before/after independen (bukan percaya klaim CL-18):** `git checkout 47100c7~1 -- prune-projects.ts` (kode SEBELUM fix ownership/mutex, test BARU tetap) → test `[AC-036 barrier nyata]` **GAGAL genuinely** dengan `TransactionBusyError: transaksi sibuk setelah 4 percobaan` — membuktikan kode lama menahan provider-delete call DI LUAR proteksi transaksi yang benar, menyebabkan worker kedua deadlock/timeout alih-alih graceful-lose seperti sekarang. `git checkout HEAD -- ...` (fix dikembalikan) → **10/10 PASS** lagi.
+
+**Skema `project_deprovision_jobs` dikonfirmasi tanpa FK** (`global-schema.ts:277-293`) — `projectId` TIDAK punya `.references()`, sesuai BR-016B "tidak memiliki FK ke row Project yang telah dihapus"; `UNIQUE(project_id)` ada.
+
+**Test barrier dibaca detail:** dua `Client` TERPISAH (`gc`/`gcB`) ke file SQLite yang SAMA (simulasi lintas-proses sungguhan, bukan cuma in-process `Promise.all` yang bisa saja diserialisasi mutex JS) — provider mock ditahan via gate sampai worker kedua terbukti overlap (poll `entered===1`), lalu `Promise.all` genuinely paralel. Assert: provider dipanggil TEPAT 1×, `prunedProjects` total = 1, job `COMPLETED`. Juga ada test `[DATABASE_DELETED retry]` yang secara eksplisit men-throw kalau `openProjectDb` terpanggil — membuktikan F.2.1 poin 4 ("tidak boleh membuka Project DB") ditegakkan, bukan cuma diklaim di komentar.
+
+**Full re-run independen:** `pnpm exec vitest run` → **98 file/597 test PASS**; `pnpm -r typecheck` → 6/6 Done; `pnpm lint` → bersih; `pnpm --filter @kanban/infrastructure test:smoke-migration` → **PASS** (migration idempotent, 2× apply tidak berubah).
+
+**Kesimpulan:** 5.3.1 ditutup `✅ 100%`. Seluruh 3 temuan blocking QA-CL-03 genuinely tertutup dengan bukti reproduksi, bukan klaim.
 
 <a id="qa-cl-04"></a>
 ### QA-CL-04 — 2026-08-24 · audit gate TASK-5.5 lintas Phase 1–5 (status tetap ⏸️)
