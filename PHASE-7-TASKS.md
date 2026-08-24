@@ -106,8 +106,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.6.1 | ⬜️ | — | 0 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.6.2 | ⬜️ | — | 0 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.6.1 | 🔄 | [CL-22](#cl-22) | 0 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.6.2 | 🔄 | [CL-22](#cl-22) | 0 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
 
 **Test:** Card hanya menampilkan field domain yang valid; tidak ada priority/progress/status.
 **DoD:** Komponen Card patuh [05-FRONTEND §4](docs/05-FRONTEND.md).
@@ -238,6 +238,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/board-move-guard.test.tsx` **4/4 PASS** — positif: `siblingBoards(boards,"m1","b1")` hanya mengembalikan board Milestone sama non-diri (`Sprint 1 — Backup`); `useBoards` mengambil `GET /api/v1/projects/p1/milestones/m1/boards` (scoping per-Milestone struktural, boards.ts:80). Commit: `4adf434`. Suite penuh 700 PASS (lihat CL-21).
 **Catatan:** kandidat move antar Board dijamin same-Milestone dua lapis: endpoint sudah scoped + filter UI mengecualikan board asal.
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-25 · 7.6.1 + 7.6.2 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `f1f7003`, kedua row dibaca ulang dari disk `⬜️ 0%` (dependency 7.5.1 🔎 sisi Dev); Reference: 05-FRONTEND §5 (Card compact: title · description preview · labels · assignee · due date) dan §4 (priority/progress/status = BUANG dari UI).
+**Catatan:** dua goal satu komponen koheren (KanbanCard): field yang ADA dirender (7.6.1) + guard ketiadaan field non-domain (7.6.2). Assignee dirender sebagai penanda pendek userId (lookup nama user belum ada endpoint konsumennya di fase ini — dicatat, bukan perilaku domain baru).
 
 <a id="cl-21"></a>
 ### CL-21 — 2026-08-25 · 7.5.4 → 🔎 80%

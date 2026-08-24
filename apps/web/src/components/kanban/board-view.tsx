@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   DndContext,
   PointerSensor,
-  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
@@ -10,6 +9,7 @@ import {
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiRequest } from "@/lib/api/client";
+import { KanbanCard } from "@/components/kanban/card";
 import { useLists } from "@/features/lists/hooks";
 import { useCards } from "@/features/cards/hooks";
 import { useMoveCard } from "@/features/cards/mutations";
@@ -31,34 +31,6 @@ export function planMove(
 ): MovePlan | null {
   if (!active || !over || active.listId === over.listId) return null;
   return { cardId: active.cardId, destinationListId: over.listId };
-}
-
-interface DraggableCardProps {
-  projectId: string;
-  listId: string;
-  card: { id: string; title: string };
-}
-
-function DraggableCard({ listId, card }: DraggableCardProps) {
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `card:${card.id}`,
-    data: { kind: "card", cardId: card.id, listId },
-  });
-
-  return (
-    <li
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      data-card-id={card.id}
-      aria-roledescription="Kartu dapat dipindahkan"
-      className={`cursor-grab rounded-md border border-border bg-card p-2 text-sm ${
-        isDragging ? "opacity-50" : ""
-      }`}
-    >
-      {card.title}
-    </li>
-  );
 }
 
 function BoardColumn({
@@ -92,7 +64,7 @@ function BoardColumn({
       {/* Area drop kolom */}
       <ul ref={setNodeRef} className="flex min-h-16 flex-col gap-2">
         {cards.map((card) => (
-          <DraggableCard key={card.id} projectId={projectId} listId={listId} card={card} />
+          <KanbanCard key={card.id} card={card} listId={listId} />
         ))}
       </ul>
     </section>
