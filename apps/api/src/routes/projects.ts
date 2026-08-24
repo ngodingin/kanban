@@ -23,6 +23,7 @@ import {
   loadEntityHierarchy,
   type RouteEntityType,
 } from "@kanban/infrastructure";
+import { parseBody, projectPatchSchema } from "./core-schemas.ts";
 
 export interface CreateProjectInput {
   projectId: string;
@@ -398,17 +399,13 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
           403,
         );
       }
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const name = collector.collect("name", () => readProjectNameField(body));
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      collector.throwIfAny();
+      const body = parseBody(projectPatchSchema, await c.req.json().catch(() => null));
       const repository = new DrizzleProjectRepository(ctx.database);
       const state = await repository.updateProjectName({
         projectId,
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        name: name!,
+        name: body.name,
       });
       return { project: projectStatePayload(state) };
     }, 200, getDeps().idempotencyStore);

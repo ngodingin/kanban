@@ -326,3 +326,17 @@ export function parseCredentialBody<S extends z.ZodType>(
   }
   return result.data!;
 }
+
+// ---------- Project (C.4, TASK-6.2.4) ----------
+
+/** name Project — trim, wajib, maksimal 255 (pesan persis readProjectNameField). */
+export const projectNameSchema = z
+  .string({ message: "Field name wajib string." })
+  .transform((v) => v.trim())
+  .refine((v) => v.length > 0, "Field name tidak boleh kosong.")
+  .refine((v) => v.length <= 255, "Field name maksimal 255 karakter.");
+
+export const projectPatchSchema = z.object({
+  expectedVersion: expectedVersionSchema,
+  name: projectNameSchema,
+});

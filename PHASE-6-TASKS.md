@@ -71,7 +71,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 | 6.2.1 | 🔎 | [CL-05](#cl-05)<br>[CL-04](#cl-04) | 80 | P1 | Ganti parsing manual (`readTitleField`/`readOptionalStringField`/dst, `apps/api/src/routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`) dengan skema Zod eksplisit per payload (create/update/move) — validasi tipe, required/optional, dan batas (mis. `title` non-empty string) di satu titik per entity, error digabung ke `VALIDATION_ERROR.details` (sudah ada pola collect-all dari `TASK-0.17.4`, reuse helper yang sama — JANGAN bikin mekanisme kedua). | [02-SPEC C.2](docs/02-SPEC.md) (VALIDATION_ERROR), C.5, C.8; [03-ENG A.8](docs/03-ENGINEERING.md) (Zod terkunci) | — |
 | 6.2.2 | 🔎 | [CL-06](#cl-06) | 80 | P1 | Sama seperti 6.2.1 untuk `labels.ts`, `card-labels.ts`, `comments.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.9–C.11 | — |
 | 6.2.3 | 🔎 | [CL-08](#cl-08)<br>[CL-07](#cl-07) | 80 | P1 | Sama seperti 6.2.1 untuk `project-admin.ts` (Membership/Permission Group/scoped assignment/Invitation) dan `api-keys.ts`/`personal-access-tokens.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.12–C.14 | — |
-| 6.2.4 | ⬜️ | — | 0 | P2 | Sama seperti 6.2.1 untuk `projects.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.4 | — |
+| 6.2.4 | 🔎 | [CL-13](#cl-13) | 80 | P2 | Sama seperti 6.2.1 untuk `projects.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.4 | — |
 
 **Test:** Body dengan field bertipe salah (mis. `title` berupa number) atau field wajib hilang → `400 VALIDATION_ERROR` dengan `details` menyebut field spesifik, BUKAN generic `500`/crash parsing. Body valid → berperilaku identik dengan parsing manual lama (regresi behavioral nihil — hanya mekanisme validasi yang berubah). Field terlarang generic PATCH (`BR-062`) tetap tertolak (regresi test existing tetap hijau).
 **DoD:** `grep -rn "^function read.*Field" apps/api/src/routes` → nol hasil (seluruh parsing manual tergantikan Zod); `pnpm exec vitest run` 100% hijau, test lama diperbarui mengikuti mekanisme baru bukan dihapus.
@@ -225,7 +225,13 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-11 — 2026-08-24 · goal 6.6.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `—`; 6.3.1 tuntas 🔎80. F.4 dibaca sebagai acuan field log.
-<a id="cl-12"></a>
+<a id="cl-13"></a>
+### CL-13 — 2026-08-24 · goal 6.2.4 selesai sisi Dev (⬜️ → 🔎 · 0 → 80%) — Zod projects PATCH
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **103 file / 630 test lulus** (projects-patch.test.ts parity penuh); typecheck+lint bersih. Implementasi: `projectPatchSchema` {expectedVersion int≥1, name trim-nonempty max-255} di core-schemas.ts; handler PATCH Project memakai parseBody menggantikan collector; pesan validasi name persis readProjectNameField lama.
+**Catatan:** Create/archive/restore/delete Project tanpa body JSON — tidak memerlukan skema; expectedVersion lifecycle tetap readExpectedVersionField.
+
+<a id="cl-12"></a><a id="cl-12"></a>
 ### CL-12 — 2026-08-24 · goal 6.6.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — structured request logging F.4
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `pnpm exec vitest run` → **103 file / 630 test lulus**; typecheck+lint bersih. Implementasi: (1) `observability/request-context.ts` di infrastructure — AsyncLocalStorage store {requestId,userId?,projectId?} + setter no-op-safe; pipeline mengisi userId/projectId otomatis saat context aktif; (2) middleware `requestLogger()` di apps/api — requestId ULID per request + header X-Request-Id, action=method+path, outcome=status(+error code), duration_ms; emit SATU baris JSON via emitRequestLog (titik tunggu transport); terpasang paling awal mencakup seluruh route. Test baru: field lengkap pada sukses & error path (anonim tanpa user_id).
