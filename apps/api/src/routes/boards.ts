@@ -18,6 +18,7 @@ import {
   type IdempotencyStoreLike,
   type OpenProjectContext,
 } from "./projects.ts";
+import { parseBody, boardCreateSchema, boardPatchSchema } from "./core-schemas.ts";
 
 export interface BoardRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -55,23 +56,6 @@ async function withErrorHandling<T>(
   }
 }
 
-function readTitleField(body: Record<string, unknown>): string {
-  const raw = body.title;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field title wajib string non-kosong.", 400);
-  }
-  return raw.trim();
-}
-
-function readOptionalDescription(body: Record<string, unknown>): string | null {
-  const raw = body.description;
-  if (raw === undefined || raw === null) return null;
-  if (typeof raw !== "string") {
-    throw new PipelineError("VALIDATION_ERROR", "Field description wajib string atau null.", 400);
-  }
-  return raw;
-}
-
 export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
   const router = new Hono();
 
@@ -81,17 +65,13 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board.create", projectId, { type: "milestone", id: c.req.param("milestone_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const title = collector.collect("title", () => readTitleField(body));
-      const description = collector.collect("description", () => readOptionalDescription(body));
-      collector.throwIfAny();
+      const body = parseBody(boardCreateSchema, await c.req.json().catch(() => null));
       const repository = new DrizzleBoardRepository(ctx.database);
       const created = await repository.createBoard(projectId, {
         id: deps.newBoardId(),
         milestoneId: c.req.param("milestone_id"),
-        title: title!,
-        description: description!,
+        title: body.title,
+        description: body.description,
         actorUserId: ctx.userId,
       });
       return { board: boardPayload(created) };
@@ -133,14 +113,10 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board.update", projectId, { type: "board", id: c.req.param("board_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
-      const description = body.description === undefined ? undefined : collector.collect("description", () => readOptionalDescription(body));
-      collector.throwIfAny();
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(boardPatchSchema, rawBody);
       const allowedFields = ["title", "description"] as const;
-      for (const key of Object.keys(body)) {
+      for (const key of Object.keys(rawBody)) {
         if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -152,10 +128,10 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const repository = new DrizzleBoardRepository(ctx.database);
       const updated = await repository.updateBoard(projectId, {
         boardId: c.req.param("board_id"),
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        ...(title === undefined ? {} : { title }),
-        ...(description === undefined ? {} : { description }),
+        ...(body.title === undefined ? {} : { title: body.title }),
+        ...(body.description === undefined ? {} : { description: body.description }),
       });
       return { board: boardPayload(updated) };
     }, 200, getDeps().idempotencyStore);

@@ -21,6 +21,7 @@ import {
   type IdempotencyStoreLike,
   type OpenProjectContext,
 } from "./projects.ts";
+import { parseBody, cardCreateSchema, cardPatchSchema, cardMoveSchema } from "./core-schemas.ts";
 import { loadEntityHierarchy } from "@kanban/infrastructure";
 import { resolveCardVisibilityFilter } from "@kanban/domain";
 
@@ -70,33 +71,6 @@ async function withErrorHandling<T>(
   }
 }
 
-function readTitleField(body: Record<string, unknown>): string {
-  const raw = body.title;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field title wajib string non-kosong.", 400);
-  }
-  return raw.trim();
-}
-
-function readOptionalString(body: Record<string, unknown>, field: string): string | null | undefined {
-  const raw = body[field];
-  if (raw === undefined) return undefined;
-  if (raw === null) return null;
-  if (typeof raw !== "string") {
-    throw new PipelineError("VALIDATION_ERROR", `Field ${field} wajib string atau null.`, 400);
-  }
-  return raw;
-}
-
-function readAssigneeField(body: Record<string, unknown>): string | null {
-  const raw = body.assignee;
-  if (raw === undefined || raw === null) return null;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field assignee wajib string non-kosong atau null.", 400);
-  }
-  return raw.trim();
-}
-
 export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
   const router = new Hono();
 
@@ -106,25 +80,18 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.create", projectId, { type: "list", id: c.req.param("list_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const title = collector.collect("title", () => readTitleField(body));
-      const subtitle = collector.collect("subtitle", () => readOptionalString(body, "subtitle"));
-      const description = collector.collect("description", () => readOptionalString(body, "description"));
-      const dueDate = collector.collect("dueDate", () => readOptionalString(body, "dueDate"));
-      const assignee = collector.collect("assignee", () => readAssigneeField(body));
-      collector.throwIfAny();
+      const body = parseBody(cardCreateSchema, await c.req.json().catch(() => null));
       const repository = new DrizzleCardRepository(ctx.database, {
         assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
       });
       const created = await repository.createCard(projectId, {
         id: deps.newCardId(),
         listId: c.req.param("list_id"),
-        title: title!,
-        subtitle: subtitle ?? null,
-        description: description ?? null,
-        dueDate: dueDate ?? null,
-        assigneeUserId: assignee ?? null,
+        title: body.title,
+        subtitle: body.subtitle ?? null,
+        description: body.description ?? null,
+        dueDate: body.dueDate ?? null,
+        assigneeUserId: body.assignee,
         actorUserId: ctx.userId,
       });
       return { card: cardPayload(created) };
@@ -189,17 +156,10 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
-      const subtitle = collector.collect("subtitle", () => readOptionalString(body, "subtitle"));
-      const description = collector.collect("description", () => readOptionalString(body, "description"));
-      const dueDate = collector.collect("dueDate", () => readOptionalString(body, "dueDate"));
-      const assignee = body.assignee === undefined ? undefined : collector.collect("assignee", () => readAssigneeField(body));
-      collector.throwIfAny();
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(cardPatchSchema, rawBody);
       const allowedFields = ["title", "subtitle", "description", "dueDate", "assignee"] as const;
-      for (const key of Object.keys(body)) {
+      for (const key of Object.keys(rawBody)) {
         if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -213,13 +173,13 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       });
       const updated = await repository.updateCard(projectId, {
         cardId: c.req.param("card_id"),
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        ...(title === undefined ? {} : { title }),
-        subtitle,
-        description,
-        dueDate,
-        assigneeUserId: assignee,
+        ...(body.title === undefined ? {} : { title: body.title }),
+        subtitle: body.subtitle,
+        description: body.description,
+        dueDate: body.dueDate,
+        ...(body.assignee === undefined ? {} : { assigneeUserId: body.assignee }),
       });
       return { card: cardPayload(updated) };
     }, 200, getDeps().idempotencyStore);
@@ -242,16 +202,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
           );
         }
       }
-      const collector = new ValidationCollector();
-      const destinationListId = collector.collect("destinationListId", () => {
-        const raw = body.destinationListId;
-        if (typeof raw !== "string" || raw.trim().length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field destinationListId wajib string non-kosong.", 400);
-        }
-        return raw;
-      });
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      collector.throwIfAny();
+      const { destinationListId, expectedVersion } = parseBody(cardMoveSchema, body);
       const repository = new DrizzleCardRepository(ctx.database, {
         assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
       });

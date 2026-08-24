@@ -12,11 +12,11 @@ import {
   readExpectedVersionField,
   readJsonObject,
   toApiErrorResponse,
-  ValidationCollector,
   withIdempotentHandling,
   type IdempotencyStoreLike,
   type OpenProjectContext,
 } from "./projects.ts";
+import { parseBody, milestoneCreateSchema, milestonePatchSchema } from "./core-schemas.ts";
 
 export interface MilestoneRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -56,36 +56,6 @@ async function withErrorHandling<T>(
   }
 }
 
-function readTitleField(body: unknown): string {
-  const raw = readJsonObject(body).title;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field title wajib string non-kosong.", 400);
-  }
-  return raw.trim();
-}
-
-function readOptionalStringField(
-  body: Record<string, unknown>,
-  field: string,
-): string | null | undefined {
-  const raw = body[field];
-  if (raw === undefined) return undefined;
-  if (raw === null) return null;
-  if (typeof raw !== "string") {
-    throw new PipelineError("VALIDATION_ERROR", `Field ${field} wajib string atau null.`, 400);
-  }
-  return raw;
-}
-
-function readProgressField(body: Record<string, unknown>): number | undefined {
-  const raw = body.progress;
-  if (raw === undefined) return undefined;
-  if (typeof raw !== "number" || !Number.isInteger(raw) || raw < 0 || raw > 100) {
-    throw new PipelineError("VALIDATION_ERROR", "Field progress wajib integer 0–100.", 400);
-  }
-  return raw;
-}
-
 export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono {
   const router = new Hono();
 
@@ -95,22 +65,15 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone.create", projectId);
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const title = collector.collect("title", () => readTitleField(body));
-      const description = collector.collect("description", () => readOptionalStringField(body, "description"));
-      const progress = collector.collect("progress", () => readProgressField(body));
-      const startDate = collector.collect("startDate", () => readOptionalStringField(body, "startDate"));
-      const dueDate = collector.collect("dueDate", () => readOptionalStringField(body, "dueDate"));
-      collector.throwIfAny();
+      const body = parseBody(milestoneCreateSchema, await c.req.json().catch(() => null));
       const repository = new DrizzleMilestoneRepository(ctx.database);
       const created = await repository.createMilestone(projectId, {
         id: deps.newMilestoneId(),
-        title: title!,
-        description: description ?? null,
-        progress: progress ?? 0,
-        startDate: startDate ?? null,
-        dueDate: dueDate ?? null,
+        title: body.title,
+        description: body.description ?? null,
+        progress: body.progress ?? 0,
+        startDate: body.startDate ?? null,
+        dueDate: body.dueDate ?? null,
         actorUserId: ctx.userId,
       });
       return { milestone: milestonePayload(created) };
@@ -151,17 +114,10 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
-      const description = collector.collect("description", () => readOptionalStringField(body, "description"));
-      const progress = collector.collect("progress", () => readProgressField(body));
-      const startDate = collector.collect("startDate", () => readOptionalStringField(body, "startDate"));
-      const dueDate = collector.collect("dueDate", () => readOptionalStringField(body, "dueDate"));
-      collector.throwIfAny();
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(milestonePatchSchema, rawBody);
       const allowedFields = ["title", "description", "progress", "startDate", "dueDate"] as const;
-      for (const key of Object.keys(body)) {
+      for (const key of Object.keys(rawBody)) {
         if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -173,13 +129,13 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const repository = new DrizzleMilestoneRepository(ctx.database);
       const updated = await repository.updateMilestone(projectId, {
         milestoneId: c.req.param("milestone_id"),
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        ...(title === undefined ? {} : { title }),
-        description,
-        progress,
-        startDate,
-        dueDate,
+        ...(body.title === undefined ? {} : { title: body.title }),
+        description: body.description,
+        progress: body.progress,
+        startDate: body.startDate,
+        dueDate: body.dueDate,
       });
       return { milestone: milestonePayload(updated) };
     }, 200, getDeps().idempotencyStore);

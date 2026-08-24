@@ -18,6 +18,7 @@ import {
   type IdempotencyStoreLike,
   type OpenProjectContext,
 } from "./projects.ts";
+import { parseBody, listCreateSchema, listPatchSchema } from "./core-schemas.ts";
 
 export interface ListRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -54,14 +55,6 @@ async function withErrorHandling<T>(
   }
 }
 
-function readTitleField(body: Record<string, unknown>): string {
-  const raw = body.title;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field title wajib string non-kosong.", 400);
-  }
-  return raw.trim();
-}
-
 export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
   const router = new Hono();
 
@@ -71,12 +64,12 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "list.create", projectId, { type: "board", id: c.req.param("board_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(listCreateSchema, await c.req.json().catch(() => null));
       const repository = new DrizzleListRepository(ctx.database);
       const created = await repository.createList(projectId, {
         id: deps.newListId(),
         boardId: c.req.param("board_id"),
-        title: readTitleField(body),
+        title: body.title,
         actorUserId: ctx.userId,
       });
       return { list: listPayload(created) };
@@ -118,11 +111,8 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "list.update", projectId, { type: "list", id: c.req.param("list_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
-      collector.throwIfAny();
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(listPatchSchema, rawBody);
       for (const key of Object.keys(body)) {
         if (key !== "title" && key !== "expectedVersion") {
           throw new PipelineError(
@@ -135,9 +125,9 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const repository = new DrizzleListRepository(ctx.database);
       const updated = await repository.updateList(projectId, {
         listId: c.req.param("list_id"),
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        ...(title === undefined ? {} : { title }),
+        ...(body.title === undefined ? {} : { title: body.title }),
       });
       return { list: listPayload(updated) };
     }, 200, getDeps().idempotencyStore);
