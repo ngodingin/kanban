@@ -144,9 +144,9 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.9.1 | ⬜️ | — | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card) | [02-SPEC Part D](docs/02-SPEC.md) | 7.3.1 |
-| 7.9.2 | ⬜️ | — | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
-| 7.9.3 | ⬜️ | — | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY | [02-SPEC A.10](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.1 | ⬜️ | [CL-29](#cl-29) | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card) | [02-SPEC Part D](docs/02-SPEC.md) | 7.3.1 |
+| 7.9.2 | ⬜️ | [CL-29](#cl-29) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.3 | ⬜️ | [CL-29](#cl-29) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY | [02-SPEC A.10](docs/02-SPEC.md) | 7.9.1 |
 
 **Test:** UI mencerminkan model Group (bukan RBAC Role→Permissions); scope & inheritance benar.
 **DoD:** Permission UI patuh authorization model; tidak menyederhanakan jadi RBAC.
@@ -192,7 +192,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.13.1 | ⬜️ | — | 0 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
+| 7.13.1 | 🔄 | [CL-30](#cl-30) | 0 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
 | 7.13.2 | ⬜️ | — | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
 | 7.13.3 | ⬜️ | — | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
 | 7.13.4 | ⬜️ | — | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
@@ -339,6 +339,18 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tidak ada bug produksi tersisa. Logic filter same-Milestone (inti goal ini) tidak pernah salah — hanya presentasi nama yang sekarang genuinely benar.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-30"></a>
+### CL-30 — 2026-08-25 · 7.13.1 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `167418c`, row 7.13.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.5.1 ✅ QA-CL-09); Reference dibaca dari disk: 04-DELIVERY A.4 (modal konfirmasi menjelaskan dampak subtree: archive → descendant non-operasional sampai dipulihkan; delete → terminal + peringatan kuat; TANPA child handling) dan pola endpoint diverifikasi dari source (`POST /v1/projects/:p/{milestones|boards|lists|cards}/:id/{archive|restore|delete}`, authorize `entity.action`; Project: `/projects/:p/{action}`).
+**Catatan:** mulai hook lifecycle generik + dialog konfirmasi berdampak-subtree; restore-guard penuh adalah goal 7.13.3.
+
+<a id="cl-29"></a>
+### CL-29 — 2026-08-25 · 7.9.1/7.9.2/7.9.3 — `[NEEDS-SPEC-AMENDMENT]` blocker teridentifikasi (status tetap ⬜️ 0%)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** verifikasi dari source: `permissionId` pada create Group (core-schemas.ts:179, project-admin.ts `createPermissionGroup` validasi by-id) dan direct permission assignment (project-admin.ts ~line 479 lookup `WHERE id = ?`) adalah **ULID hasil seed per-Project DB** (`provision.ts:135` → ulid() saat insert katalog, permission-catalog.ts:144). TIDAK ada endpoint yang mengekspos katalog `{id,key}` ke client (grep seluruh `apps/api/src/routes/*`). UI mustahil mengisi picker Direct Permission / entries Group tanpa mengarang data.
+**Catatan:** `[NEEDS-SPEC-AMENDMENT]` + `[NEEDS-DECISION]` untuk lane AI-Planning & Review & manusia — opsi: (a) tambah endpoint read-only katalog (mis. `GET /api/v1/projects/:p/permissions` mengembalikan `{permissions:[{id,key,description}]}`, amandemen C.12); (b) ubah kontrak agar menerima `key` sebagai alternatif identifier; (c) scope turun sementara. Dev TIDAK mengimplementasikan endpoint/kontrak baru sendiri (larangan §3/C.4). Backend juga baru menerima `scopeType:"project"` (INVALID_STATE untuk milestone/board/list/card — project-admin.ts:359,466): UI lima-scope sesuai goal tetap bisa dibangun dan menampilkan error server jujur, tapi perlu konfirmasi apakah backend hierarchy-scope menyusul di fase ini atau nanti. Goal 7.9.x ditahan sampai keputusan jatuh; Dev lanjut ke rantai P0 berikutnya (7.13.x).
 
 <a id="cl-28"></a>
 ### CL-28 — 2026-08-25 · 7.5.3 → 🔎 80% (remediasi QA-CL-10)
