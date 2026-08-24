@@ -132,7 +132,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.8.1 | ⬜️ | — | 0 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
+| 7.8.1 | 🔄 | [CL-24](#cl-24) | 0 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
 | 7.8.2 | ⬜️ | — | 0 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
 
 **Test:** Activity read-only; entity terhapus tetap terbaca via payload historis.
@@ -238,6 +238,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/board-move-guard.test.tsx` **4/4 PASS** — positif: `siblingBoards(boards,"m1","b1")` hanya mengembalikan board Milestone sama non-diri (`Sprint 1 — Backup`); `useBoards` mengambil `GET /api/v1/projects/p1/milestones/m1/boards` (scoping per-Milestone struktural, boards.ts:80). Commit: `4adf434`. Suite penuh 700 PASS (lihat CL-21).
 **Catatan:** kandidat move antar Board dijamin same-Milestone dua lapis: endpoint sudah scoped + filter UI mengecualikan board asal.
+
+<a id="cl-24"></a>
+### CL-24 — 2026-08-25 · 7.8.1 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `1b6e0fd`, row 7.8.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.1 🔎 sisi Dev); Reference 05-FRONTEND §5 (timeline historis grouped by day/time, bukan notification feed) + 02-SPEC A.8 (Activity immutable); endpoint terverifikasi `GET /v1/projects/:p/activities` → `{activities:[{id,entityType,entityId,entityVersion,actorUserId,action,data,createdAt}]}` (activities.ts).
+**Catatan:** view read-only murni — tidak ada jalur edit/delete Activity (A.16 #8). Pemilihan goal: 7.9.x/7.13.x (authorization/lifecycle-critical) disarankan dikerjakan sesi dengan kapasitas penuh per §11.2; timeline ini contained dan membuka 7.7.2.
 
 <a id="cl-23"></a>
 ### CL-23 — 2026-08-25 · 7.6.1 + 7.6.2 → 🔎 80%
