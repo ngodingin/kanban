@@ -37,51 +37,6 @@ const memberCol = async (col: "revoked_at" | "revocation_pending_at"): Promise<s
 };
 
 
-/** Koneksi libsql dengan retry BUSY tanpa batas ketat (untuk simulasi worker kedua). */
-function createPatientClient(
-  url: string,
-  state: { released: boolean },
-  onFirstBusy: () => void,
-  timeoutMs = 30_000,
-): Client {
-  const base = createClient({ url });
-  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  let signaled = false;
-  const patient = async <T>(fn: () => Promise<T>): Promise<T> => {
-    const deadline = Date.now() + timeoutMs;
-    for (;;) {
-      try {
-        return await fn();
-      } catch (e) {
-        const err = e as { code?: unknown; cause?: { code?: unknown } ; message?: string };
-        const busy = err?.code === "SQLITE_BUSY" || err?.cause?.code === "SQLITE_BUSY" ||
-          String(err?.cause ?? e).includes("database is locked");
-        if (!busy || Date.now() > deadline) throw e;
-        if (!signaled) { signaled = true; onFirstBusy(); }
-        await sleep(10);
-      }
-    }
-  };
-  return {
-    transaction: async (mode) => {
-      const tx = await patient(() => base.transaction(mode));
-      return {
-        execute: (stmt: Parameters<typeof tx.execute>[0]) =>
-          patient(() => {
-            if (!state.released) return sleep(10).then(() => tx.execute(stmt));
-            return tx.execute(stmt);
-          }),
-        commit: () => tx.commit(),
-        rollback: () => tx.rollback(),
-        close: () => tx.close(),
-      };
-    },
-    execute: (() => { throw new Error("use tx"); }) as never,
-    batch: base.batch.bind(base),
-    closed: false,
-    close: () => base.close(),
-  } as unknown as Client;
-}
 
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "kanban-revoke-recovery-"));

@@ -109,7 +109,7 @@ describe("pruneEligibleProjects — goal 5.3.1", () => {
     });
 
     expect(deleteDb).toHaveBeenCalledTimes(1);
-    expect(deleteDb.mock.calls[0]![1]).toBe(projectDatabaseName(pid));
+    expect(deleteDb.mock.calls[0]![1]).toBe(projectDatabaseName(pid)); // arg kedua tetap divalidasi
     expect(result.prunedProjects).toBe(1);
     // Journal BR-016B: COMPLETED = tombstone yang TETAP ADA tanpa FK
     const job = await globalClient.execute({
@@ -309,7 +309,7 @@ describe("AC-036 — journal recovery & worker concurrency (goal 5.3.1 rework)",
     let entered = 0;
     let releaseProvider!: () => void;
     const providerGate = new Promise<void>((r) => (releaseProvider = r));
-    const deleteDb = vi.fn(async (_env: unknown, name: string) => {
+    const deleteDb = vi.fn(async (_env: unknown, _name: string) => {
       entered += 1;
       if (entered === 1) await providerGate; // tahan worker pertama DI provider
     });

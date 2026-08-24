@@ -98,70 +98,7 @@ async function createOrLoadJob(
   };
 }
 
-/** Transisi conditional — worker kedua yang kehilangan race mendapat 0 row (tanpa efek). */
-async function transitionJob(
-  globalClient: Client,
-  projectId: string,
-  from: DeprovisionState,
-  to: DeprovisionState,
-): Promise<boolean> {
-  const nowIso = new Date().toISOString();
-  const setCompleted = to === "COMPLETED" ? ", completed_at = ?" : "";
-  const args =
-    to === "COMPLETED"
-      ? [to, nowIso, nowIso, projectId, from]
-      : [to, nowIso, projectId, from];
-  await globalClient.execute({
-    sql: `UPDATE project_deprovision_jobs SET state = ?, updated_at = ?${setCompleted} WHERE project_id = ? AND state = ?`,
-    args,
-  });
-  // Verifikasi eksplisit — rowsAffected tidak konsisten antar driver libsql.
-  const after = await globalClient.execute({
-    sql: "SELECT state FROM project_deprovision_jobs WHERE project_id = ?",
-    args: [projectId],
-  });
-  return String(after.rows[0]?.state ?? "") === to;
-}
 
-/**
- * BR-016B langkah 3 — cleanup registry Global leaf-to-root + COMPLETED dalam
- * SATU commit; TIDAK menyentuh Project DB sama sekali (dipanggil dari
- * DATABASE_DELETED).
- */
-async function finalizeProjectCleanup(globalClient: Client, projectId: string): Promise<boolean> {
-  return runInWriteTransaction(globalClient, async (tx) => {
-    for (const sql of [
-      // Leaf-to-root sesuai FK aktual Global DB (invitation_group_assignments
-      // merujuk invitations + permission_groups → harus sebelum keduanya).
-      "DELETE FROM membership_group_assignments WHERE membership_id IN (SELECT id FROM project_memberships WHERE project_id = ?)",
-      "DELETE FROM membership_permission_assignments WHERE membership_id IN (SELECT id FROM project_memberships WHERE project_id = ?)",
-      "DELETE FROM invitation_group_assignments WHERE invitation_id IN (SELECT id FROM invitations WHERE project_id = ?)",
-      "DELETE FROM group_permissions WHERE group_id IN (SELECT id FROM permission_groups WHERE project_id = ?)",
-      "DELETE FROM permission_groups WHERE project_id = ?",
-      "DELETE FROM invitations WHERE project_id = ?",
-      "DELETE FROM api_keys WHERE project_id = ?",
-      "DELETE FROM project_memberships WHERE project_id = ?",
-      "DELETE FROM project_databases WHERE project_id = ?",
-      "DELETE FROM projects WHERE id = ?",
-    ]) {
-      await tx.execute(sql, [projectId]);
-    }
-    // Transisi conditional DATABASE_DELETED → COMPLETED di commit yang sama
-    // (via tx — bukan autocommit, hindari lock diri sendiri).
-    const nowIso = new Date().toISOString();
-    await tx.execute(
-      "UPDATE project_deprovision_jobs SET state = 'COMPLETED', updated_at = ?, completed_at = ? WHERE project_id = ? AND state = 'DATABASE_DELETED'",
-      [nowIso, nowIso, projectId],
-    );
-    // Verifikasi eksplisit di dalam tx yang sama; true = worker ini pemilik
-    // transisi, false = worker lain lebih dulu.
-    const after = await tx.execute(
-      "SELECT state FROM project_deprovision_jobs WHERE project_id = ?",
-      [projectId],
-    );
-    return String(after.rows[0]?.state ?? "") === "COMPLETED";
-  });
-}
 
 /**
  * Prune Project-level ber-journal (BR-016B / F.2.1): eligibility dari

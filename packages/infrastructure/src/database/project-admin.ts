@@ -761,8 +761,7 @@ export async function revokeMembership(
   // BR-054C — protokol lintas-DB retryable:
   // (1) claim conditional `revocation_pending_at` (idempotent untuk retry —
   //     claim kedua adalah no-op; proses tetap dilanjutkan sebagai recovery).
-  let revokedAt = membership.revokedAt;
-  if (revokedAt === null) {
+  if (membership.revokedAt === null) {
     // BR-054C (1) — claim conditional `revocation_pending_at`. Retry setelah
     // crash menemui pending sudah terisi: claim ini no-op dan alur tetap
     // dilanjutkan sebagai recovery (idempotent).
@@ -798,7 +797,6 @@ export async function revokeMembership(
         isNotNull(projectMemberships.revocationPendingAt),
       ))
       .run();
-    revokedAt = finalizedAt;
   }
   // Konsistensi caller (QA-CL-26): summary SELALU dari state DB terkini —
   // caller yang kalah claim/finalize mengembalikan nilai final yang sama
