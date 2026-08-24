@@ -124,8 +124,8 @@ const getCard = (cid: string, user: string): Promise<Response> =>
 const getList = (user: string): Promise<Response> =>
   app().request(`http://localhost/v1/projects/${pid}/lists/ls1/cards`, { headers: { "x-test-user": user } });
 
-describe("AC-006 — creator tanpa grant card.read → baca ditolak (goal 6.8.1)", () => {
-  it("[negatif] member tanpa card.read GET Card miliknya sendiri → RESOURCE_NOT_FOUND", async () => {
+describe("AC-006/AC-007 — creator & assignee tanpa grant card.read → baca ditolak (goal 6.8.1/6.8.2)", () => {
+  it("[negatif][AC-007] ASSIGNEE tanpa card.read GET Card yang di-assign kepadanya → RESOURCE_NOT_FOUND", async () => {
     // u-assignee punya membership + Group yang HANYA beri card.create;
     // status assignee TIDAK otomatis memberi akses baca (BR-045).
     const res = await getCard("cd1", "u-assignee");
@@ -133,7 +133,7 @@ describe("AC-006 — creator tanpa grant card.read → baca ditolak (goal 6.8.1)
     expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
   });
 
-  it("[negatif] GET list tanpa card.read → array kosong (anti-enumeration)", async () => {
+  it("[negatif][AC-007] GET list tanpa card.read → array kosong, Card ter-assign tidak ikut muncul (anti-enumeration)", async () => {
     const res = await getList("u-assignee");
     expect(res.status).toBe(200);
     expect((await res.json()).data.cards).toEqual([]);
