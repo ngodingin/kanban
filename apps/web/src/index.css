@@ -1,11 +1,32 @@
+@import "@fontsource-variable/inter";
 @import "tailwindcss";
 
 @custom-variant dark (&:is(.dark *));
 
+/* §2.2 — tipografi Inter + skala heading/body/small (05-FRONTEND). */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
+  --text-heading-1: 2rem; /* 32px */
+  --text-heading-1--line-height: 2.5rem; /* 40px */
+  --text-heading-1--font-weight: 700;
+  --text-heading-2: 1.5rem; /* 24px */
+  --text-heading-2--line-height: 2rem; /* 32px */
+  --text-heading-2--font-weight: 600;
+  --text-heading-3: 1.25rem; /* 20px */
+  --text-heading-3--line-height: 1.75rem; /* 28px */
+  --text-heading-3--font-weight: 600;
+  --text-body: 0.875rem; /* 14px */
+  --text-body--line-height: 1.25rem; /* 20px */
+  --text-small: 0.75rem; /* 12px */
+  --text-small--line-height: 1rem; /* 16px */
+}
+
 :root {
   /* Token warna §2.1 (05-FRONTEND) — indigo primary + slate + semantic.
      Nilai oklch = konversi Tailwind v4 dari hex yang dipatok SOT. */
-  --radius: 0.625rem;
+  /* §2.3 — radius per-peran: sm controls · md cards · lg dialogs. Density
+     tinggi → base 0.5rem, tidak terlalu rounded. Berlaku light+dark. */
+  --radius: 0.5rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.279 0.041 260.031); /* slate-800 #1E293B */
   --card: oklch(1 0 0);
@@ -54,10 +75,11 @@
 }
 
 @theme inline {
+  /* §2.3 — radius per-peran (controls/cards/dialogs), light+dark. */
   --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 4px);
+  --radius-xl: calc(var(--radius) + 8px);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -86,6 +108,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background font-sans text-foreground;
   }
 }

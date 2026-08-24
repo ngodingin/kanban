@@ -55,8 +55,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.2.1 | ✅ | [QA-CL-05](#qa-cl-05)<br>[CL-09](#cl-09)<br>[CL-10](#cl-10) | 100 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.2 | ⬜️ | — | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.3 | ⬜️ | — | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.2.2 | 🔄 | [CL-57](#cl-57) | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.3 | 🔄 | [CL-57](#cl-57) | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
 
 **Test:** Token render benar di light & dark; kontras memadai; komponen shadcn memakai token.
 **DoD:** Theme konsisten sesuai tokens; tidak ada warna hard-coded di luar token.
@@ -240,7 +240,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi UI:** `apps/web/src/features/credentials/hooks.ts` dan `apps/web/src/features/credentials/credential-panels.tsx` dibaca ulang; PAT hanya memakai `/api/v1/me/personal-access-tokens` dan revoke nested `/revoke`, tidak menyentuh path `/projects/*`.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx apps/api/test/personal-access-tokens-route.test.ts packages/infrastructure/test/pat.test.ts"'` → **UI 4/4 PASS; API route 5/5 PASS; domain/infrastructure 7/7 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx apps/api/test/personal-access-tokens-route.test.ts apps/api/test/personal-access-tokens-route.test.ts packages/infrastructure/test/pat.test.ts"'` → **UI 4/4 PASS, API/domain 12/12 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -251,7 +251,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi UI:** `apps/web/src/features/credentials/hooks.ts` dan `apps/web/src/features/credentials/credential-panels.tsx` meng-unwarp `data.apiKey`, hanya menampilkan secret dari response create, dan list metadata tidak merender secret/hash.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx"'` → **4/4 PASS**. `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/api/test/api-keys-route.test.ts packages/infrastructure/test/api-key.test.ts"'` → **API route 6/6 PASS; domain/infrastructure 10/10 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx"'` → **4/4 PASS**. `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/api/test/api-keys-route.test.ts packages/infrastructure/test/api-key.test.ts"'` → **12/12 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -286,7 +286,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi langsung:** `apps/web/src/features/cards/detail-hooks.ts` memblok `listId`, `version`, dan field domain lain di sisi klien, lalu selalu menambahkan `expectedVersion` untuk PATCH detail.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/cards-patch.test.ts packages/infrastructure/test/ac028-ac029.test.ts"'` → **UI 13/13 PASS; API route 5/5 PASS; domain/infrastructure 1/1 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/cards-patch.test.ts packages/infrastructure/test/ac028-ac029.test.ts"'` → **UI 13/13 PASS, API/domain 10/10 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -297,7 +297,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` hanya menampilkan tombol Edit untuk actor pemilik komentar; tidak ada jalur delete. `apps/web/src/features/comments/thread.ts` merangkai rantai `comment.added`/`comment.edited` tanpa menimpa activity historis.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/comments-create.test.ts apps/api/test/comments-edit.test.ts packages/infrastructure/test/ac012-comment-persist.test.ts"'` → **UI 13/13 PASS; API route 12/12 PASS; domain/infrastructure 1/1 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/comments-create.test.ts apps/api/test/comments-edit.test.ts packages/infrastructure/test/ac012-comment-persist.test.ts"'` → **UI 13/13 PASS, API/domain 13/13 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -308,7 +308,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` merender timeline dari `useCardActivities()` sebagai daftar baca-saja; tidak ada tombol aksi di section timeline.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/activities-list.test.ts"'` → **UI 13/13 PASS; API route 6/6 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/activities-list.test.ts"'` → **UI 13/13 PASS, API 7/7 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -552,6 +552,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ### CL-55 — 2026-08-25 · 7.14.1 → 🔎 80%
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/responsive.test.tsx` **3/3 PASS** — sidebar `hidden md:flex` (mobile tersembunyi per §7), width `md:w-56` normal / `md:w-14` saat collapsed via ui-store. Verifikasi class-level (happy-dom tidak menghitung layout). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **132 file / 758 PASS**, exit 0. Commit: `14eca5e`.
+
+<a id="cl-57"></a>
+### CL-57 — 2026-08-25 · 7.2.2 + 7.2.3 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `14eca5e`, kedua row dibaca ulang dari disk `⬜️ 0%` (dependency 7.1.1/7.2.1 ✅); Reference 05-FRONTEND §2.2 (Inter: H1 32/40 Bold · H2 24/32 SemiBold · H3 20/28 SemiBold · Body 14/20 · Small 12/16) dan §2.3 (radius sm→controls/md→cards/lg→dialogs; density tinggi; light+dark) dibaca dari disk.
+**Catatan:** Inter dimuat via @fontsource-variable/inter exact-pin (self-host, tanpa CDN pihak ketiga); skala + radius dipetakan ke `@theme` tokens; light+dark sudah ada variabelnya sejak 7.2.1 — 7.2.3 melengkapi radius per-peran & density.
 
 <a id="cl-56"></a>
 ### CL-56 — 2026-08-25 · 7.14.2 → 🔎 80%
