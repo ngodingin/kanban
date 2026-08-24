@@ -81,7 +81,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
-| 7.4.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
+| 7.4.2 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
 **DoD:** Home terasa work-management tool, bukan admin panel.
@@ -557,6 +557,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ### CL-58 — 2026-08-25 · 7.2.2 → 🔎 80%
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/design-tokens-2.test.ts` **6/6 PASS** — positif: `@import "@fontsource-variable/inter"` self-host exact-pin `5.3.0` di package.json; `--font-sans: "Inter Variable"`; skala §2.2 lengkap 12 token (H1 32/40 w700, H2 24/32 w600, H3 20/28 w600, Body 14/20, Small 12/16); body memakai `font-sans`. Koreksi test: asersi placeholder diganti daftar substring eksplisit. Suite penuh **133 file / 764 PASS**, exit 0. Commit: `24f9859`.
+
+<a id="cl-60"></a>
+### CL-60 — 2026-08-25 · 7.4.2 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `24f9859`, row 7.4.2 dibaca ulang dari disk `⬜️ 0%` (dependency 7.4.1 🔎 sisi Dev); Reference 05-FRONTEND §5 + C.9; endpoint activities per-Project sudah terpakai goal 7.8.1 (`useActivities`).
+**Catatan:** Recent Activity diambil PER KONTEKS Project (bukan cross-project search); "Recent Projects" = urutan kunjungan sisi klien (localStorage key UI-only, interaksi murni — bukan data domain), fallback ke urutan API.
 
 <a id="cl-59"></a>
 ### CL-59 — 2026-08-25 · 7.2.3 → 🔎 80%
