@@ -68,7 +68,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
-| 7.3.2 | 🔄 | [QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26) | 35 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.2 | 🔎 | [QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 80 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
@@ -288,6 +288,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tidak ada bug produksi ditemukan.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-27"></a>
+### CL-27 — 2026-08-25 · 7.3.2 → 🔎 80% (remediasi QA-CL-07)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/header.test.tsx` **4/4 PASS** dengan stub `fetch` global — request melewati `apiRequest` + envelope kontrak nyata (`{data:{project:{...name}}}`, `{data:{milestone:{...title}}}`, `{data:{board:{...title}}}`, `{data:{projects:[...]}}`): breadcrumb terisi nama nyata `Alpha›Beta›Gamma` (bug QA-CL-07 tereksekusi dan kini lulus), context switch navigasi `/projects/p2` setelah options termuat dari endpoint, brand-only tanpa separator di `/`, negatif non-MVP nol. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **123 file / 709 PASS**, exit 0. Commit: `ad5f21d`.
+**Catatan:** akar bug = test lama mem-mock hook dengan shape fiktif; pola test kini fetch-level agar drift envelope/field tertangkap. Hooks memakai `select` untuk meng-unwrap envelope sehingga konsumen menerima entity langsung.
 
 <a id="cl-26"></a>
 ### CL-26 — 2026-08-25 · 7.3.2 + 7.5.3 → 🔄 (remediasi QA-CL-07 / QA-CL-10)
