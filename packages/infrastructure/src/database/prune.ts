@@ -19,13 +19,45 @@ interface EntityRow {
 async function selectRows(
   tx: Tx,
   sql: string,
+  params: string[] = [],
 ): Promise<EntityRow[]> {
-  const result = await tx.execute(sql);
+  const result = await tx.execute(sql, params);
   return result.rows.map((row) => ({
     id: String(row.id),
     parentId: row.parent_id === null || row.parent_id === undefined ? null : String(row.parent_id),
     deletedAt: row.deleted_at === null || row.deleted_at === undefined ? null : String(row.deleted_at),
   }));
+}
+
+/**
+ * (5.2.1 efisiensi, TASK-0.20.2) — SELECT kandidat dibatasi `WHERE deleted_at
+ * IS NOT NULL` (root, tanpa parent) ATAU `deleted_at IS NOT NULL OR
+ * <parentColumn> IN (parentIds)` (level dengan ancestor) — BUKAN cuma
+ * `deleted_at IS NOT NULL` polos di semua level. Descendant yang SENDIRI
+ * masih ACTIVE (`deleted_at` NULL) WAJIB tetap ikut termuat kalau parent-nya
+ * sudah diputuskan prune (docstring `pruneDescendantSubtrees` — "SELURUH
+ * descendant ikut terhapus fisik TERLEPAS deleted_at-nya sendiri"), karena
+ * archive/delete ancestor TIDAK mengubah state lokal descendant (02-SPEC
+ * C.5 dst). Filter naif `deleted_at IS NOT NULL` di SEMUA level akan
+ * membuat descendant ACTIVE di bawah ancestor yang di-prune TIDAK PERNAH
+ * termuat sama sekali — orphan row permanen, bukan cuma soal efisiensi.
+ */
+async function selectCandidateRows(
+  tx: Tx,
+  table: string,
+  parentColumn: string | null,
+  parentIds: Set<string>,
+): Promise<EntityRow[]> {
+  const parentSelect = parentColumn ?? "NULL";
+  if (parentColumn === null || parentIds.size === 0) {
+    return selectRows(tx, `SELECT id, ${parentSelect} AS parent_id, deleted_at FROM ${table} WHERE deleted_at IS NOT NULL`);
+  }
+  const placeholders = [...parentIds].map(() => "?").join(", ");
+  return selectRows(
+    tx,
+    `SELECT id, ${parentSelect} AS parent_id, deleted_at FROM ${table} WHERE deleted_at IS NOT NULL OR ${parentColumn} IN (${placeholders})`,
+    [...parentIds],
+  );
 }
 
 /**
@@ -46,34 +78,43 @@ export async function pruneDescendantSubtrees(
   now: Date = new Date(),
 ): Promise<PruneResult> {
   return runInWriteTransaction(projectClient, async (tx) => {
-    // (1) Kumpulkan kandidat + tentukan set akhir per level (parent-chain expansion).
-    const milestoneRows = await selectRows(tx, "SELECT id, NULL AS parent_id, deleted_at FROM milestones");
-    const boardRows = await selectRows(tx, "SELECT id, milestone_id AS parent_id, deleted_at FROM boards");
-    const listRows = await selectRows(tx, "SELECT id, board_id AS parent_id, deleted_at FROM lists");
-    const cardRows = await selectRows(tx, "SELECT id, list_id AS parent_id, deleted_at FROM cards");
-    const msLabelRows = await selectRows(tx, "SELECT id, milestone_id AS parent_id, deleted_at FROM milestone_labels");
-    const bdLabelRows = await selectRows(tx, "SELECT id, board_id AS parent_id, deleted_at FROM board_labels");
+    // (1) Kumpulkan kandidat + tentukan set akhir per level (parent-chain
+    // expansion). Query tiap level DIBATASI ke deleted_at IS NOT NULL ATAU
+    // parent sudah diputuskan prune di level sebelumnya (selectCandidateRows)
+    // — bukan full-table-scan, tapi tetap memuat SELURUH descendant relevan
+    // (termasuk yang sendiri masih ACTIVE) demi korektnes cascade.
+    const milestoneRows = await selectCandidateRows(tx, "milestones", null, new Set());
 
     const eligibleOwn = (rows: EntityRow[]): Set<string> =>
       new Set(rows.filter((r) => isPruneEligible(r.deletedAt, now)).map((r) => r.id));
 
     const msIds = eligibleOwn(milestoneRows);
+
+    const boardRows = await selectCandidateRows(tx, "boards", "milestone_id", msIds);
     const bdIds = new Set([
       ...eligibleOwn(boardRows),
       ...boardRows.filter((r) => r.parentId !== null && msIds.has(r.parentId)).map((r) => r.id),
     ]);
+
+    const listRows = await selectCandidateRows(tx, "lists", "board_id", bdIds);
     const lsIds = new Set([
       ...eligibleOwn(listRows),
       ...listRows.filter((r) => r.parentId !== null && bdIds.has(r.parentId)).map((r) => r.id),
     ]);
+
+    const cardRows = await selectCandidateRows(tx, "cards", "list_id", lsIds);
     const cdIds = new Set([
       ...eligibleOwn(cardRows),
       ...cardRows.filter((r) => r.parentId !== null && lsIds.has(r.parentId)).map((r) => r.id),
     ]);
+
+    const msLabelRows = await selectCandidateRows(tx, "milestone_labels", "milestone_id", msIds);
     const mlIds = new Set([
       ...eligibleOwn(msLabelRows),
       ...msLabelRows.filter((r) => r.parentId !== null && msIds.has(r.parentId)).map((r) => r.id),
     ]);
+
+    const bdLabelRows = await selectCandidateRows(tx, "board_labels", "board_id", bdIds);
     const blIds = new Set([
       ...eligibleOwn(bdLabelRows),
       ...bdLabelRows.filter((r) => r.parentId !== null && bdIds.has(r.parentId)).map((r) => r.id),
