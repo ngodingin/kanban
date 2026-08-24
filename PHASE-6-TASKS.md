@@ -151,6 +151,17 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="qa-cl-02"></a>
+### QA-CL-02 — 2026-08-24 · goal 6.5.2 — bukti teknis drill diverifikasi independen, TETAP `🔎` menunggu dependency formal 6.5.1
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Verifikasi independen bukti drill (bukan mempercayai output di CL-03):** `GET https://api.turso.tech/v1/organizations/{org}/databases` (kredensial `.env`, dijalankan langsung sesi ini) → **HANYA 2 database eksis** (`kanban-global`, `kanban-global-stag`) — mengonfirmasi cleanup ketiga database drill (`kanban-global-stag-drill-*`, `kanban-drill-project-*`, `kanban-drill-project-restored-*`) genuinely tuntas, tidak ada resource cloud sisa (relevan biaya/keamanan, bukan sekadar kerapian).
+
+**Pertanyaan governance dijawab manusia eksplisit** (dependency formal `6.5.1` masih `⏸️`, murni menunggu amandemen SOT F.1 oleh lane AI-Planning & Review — BUKAN gap teknis pada drill itu sendiri): **keputusan — TAHAN 6.5.2 sampai 6.5.1 ✅ terlebih dahulu**, dependency ditegakkan ketat apa adanya, tidak di-waive.
+
+**Status:** `6.5.2` TETAP `🔎/80` (tidak dinaikkan ke `✅`) — bukti teknis (RTO < 10 detik, restore Global DB + Project DB throwaway keduanya cocok persis, cleanup bersih) SUDAH diverifikasi independen dan valid, siap ditutup segera begitu `6.5.1` mencapai `✅` (amandemen SOT F.1 selesai lewat lane yang benar) tanpa perlu verifikasi ulang substansi teknis.
+
 <a id="qa-cl-01"></a>
 ### QA-CL-01 — 2026-08-24 · verifikasi independen 6.1.1, 6.1.2, 6.4.1 (CL-01) — ✅ 100% ketiganya
 
