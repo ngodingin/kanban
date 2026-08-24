@@ -20,11 +20,6 @@ const INVITEE = "u-invitee";
 let dir: string;
 let gc: Client;
 
-const exists = async (table: string, col: string, id: string): Promise<boolean> => {
-  const r = await gc.execute({ sql: `SELECT COUNT(*) AS n FROM ${table} WHERE ${col} = ?`, args: [id] });
-  return Number(r.rows[0]!.n) > 0;
-};
-
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "kanban-global-guards-"));
   gc = createClient({ url: `file:${join(dir, "global.db")}` });
