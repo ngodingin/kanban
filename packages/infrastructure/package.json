@@ -29,6 +29,7 @@
     "test:smoke-pipeline": "node --env-file-if-exists=../../.env scripts/smoke-pipeline.ts",
     "test:smoke-transaction": "node scripts/smoke-transaction.ts",
     "test:smoke-migrate-projects": "node --env-file-if-exists=../../.env scripts/smoke-migrate-projects.ts",
+    "test:smoke-pitr-restore-drill": "node --env-file-if-exists=../../.env scripts/smoke-pitr-restore-drill.ts",
     "migrate:global": "node --env-file-if-exists=../../.env scripts/migrate-global.ts",
     "migrate:projects": "node --env-file-if-exists=../../.env scripts/migrate-projects.ts",
     "db:generate": "drizzle-kit generate",
