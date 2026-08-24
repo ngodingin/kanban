@@ -158,7 +158,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.10.1 | 🔎 | [CL-37](#cl-37)<br>[CL-38](#cl-38) | 80 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.10.2 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39) | 0 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
+| 7.10.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 80 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
 **DoD:** Members & Invitation patuh invitation flow.
@@ -345,6 +345,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
 **Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-40"></a>
+### CL-40 — 2026-08-25 · 7.10.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/invites-panel.test.tsx` **4/4 PASS** (fetch-stub) — positif: submit POST `/api/v1/projects/p1/invitations` body `{email, assignments:[{groupId, scopeType:"project", scopeId:"p1"}]}` + Idempotency-Key, sukses mengosongkan email; scope milestone menyertakan `scopeId:"m77"`; revoke memanggil `/invitations/inv1/revoke` (nested, 2.5.1) dan baris hilang setelah invalidasi. Negatif: server INVALID_STATE (hierarchy-scope belum didukung) dirender alert jujur dengan kode+pesan. Koreksi selama pengerjaan: import hooks dari modul yang benar + asersi perilaku menggantikan hitungan call kaku. Suite penuh **128 file / 734 PASS**, exit 0. Commit: `75e0661`.
+**Catatan:** wrapper `data.invitation`/`data.invitations` dipakai apa adanya sesuai C.13 amandemen 4.0.0; accept tetap alur invitee di luar layar admin ini.
 
 <a id="cl-39"></a>
 ### CL-39 — 2026-08-25 · 7.10.2 → 🔄
