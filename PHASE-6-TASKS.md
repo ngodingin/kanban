@@ -117,7 +117,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 6.6.1 | 🔎 | [CL-12](#cl-12)<br>[CL-11](#cl-11) | 80 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
-| 6.6.2 | ⬜️ | — | 0 | P2 | Metrik minimal dari structured log 6.6.1 (BUKAN infra metrik baru — query/agregasi atas log yang sudah terstruktur, konsisten Prinsip #5): request rate, error rate per kode kanonik (`02-SPEC C.2`), latensi p50/p95, `VERSION_CONFLICT` rate (indikator kesehatan concurrency), kegagalan provisioning. Dokumentasikan cara query-nya (mis. Vercel log query/dashboard), bukan membangun dashboard kustom. | [03-ENG F.4](docs/03-ENGINEERING.md) | 6.6.1 |
+| 6.6.2 | 🔎 | [CL-15](#cl-15)<br>[CL-14](#cl-14) | 80 | P2 | Metrik minimal dari structured log 6.6.1 (BUKAN infra metrik baru — query/agregasi atas log yang sudah terstruktur, konsisten Prinsip #5): request rate, error rate per kode kanonik (`02-SPEC C.2`), latensi p50/p95, `VERSION_CONFLICT` rate (indikator kesehatan concurrency), kegagalan provisioning. Dokumentasikan cara query-nya (mis. Vercel log query/dashboard), bukan membangun dashboard kustom. | [03-ENG F.4](docs/03-ENGINEERING.md) | 6.6.1 |
 | 6.6.3 | ⬜️ | — | 0 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
 
 **Test:** 6.6.1 — request ke endpoint mana pun menghasilkan satu log JSON dengan seluruh field wajib terisi (assert field ada, bukan cuma "tidak crash"). 6.6.3 — payload webhook `email.bounced` valid + signature benar → 200 + log tercatat; signature salah → 401, tidak ada log event palsu; payload `email.opened`/`email.clicked` (seharusnya tidak pernah dikirim karena tracking nonaktif) → diterima tanpa error tapi tidak diproses khusus (defensive, bukan diasumsikan tidak akan pernah terjadi).
@@ -231,7 +231,17 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 **Bukti:** `pnpm exec vitest run` → **103 file / 630 test lulus** (projects-patch.test.ts parity penuh); typecheck+lint bersih. Implementasi: `projectPatchSchema` {expectedVersion int≥1, name trim-nonempty max-255} di core-schemas.ts; handler PATCH Project memakai parseBody menggantikan collector; pesan validasi name persis readProjectNameField lama.
 **Catatan:** Create/archive/restore/delete Project tanpa body JSON — tidak memerlukan skema; expectedVersion lifecycle tetap readExpectedVersionField.
 
-<a id="cl-12"></a><a id="cl-12"></a>
+<a id="cl-14"></a>
+### CL-14 — 2026-08-24 · goal 6.6.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `6.6.1` 🔎80. Deliverable = dokumentasi query (Prinsip #5: tanpa infra baru); lokasi di luar SOT (`docs/` terkunci untuk Dev): `operations/log-metrics.md`.
+<a id="cl-15"></a>
+### CL-15 — 2026-08-24 · goal 6.6.2 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — dokumentasi query metrik log
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `operations/log-metrics.md` — query request-rate, error-rate per kode kanonik, p50/p95, VERSION_CONFLICT rate, dan kegagalan provisioning; contoh jq + alternatif Node yang DIJALANKAN terhadap sampel log nyata (hasil terverifikasi: errorRatePerCode {VERSION_CONFLICT:1, INTERNAL_ERROR:1}, p50=8/p95=12). Suite **103/630** tetap hijau; lint bersih.
+**Catatan:** Lokasi di luar `docs/` (SOT terkunci untuk Dev); tanpa infrastruktur metrik baru (Prinsip #5 F.4).
+
+<a id="cl-12"></a><a id="cl-12"></a><a id="cl-12"></a><a id="cl-12"></a>
 ### CL-12 — 2026-08-24 · goal 6.6.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — structured request logging F.4
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `pnpm exec vitest run` → **103 file / 630 test lulus**; typecheck+lint bersih. Implementasi: (1) `observability/request-context.ts` di infrastructure — AsyncLocalStorage store {requestId,userId?,projectId?} + setter no-op-safe; pipeline mengisi userId/projectId otomatis saat context aktif; (2) middleware `requestLogger()` di apps/api — requestId ULID per request + header X-Request-Id, action=method+path, outcome=status(+error code), duration_ms; emit SATU baris JSON via emitRequestLog (titik tunggu transport); terpasang paling awal mencakup seluruh route. Test baru: field lengkap pada sukses & error path (anonim tanpa user_id).
