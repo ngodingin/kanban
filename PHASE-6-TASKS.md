@@ -432,6 +432,12 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 **Verdict:** `✅ 100%`.
 
+<a id="cl-48"></a>
+### CL-48 — 2026-08-25 · goal 6.9.2 remediasi dimulai (⚠️ → 🔄 · 50% dipertahankan)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** Freshness disk: row 6.9.2 ⚠️/50, dep `—`; QA-CL-17: 3 langkah wajib hilang (scoped invite→accept, move Card, comment) + judul/komentar test terakhir menyesatkan (menyebut bug padahal GET-200 untuk Card DELETED by-design sesuai 02-SPEC:79/:448). Kontrak diverifikasi dari disk: route invitations (`invitationCreateSchema`, scope default project, BR-054A cocokkan email), comments (`authorize card.comment`), move (`destinationListId`+`expectedVersion`), activities per-entity (membership aktif cukup).
+**Catatan:** Rencana: rantai diperluas jadi 10 test berurutan — invite scoped (Group custom `card.comment`+`card.read` via endpoint permission-groups asli; catatan: `permissionId` pada payload = id row tabel `permissions`, bukan key) → accept u2 (email seed ≡ email identity resolver agar lolos BR-054A) → create M/B/L(+list tujuan)/Card → comment oleh u2 + baca via `/cards/:id/activities` → move oleh u1 → archive → restore → delete terminal + assert GET-200 by-design (judul & komentar dikoreksi sesuai rekomendasi QA-CL-17 poin 4) + comment historis masih terbaca.
+
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)
 
