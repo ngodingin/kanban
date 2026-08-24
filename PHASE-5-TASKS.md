@@ -110,7 +110,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 5.5.1 | 🔄 | [CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07) | 40 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
 | 5.5.2 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-09](#qa-cl-09) | 100 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.3 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.3 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
 
@@ -120,6 +120,24 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-10"></a>
+### QA-CL-10 — 2026-08-24 · goal 5.5.3 — reverifikasi Phase 3 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**5 area scope goal — seluruhnya dikonfirmasi BERSIH dengan bukti fresh:**
+1. **camelCase** — `grep body\.label_id` di `labels.ts`/`card-labels.ts`/`comments.ts` → nol hasil; `commentActivityId` (bukan `comment_activity_id`) dikonfirmasi di response payload.
+2. **Immutable Activity** — `grep -rn "UPDATE activities\|DELETE FROM activities"` seluruh `packages/infrastructure/src`/`apps/api/src` → HANYA satu hasil (`prune.ts`, retention 30 hari, satu-satunya physical-delete yang diizinkan per Prinsip Fase 5 #3). Nol UPDATE dimana pun. Route surface (`activities.ts`) dikonfirmasi HANYA mendaftarkan `router.get` — tidak ada PATCH/DELETE endpoint sama sekali, immutability ditegakkan struktural di dua lapis (API + storage).
+3. **Lifecycle ancestor** — `milestone-label-repository.ts` dibaca: `isEffectivelyOperational(chain)` dicek sebelum mutation, pola identik entity lain yang sudah diaudit berkali-kali.
+4. **Atomicity** — seluruh command Label/Comment memakai `runInWriteTransaction`, mutation+Activity dalam satu commit.
+5. **Authorization final Phase 4** — `authorize(ctx, "milestone_label.create"/"board_label.update"/"card.comment"/dst, ...)` dikonfirmasi genuinely permission-key based (bukan role hard-coded), konsisten model final Phase 4.
+
+**Idempotency wiring** (cross-check dengan 0.21.2/0.21.3) — `withIdempotentHandling` dikonfirmasi terpasang pada SELURUH `router.post`/`router.patch` di `labels.ts` (7/6 — loop lifecycle menghasilkan >1 titik pemanggilan per template), `comments.ts` (3/2), `card-labels.ts` (3/2).
+
+**Test dijalankan ulang independen** (11 file, sebelum menyentuh apa pun): `milestone-labels-create-get`, `milestone-labels-lifecycle`, `milestone-labels-patch`, `board-labels`, `card-labels`, `comments-create`, `comments-edit`, `cards-get-labels` (apps/api) + `milestone-label-commands`, `board-label-commands`, `card-label-association` (infrastructure) → **65/65 PASS**.
+
+**Kesimpulan:** 5.5.3 ditutup `✅ 100%`. Reverifikasi Phase 3 terhadap SOT 4.1.0 tidak menemukan gap.
 
 <a id="qa-cl-09"></a>
 ### QA-CL-09 — 2026-08-24 · goal 5.5.2 — reverifikasi Phase 2 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap
