@@ -13,6 +13,7 @@ import {
   readExpectedVersionField,
   readJsonObject,
   toApiErrorResponse,
+  ValidationCollector,
   withIdempotentHandling,
   type IdempotencyStoreLike,
   type OpenProjectContext,
@@ -81,12 +82,16 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board.create", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
+      const collector = new ValidationCollector();
+      const title = collector.collect("title", () => readTitleField(body));
+      const description = collector.collect("description", () => readOptionalDescription(body));
+      collector.throwIfAny();
       const repository = new DrizzleBoardRepository(ctx.database);
       const created = await repository.createBoard(projectId, {
         id: deps.newBoardId(),
         milestoneId: c.req.param("milestone_id"),
-        title: readTitleField(body),
-        description: readOptionalDescription(body),
+        title: title!,
+        description: description!,
         actorUserId: ctx.userId,
       });
       return { board: boardPayload(created) };
@@ -129,7 +134,11 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board.update", projectId, { type: "board", id: c.req.param("board_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
+      const description = body.description === undefined ? undefined : collector.collect("description", () => readOptionalDescription(body));
+      collector.throwIfAny();
       const allowedFields = ["title", "description"] as const;
       for (const key of Object.keys(body)) {
         if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
@@ -143,10 +152,10 @@ export function createBoardsRouter(getDeps: () => BoardRoutesDeps): Hono {
       const repository = new DrizzleBoardRepository(ctx.database);
       const updated = await repository.updateBoard(projectId, {
         boardId: c.req.param("board_id"),
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
-        ...(body.description === undefined ? {} : { description: readOptionalDescription(body) }),
+        ...(title === undefined ? {} : { title }),
+        ...(description === undefined ? {} : { description }),
       });
       return { board: boardPayload(updated) };
     });

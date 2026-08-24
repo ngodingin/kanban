@@ -12,6 +12,7 @@ import {
   readExpectedVersionField,
   readJsonObject,
   toApiErrorResponse,
+  ValidationCollector,
   withIdempotentHandling,
   type IdempotencyStoreLike,
   type OpenProjectContext,
@@ -95,15 +96,21 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone.create", projectId);
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const title = readTitleField(body);
+      const collector = new ValidationCollector();
+      const title = collector.collect("title", () => readTitleField(body));
+      const description = collector.collect("description", () => readOptionalStringField(body, "description"));
+      const progress = collector.collect("progress", () => readProgressField(body));
+      const startDate = collector.collect("startDate", () => readOptionalStringField(body, "startDate"));
+      const dueDate = collector.collect("dueDate", () => readOptionalStringField(body, "dueDate"));
+      collector.throwIfAny();
       const repository = new DrizzleMilestoneRepository(ctx.database);
       const created = await repository.createMilestone(projectId, {
         id: deps.newMilestoneId(),
-        title,
-        description: readOptionalStringField(body, "description") ?? null,
-        progress: readProgressField(body) ?? 0,
-        startDate: readOptionalStringField(body, "startDate") ?? null,
-        dueDate: readOptionalStringField(body, "dueDate") ?? null,
+        title: title!,
+        description: description ?? null,
+        progress: progress ?? 0,
+        startDate: startDate ?? null,
+        dueDate: dueDate ?? null,
         actorUserId: ctx.userId,
       });
       return { milestone: milestonePayload(created) };
@@ -145,7 +152,14 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
+      const description = collector.collect("description", () => readOptionalStringField(body, "description"));
+      const progress = collector.collect("progress", () => readProgressField(body));
+      const startDate = collector.collect("startDate", () => readOptionalStringField(body, "startDate"));
+      const dueDate = collector.collect("dueDate", () => readOptionalStringField(body, "dueDate"));
+      collector.throwIfAny();
       const allowedFields = ["title", "description", "progress", "startDate", "dueDate"] as const;
       for (const key of Object.keys(body)) {
         if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
@@ -159,13 +173,13 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
       const repository = new DrizzleMilestoneRepository(ctx.database);
       const updated = await repository.updateMilestone(projectId, {
         milestoneId: c.req.param("milestone_id"),
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
-        description: readOptionalStringField(body, "description"),
-        progress: readProgressField(body),
-        startDate: readOptionalStringField(body, "startDate"),
-        dueDate: readOptionalStringField(body, "dueDate"),
+        ...(title === undefined ? {} : { title }),
+        description,
+        progress,
+        startDate,
+        dueDate,
       });
       return { milestone: milestonePayload(updated) };
     });

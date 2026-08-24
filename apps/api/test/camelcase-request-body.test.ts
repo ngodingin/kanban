@@ -145,7 +145,11 @@ describe("[TASK-0.17] field request body lama (snake_case) TIDAK LAGI diterima (
     expect(res.status).toBe(400);
     const json = await res.json();
     expect(json.error?.code).toBe("VALIDATION_ERROR");
-    expect(json.error?.message).toContain("expectedVersion");
+    // TASK-0.17.4 — collect-all: message top-level generik, detail per field
+    // (termasuk nama field yang dianggap tidak ada) ada di `details`.
+    expect(json.error?.details).toEqual(
+      expect.arrayContaining([expect.objectContaining({ field: "expectedVersion" })]),
+    );
   });
 
   it("[Move Card] field lama `destination_list_id` -> VALIDATION_ERROR field tak dikenal", async () => {

@@ -13,6 +13,7 @@ import {
   readExpectedVersionField,
   readJsonObject,
   toApiErrorResponse,
+  ValidationCollector,
   withIdempotentHandling,
   type IdempotencyStoreLike,
   type OpenProjectContext,
@@ -118,7 +119,10 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "list.update", projectId, { type: "list", id: c.req.param("list_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
+      collector.throwIfAny();
       for (const key of Object.keys(body)) {
         if (key !== "title" && key !== "expectedVersion") {
           throw new PipelineError(
@@ -131,9 +135,9 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
       const repository = new DrizzleListRepository(ctx.database);
       const updated = await repository.updateList(projectId, {
         listId: c.req.param("list_id"),
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
+        ...(title === undefined ? {} : { title }),
       });
       return { list: listPayload(updated) };
     });

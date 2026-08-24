@@ -122,7 +122,7 @@ function readStatusFilter(raw: string | undefined): ProjectStatus[] | undefined 
 
 export function toApiErrorResponse(error: unknown): { status: number; body: ErrorEnvelope } {
   if (error instanceof PipelineError) {
-    return toErrorResponse({ code: error.code, message: error.message, httpStatus: error.httpStatus });
+    return toErrorResponse({ code: error.code, message: error.message, httpStatus: error.httpStatus, details: error.details });
   }
   if (error instanceof Error && typeof (error as { code?: unknown }).code === "string") {
     return toErrorResponse({ code: (error as { code?: unknown }).code as string, message: error.message });
@@ -140,6 +140,38 @@ export function readJsonObject(body: unknown): Record<string, unknown> {
     throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
   }
   return body as Record<string, unknown>;
+}
+
+/**
+ * C.2 (amandemen 3.0.0) — VALIDATION_ERROR MUST mengumpulkan SELURUH field
+ * yang gagal validasi dalam satu response (bukan fail-fast berhenti di field
+ * pertama). Pola reusable: `collect()` menjalankan satu field reader yang
+ * SUDAH ADA (throw PipelineError VALIDATION_ERROR seperti biasa) — jika
+ * gagal, dicatat sebagai satu entry `{field, reason}` alih-alih melempar
+ * langsung, lalu lanjut ke field berikutnya. Error non-VALIDATION_ERROR
+ * (mis. body bukan objek JSON — transport-level, bukan per-field) tetap
+ * dilempar langsung karena bukan sesuatu yang applicable untuk collect-all.
+ */
+export class ValidationCollector {
+  private readonly details: Array<{ field: string; reason: string }> = [];
+
+  collect<T>(field: string, fn: () => T): T | undefined {
+    try {
+      return fn();
+    } catch (error) {
+      if (error instanceof PipelineError && error.code === "VALIDATION_ERROR") {
+        this.details.push({ field, reason: error.message });
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  throwIfAny(message = "Validasi payload gagal, lihat details."): void {
+    if (this.details.length > 0) {
+      throw new PipelineError("VALIDATION_ERROR", message, 400, this.details);
+    }
+  }
 }
 
 function readProjectNameField(body: unknown): string {
@@ -367,15 +399,17 @@ export function createProjectsRouter(getDeps: () => ProjectRoutesDeps): Hono {
           403,
         );
       }
-      const body = await c.req.json().catch(() => null);
-      const name = readProjectNameField(body);
-      const expectedVersion = readExpectedVersionField(body);
+      const body = readJsonObject(await c.req.json().catch(() => null));
+      const collector = new ValidationCollector();
+      const name = collector.collect("name", () => readProjectNameField(body));
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      collector.throwIfAny();
       const repository = new DrizzleProjectRepository(ctx.database);
       const state = await repository.updateProjectName({
         projectId,
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        name,
+        name: name!,
       });
       return { project: projectStatePayload(state) };
     });

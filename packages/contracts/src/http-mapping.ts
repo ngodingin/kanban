@@ -24,12 +24,13 @@ export interface DomainErrorLike {
   code: string;
   message: string;
   httpStatus?: number;
+  details?: Array<{ field: string; reason: string }>;
 }
 
 export function toErrorResponse(error: DomainErrorLike): { status: number; body: ErrorEnvelope } {
   if (isErrorCode(error.code)) {
     const status = error.httpStatus ?? CODE_TO_HTTP[error.code];
-    return { status, body: apiError(error.code, error.message) };
+    return { status, body: apiError(error.code, error.message, error.details) };
   }
   // C.2 (amandemen 2.12.0) — INVALID_STATE terkunci HTTP 409 (konflik state
   // domain), MUST NOT dipasangkan 500. Kegagalan tak terduga/error tak

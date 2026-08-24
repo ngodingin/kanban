@@ -16,6 +16,7 @@ import {
   readExpectedVersionField,
   readJsonObject,
   toApiErrorResponse,
+  ValidationCollector,
   withIdempotentHandling,
   type IdempotencyStoreLike,
   type OpenProjectContext,
@@ -106,17 +107,24 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.create", projectId, { type: "list", id: c.req.param("list_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
+      const collector = new ValidationCollector();
+      const title = collector.collect("title", () => readTitleField(body));
+      const subtitle = collector.collect("subtitle", () => readOptionalString(body, "subtitle"));
+      const description = collector.collect("description", () => readOptionalString(body, "description"));
+      const dueDate = collector.collect("dueDate", () => readOptionalString(body, "dueDate"));
+      const assignee = collector.collect("assignee", () => readAssigneeField(body));
+      collector.throwIfAny();
       const repository = new DrizzleCardRepository(ctx.database, {
         assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
       });
       const created = await repository.createCard(projectId, {
         id: deps.newCardId(),
         listId: c.req.param("list_id"),
-        title: readTitleField(body),
-        subtitle: readOptionalString(body, "subtitle") ?? null,
-        description: readOptionalString(body, "description") ?? null,
-        dueDate: readOptionalString(body, "dueDate") ?? null,
-        assigneeUserId: readAssigneeField(body),
+        title: title!,
+        subtitle: subtitle ?? null,
+        description: description ?? null,
+        dueDate: dueDate ?? null,
+        assigneeUserId: assignee ?? null,
         actorUserId: ctx.userId,
       });
       return { card: cardPayload(created) };
@@ -182,7 +190,14 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
       const body = readJsonObject(await c.req.json().catch(() => null));
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      const title = body.title === undefined ? undefined : collector.collect("title", () => readTitleField(body));
+      const subtitle = collector.collect("subtitle", () => readOptionalString(body, "subtitle"));
+      const description = collector.collect("description", () => readOptionalString(body, "description"));
+      const dueDate = collector.collect("dueDate", () => readOptionalString(body, "dueDate"));
+      const assignee = body.assignee === undefined ? undefined : collector.collect("assignee", () => readAssigneeField(body));
+      collector.throwIfAny();
       const allowedFields = ["title", "subtitle", "description", "dueDate", "assignee"] as const;
       for (const key of Object.keys(body)) {
         if (!(allowedFields as readonly string[]).includes(key) && key !== "expectedVersion") {
@@ -198,13 +213,13 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
       });
       const updated = await repository.updateCard(projectId, {
         cardId: c.req.param("card_id"),
-        expectedVersion,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
-        ...(body.title === undefined ? {} : { title: readTitleField(body) }),
-        subtitle: readOptionalString(body, "subtitle"),
-        description: readOptionalString(body, "description"),
-        dueDate: readOptionalString(body, "dueDate"),
-        assigneeUserId: body.assignee === undefined ? undefined : readAssigneeField(body),
+        ...(title === undefined ? {} : { title }),
+        subtitle,
+        description,
+        dueDate,
+        assigneeUserId: assignee,
       });
       return { card: cardPayload(updated) };
     });
@@ -227,19 +242,24 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
           );
         }
       }
-      const rawDestination = body.destinationListId;
-      if (typeof rawDestination !== "string" || rawDestination.trim().length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field destinationListId wajib string non-kosong.", 400);
-      }
-      const expectedVersion = readExpectedVersionField(body);
+      const collector = new ValidationCollector();
+      const destinationListId = collector.collect("destinationListId", () => {
+        const raw = body.destinationListId;
+        if (typeof raw !== "string" || raw.trim().length === 0) {
+          throw new PipelineError("VALIDATION_ERROR", "Field destinationListId wajib string non-kosong.", 400);
+        }
+        return raw;
+      });
+      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
+      collector.throwIfAny();
       const repository = new DrizzleCardRepository(ctx.database, {
         assertAssigneeActiveMember: deps.assertAssigneeActiveMember,
       });
       // Seluruh validasi domain (urutan C.8, INV-MOVE, BR-018) di moveCard.
       const record = await repository.moveCard(projectId, {
         cardId: c.req.param("card_id"),
-        destinationListId: rawDestination,
-        expectedVersion,
+        destinationListId: destinationListId!,
+        expectedVersion: expectedVersion!,
         actorUserId: ctx.userId,
       });
       return { card: cardPayload(record) };
