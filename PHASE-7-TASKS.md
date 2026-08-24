@@ -93,7 +93,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.5.1 | 🔎 | [CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
-| 7.5.2 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17) | 0 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
+| 7.5.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
 | 7.5.3 | ⬜️ | — | 0 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
 | 7.5.4 | ⬜️ | — | 0 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-18"></a>
+### CL-18 — 2026-08-25 · 7.5.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/board-dnd.test.tsx` **4/4 PASS** — positif: `planMove` lintas-List menghasilkan rencana move; `useMoveCard` POST `/api/v1/projects/p1/cards/c1/move` dengan JSON persis `{destinationListId:"l2", expectedVersion:7}` + header `Idempotency-Key`; negatif: drop List-sama/non-list/data-hilang → tanpa rencana, mutation `VERSION_CONFLICT` tepat satu fetch tanpa retry sendiri. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **120 file / 696 PASS**, exit 0. Commit: `65db60a`.
+**Catatan:** `@dnd-kit/core@6.3.1` exact-pin (Review-CL-05); hanya Card draggable — kolom/List droppable-only (A.5); `expectedVersion` diambil dari detail kartu terkini saat drop via `fetchQuery(staleTime:0)` agar client tidak memakai version basi; penanganan UX VERSION_CONFLICT menyusul di 7.5.4.
 
 <a id="cl-17"></a>
 ### CL-17 — 2026-08-25 · 7.5.2 → 🔄
