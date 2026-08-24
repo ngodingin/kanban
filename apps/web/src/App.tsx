@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router";
+import { LoginPage } from "./features/auth/login-page";
 
 function Home() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Home />} />
+      <Route path="/login" element={<LoginPage />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
