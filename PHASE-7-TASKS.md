@@ -40,7 +40,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | 🔄 | [CL-01](#cl-01) | 0 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.1 | 🔎 | [CL-01](#cl-01)<br>[CL-02](#cl-02) | 80 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
 | 7.1.2 | ⬜️ | — | 0 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ⬜️ | — | 0 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
@@ -250,6 +250,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-02"></a>
+### CL-02 — 2026-08-25 · 7.1.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `pnpm --filter @kanban/web typecheck` hijau; `pnpm --filter @kanban/web build` hijau (`dist/index.html` + aset ter-hash, vite 8.2.2); `pnpm lint` hijau; `npx vitest run apps/web/test/web-serving.test.ts` **5/5 PASS** (positif: GET / HTML produksi beraset ter-hash, deep link `/projects/p1/boards/b1`+`/login`+`/a/b/c/d` → fallback index.html, `/api/v1/health` dijawab Hono sungguhan satu origin, aset dilayani filesystem sebelum fallback; negatif: `/api/v1/tidak-ada` → 404 non-HTML, tidak tertangkap fallback SPA); suite penuh repo `pnpm test` **112 file / 662 test PASS**; `node scripts/preview-build.mjs` siap (`.vercel/output/static` kini berisi production build Vite).
+**Catatan:** keputusan teknis terekam — (1) `@vitejs/plugin-react@6.0.5` sesuai snapshot matriks SOT A.8.2 (Review-CL-05 tidak merevalidasi paket ini; registry terbaru 6.1.0 TIDAK dipakai karena minor bump butuh review SOT lebih dulu per A.8.1); (2) `tsconfig.json` web standalone (bundler/DOM), `baseUrl` dihapus karena deprecated TS 6.0, `paths` relatif; (3) placeholder `apps/web/public/index.html` dihapus, `scripts/preview-build.mjs` + `scripts/preview-verify.ts` dialihkan ke `apps/web/dist` dengan build web otomatis; (4) dev proxy `/api → localhost:3100` untuk dev saja; (5) TanStack Query/Zustand/dnd-kit sengaja TIDAK dipasang — scope goal 7.1.3/7.1.4/7.5.x; (6) pnpm menambahkan `@types/react-dom@19.2.5` ke `minimumReleaseAgeExclude` di `pnpm-workspace.yaml` (otomatis tooling supply-chain).
 
 <a id="cl-01"></a>
 ### CL-01 — 2026-08-25 · 7.1.1 → 🔄
