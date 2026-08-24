@@ -145,6 +145,10 @@ describe("TASK-5.4 rework — trigger memproses journal existing (SOT 4.1.0)", (
     const json = await res.json();
     expect(json.data.jobsRecovered).toBe(1); // hanya pa (DATABASE_DELETED); pb = job baru via scan
     expect(json.data.prunedProjects).toBe(1); // pb lewat jalur scan eligibility
+    // Provider delete HANYA untuk pb (scan baru) — pa direcovery dari state
+    // journal TANPA menyentuh provider maupun membuka Project DB yang hilang.
+    expect(deleteDb).toHaveBeenCalledTimes(1);
+    expect(deleteDb.mock.calls[0]![1]).not.toContain("pa");
     expect(await existsProject("pa")).toBe(false);
     expect(await existsProject("pb")).toBe(false);
 

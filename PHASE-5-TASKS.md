@@ -97,7 +97,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.4.1 | ⚠️ | [CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
+| 5.4.1 | 🔎 | [CL-22](#cl-22)<br>[CL-21](#cl-21)<br>[CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 80 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
 
 **Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
 **DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
@@ -211,6 +211,19 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `pnpm lint` sebelumnya GAGAL 2 error pada `prune-projects.ts` (`transitionJob`/`finalizeProjectCleanup` yatim pasca-refactor driveDeprovision). Keduanya DIHAPUS (logika sudah ter-inline di tx); test mock arg `name` → `_name`. Setelah fix: `pnpm lint` bersih, **98 file / 597 test lulus**, smoke-migration PASS.
 **Catatan:** Merespons blocker repo-health yang dilaporkan sesi QA (lint repo-wide 5 error, 2 di antaranya milik file ini).
+
+<a id="cl-21"></a>
+### CL-21 — 2026-08-24 · goal 5.4.1 dikerjakan ulang (⚠️ → 🔄 · 70% dipertahankan) — verifikasi pasca-dependency ✅
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: dependency `5.3` kini **✅100%** (QA-CL-05, commit 750daa3) dan `2.12` ✅ — gerbang dependency terpenuhi sesuai direktori QA-CL-03. Driver `driveDeprovision` yang dipakai trigger sudah diperbaiki & terverifikasi bersama 5.3.1 (ownership RETURNING, mutex, tx-tunggal).
+**Catatan:** Sisa pekerjaan: bukti end-to-end trigger memproses journal existing + isolasi kegagalan pada kode pasca-fix, lalu Gate B.
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-24 · goal 5.4.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 70 → 80%) — trigger journal-aware terverifikasi pasca-dependency ✅
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **98 file / 597 test lulus**; typecheck+lint bersih. `internal-prune.test.ts` (6 test) kini meng-cover persis temuan QA-CL-03 pada level ENDPOINT: (a) recovery — job `DATABASE_DELETED` existing diproses TANPA membuka Project DB yang hilang dan TANPA memanggil provider lagi (assert panggilan delete hanya untuk project scan-baru); (b) job baru via scan → COMPLETED; (c) isolasi kegagalan — provider down pada satu project tetap PENDING attempts=1 last_error tercatat, registry utuh, project lain selesai normal; (d) auth secret + secret-leak asserts. Driver mewarisi fix 5.3.1 ✅ (mutex, tx-tunggal, ownership RETURNING).
+**Catatan koreksi prosedural:** kolom `%` row sempat tertinggal di 70 saat penyusunan Gate B ini — diperbaiki DI COMMIT YANG SAMA (pelanggaran ketiga pola serupa; verifikasi ganda "%=80 pre-commit" kini wajib dijalankan).
+**Catatan:** Urutan eksekusi trigger: recovery journal dulu → descendant-level (skip project ber-job aktif) → scan eligibility baru; summary jobsRecovered/jobFailures untuk F.4.
 
 <a id="cl-20"></a>
 ### CL-20 — 2026-08-24 · KOREKSI prosedural — kolom % row 5.3.1 tertinggal di 60 saat Gate B CL-18; dikoreksi ke 🔎/80
