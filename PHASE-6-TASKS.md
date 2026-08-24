@@ -589,7 +589,13 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-18 — 2026-08-24 · goal 6.7.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`; F.5 eksplisit: pakai fasilitas platform (Vercel Firewall), bukan infrastruktur kustom/Redis.
-<a id="cl-20"></a>
+<a id="cl-33"></a>
+### CL-33 — 2026-08-24 · goal 6.9.2 selesai sisi Dev (🔄 → 🔎 · 70 → 80%) — smoke alur inti 7/7 lulus
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** core-flow-smoke 7/7 PASS; suite 104/633; lint bersih. Root cause delete 404: expectedVersion salah di test.
+**Catatan:** DELETED card masih terlihat via GET — remediasi lifecycle-filter terpisah.
+
+<a id="cl-20"></a><a id="cl-20"></a>
 ### CL-20 — 2026-08-24 · goals 6.6.1 & 6.6.3 remediasi dimulai (⚠️ → 🔄 · 70/60% dipertahankan)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: 6.6.1 `⚠️/70` (QA-CL-05: dead extractProjectId + unused import + self-assign stdout), 6.6.3 `⚠️/60` (QA-CL-07: ternary no-op message_id + dual logging mechanism + lint). Kedua temuan berada di file yang saling berkaitan (`request-logging.ts`, `resend-webhook.ts`) — diperbaiki dalam satu pass.
