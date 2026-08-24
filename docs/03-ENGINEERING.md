@@ -727,6 +727,11 @@ Backup & DR lintas ribuan Project DB (arah dasar di F.1) · observability per-Pr
 - **Project DB** — backup per-database mengikuti fasilitas provider Turso. Karena jumlah database besar, backup MUST otomatis per-provisioning, bukan manual; restore tetap wajib diuji sebelum rilis.
 - **Prinsip:** kehilangan satu Project DB tidak boleh memengaruhi Project lain (konsisten dengan isolation). RTO/RPO konkret ditetapkan sebelum rilis berdasarkan kemampuan provider dan pengujian staging.
 - Restore MUST diuji minimal sekali sebelum rilis (bukan sekadar diasumsikan bekerja).
+- **RTO/RPO konkret (amandemen 4.1.1 — dikonfirmasi via Turso API + drill restore nyata, TASK-6.5.1/6.5.2, bukan estimasi):** Turso PITR (Point-in-Time Recovery) adalah fitur platform otomatis at-commit — tidak ada mekanisme backup kustom terpisah yang dibangun. Organisasi proyek pada plan `starter` (`GET /v1/organizations/:slug`) — retensi PITR **24 jam**:
+  - **RPO mendekati nol** — PITR menangkap setiap commit, bukan snapshot berkala; restore dapat memulihkan ke detik manapun dalam 24 jam terakhir.
+  - **RTO dalam orde menit** — restore-to-new-database (`POST /v1/organizations/:org/databases` dengan `seed.type=database`) terukur selesai <10 detik per database (drill nyata, TASK-6.5.2) ditambah waktu operasional (cutover connection string, verifikasi data) — estimasi RTO praktis <15 menit per database.
+  - **Batas retensi 24 jam** — insiden yang baru terdeteksi >24 jam setelah kejadian TIDAK dapat di-restore ke titik sebelum insiden via PITR. Upgrade plan (10/30/90 hari) adalah opsi biaya/risiko bisnis terpisah, tidak menghalangi baseline MVP ini.
+- Restore telah dibuktikan nyata sebelum baris ini ditulis (TASK-6.5.2): restore-to-new-database terhadap Global DB staging dan satu Project DB (dibuat khusus untuk drill), row count/sample data cocok persis pasca-restore, seluruh database sementara dibersihkan setelah verifikasi.
 
 ## F.2 Provisioning Database Project Baru
 - Saat `POST /projects` sukses, sebuah Project DB baru MUST tersedia sebelum Project dianggap operasional.

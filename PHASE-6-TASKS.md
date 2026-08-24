@@ -104,7 +104,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.5.1 | ⏸️ | [CL-02](#cl-02) | 70 | P1 | Dokumentasikan kapabilitas PITR Turso aktual untuk proyek ini (plan `starter`, retensi 24 jam terkonfirmasi via Turso API `GET /v1/organizations/:slug` — lihat catatan header file ini) sebagai RTO/RPO konkret MVP (F.1 "RTO/RPO konkret ditetapkan sebelum rilis") di `docs/03-ENGINEERING.md` F.1 (amandemen SOT — tambah angka retensi aktual, bukan cuma prinsip umum). **[NEEDS-DECISION opsional, tidak blocking]:** apakah upgrade plan Turso untuk retensi lebih panjang (10/30/90 hari) — murni keputusan biaya/risiko bisnis, dicatat sebagai catatan terpisah untuk manusia, TIDAK menghalangi closure goal ini dengan baseline 24 jam. | [03-ENG F.1](docs/03-ENGINEERING.md) | — |
+| 6.5.1 | 🔎 | [CL-02](#cl-02)<br>[Review-CL-02](#review-cl-02) | 80 | P1 | Dokumentasikan kapabilitas PITR Turso aktual untuk proyek ini (plan `starter`, retensi 24 jam terkonfirmasi via Turso API `GET /v1/organizations/:slug` — lihat catatan header file ini) sebagai RTO/RPO konkret MVP (F.1 "RTO/RPO konkret ditetapkan sebelum rilis") di `docs/03-ENGINEERING.md` F.1 (amandemen SOT — tambah angka retensi aktual, bukan cuma prinsip umum). **[NEEDS-DECISION opsional, tidak blocking]:** apakah upgrade plan Turso untuk retensi lebih panjang (10/30/90 hari) — murni keputusan biaya/risiko bisnis, dicatat sebagai catatan terpisah untuk manusia, TIDAK menghalangi closure goal ini dengan baseline 24 jam. | [03-ENG F.1](docs/03-ENGINEERING.md) | — |
 | 6.5.2 | 🔎 | [CL-03](#cl-03) | 80 | P0 | Uji restore NYATA minimal satu kali di staging (F.1 "Restore MUST diuji minimal sekali sebelum rilis, bukan sekadar diasumsikan bekerja") — untuk Global DB DAN satu Project DB representative, via Turso API/dashboard PITR restore-to-point-in-time ke database baru, verifikasi data konsisten (row count/sample match), dokumentasikan prosedur + hasil di CL (bukti command/output, bukan klaim). | [03-ENG F.1](docs/03-ENGINEERING.md), F.6 poin 4 | 6.5.1 |
 
 **Test:** N/A (operational drill, bukan automated test) — bukti CL WAJIB memuat command Turso API yang dipakai + output yang menunjukkan restore sukses + verifikasi data.
@@ -116,9 +116,9 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.6.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-05](#qa-cl-05) | 70 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
+| 6.6.1 | 🔄 | [CL-20](#cl-20)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-05](#qa-cl-05) | 70 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
 | 6.6.2 | 🔎 | [CL-15](#cl-15)<br>[CL-14](#cl-14) | 80 | P2 | Metrik minimal dari structured log 6.6.1 (BUKAN infra metrik baru — query/agregasi atas log yang sudah terstruktur, konsisten Prinsip #5): request rate, error rate per kode kanonik (`02-SPEC C.2`), latensi p50/p95, `VERSION_CONFLICT` rate (indikator kesehatan concurrency), kegagalan provisioning. Dokumentasikan cara query-nya (mis. Vercel log query/dashboard), bukan membangun dashboard kustom. | [03-ENG F.4](docs/03-ENGINEERING.md) | 6.6.1 |
-| 6.6.3 | ⚠️ | [CL-17](#cl-17)<br>[CL-16](#cl-16)<br>[QA-CL-07](#qa-cl-07) | 60 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
+| 6.6.3 | 🔄 | [CL-22](#cl-22)<br>[CL-17](#cl-17)<br>[CL-16](#cl-16)<br>[QA-CL-07](#qa-cl-07) | 60 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
 
 **Test:** 6.6.1 — request ke endpoint mana pun menghasilkan satu log JSON dengan seluruh field wajib terisi (assert field ada, bukan cuma "tidak crash"). 6.6.3 — payload webhook `email.bounced` valid + signature benar → 200 + log tercatat; signature salah → 401, tidak ada log event palsu; payload `email.opened`/`email.clicked` (seharusnya tidak pernah dikirim karena tracking nonaktif) → diterima tanpa error tapi tidak diproses khusus (defensive, bukan diasumsikan tidak akan pernah terjadi).
 **DoD:** `grep -rn "console\.\(log\|error\|warn\)" apps/api/src` → nol hasil di luar mekanisme structured logging 6.6.1 itu sendiri; webhook endpoint tidak pernah expose signing secret di response/log.
@@ -150,6 +150,21 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-02"></a>
+### Review-CL-02 — 2026-08-24 · goal 6.5.1 — amandemen SOT F.1 diterapkan (⏸️ 70% → 🔎 80%)
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+Draft dari `CL-02` (AI-Dev, `claude-sonnet-5`) dibaca penuh dan dikonfirmasi solid: riset API Turso (`plan_id: "starter"`) direproduksi independen sebelum menerapkan (`GET /v1/organizations/ngodingin-ai` → `plan_id: "starter"`, cocok), draft teks dicocokkan terhadap bukti drill nyata di `CL-03` (RTO <10 detik terukur, restore Global DB + Project DB throwaway row-count/sample cocok persis, cleanup resource cloud terverifikasi tuntas via `QA-CL-02`).
+
+**Diterapkan ke `docs/03-ENGINEERING.md` F.1** (dengan penyesuaian kecil redaksional mengikuti gaya SOT existing, substansi angka tidak diubah dari draft Dev): menambah RTO/RPO konkret (retensi PITR 24 jam, RPO mendekati nol, RTO praktis <15 menit/database) dan baris konfirmasi restore telah dibuktikan nyata — menggantikan kalimat umum "RTO/RPO konkret ditetapkan sebelum rilis" yang sebelumnya tanpa angka.
+
+**SPEC_VERSION dinaikkan 4.1.0 → 4.1.1** (patch — klarifikasi operasional/dokumentasi kapabilitas provider, tidak mengubah business invariant/authorization/lifecycle/API semantics) dengan entry changelog di `docs/01-PRODUCT.md` menjelaskan sumber (riset+drill TASK-6.5.1/6.5.2) dan alasan Dev tidak menerapkan sendiri (larangan mutlak `04-DELIVERY C.4`).
+
+**`[NEEDS-DECISION]` upgrade plan Turso** (retensi 10/30/90 hari) dipertahankan sebagai catatan non-blocking di goal ini — belum ada keputusan manusia, tidak menghalangi baseline 24 jam yang baru diamandemenkan.
+
+**Status goal:** `⏸️ 70% → 🔎 80%` — bukan `✅` (role AI-Planning & Review tidak berwenang `🔎→✅` sesuai [AGENTS.md §11.1](AGENTS.md)). Tidak ada pekerjaan Dev tersisa untuk goal ini (murni dokumentasi, substansi sudah tuntas) — siap diverifikasi QA berikutnya sebagai pengecekan administratif (dokumen sesuai draft yang sudah mereka baca di `QA-CL-02`), bukan verifikasi teknis baru. `6.5.2` TETAP `🔎/80` sesuai keputusan ketat `QA-CL-02` (dependency formal ditegakkan) sampai `6.5.1` mencapai `✅`.
 
 <a id="qa-cl-08"></a>
 ### QA-CL-08 — 2026-08-24 · goal 6.7.1 — dokumentasi rate limiting diverifikasi — ✅ 100%
@@ -352,7 +367,12 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-18 — 2026-08-24 · goal 6.7.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`; F.5 eksplisit: pakai fasilitas platform (Vercel Firewall), bukan infrastruktur kustom/Redis.
-<a id="cl-19"></a>
+<a id="cl-20"></a>
+### CL-20 — 2026-08-24 · goals 6.6.1 & 6.6.3 remediasi dimulai (⚠️ → 🔄 · 70/60% dipertahankan)
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: 6.6.1 `⚠️/70` (QA-CL-05: dead extractProjectId + unused import + self-assign stdout), 6.6.3 `⚠️/60` (QA-CL-07: ternary no-op message_id + dual logging mechanism + lint). Kedua temuan berada di file yang saling berkaitan (`request-logging.ts`, `resend-webhook.ts`) — diperbaiki dalam satu pass.
+**Catatan:** 6.6.2 tetap 🔎80 menunggu 6.6.1 ✅ (dependency).
+<a id="cl-19"></a><a id="cl-19"></a>
 ### CL-19 — 2026-08-24 · goal 6.7.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — baseline rate limiting platform
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `operations/rate-limiting.md` — scope (mutation + /auth/*), rate-limit key per credential-hash/IP, threshold awal permisif 100/min & 20/min auth, langkah konfigurasi Vercel Firewall + verifikasi 429. Tanpa infrastruktur kustom/Redis sesuai F.5.
