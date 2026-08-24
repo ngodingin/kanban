@@ -55,8 +55,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.2.1 | ✅ | [QA-CL-05](#qa-cl-05)<br>[CL-09](#cl-09)<br>[CL-10](#cl-10) | 100 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.2 | 🔄 | [CL-57](#cl-57) | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.3 | 🔄 | [CL-57](#cl-57) | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.2.2 | 🔎 | [CL-57](#cl-57)<br>[CL-58](#cl-58) | 80 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.3 | 🔎 | [CL-57](#cl-57)<br>[CL-59](#cl-59) | 80 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
 
 **Test:** Token render benar di light & dark; kontras memadai; komponen shadcn memakai token.
 **DoD:** Theme konsisten sesuai tokens; tidak ada warna hard-coded di luar token.
@@ -552,6 +552,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ### CL-55 — 2026-08-25 · 7.14.1 → 🔎 80%
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/responsive.test.tsx` **3/3 PASS** — sidebar `hidden md:flex` (mobile tersembunyi per §7), width `md:w-56` normal / `md:w-14` saat collapsed via ui-store. Verifikasi class-level (happy-dom tidak menghitung layout). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **132 file / 758 PASS**, exit 0. Commit: `14eca5e`.
+
+<a id="cl-58"></a>
+### CL-58 — 2026-08-25 · 7.2.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/design-tokens-2.test.ts` **6/6 PASS** — positif: `@import "@fontsource-variable/inter"` self-host exact-pin `5.3.0` di package.json; `--font-sans: "Inter Variable"`; skala §2.2 lengkap 12 token (H1 32/40 w700, H2 24/32 w600, H3 20/28 w600, Body 14/20, Small 12/16); body memakai `font-sans`. Koreksi test: asersi placeholder diganti daftar substring eksplisit. Suite penuh **133 file / 764 PASS**, exit 0. Commit: `24f9859`.
+
+<a id="cl-59"></a>
+### CL-59 — 2026-08-25 · 7.2.3 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **6/6 PASS** — radius per-peran §2.3 (`sm` = base−4px controls, `md` = base cards, `lg` = base+4px dialogs/sheets) dengan base density tinggi `0.5rem`; blok `.dark {` tersedia; negatif: nol `rounded-[...]` hard-coded di seluruh `src/**`. Commit: `24f9859`.
+**Catatan:** variabel light+dark sudah dibangun sejak 7.2.1; 7.2.3 melengkapi peran radius + density.
 
 <a id="cl-57"></a>
 ### CL-57 — 2026-08-25 · 7.2.2 + 7.2.3 → 🔄
