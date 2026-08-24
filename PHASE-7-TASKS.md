@@ -94,7 +94,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.5.1 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
 | 7.5.2 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
-| 7.5.3 | 🔄 | [QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20)<br>[CL-26](#cl-26) | 40 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.3 | 🔎 | [QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20)<br>[CL-26](#cl-26)<br>[CL-28](#cl-28) | 80 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
 | 7.5.4 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-19](#cl-19)<br>[CL-21](#cl-21) | 80 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
 **Test:** Drag memicu move API benar; opsi Board lintas-Milestone tidak muncul; conflict ditampilkan, tidak menimpa.
@@ -294,6 +294,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/header.test.tsx` **4/4 PASS** dengan stub `fetch` global — request melewati `apiRequest` + envelope kontrak nyata (`{data:{project:{...name}}}`, `{data:{milestone:{...title}}}`, `{data:{board:{...title}}}`, `{data:{projects:[...]}}`): breadcrumb terisi nama nyata `Alpha›Beta›Gamma` (bug QA-CL-07 tereksekusi dan kini lulus), context switch navigasi `/projects/p2` setelah options termuat dari endpoint, brand-only tanpa separator di `/`, negatif non-MVP nol. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **123 file / 709 PASS**, exit 0. Commit: `ad5f21d`.
 **Catatan:** akar bug = test lama mem-mock hook dengan shape fiktif; pola test kini fetch-level agar drift envelope/field tertangkap. Hooks memakai `select` untuk meng-unwrap envelope sehingga konsumen menerima entity langsung.
+
+<a id="cl-28"></a>
+### CL-28 — 2026-08-25 · 7.5.3 → 🔎 80% (remediasi QA-CL-10)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/board-move-guard.test.tsx` **4/4 PASS** — `BoardSummary` kini `title` (C.6): `siblingBoards` mengembalikan `{id,title}` hanya Milestone sama non-diri; test hook memakai fetch-stub dengan payload kontrak nyata `{data:{boards:[{id,milestoneId,title,...lifecycle}]}}` dan meng-unwrap `select` → `result.data[0] = {id:"b2", title:"Backup"}` (bug name-blank QA-CL-10 tereksekusi dan kini lulus). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh 709 PASS. Commit: `ad5f21d`.
+**Catatan:** filter same-Milestone (logika inti goal) tidak berubah — hanya field name→title pada type, mapping, dan test. Konsumen UI move-to-board belum ada (menyusul), jadi dampak terbatas di layer hook/test.
 
 <a id="cl-26"></a>
 ### CL-26 — 2026-08-25 · 7.3.2 + 7.5.3 → 🔄 (remediasi QA-CL-07 / QA-CL-10)
