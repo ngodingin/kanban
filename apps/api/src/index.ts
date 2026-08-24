@@ -32,6 +32,7 @@ import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import { createApiKeysRouter, type ApiKeysRoutesDeps } from "./routes/api-keys.ts";
 import { createInternalRouter, type InternalRoutesDeps } from "./routes/internal.ts";
+import { createResendWebhookRouter, type ResendWebhookRoutesDeps } from "./routes/resend-webhook.ts";
 import { requestLogger } from "./request-logging.ts";
 import { createPersonalAccessTokensRouter, type PersonalAccessTokensRoutesDeps } from "./routes/personal-access-tokens.ts";
 
@@ -98,6 +99,14 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       adminDeps = deps;
     }
     return deps;
+  };
+
+  let resendDeps: ResendWebhookRoutesDeps | null = null;
+  const getResendWebhookDeps = (): ResendWebhookRoutesDeps => {
+    if (!resendDeps) {
+      resendDeps = { resendWebhookSecret: process.env.RESEND_WEBHOOK_SECRET };
+    }
+    return resendDeps;
   };
 
   let internalDeps: InternalRoutesDeps | null = null;
@@ -338,6 +347,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.route("/", createProjectAdminRouter(getProjectAdminDeps));
   app.route("/", createApiKeysRouter(getApiKeysDeps));
   app.route("/", createPersonalAccessTokensRouter(getPatDeps));
+  app.route("/", createResendWebhookRouter(getResendWebhookDeps));
   app.route("/", createInternalRouter(getInternalDeps));
 
   return { app, getAuth: () => ensure().auth, getConfig: () => ensure().config };
