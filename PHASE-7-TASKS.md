@@ -195,7 +195,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | 7.13.1 | 🔎 | [CL-30](#cl-30)<br>[CL-31](#cl-31) | 80 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
 | 7.13.2 | 🔎 | [CL-32](#cl-32)<br>[CL-33](#cl-33) | 80 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
 | 7.13.3 | 🔎 | [CL-32](#cl-32)<br>[CL-34](#cl-34) | 80 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
-| 7.13.4 | 🔄 | [CL-35](#cl-35) | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.4 | 🔎 | [CL-35](#cl-35)<br>[CL-36](#cl-36) | 80 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
 **Test:** Tidak ada child handling; restore hanya untuk ARCHIVED dengan ancestor ACTIVE; DELETED terminal; local state descendant tidak berubah.
 **DoD:** Lifecycle UI patuh effective ancestor state dan menjelaskan dampak terminal delete.
@@ -345,6 +345,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
 **Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-36"></a>
+### CL-36 — 2026-08-25 · 7.13.4 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/lifecycle-audit.test.tsx` **5/5 PASS** — positif: `selectLifecycleEvents` hanya menyaring `.archived`/`.deleted` (created/moved/restored tereliminasi) urut menurun; view merender tabel audit (aksi/entity-id/aktor/waktu `<time>`); undefined→[] aman. Negatif: **nol** `<button>` di view; state kosong & tanpa context netral. Koreksi test: mock hook mengembalikan bentuk pasca-select + asersi via baris tabel (teks JSX multi-node). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **126 file / 726 PASS**, exit 0. Commit: `daee946`.
+**Catatan:** TASK-7.13 lengkap sisi Dev. Keterbatasan jujur: payload lifecycle tidak memuat judul entity sehingga view menampilkan entityType+entityId; endpoint list belum punya filter archived/deleted (hanya activities) — jika Review menghendaki tampilan berjudul, itu amandemen kontrak terpisah.
 
 <a id="cl-35"></a>
 ### CL-35 — 2026-08-25 · 7.13.4 → 🔄
