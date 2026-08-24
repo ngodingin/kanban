@@ -26,9 +26,9 @@ function associationPayload(record: CardLabelAssociationRecord) {
 }
 
 function readLabelIdField(body: unknown): string {
-  const raw = readJsonObject(body).label_id;
+  const raw = readJsonObject(body).labelId;
   if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field label_id wajib string non-kosong.", 400);
+    throw new PipelineError("VALIDATION_ERROR", "Field labelId wajib string non-kosong.", 400);
   }
   return raw;
 }

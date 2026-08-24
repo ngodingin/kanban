@@ -155,18 +155,28 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
     const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
-      body: JSON.stringify({ label_id: "bl_1" }),
+      body: JSON.stringify({ labelId: "bl_1" }),
     });
     expect(res.status).toBe(201);
     const json = await res.json();
     expect(json.data.association).toMatchObject({ cardId: "c_1", labelId: "bl_1", labelScope: "board", labelName: "Bug" });
   });
 
+  it("[TASK-0.17.2] field lama `label_id` (snake_case) -> VALIDATION_ERROR, TIDAK dibaca diam-diam", async () => {
+    const res = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
+      method: "POST",
+      headers: { "x-test-user": "user-a", "content-type": "application/json" },
+      body: JSON.stringify({ label_id: "bl_1" }),
+    });
+    expect(res.status).toBe(400);
+    expect((await res.json()).error?.code).toBe("VALIDATION_ERROR");
+  });
+
   it("[Boundary] assign pada Card yang tidak ada di Project ini → RESOURCE_NOT_FOUND (bukan bocor lintas-Project)", async () => {
     const res = await makeApp().request(`http://localhost/v1/projects/${otherProjectIdValue}/cards/c_missing/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-a", "content-type": "application/json" },
-      body: JSON.stringify({ label_id: "bl_1" }),
+      body: JSON.stringify({ labelId: "bl_1" }),
     });
     expect(res.status).toBe(404);
     expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
@@ -176,7 +186,7 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
     const denied = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
-      body: JSON.stringify({ label_id: "bl_1" }),
+      body: JSON.stringify({ labelId: "bl_1" }),
     });
     expect(denied.status).toBe(403);
     expect((await denied.json()).error?.code).toBe("PERMISSION_DENIED");
@@ -184,7 +194,7 @@ describe("POST .../cards/:card_id/labels (assign) — goal 3.8.1", () => {
     const noIdentity = await makeApp().request(`http://localhost/v1/projects/${projectIdValue}/cards/c_1/labels`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ label_id: "bl_1" }),
+      body: JSON.stringify({ labelId: "bl_1" }),
     });
     expect(noIdentity.status).toBe(401);
 
