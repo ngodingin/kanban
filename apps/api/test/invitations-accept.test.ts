@@ -103,20 +103,21 @@ describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
     const res = await accept(invitationId, "user-b");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
-    const result = json.data;
-    if (result.projectId !== ctx.projectIdA || result.userId !== "user-b") {
-      throw new Error(`payload salah: ${JSON.stringify(result)}`);
+    const invitation = json.data.invitation;
+    if (invitation.id !== invitationId || invitation.acceptedAt === null) {
+      throw new Error(`payload salah (C.13 envelope): ${JSON.stringify(json.data)}`);
     }
     const membership = await ctx.globalClient.execute({
-      sql: "SELECT revoked_at FROM project_memberships WHERE id = ? AND project_id = ? AND user_id = 'user-b'",
-      args: [result.membershipId, ctx.projectIdA],
+      sql: "SELECT id, revoked_at FROM project_memberships WHERE project_id = ? AND user_id = 'user-b'",
+      args: [ctx.projectIdA],
     });
     if (membership.rows.length !== 1 || membership.rows[0]!.revoked_at !== null) {
       throw new Error("membership aktif tidak tercipta");
     }
+    const membershipId = String(membership.rows[0]!.id);
     const assignments = await ctx.globalClient.execute({
       sql: "SELECT COUNT(*) AS n FROM membership_group_assignments WHERE membership_id = ? AND revoked_at IS NULL",
-      args: [result.membershipId],
+      args: [membershipId],
     });
     if (Number(assignments.rows[0]!.n) < 1) throw new Error("group assignment tidak di-copy ke membership");
     const accepted = await ctx.globalClient.execute({

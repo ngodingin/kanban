@@ -481,7 +481,8 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         resolveIdentity: deps.resolveIdentity,
       }).run(c.req.raw);
       // Accept tidak Owner-only — pemanggil adalah invitee yang terautentikasi.
-      return await deps.acceptInvitation(c.req.param("invitation_id"), identity.userId, identity.email);
+      const result = await deps.acceptInvitation(c.req.param("invitation_id"), identity.userId, identity.email);
+      return { invitation: result.invitation };
     }),
   );
 
@@ -493,7 +494,8 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       }).run(c.req.raw);
       const projectId = c.req.param("project_id");
       await deps.assertProjectOwner(projectId, identity.userId);
-      return await deps.listProjectInvitations(projectId);
+      const invitations = await deps.listProjectInvitations(projectId);
+      return { invitations };
     });
   });
 
@@ -505,7 +507,8 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       }).run(c.req.raw);
       const projectId = c.req.param("project_id");
       await deps.assertProjectOwner(projectId, identity.userId);
-      return await deps.revokeInvitation(projectId, c.req.param("invitation_id"));
+      const invitation = await deps.revokeInvitation(projectId, c.req.param("invitation_id"));
+      return { invitation };
     });
   });
 

@@ -581,6 +581,9 @@ export interface AcceptInvitationResult {
   userId: string;
   acceptedAt: string;
   appliedGroupAssignments: Array<{ groupId: string; scopeType: string; scopeId: string }>;
+  // 02-SPEC C.13 (amandemen 4.0.0) — envelope route MUST { invitation: {...} };
+  // disertakan di sini agar route tidak perlu query ulang.
+  invitation: InvitationListSummary;
 }
 
 export async function acceptInvitation(
@@ -661,6 +664,14 @@ export async function acceptInvitation(
     userId: input.userId,
     acceptedAt: now,
     appliedGroupAssignments: groupRows.map((r) => ({ groupId: r.groupId, scopeType: r.scopeType, scopeId: r.scopeId })),
+    invitation: {
+      id: invitation.id,
+      email: invitation.email,
+      expiresAt: invitation.expiresAt,
+      acceptedAt: now,
+      revokedAt: invitation.revokedAt,
+      createdAt: invitation.createdAt,
+    },
   };
 }
 

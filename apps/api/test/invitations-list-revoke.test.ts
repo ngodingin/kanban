@@ -124,7 +124,7 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
     });
     if (listRes.status !== 200) throw new Error(`list failed: ${listRes.status}`);
     const json = await listRes.json();
-    const invitations = json.data;
+    const invitations = json.data.invitations;
 
     if (invitations.length !== 3) throw new Error(`expected 3 invitations, got ${invitations.length}`);
 
@@ -152,7 +152,7 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
     });
     if (res.status !== 200) throw new Error(`revoke pending failed: ${res.status}`);
     const json = await res.json();
-    if (json.data.revokedAt === null) throw new Error("revokedAt tidak ter-set");
+    if (json.data.invitation.revokedAt === null) throw new Error("revokedAt tidak ter-set");
   });
 
   it("[C.13][FR-006] Negatif 1.9.4: revoke accepted → INVALID_STATE", async () => {
@@ -198,6 +198,6 @@ describe("GET /projects/:project_id/invitations & POST /invitations/:id/revoke (
     });
     if (listRes.status !== 200) throw new Error(`list projectB failed: ${listRes.status}`);
     const json = await listRes.json();
-    if (json.data.length !== 0) throw new Error(`projectB should have 0 invitations, got ${json.data.length}`);
+    if (json.data.invitations.length !== 0) throw new Error(`projectB should have 0 invitations, got ${json.data.invitations.length}`);
   });
 });
