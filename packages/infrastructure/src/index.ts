@@ -174,3 +174,9 @@ export {
 } from "./provisioning/provision.ts";
 export type { TursoEnv } from "./provisioning/turso.ts";
 export type { Client } from "@libsql/client";
+export {
+  runWithRequestContext,
+  getRequestLogStore,
+  setRequestLogFields,
+  type RequestLogStore,
+} from "./observability/request-context.ts";

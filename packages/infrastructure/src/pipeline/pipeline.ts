@@ -8,6 +8,7 @@ import { LoadProjectStep } from "./project-step.ts";
 import { ResolveDatabaseStep, type ProjectClientFactory } from "./database-step.ts";
 import { RealPermissionResolver, type PermissionResolver } from "./permission-step.ts";
 import { PipelineError } from "./errors.ts";
+import { setRequestLogFields } from "../observability/request-context.ts";
 import type { EffectivePermissions } from "@kanban/domain";
 import type { EffectivePermissionInputs } from "../database/permission-resolution.ts";
 
@@ -41,7 +42,10 @@ export class RequestPipeline {
   }
 
   async run(request: Request, projectId: string): Promise<ProjectRequestContext> {
+    // F.4 observability — isi field log bila middleware membuka context.
+    setRequestLogFields({ projectId });
     const identity = await this.identityStep.run(request);
+    setRequestLogFields({ userId: identity.userId });
     // AC-021 — API Key HANYA valid untuk Project tempatnya terdaftar, walau
     // secret cocok dan User-nya member di Project tujuan.
     if (identity.type === "api_key" && identity.apiKeyProjectId !== projectId) {

@@ -32,6 +32,7 @@ import { createProjectsRouter, type ProjectRoutesDeps } from "./routes/projects.
 import { createProjectAdminRouter, type ProjectAdminRoutesDeps } from "./routes/project-admin.ts";
 import { createApiKeysRouter, type ApiKeysRoutesDeps } from "./routes/api-keys.ts";
 import { createInternalRouter, type InternalRoutesDeps } from "./routes/internal.ts";
+import { requestLogger } from "./request-logging.ts";
 import { createPersonalAccessTokensRouter, type PersonalAccessTokensRoutesDeps } from "./routes/personal-access-tokens.ts";
 
 export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) => Promise<void> } = {}): {
@@ -40,6 +41,8 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   getConfig: () => ReturnType<typeof loadAppConfig>;
 } {
   const app = new Hono().basePath("/api");
+  // TASK-6.6.1 — structured request logging (F.4): satu baris JSON per request.
+  app.use("*", requestLogger());
 
   let ready:
     | {
