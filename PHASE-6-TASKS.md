@@ -116,7 +116,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.6.1 | 🔄 | [CL-11](#cl-11) | 0 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
+| 6.6.1 | 🔎 | [CL-12](#cl-12)<br>[CL-11](#cl-11) | 80 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
 | 6.6.2 | ⬜️ | — | 0 | P2 | Metrik minimal dari structured log 6.6.1 (BUKAN infra metrik baru — query/agregasi atas log yang sudah terstruktur, konsisten Prinsip #5): request rate, error rate per kode kanonik (`02-SPEC C.2`), latensi p50/p95, `VERSION_CONFLICT` rate (indikator kesehatan concurrency), kegagalan provisioning. Dokumentasikan cara query-nya (mis. Vercel log query/dashboard), bukan membangun dashboard kustom. | [03-ENG F.4](docs/03-ENGINEERING.md) | 6.6.1 |
 | 6.6.3 | ⬜️ | — | 0 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
 
@@ -225,7 +225,13 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-11 — 2026-08-24 · goal 6.6.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `—`; 6.3.1 tuntas 🔎80. F.4 dibaca sebagai acuan field log.
-<a id="cl-10"></a><a id="cl-10"></a>
+<a id="cl-12"></a>
+### CL-12 — 2026-08-24 · goal 6.6.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — structured request logging F.4
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **103 file / 630 test lulus**; typecheck+lint bersih. Implementasi: (1) `observability/request-context.ts` di infrastructure — AsyncLocalStorage store {requestId,userId?,projectId?} + setter no-op-safe; pipeline mengisi userId/projectId otomatis saat context aktif; (2) middleware `requestLogger()` di apps/api — requestId ULID per request + header X-Request-Id, action=method+path, outcome=status(+error code), duration_ms; emit SATU baris JSON via emitRequestLog (titik tunggu transport); terpasang paling awal mencakup seluruh route. Test baru: field lengkap pada sukses & error path (anonim tanpa user_id).
+**Catatan:** Dua console.* polos diganti: projects.ts unhandled-error kini tercakup sebagai outcome 500 INTERNAL_ERROR oleh middleware; serve.ts listening-log dipertahankan (lifecycle). Bug ALS ditemukan & diperbaiki saat verifikasi mandiri: store dibaca DI DALAM callback run.
+
+<a id="cl-10"></a><a id="cl-10"></a><a id="cl-10"></a>
 ### CL-10 — 2026-08-24 · goal 6.3.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — audit error-mapping menyeluruh
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti audit (ekstraksi semua PipelineError di apps/api + infrastructure):** 79 throw-site; pasangan (code→HTTP): INVALID_STATE/409 ×20 ✓, VALIDATION_ERROR/400 ×28 ✓, RESOURCE_NOT_FOUND/404 ×20 ✓, PERMISSION_DENIED/403 ×6 ✓, lainnya ✓ — semua kode ∈ kanonik C.2; satu-satunya mismatch: INVITATION_EXPIRED/409 ✗ (kanonik 410) pada 2 site project-admin.ts.
