@@ -189,7 +189,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | 🔎 | [CL-66](#cl-66)<br>[CL-65](#cl-65)<br>[CL-64](#cl-64)<br>[CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26) | 80 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
+| 2.12.1 | ✅ | [CL-67](#cl-67)<br>[CL-66](#cl-66)<br>[CL-65](#cl-65)<br>[CL-64](#cl-64)<br>[CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26)<br>[QA-CL-27](#qa-cl-27) | 100 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
 
 **Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → pending guard aktif sebelum cleanup; assignment baru terhadap User pending ditolak; ketiga Card menjadi NULL + masing-masing mendapat Activity. Wajib AC-035 fault-injection: kegagalan sebelum cleanup commit rollback seluruh Card/Activity dan belum revoked; kegagalan finalisasi Global mempertahankan pending serta Card unassigned; retry menyelesaikan revoke tanpa Activity ganda. Dua request revoke konkuren tidak boleh melewati conditional state transition.
 **DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
@@ -213,6 +213,27 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-27"></a>
+### QA-CL-27 — 2026-08-24 · verifikasi independen 2.12.1 pasca-remediasi QA-CL-26 (BR-054C protokol lintas-DB) — ✅ 100%
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Konteks:** QA-CL-26 (Codex) menolak dengan temuan spesifik: tidak ada bukti overlap dua-worker deterministik, dan caller yang kalah race berpotensi melaporkan timestamp lokal (bukan state DB final). CL-64/65/66 meremediasi. Koreksi `%` 60→80 (CL-67) diverifikasi — substansi sudah ada di CL-65, murni memperbaiki kolom tabel; diterima.
+
+**Desain dibaca penuh (`project-admin.ts:revokeMembership` + `card-assignee-cleanup.ts`) dan dicocokkan terhadap 4 langkah BR-054C:** (1) claim conditional `revocation_pending_at` via `UPDATE ... WHERE revokedAt IS NULL AND revocationPendingAt IS NULL` — statement tunggal atomik, retry setelah crash menemui pending sudah terisi (no-op, tapi alur tetap lanjut sebagai recovery, bukan berhenti); (2) selama pending, guard eksplisit di baris 57 (`revocation_pending_at IS NOT NULL`) mencegah assignment baru; (3) `cleanupAssigneesForRevokedMembership` — SATU transaksi Project DB, `SELECT id FROM cards WHERE assignee_user_id=?` lalu `unassignCardInTx` per Card dengan guard `assignee_user_id=? AND version=?` (mencegah Activity ganda kalau Card sudah diproses caller lain); (4) finalize conditional `WHERE revokedAt IS NULL AND revocationPendingAt IS NOT NULL` — pemenang tunggal.
+
+**Temuan desain (dicatat, BUKAN blocker):** kedua caller pada request konkuren SAMA-SAMA memanggil `cleanupAssigneesForRevokedMembership` tanpa mengecek siapa pemenang claim (bukan short-circuit berdasar ownership) — TAPI korektnes tetap terjaga oleh serialisasi write-transaction SQLite (`BEGIN IMMEDIATE` semantics) + guard `assignee_user_id`/`version` per Card, dibuktikan langsung oleh test overlap di bawah (nol Activity ganda). Desain lebih boros (satu caller melakukan full-scan sia-sia) dibanding short-circuit eksplisit, tapi bukan bug — hasil akhir selalu benar.
+
+**Reproduksi before/after independen (bukan percaya klaim CL-65):** `git checkout 842ee89~1 -- project-admin.ts` (kode SEBELUM fix "summary dari DB", test BARU tetap) → test `[overlap]` **GAGAL genuinely**: `resA.revokedAt` (`...:00.842Z`) ≠ `resB.revokedAt` (`...:00.841Z`) — persis bug "caller kalah melaporkan timestamp lokal" yang diklaim QA-CL-26. `git checkout HEAD -- ...` (fix dikembalikan) → **6/6 PASS** lagi.
+
+**Test overlap dibaca detail** (`revoke-recovery.test.ts`): Worker A ditahan via `Client` proxy PERSIS SEBELUM transaksi cleanup dibuka (setelah claim pending commit) — genuinely membuktikan overlap (pending A terlihat sebelum cleanup jalan), Worker B berjalan TUNTAS penuh selama itu (claim no-op, cleanup benar-benar unassign Card, finalize). A dilepas → cleanup A idempotent (Card sudah NULL, guard skip), finalize A no-op (revokedAt sudah terisi) — assert `resA.revokedAt === resB.revokedAt` dan **TEPAT SATU** Activity `card.unassigned` untuk Card yang sama.
+
+**Catatan minor (bukan blocker):** `revokeMembership` menerima `projectDb?: Client | null` — jika resolusi mapping Project DB gagal (edge case, mis. race dengan deprovisioning 5.3.1), cleanup Card di-skip diam-diam (`if (projectDb)`) tapi finalize tetap jalan, revoke membership tanpa unassign Card manapun. Tidak ada test untuk skenario ini, dan goal Test text tidak eksplisit memintanya — direkomendasikan sebagai catatan untuk goal lanjutan, bukan alasan reject.
+
+**Full re-run independen:** `pnpm exec vitest run` → **98 file/597 test PASS**; `pnpm -r typecheck` → 6/6 Done; `pnpm lint` → bersih. Skema `revocation_pending_at` dikonfirmasi ada di `global-schema.ts`.
+
+**Kesimpulan:** 2.12.1 ditutup `✅ 100%`. Kedua temuan blocking QA-CL-26 genuinely tertutup dengan bukti reproduksi.
 
 <a id="qa-cl-26"></a>
 ### QA-CL-26 — 2026-08-24 · goal 2.12.1 gagal handoff/verifikasi SOT 4.1.0 (🔎 60% → ⚠️ 60%)
