@@ -154,6 +154,83 @@ async function finalizeProjectCleanup(globalClient: Client, projectId: string): 
  * Retry/restart SELALU memulai dari state journal; `DATABASE_DELETED` tidak
  * pernah membuka Project DB. HTTP 404 provider = sukses setara.
  */
+async function loadJob(globalClient: Client, projectId: string): Promise<DeprovisionJob | null> {
+  const row = (
+    await globalClient.execute({
+      sql: "SELECT id, project_id AS projectId, database_id AS databaseId, database_name AS databaseName, state FROM project_deprovision_jobs WHERE project_id = ? LIMIT 1",
+      args: [projectId],
+    })
+  ).rows[0];
+  if (!row) return null;
+  return {
+    id: String(row.id),
+    projectId: String(row.projectId),
+    databaseId: String(row.databaseId),
+    databaseName: String(row.databaseName),
+    state: String(row.state) as DeprovisionJob["state"],
+  };
+}
+
+/**
+ * Driver satu Project berdasarkan state journal BR-016B. Dipakai oleh scan
+ * eligibility (5.3) DAN recovery trigger (5.4). Return true bila job
+ * mencapai COMPLETED pada pemanggilan ini.
+ */
+async function driveDeprovision(
+  globalClient: Client,
+  turso: TursoEnv,
+  projectId: string,
+  opts: { openProjectDb: PruneProjectsOptions["openProjectDb"]; deleteDb: PruneProjectsOptions["deleteDb"]; now: Date },
+): Promise<boolean> {
+  const openProjectDb =
+    opts.openProjectDb ??
+    ((databaseId: string) => Promise.resolve(createClient({ url: databaseId })));
+  const deleteDb = opts.deleteDb ?? deleteDatabase;
+  const existingJob = await loadJob(globalClient, projectId);
+
+  let job: DeprovisionJob | null = existingJob;
+  if (!job) {
+    const mapping = await globalClient.execute({
+      sql: "SELECT database_id FROM project_databases WHERE project_id = ? LIMIT 1",
+      args: [projectId],
+    });
+    if (!mapping.rows[0]) return false;
+    const databaseId = String(mapping.rows[0].database_id);
+
+    let deletedAt: string | null;
+    try {
+      deletedAt = await readDeletedAt(openProjectDb, databaseId);
+    } catch {
+      return false; // DB tidak bisa dibuka → coba lagi run berikutnya
+    }
+    if (!isPruneEligible(deletedAt, opts.now)) return false;
+    // BR-016B: journal DIBUAT SEBELUM provider delete.
+    job = await createOrLoadJob(globalClient, projectId, databaseId, opts.now);
+  }
+
+  if (job.state === "COMPLETED") return false;
+
+  if (job.state === "PENDING") {
+    try {
+      await deleteDb(turso, job.databaseName);
+    } catch (error) {
+      if (error instanceof TursoApiError && error.status === 404) {
+        // not found = sukses setara (BR-016B)
+      } else {
+        await globalClient.execute({
+          sql: "UPDATE project_deprovision_jobs SET attempts = attempts + 1, last_error = ?, updated_at = ? WHERE project_id = ? AND state = 'PENDING'",
+          args: [String(error instanceof Error ? error.message : error), new Date().toISOString(), projectId],
+        });
+        return false;
+      }
+    }
+    await transitionJob(globalClient, projectId, "PENDING", "DATABASE_DELETED");
+  }
+
+  // DATABASE_DELETED → cleanup Global + COMPLETED (satu tx, tanpa buka Project DB).
+  return finalizeProjectCleanup(globalClient, projectId);
+}
+
 export async function pruneEligibleProjects(
   globalClient: Client,
   turso: TursoEnv,
@@ -169,80 +246,58 @@ export async function pruneEligibleProjects(
   let prunedProjects = 0;
 
   for (const row of projects.rows) {
-    const projectId = String(row.id);
-
-    // Job existing? (retry path — jangan sentuh Project DB sebelum dicek)
-    const existingJob = (
-      await globalClient.execute({
-        sql: "SELECT id, project_id AS projectId, database_id AS databaseId, database_name AS databaseName, state FROM project_deprovision_jobs WHERE project_id = ? LIMIT 1",
-        args: [projectId],
-      })
-    ).rows[0];
-
-    let job: DeprovisionJob;
-    if (existingJob) {
-      job = {
-        id: String(existingJob.id),
-        projectId: String(existingJob.projectId),
-        databaseId: String(existingJob.databaseId),
-        databaseName: String(existingJob.databaseName),
-        state: String(existingJob.state) as DeprovisionJob["state"],
-      };
-    } else {
-      const mapping = await globalClient.execute({
-        sql: "SELECT database_id FROM project_databases WHERE project_id = ? LIMIT 1",
-        args: [projectId],
-      });
-      if (!mapping.rows[0]) continue;
-      const databaseId = String(mapping.rows[0].database_id);
-
-      let deletedAt: string | null;
-      try {
-        deletedAt = await readDeletedAt(openProjectDb, databaseId);
-      } catch {
-        continue; // DB tidak bisa dibuka → coba lagi run berikutnya
-      }
-      if (!isPruneEligible(deletedAt, now)) continue;
-
-      // BR-016B: journal DIBUAT SEBELUM provider delete.
-      job = await createOrLoadJob(globalClient, projectId, databaseId, now);
-    }
-
-    if (job.state === "COMPLETED") continue;
-
-    if (job.state === "PENDING") {
-      try {
-        await deleteDb(turso, job.databaseName);
-      } catch (error) {
-        if (error instanceof TursoApiError && error.status === 404) {
-          // not found = sukses setara (BR-016B)
-        } else {
-          // Kegagalan lain: tetap PENDING, attempts++, catat last_error,
-          // registry tidak disentuh — dicoba lagi run berikutnya.
-          await globalClient.execute({
-            sql: "UPDATE project_deprovision_jobs SET attempts = attempts + 1, last_error = ?, updated_at = ? WHERE project_id = ? AND state = 'PENDING'",
-            args: [String(error instanceof Error ? error.message : error), new Date().toISOString(), projectId],
-          });
-          continue;
-        }
-      }
-      const won = await transitionJob(globalClient, projectId, "PENDING", "DATABASE_DELETED");
-      void won;
-      job.state = "DATABASE_DELETED";
-    }
-
-    // state DATABASE_DELETED → cleanup Global + COMPLETED (satu transaksi,
-    // tanpa membuka Project DB). Hanya pemenang transisi yang menghitung.
-    const completedHere = await finalizeProjectCleanup(globalClient, projectId);
-    if (completedHere) prunedProjects += 1;
+    const completed = await driveDeprovision(globalClient, turso, String(row.id), {
+      openProjectDb,
+      deleteDb,
+      now,
+    });
+    if (completed) prunedProjects += 1;
   }
 
   return { prunedProjects };
 }
 
+/**
+ * TASK-5.4 — proses SEMUA job journal existing (recovery per state), tanpa
+ * menghentikan project lain saat satu gagal. Return jumlah job yang selesai.
+ */
+export async function processDeprovisionJobs(
+  globalClient: Client,
+  turso: TursoEnv,
+  opts: PruneProjectsOptions = {},
+): Promise<{ recovered: number; failed: number }> {
+  const now = opts.now ?? new Date();
+  const openProjectDb =
+    opts.openProjectDb ??
+    ((databaseId: string) => Promise.resolve(createClient({ url: databaseId })));
+  const deleteDb = opts.deleteDb ?? deleteDatabase;
+
+  const jobs = await globalClient.execute(
+    "SELECT project_id AS projectId FROM project_deprovision_jobs WHERE state IN ('PENDING','DATABASE_DELETED') ORDER BY created_at, project_id",
+  );
+  let recovered = 0;
+  let failed = 0;
+  for (const row of jobs.rows) {
+    try {
+      const done = await driveDeprovision(globalClient, turso, String(row.projectId), {
+        openProjectDb,
+        deleteDb,
+        now,
+      });
+      if (done) recovered += 1;
+      else failed += 1;
+    } catch {
+      failed += 1; // isolation antar project
+    }
+  }
+  return { recovered, failed };
+}
+
 export interface CombinedPruneSummary {
   prunedEntities: PruneResult;
   prunedProjects: number;
+  jobsRecovered: number;
+  jobFailures: number;
 }
 
 /** Daftar seluruh Project DB terdaftar (sistem-lebar, tanpa filter membership). */
@@ -259,10 +314,11 @@ export async function listRegisteredProjectDatabases(
 }
 
 /**
- * Orkestrasi prune lengkap untuk trigger internal (TASK-5.4): descendant-level
- * DULU untuk setiap Project DB yang MASIH terdaftar, baru Project-level
- * ber-journal. Kegagalan satu Project DB tidak menggagalkan yang lain.
- * (Rework journal-aware menyusul di goal 5.4.1.)
+ * Orkestrasi prune lengkap untuk trigger internal (TASK-5.4, SOT 4.1.0):
+ * (1) job deprovision EXISTING diproses lebih dulu berdasarkan state journal
+ * (recovery per project, isolasi kegagalan); (2) descendant-level untuk
+ * Project DB yang MASIH terdaftar dan TIDAK sedang menunggu cleanup Global;
+ * (3) scan eligibility baru. Summary dilaporkan untuk observability.
  */
 export async function pruneAllRegisteredProjects(
   globalClient: Client,
@@ -274,8 +330,20 @@ export async function pruneAllRegisteredProjects(
     opts.openProjectDb ??
     ((databaseId: string) => Promise.resolve(createClient({ url: databaseId })));
 
+  // (1) Recovery journal existing — SEBELUM scan eligibility baru.
+  const jobs = await processDeprovisionJobs(globalClient, turso, { ...opts, now });
+
+  const pendingJobProjects = new Set(
+    (
+      await globalClient.execute({
+        sql: "SELECT project_id AS pid FROM project_deprovision_jobs WHERE state IN ('PENDING','DATABASE_DELETED')",
+      })
+    ).rows.map((r) => String(r.pid)),
+  );
+
   const entities: PruneResult = { milestones: 0, boards: 0, lists: 0, cards: 0, labels: 0 };
   for (const registered of await listRegisteredProjectDatabases(globalClient)) {
+    if (pendingJobProjects.has(registered.projectId)) continue; // sedang/telah di-deprovision
     try {
       const client = await openProjectDb(registered.databaseId);
       try {
@@ -297,6 +365,12 @@ export async function pruneAllRegisteredProjects(
     }
   }
 
+  // (3) Scan eligibility baru untuk project tanpa job.
   const projects = await pruneEligibleProjects(globalClient, turso, { ...opts, now });
-  return { prunedEntities: entities, prunedProjects: projects.prunedProjects };
+  return {
+    prunedEntities: entities,
+    prunedProjects: projects.prunedProjects,
+    jobsRecovered: jobs.recovered,
+    jobFailures: jobs.failed,
+  };
 }

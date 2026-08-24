@@ -120,3 +120,70 @@ async function existsProject(pid: string): Promise<boolean> {
   const r = await globalClient.execute({ sql: "SELECT COUNT(*) AS n FROM projects WHERE id = ?", args: [pid] });
   return Number(r.rows[0]!.n) > 0;
 }
+
+describe("TASK-5.4 rework — trigger memproses journal existing (SOT 4.1.0)", () => {
+  it("[recovery] job PENDING existing → diproses trigger; DATABASE_DELETED tanpa buka DB", async () => {
+    // Project A: crash point DATABASE_DELETED (DB fisik dihapus)
+    await seedEligibleProject("pa");
+    const dbRow = await globalClient.execute({
+      sql: "SELECT database_id AS db FROM project_databases WHERE project_id = 'pa'",
+    });
+    const dbPath = String(dbRow.rows[0]!.db).replace("file:", "");
+    rmSync(dbPath, { force: true });
+    await globalClient.execute({
+      sql: `INSERT INTO project_deprovision_jobs
+            (id, project_id, database_id, database_name, state, attempts, created_at, updated_at)
+            VALUES ('pdj-pa', 'pa', ?, ?, 'DATABASE_DELETED', 1, ?, ?)`,
+      args: [dbPath, `proj-pa`, BASE, BASE],
+    });
+    // Project B: eligible normal (akan dibuatkan job oleh scan)
+    await seedEligibleProject("pb");
+
+    deleteDb.mockClear();
+    const res = await call(SECRET);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.data.jobsRecovered).toBe(1); // hanya pa (DATABASE_DELETED); pb = job baru via scan
+    expect(json.data.prunedProjects).toBe(1); // pb lewat jalur scan eligibility
+    expect(await existsProject("pa")).toBe(false);
+    expect(await existsProject("pb")).toBe(false);
+
+    // Semua job berakhir COMPLETED (tombstone)
+    const jobs = await globalClient.execute(
+      "SELECT state FROM project_deprovision_jobs WHERE project_id IN ('pa','pb') ORDER BY project_id",
+    );
+    for (const row of jobs.rows) expect(row.state).toBe("COMPLETED");
+  });
+
+  it("[isolasi kegagalan] satu job gagal provider TIDAK menghentikan project lain", async () => {
+    await seedEligibleProject("pc-fail");
+    await seedEligibleProject("pd-ok");
+    // Paksa pc-fail gagal provider: deleteDb throw untuk nama yang mengandung 'pc'
+    const deps = makeDeps();
+    const failingDeps: InternalRoutesDeps = {
+      ...deps,
+      pruneAll: async () => {
+        const mod = await import("@kanban/infrastructure");
+        return mod.pruneAllRegisteredProjects(globalClient, { org: "o", group: "g", apiToken: "t" }, {
+          now: NOW,
+          deleteDb: async (_env, name) => {
+            if (name.includes("pc")) throw new Error("provider down");
+          },
+        });
+      },
+    };
+    const probe = new Hono().route("/", createInternalRouter(() => failingDeps));
+    const res = await probe.request("/internal/prune", {
+      method: "POST",
+      headers: { authorization: `Bearer ${SECRET}` },
+    });
+    expect(res.status).toBe(200);
+    expect(await existsProject("pc-fail")).toBe(true);  // tetap terdaftar (PENDING)
+    expect(await existsProject("pd-ok")).toBe(false);   // tetap selesai
+    const st = await globalClient.execute({
+      sql: "SELECT * FROM project_deprovision_jobs WHERE project_id = 'pc-fail'",
+    });
+    expect(st.rows[0]!.state).toBe("PENDING");
+    expect(Number(st.rows[0]!.attempts)).toBe(1);
+  });
+});

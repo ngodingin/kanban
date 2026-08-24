@@ -97,7 +97,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.4.1 | ⚠️ | [CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
+| 5.4.1 | 🔎 | [CL-16](#cl-16)<br>[CL-15](#cl-15)<br>[CL-10](#cl-10)<br>[CL-09](#cl-09)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) | 70 | P1 **[MODEL LEBIH KUAT WAJIB]** | Trigger internal prune dan Vercel Cron MUST memproses job deprovision existing berdasarkan state journal sebelum/bersama scan eligibility baru, melanjutkan recovery per Project, dan melaporkan outcome tanpa menghentikan Project lain. | [02-SPEC](docs/02-SPEC.md) FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4 | 5.2, 5.3 |
 
 **Test:** Request tanpa header `Authorization` → `401`, TIDAK memanggil prune sama sekali (assert prune functions tidak ter-invoke, bukan cuma cek response code). Header salah (secret tidak cocok, termasuk yang mirip-mirip untuk uji constant-time genuinely dipakai bukan cuma `===`) → `401`. Header benar → `200` + ringkasan hasil, prune benar-benar berjalan (assert row terhapus, bukan cuma response). Endpoint TIDAK terdaftar di `02-SPEC` Part C (bukan API publik, tidak melanggar C.1 "tidak ada endpoint tanpa kontrak" karena ini eksplisit internal/ops seperti health check — dicatat di 03-ENG bukan 02-SPEC).
 **DoD:** `CRON_SECRET` tidak pernah ter-log/muncul di response error; endpoint tidak dapat dipicu tanpa secret walau tahu path-nya; `vercel.json` valid (schema Vercel Cron).
@@ -120,6 +120,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="cl-16"></a>
+### CL-16 — 2026-08-24 · goal 5.4.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 70 → 80%) — trigger journal-aware + isolasi kegagalan
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **96 file / 588 test lulus**; `internal-prune.test.ts` kini 6 test — tambahan SOT 4.1.0: (a) recovery — job DATABASE_DELETED existing diproses trigger TANPA buka Project DB, project eligible baru dibuatkan job via scan, keduanya COMPLETED; (b) isolasi kegagalan — provider down pada satu project → tetap PENDING attempts=1 last_error tercatat dan registry utuh, sementara project lain selesai normal. `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan:** Arsitektur: driver tunggal `driveDeprovision` dipakai scan eligibility (5.3) DAN recovery (`processDeprovisionJobs`); urutan trigger: recovery journal → descendant-level (skip project ber-job aktif) → scan baru. Summary `CombinedPruneSummary` bertambah `jobsRecovered`/`jobFailures` untuk observability F.4.
+
+<a id="cl-15"></a>
+### CL-15 — 2026-08-24 · goal 5.4.1 dikerjakan ulang (⚠️ → 🔄 · 70% dipertahankan) — trigger journal-aware
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row 5.4.1 `⚠️/70` teks baru SOT 4.1.0; dependency `5.2` ✅ dan `5.3` kini `🔎80` via CL-14 (commit a6fd9e3) — journal siap diproses trigger.
+**Catatan:** Rencana: proses job journal EXISTING lebih dulu per state (PENDING → provider delete+transisi; DATABASE_DELETED → finalize tanpa buka DB), baru scan eligibility untuk project tanpa job; kegagalan satu Project tidak menghentikan lainnya; summary dilaporkan.
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-24 · goal 5.3.1 selesai sisi Dev sesi ini (🔄 → 🔎 · 60 → 80%) — journal BR-016B lengkap + integrasi fix FK CL-12
