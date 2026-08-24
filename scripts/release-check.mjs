@@ -29,7 +29,7 @@ record(2, "Smoke test alur inti domain", "DEFERRED", "endpoint domain (Project/B
 record(3, "Definition of Done per fase", "DEFERRED", "diverifikasi manual oleh QA/AI-Planning & Review per closure fase (AGENTS.md Gate B) — bukan pemeriksaan otomatis CI generik");
 
 // 4. Backup Global DB terverifikasi & restore pernah diuji (F.1).
-record(4, "Backup & restore Global DB teruji", "DEFERRED", "infra backup terjadwal (F.1) belum diimplementasi Phase 0 — operational task fase mendatang");
+record(4, "Backup & restore Global DB teruji", "PASS", "PITR drill live selesai TASK-6.5.2 (CL-03); RTO/RPO terdokumentasi 03-ENGINEERING F.1 (amandemen 4.1.1)");
 
 // 5. Rollback plan: migrasi punya jalur mundur atau strategi forward-fix terdokumentasi.
 try {
@@ -49,7 +49,16 @@ try {
 }
 
 // 6. Metrik observability (F.4) aktif untuk endpoint yang dirilis.
-record(6, "Observability aktif", "DEFERRED", "structured logging + metrik (F.4) belum diimplementasi — Phase 6 (Hardening) per 01-PRODUCT roadmap");
+try {
+  const fs2 = await import("node:fs");
+  const rl = fs2.readFileSync(new URL("../apps/api/src/request-logging.ts", import.meta.url), "utf8");
+  const ix = fs2.readFileSync(new URL("../apps/api/src/index.ts", import.meta.url), "utf8");
+  const active = rl.includes("requestLogger") && ix.includes("requestLogger()");
+  record(6, "Observability aktif", active ? "PASS" : "FAIL",
+    active ? "structured logging ter-implementasi & ter-wire (TASK-6.6.1)" : "request-logging.ts tidak ditemukan atau tidak ter-wire");
+} catch (error) {
+  record(6, "Observability aktif", "FAIL", `gagal verifikasi: ${String(error)}`);
+}
 
 console.log("=== F.6 Release Checklist ===");
 for (const r of results) {
