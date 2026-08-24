@@ -160,6 +160,35 @@ describe("PATCH /api/v1/projects/:project_id/cards/:card_id — goal 2.9.2", () 
     }
   });
 
+  it("[AC-029][BR-062] PATCH field terlarang domain deletedAt/archivedAt/id/version → VALIDATION_ERROR (pola boards-patch)", async () => {
+    const forbidden: Array<Record<string, unknown>> = [
+      { deletedAt: "2026-01-02T00:00:00.000Z" },
+      { archivedAt: "2026-01-02T00:00:00.000Z" },
+      { id: "cd-hack" },
+      { version: 99 },
+    ];
+    for (const body of forbidden) {
+      const res = await patch({ expectedVersion: 2, ...body });
+      expect(res.status, JSON.stringify(body)).toBe(400);
+      expect((await res.json()).error?.code, JSON.stringify(body)).toBe("VALIDATION_ERROR");
+    }
+
+    // State Card benar-benar tidak berubah oleh seluruh percobaan di atas
+    const row = await ctx.globalClient.execute({
+      sql: "SELECT d.database_id AS db FROM project_databases d WHERE d.project_id = ?",
+      args: [projectIdValue],
+    });
+    const projectDb = createClient({ url: String(row.rows[0]!.db) });
+    try {
+      const card = await projectDb.execute(
+        "SELECT id, archived_at, deleted_at, version FROM cards WHERE id = 'cd_patch'",
+      );
+      expect(card.rows[0]).toMatchObject({ id: "cd_patch", archived_at: null, deleted_at: null, version: 2 });
+    } finally {
+      await projectDb.close();
+    }
+  });
+
   it("[03-ENG A.5] negatif: ganti assignee ke non-member → PERMISSION_DENIED 403", async () => {
     const res = await patch({ expectedVersion: 2, assignee: "orang-luar" });
     expect(res.status).toBe(403);
