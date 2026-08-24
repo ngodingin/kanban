@@ -42,7 +42,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.1.1 | ✅ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02) | 100 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
 | 7.1.2 | ✅ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04) | 100 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.1.3 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 80 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
+| 7.1.3 | ✅ | [QA-CL-03](#qa-cl-03)<br>[Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 100 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | 🔎 | [CL-07](#cl-07)<br>[CL-08](#cl-08) | 80 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
 **Test:** Production build Vite dapat disajikan bersama Hono pada satu origin; deep link SPA bekerja; `/api/*` tidak tertangkap fallback; UI Magic Link menangani request/link-sent/expired/used/error; TanStack Query terpasang; tidak ada demo/non-MVP atau identity SaaS.
@@ -346,6 +346,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** freshness check: HEAD `3db3083`, row 7.1.4 dibaca ulang dari disk `⬜️ 0%` (dependency 7.1.1 ✅); Reference `05-FRONTEND §3.1` dibaca dari disk — Zustand GUNAKAN TERBATAS untuk UI/interaction/drag/sidebar/command-palette, bukan database lokal app.
 **Catatan:** mulai store UI minimal (sidebar collapsed + toggle) sebagai fondasi konsumen goal 7.3.1/7.12.1; pin `zustand@5.0.15` hasil revalidasi Review-CL-05.
+
+<a id="qa-cl-03"></a>
+### QA-CL-03 — 2026-08-25 · goal 7.1.3 closed ✅ (🔎 80% → ✅ 100%) — client layer + idempotency handling genuinely correct
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`src/lib/api/client.ts` dibaca penuh:** `apiRequest` genuinely melakukan SATU `fetch` per panggilan, tidak ada loop/retry internal apa pun — sehingga klaim "IDEMPOTENCY_IN_PROGRESS/CONFLICT tanpa side-effect kedua" benar secara struktural (bukan cuma dicek via mock call-count). Envelope `{data}`/`{error{code,message,details?}}` dipetakan sesuai 02-SPEC C.2; `credentials: "same-origin"` genuinely diset; `Idempotency-Key` header genuinely terlampir hanya saat diberikan pemanggil (bukan digenerate otomatis di layer client — tanggung jawab pemanggil menyimpan key per logical action, sesuai C.3).
+
+**Risiko retry-otomatis TanStack Query diperiksa langsung — aman:** `query-client.ts` memakai `new QueryClient()` tanpa override — default TanStack Query v5 untuk `useMutation` adalah `retry: 0` (hanya `useQuery` yang retry default), jadi mutation berisiko tinggi (create/move/archive/dst, yang membawa Idempotency-Key) TIDAK di-retry otomatis oleh library dan tidak berisiko memicu request kedua tanpa sepengetahuan pemanggil.
+
+**Re-run independen:** `npx vitest run apps/web/test/api-client.test.tsx` → **9/9 PASS** — dibaca penuh: GET request shape benar; Idempotency-Key + JSON body terlampir pada POST; `VERSION_CONFLICT`/`VALIDATION_ERROR` (dengan `details[]` lengkap 2 field) dipetakan ke `ApiError{code,status}`; `IDEMPOTENCY_IN_PROGRESS`/`IDEMPOTENCY_CONFLICT` masing-masing diverifikasi `fetchMock` terpanggil **tepat 1×** (bukti langsung tanpa side-effect kedua, bukan diasumsikan dari tidak-adanya retry-loop di source); `NETWORK_ERROR` status 0 saat fetch reject; `newIdempotencyKey()` 100/100 unik (crypto.randomUUID); TanStack Query provider genuinely me-render server state via `useQuery`. `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` → 0 error. `pnpm --filter @kanban/web build` → sukses. Versi `@tanstack/react-query@5.102.2` dikonfirmasi cocok baseline revalidasi Review-CL-05.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-06"></a>
 ### CL-06 — 2026-08-25 · 7.1.3 → 🔎 80%
