@@ -144,8 +144,8 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.8.1 | 🔎 | [CL-33](#cl-33)<br>[CL-32](#cl-32) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-006 (nol test).** Test: Given User creator Card tapi `card.read` TIDAK applicable untuk User itu di scope manapun (tidak ada Group/direct grant apa pun, termasuk default `CREATED_BY_ME` yang butuh grant eksplisit — bukan otomatis dari status creator); When User itu coba baca/list Card yang dibuatnya sendiri; Then MUST ditolak (bukan otomatis terlihat karena jadi creator). Reuse helper `setVisibilityGlobal("")` yang sudah ada di `card-visibility.test.ts` tapi belum pernah dipanggil test manapun. | [02-SPEC A.11](docs/02-SPEC.md) (BR-045 dst); [04-DELIVERY AC-006](docs/04-DELIVERY.md) | — |
-| 6.8.2 | 🔎 | [CL-34](#cl-34)<br>[CL-33](#cl-33) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-007 (nol test).** Sama seperti 6.8.1 untuk assignee: Given User di-assign ke Card tapi `card.read` tidak applicable; When baca Card itu; Then MUST ditolak. | [02-SPEC A.11](docs/02-SPEC.md); [04-DELIVERY AC-007](docs/04-DELIVERY.md) | — |
+| 6.8.1 | ⚠️ | [CL-33](#cl-33)<br>[CL-32](#cl-32)<br>[QA-CL-13](#qa-cl-13) | 70 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-006 (nol test).** Test: Given User creator Card tapi `card.read` TIDAK applicable untuk User itu di scope manapun (tidak ada Group/direct grant apa pun, termasuk default `CREATED_BY_ME` yang butuh grant eksplisit — bukan otomatis dari status creator); When User itu coba baca/list Card yang dibuatnya sendiri; Then MUST ditolak (bukan otomatis terlihat karena jadi creator). Reuse helper `setVisibilityGlobal("")` yang sudah ada di `card-visibility.test.ts` tapi belum pernah dipanggil test manapun. | [02-SPEC A.11](docs/02-SPEC.md) (BR-045 dst); [04-DELIVERY AC-006](docs/04-DELIVERY.md) | — |
+| 6.8.2 | ⚠️ | [CL-34](#cl-34)<br>[CL-33](#cl-33)<br>[QA-CL-13](#qa-cl-13) | 70 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-007 (nol test).** Sama seperti 6.8.1 untuk assignee: Given User di-assign ke Card tapi `card.read` tidak applicable; When baca Card itu; Then MUST ditolak. | [02-SPEC A.11](docs/02-SPEC.md); [04-DELIVERY AC-007](docs/04-DELIVERY.md) | — |
 | 6.8.3 | 🔎 | [CL-25](#cl-25)<br>[CL-25](#cl-25) | 80 | P1 | **AC-012 (nol test).** Test: Given Card punya Comment (Activity `comment.added`/`comment.edited`); When Card di-delete (DELETED, terminal); Then Comment historis TETAP terbaca via `GET /activities`/endpoint per-entity, sesuai akses baca yang berlaku (bukan ikut hilang/tersembunyi karena Card-nya sudah DELETED — konsisten BR-028 konteks historis + Activity immutability). | [02-SPEC A.8](docs/02-SPEC.md) (BR-028); [04-DELIVERY AC-012](docs/04-DELIVERY.md) | — |
 | 6.8.4 | 🔎 | [CL-24](#cl-24)<br>[CL-35](#cl-35) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-019 (nol test untuk kombinasi spesifik).** Failure-injection test pada `moveCard`: Given move Card lintas List/Board (dengan label association ikut berubah); When Activity append/salah satu langkah GAGAL di tengah transaksi; Then `listId`, `version`, label association, DAN Activity MUST seluruhnya rollback bersama (bukan cuma diuji terpisah-pisah seperti pola generik Card update/Project yang sudah ada di `audit-consistency-mutation-activity.test.ts`). | [02-SPEC A.16](docs/02-SPEC.md) poin 9; [04-DELIVERY AC-019](docs/04-DELIVERY.md) | — |
 | 6.8.5 | 🔎 | [CL-26](#cl-26)<br>[CL-26](#cl-26) | 80 | P1 **[MODEL LEBIH KUAT WAJIB]** | **AC-025 (jalur sukses belum teruji).** Test: Given Invitation dengan scoped assignment (Group Contributor di Milestone X); When invitation di-accept; Then Membership MUST punya Group assignment TEPAT di Milestone X — assert eksplisit assignment TIDAK muncul di scope Project/Milestone lain. Test existing (`invitations-create.test.ts`) hanya menguji jalur negatif (scope invalid ditolak), belum kasus sukses ini. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054A/B); [04-DELIVERY AC-025](docs/04-DELIVERY.md) | — |
@@ -186,6 +186,23 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-13"></a>
+### QA-CL-13 — 2026-08-24 · goal 6.8.1/6.8.2 — bug otorisasi nyata diperbaiki dan dibuktikan, tapi lint gagal (🔎 80% → ⚠️ 70% keduanya)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Catatan proses:** ditemukan collision penomoran CL (lihat commit `6c3cf8b` sebelum entry ini) — diperbaiki sebagai housekeeping terpisah sebelum verifikasi teknis ini.
+
+**Fix `cards.ts` dibaca dan dikonfirmasi genuinely benar:** `hasPermission(effective, "card.read")` sekarang dicek eksplisit SEBELUM return data, di KEDUA endpoint (`GET /cards/:id` → 404 anti-enumeration; `GET .../lists/:id/cards` → array kosong) — status creator/assignee TIDAK lagi otomatis memberi akses baca, sesuai BR-045.
+
+**Bug otorisasi NYATA dibuktikan via reproduksi before/after (bukan cuma percaya klaim CL-33/34):** `git checkout` ke commit sebelum fix (`9bfb5c2~1`) terhadap test BARU (`ac006-card-read.test.ts`) → skenario inti AC-006 (creator TANPA `card.read` GET Card miliknya sendiri) **GAGAL genuinely** (`200` bukan `404` — creator bisa baca Card sendiri walau tidak punya grant apa pun). Kode dikembalikan → 4/4 PASS. Ini invariant-critical genuine (bukan sekadar gap traceability) — sebelumnya SIAPA PUN yang jadi creator/assignee otomatis bisa baca Card-nya terlepas grant permission, melanggar model "Permission Group eksplisit, bukan status implisit" (BR-045).
+
+**`pnpm lint` GAGAL — 2 error, di scope test file goal ini sendiri:** `ac006-card-read.test.ts:9` (`applyProjectMigrations` diimpor statis tapi tidak dipakai — file memakai dynamic `import()` terpisah di baris 45 untuk fungsi yang sama) dan `:25` (`listId` dideklarasikan tapi tidak pernah dipakai).
+
+**Full re-run independen (mengecualikan `core-flow-smoke.test.ts`, WIP goal 6.9.2 yang belum tuntas, tidak terkait):** `pnpm exec vitest run --exclude core-flow-smoke.test.ts` → **109 file/642 test PASS**; `pnpm -r typecheck` → 6/6 Done.
+
+**Verdict:** `⚠️ 70%` keduanya (turun dari 80 — fix fungsional solid dan terbukti, hanya lint yang gagal). Dev tinggal hapus 2 baris tak terpakai.
 
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)
