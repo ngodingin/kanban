@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -8,7 +9,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/api/client";
+import { ApiError, apiRequest } from "@/lib/api/client";
 import { useLists } from "@/features/lists/hooks";
 import { useCards } from "@/features/cards/hooks";
 import { useMoveCard } from "@/features/cards/mutations";
@@ -110,6 +111,11 @@ export function BoardView({
   const moveMutation = useMoveCard(projectId);
   const queryClient = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor));
+  const [conflictDismissed, setConflictDismissed] = useState(false);
+  const conflict =
+    moveMutation.error instanceof ApiError && moveMutation.error.code === "VERSION_CONFLICT"
+      ? moveMutation.error
+      : null;
 
   async function onDragEnd(event: DragEndEvent) {
     const activeData = event.active.data.current as
@@ -141,10 +147,29 @@ export function BoardView({
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="flex flex-1 items-start gap-4 overflow-x-auto p-4">
-        {lists.map((list) => (
-          <BoardColumn key={list.id} projectId={projectId} listId={list.id} title={list.title} />
-        ))}
+      <div className="flex flex-1 flex-col">
+        {/* 7.5.4 — VERSION_CONFLICT: pesan + data sudah di-reload via invalidasi;
+            tidak ada penimpaan state lokal. */}
+        {conflict && !conflictDismissed ? (
+          <div role="alert" className="flex items-center justify-between bg-warning/15 px-4 py-2 text-sm text-foreground">
+            <span>
+              Kartu sudah berubah di server (VERSION_CONFLICT). Papan dimuat ulang — coba pindahkan lagi.
+            </span>
+            <button
+              type="button"
+              aria-label="Tutup pesan konflik"
+              onClick={() => setConflictDismissed(true)}
+              className="rounded px-2 py-1 hover:bg-accent"
+            >
+              Tutup
+            </button>
+          </div>
+        ) : null}
+        <div className="flex flex-1 items-start gap-4 overflow-x-auto p-4">
+          {lists.map((list) => (
+            <BoardColumn key={list.id} projectId={projectId} listId={list.id} title={list.title} />
+          ))}
+        </div>
       </div>
     </DndContext>
   );

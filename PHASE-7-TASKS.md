@@ -94,8 +94,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.5.1 | 🔎 | [CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
 | 7.5.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
-| 7.5.3 | ⬜️ | — | 0 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
-| 7.5.4 | ⬜️ | — | 0 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.3 | 🔄 | [CL-19](#cl-19) | 0 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.4 | 🔄 | [CL-19](#cl-19) | 0 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
 **Test:** Drag memicu move API benar; opsi Board lintas-Milestone tidak muncul; conflict ditampilkan, tidak menimpa.
 **DoD:** Interaksi Board tunduk domain command + optimistic locking; List tanpa makna status sistem.
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-19"></a>
+### CL-19 — 2026-08-25 · 7.5.3 + 7.5.4 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `b589622`, kedua row dibaca ulang dari disk `⬜️ 0%` (dependency 7.5.2 🔎 sisi Dev); Reference: BR-018 (move lintas Board hanya dalam Milestone sama), 04-DELIVERY A.3 (VERSION_CONFLICT → pesan + reload, bukan overwrite), BR-021; endpoint sibling boards terverifikasi `GET /v1/projects/:p/milestones/:m/boards` (boards.ts:80).
+**Catatan:** dua goal dikerjakan berurutan dalam satu rangkaian komponen move-to-board (satu unit koheren): kandidat board di-filter Milestone sama (7.5.3), dan VERSION_CONFLICT ditangani pesan + invalidasi/reload data tanpa auto-overwrite (7.5.4). Handoff tetap per goal.
 
 <a id="cl-18"></a>
 ### CL-18 — 2026-08-25 · 7.5.2 → 🔎 80%
