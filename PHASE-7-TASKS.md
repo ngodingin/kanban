@@ -192,7 +192,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.13.1 | 🔄 | [CL-30](#cl-30) | 0 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
+| 7.13.1 | 🔎 | [CL-30](#cl-30)<br>[CL-31](#cl-31) | 80 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
 | 7.13.2 | ⬜️ | — | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
 | 7.13.3 | ⬜️ | — | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
 | 7.13.4 | ⬜️ | — | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
@@ -339,6 +339,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tidak ada bug produksi tersisa. Logic filter same-Milestone (inti goal ini) tidak pernah salah — hanya presentasi nama yang sekarang genuinely benar.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-31"></a>
+### CL-31 — 2026-08-25 · 7.13.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/lifecycle-dialog.test.tsx` **6/6 PASS** — positif: `subtreeImpactText("board","archive")` menyebut descendant tidak operasional sampai dipulihkan; delete = permanen/terminal/tidak dapat dipulihkan/prune; dialog delete merender tombol destruktif `bg-destructive` dengan label "Ya, hapus permanen"; `useLifecycleMutation` POST `/api/v1/projects/p1/boards/b1/archive` body `{expectedVersion:4}` + Idempotency-Key; mapping project→`/projects/:p/delete` dan restore→`/lists/:id/restore` benar. Negatif: error server (INVALID_STATE) dirender via `role="alert"`, dialog tetap terbuka (keputusan pada pengguna, bukan auto-dismiss). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **124 file / 715 PASS**, exit 0. Commit: `a135c25`.
+**Catatan:** tanpa child handling — UI hanya memanggil command entity tunggal; reload data terdampak via invalidasi query. Integrasi tombol aksi per layar mengikuti goal layar masing-masing; restore-guard ancestor + shortcut adalah 7.13.3.
 
 <a id="cl-30"></a>
 ### CL-30 — 2026-08-25 · 7.13.1 → 🔄
