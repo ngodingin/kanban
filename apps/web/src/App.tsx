@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router";
+import { Sidebar } from "./components/layout/sidebar";
 import { LoginPage } from "./features/auth/login-page";
 
 function Home() {
@@ -20,9 +21,22 @@ function NotFound() {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Home />} />
+      {/* Layar autentikasi standalone — tanpa app shell (05-FRONTEND §5). */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="*" element={<NotFound />} />
+      <Route
+        path="*"
+        element={
+          <div className="flex min-h-svh">
+            <Sidebar />
+            <div className="flex-1">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </div>
+        }
+      />
     </Routes>
   );
 }

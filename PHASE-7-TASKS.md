@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | ⬜️ | — | 0 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | 🔄 | [CL-11](#cl-11) | 0 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ⬜️ | — | 0 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-11"></a>
+### CL-11 — 2026-08-25 · 7.3.1 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `1fe314d`, row 7.3.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.2.1 🔎 sisi Dev — implementasi token + test hijau); Reference `05-FRONTEND §4,§5` dibaca dari disk (sidebar: Home · My Tasks · Activity · PROJECTS ▾ · Members · Permissions · API Keys · Settings; Inbox BUANG).
+**Catatan:** mulai komponen Sidebar + app shell layout (login standalone tanpa sidebar); daftar Project nyata menyusul di goal projects feature — group PROJECTS ▾ untuk sekarang statis tanpa data demo.
 
 <a id="cl-10"></a>
 ### CL-10 — 2026-08-25 · 7.2.1 → 🔎 80%
