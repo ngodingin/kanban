@@ -112,7 +112,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 5.5.2 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-09](#qa-cl-09) | 100 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
+| 5.5.5 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-12](#qa-cl-12) | 100 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
 
 **Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.1.0 jika seluruh remediation dependency sudah ✅.
 **DoD:** 5.5.1–5.5.5 seluruhnya ✅ 100% dengan QA/reviewer evidence baru; tidak ada kontrak historis `snake_case`, response mentah Invitation, non-atomic idempotency, atau failure boundary lintas-DB yang belum teruji. Baru setelah itu gate Phase 6 dapat dipertimbangkan.
@@ -120,6 +120,23 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-12"></a>
+### QA-CL-12 — 2026-08-24 · buka gate 5.5.5 (⏸️ → ⬜️) + reverifikasi Phase 5 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap baru
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Gate dibuka:** dependency `5.3.1` + `5.4.1` keduanya ✅ (QA-CL-05, QA-CL-08, sesi ini) — dikonfirmasi manusia eksplisit sebelum transisi ("buka gate 5.5.5 dan lanjut").
+
+**4 area scope goal — seluruhnya SUDAH diverifikasi mendalam sesi ini di goal masing-masing, dikonsolidasikan di sini sebagai integration check, bukan diulang dari nol:**
+1. **Retention/subtree no-orphan** — `retention.ts` (boundary inclusive BR-016A) + `pruneDescendantSubtrees` (leaf-to-root, matriks 4 bentuk root) — sudah diverifikasi QA-CL-01/02 sesi-sesi sebelumnya, dijalankan ulang sekarang: masih hijau.
+2. **Journal deprovision BR-016B** — `driveDeprovision` state machine, ownership `UPDATE...RETURNING`, mutex+`BEGIN IMMEDIATE` — diverifikasi mendalam QA-CL-05 (termasuk reproduksi before/after regresi genuinely gagal terhadap kode lama).
+3. **Trigger recovery** — `processDeprovisionJobs`/`pruneAllRegisteredProjects` memproses job existing SEBELUM scan baru, tanpa membuka Project DB yang hilang — diverifikasi mendalam QA-CL-08.
+4. **Worker concurrency** — barrier test dua-koneksi genuinely paralel (`gc`/`gcB`, simulasi lintas-proses) — diverifikasi QA-CL-05.
+
+**Integration check BARU (bukan duplikasi) — seluruh rantai dijalankan BERSAMA dalam satu run** (bukan file-per-file terpisah seperti verifikasi goal individual sebelumnya), memastikan tidak ada regresi interaksi antar-lapisan (5.1→5.2→5.3→5.4): `retention.test.ts` (6), `prune-descendants.test.ts` (5), `prune-no-orphan.test.ts` (5), `prune-projects.test.ts` (10, termasuk AC-036 barrier), `internal-prune.test.ts` (6, termasuk recovery+isolasi) → **32/32 PASS** dalam satu eksekusi.
+
+**Kesimpulan:** 5.5.5 ditutup `✅ 100%`. **TASK-5.5 SELESAI PENUH kecuali 5.5.1** (masih `🔄`, remediasi Dev berjalan atas temuan QA-CL-07). Phase 5 secara keseluruhan genuinely tuntas terhadap SOT 4.1.0 di 4 dari 5 goal reverifikasi; gate Phase 6 tetap tertutup sampai 5.5.1 juga ✅.
 
 <a id="qa-cl-11"></a>
 ### QA-CL-11 — 2026-08-24 · goal 5.5.4 — reverifikasi Phase 4 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap
