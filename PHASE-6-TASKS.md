@@ -163,7 +163,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.9.1 | ⚠️ | [QA-CL-25](#qa-cl-25)<br>[CL-30](#cl-30)<br>[CL-28](#cl-28) | 60 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
+| 6.9.1 | 🔄 | [CL-52](#cl-52)<br>[QA-CL-25](#qa-cl-25)<br>[CL-30](#cl-30)<br>[CL-28](#cl-28) | 60 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
 | 6.9.2 | ✅ | [QA-CL-24](#qa-cl-24)<br>[CL-49](#cl-49)<br>[CL-48](#cl-48)<br>[QA-CL-17](#qa-cl-17)<br>[CL-37](#cl-37)<br>[CL-31](#cl-31)<br>[CL-29](#cl-29)<br>[CL-36](#cl-36) | 100 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
 
 **Test:** 6.9.1 — jalankan `node scripts/release-check.mjs` → seluruh poin applicable `PASS`, nol `DEFERRED` yang sebenarnya sudah applicable (poin 3 boleh tetap `DEFERRED` by design). 6.9.2 — script smoke baru dijalankan reproducible (`pnpm --filter @kanban/infrastructure test:smoke-<nama>`), seluruh langkah PASS terhadap Project nyata di database test.
@@ -504,6 +504,12 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 **Dengan ini, TASK-6.8 (7/7 goal) TUNTAS ✅ seluruhnya.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-52"></a>
+### CL-52 — 2026-08-25 · goal 6.9.1 remediasi dimulai (⚠️ → 🔄 · 60% dipertahankan)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** Freshness disk: row 6.9.1 ⚠️/60, dep `6.9.2` kini ✅ (QA-CL-24); QA-CL-25: poin 4/6 dikonfirmasi genuinely benar, satu-satunya gap = `scripts/release-check.mjs:26` masih DEFERRED dengan pesan stale Phase 0; resep fix eksplisit QA.
+**Catatan:** Rencana: poin 2 → PASS mengikuti pola poin 6 (verifikasi file nyata, bukan pesan statis): cek eksistensi `apps/api/test/core-flow-smoke.test.ts` + referensi konkret TASK-6.9.2/QA-CL-24; fallback FAIL jika file hilang. Poin 3 dibiarkan DEFERRED sesuai izin goal text (pesan sudah generik). Target output: 5 PASS / 0 FAIL / 1 DEFERRED.
 
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)

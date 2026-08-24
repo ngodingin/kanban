@@ -23,7 +23,16 @@ const record = (id, title, status, detail) => {
 record(1, "Migrasi Global + fan-out Project DB berhasil", "PASS", "mekanisme terverifikasi — step migrate:global/migrate:projects sudah lulus sebelum step ini (job berhenti jika gagal)");
 
 // 2. Smoke test alur inti domain (create Project -> ... -> comment).
-record(2, "Smoke test alur inti domain", "DEFERRED", "endpoint domain (Project/Board/Card/dst.) belum ada — mulai Phase 1, lihat PHASE-0-TASKS.md \"Prinsip Phase 0\"");
+// Selesai TASK-6.9.2 (QA-CL-24): rantai 9 langkah wajib genuinely teruji
+// end-to-end di apps/api/test/core-flow-smoke.test.ts dan hijau dalam
+// suite penuh repo tanpa pengecualian.
+try {
+  const fs2 = await import("node:fs");
+  fs2.accessSync(new URL("../apps/api/test/core-flow-smoke.test.ts", import.meta.url));
+  record(2, "Smoke test alur inti domain", "PASS", "TASK-6.9.2 selesai (QA-CL-24) — core-flow-smoke.test.ts mencakup seluruh 9 langkah wajib F.6 poin 2 dan lulus dalam suite penuh");
+} catch {
+  record(2, "Smoke test alur inti domain", "FAIL", "apps/api/test/core-flow-smoke.test.ts tidak ditemukan — TASK-6.9.2 hilang atau dipindah tanpa update checklist ini");
+}
 
 // 3. Definition of Done (04-DELIVERY C.3) hijau untuk fase yang dirilis.
 record(3, "Definition of Done per fase", "DEFERRED", "diverifikasi manual oleh QA/AI-Planning & Review per closure fase (AGENTS.md Gate B) — bukan pemeriksaan otomatis CI generik");
