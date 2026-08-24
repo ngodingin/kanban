@@ -116,7 +116,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.6.1 | 🔎 | [CL-12](#cl-12)<br>[CL-11](#cl-11) | 80 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
+| 6.6.1 | ⚠️ | [CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-05](#qa-cl-05) | 70 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
 | 6.6.2 | 🔎 | [CL-15](#cl-15)<br>[CL-14](#cl-14) | 80 | P2 | Metrik minimal dari structured log 6.6.1 (BUKAN infra metrik baru — query/agregasi atas log yang sudah terstruktur, konsisten Prinsip #5): request rate, error rate per kode kanonik (`02-SPEC C.2`), latensi p50/p95, `VERSION_CONFLICT` rate (indikator kesehatan concurrency), kegagalan provisioning. Dokumentasikan cara query-nya (mis. Vercel log query/dashboard), bukan membangun dashboard kustom. | [03-ENG F.4](docs/03-ENGINEERING.md) | 6.6.1 |
 | 6.6.3 | 🔎 | [CL-17](#cl-17)<br>[CL-16](#cl-16) | 80 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
 
@@ -150,6 +150,24 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-05"></a>
+### QA-CL-05 — 2026-08-24 · goal 6.6.1 — mekanisme benar, tapi 3 lint error nyata di scope goal ini sendiri (🔎 80% → ⚠️ 70%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Mekanisme `project_id` diverifikasi genuinely benar (bukan asumsi dari docstring):** `pipeline.ts:46` memanggil `setRequestLogFields({ projectId })` — ini jalur AKTUAL yang mengisi `store.projectId` (AsyncLocalStorage, `request-context.ts`), BUKAN fungsi `extractProjectId` (regex path-parsing) yang didefinisikan di `request-logging.ts:25-28`. Dijalankan `request-logging.test.ts` secara langsung → output log NYATA dikonfirmasi berisi `project_id` benar untuk request Project-scoped (`"project_id":"a-01M0T5HGAAZTSSQ6JDQWH1EYV9"`), cocok dengan requirement F.4.
+
+**Tapi `extractProjectId` GENUINELY DEAD CODE** — tidak pernah dipanggil di mana pun (dikonfirmasi `grep`), inkonsisten dengan docstring file yang mengklaim "project_id di-parse dari path" (padahal sumber sebenarnya adalah pipeline/ALS). Bukan bug fungsional (mekanisme aktual tetap benar), tapi genuinely unused code.
+
+**`pnpm lint` GAGAL — 3 error, seluruhnya di scope goal ini sendiri (bukan cross-cutting dari goal lain):**
+1. `apps/api/src/request-logging.ts:25` — `extractProjectId` unused.
+2. `apps/api/test/request-logging.test.ts:9` — `applyProjectMigrations` diimpor tapi tidak dipakai.
+3. `apps/api/test/request-logging.test.ts:96` — `process.stdout.write = process.stdout.write;` self-assignment tidak berguna (`no-self-assign`) — kemungkinan dimaksudkan sebagai restore spy tapi salah tulis.
+
+**Test tetap lulus** (2/2, `request-logging.test.ts` dijalankan ulang independen) — DoD fungsional terpenuhi, hanya DoD lint-clean yang gagal.
+
+**Verdict:** `⚠️ 70%` (turun dari 80). Dev tinggal: (1) hapus `extractProjectId` (genuinely tidak dipakai, atau perbarui docstring kalau memang mau dipertahankan sebagai fallback — tapi saat ini tidak ada call site sama sekali), (2) hapus import `applyProjectMigrations` yang tidak dipakai, (3) perbaiki/hapus baris self-assign `process.stdout.write`.
 
 <a id="qa-cl-04"></a>
 ### QA-CL-04 — 2026-08-24 · verifikasi independen 6.3.1 (audit error-mapping) — ✅ 100%
