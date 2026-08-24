@@ -157,7 +157,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.10.1 | 🔎 | [CL-37](#cl-37)<br>[CL-38](#cl-38) | 80 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.10.1 | ⚠️ | [QA-CL-14](#qa-cl-14)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38) | 65 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.10.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 80 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
@@ -232,6 +232,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-14"></a>
+### QA-CL-14 — 2026-08-25 · goal 7.10.1 — field/envelope contract genuinely benar, TAPI satu test punya assertion vacuous (floating promise) (🔎 80% → ⚠️ 65%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Kontrak API dicek langsung ke source, seluruhnya BENAR (tidak ada pola bug 7.3.2/7.5.3 di sini):** `MemberSummary{membershipId,userId,email,name,createdAt,revokedAt}` dicocokkan ke `listProjectMembers` (`packages/infrastructure/src/database/project-admin.ts:789-805`) — identik. `{members}`/`{invitations}`/`{groups}` wrapper dicocokkan ke `apps/api/src/routes/project-admin.ts:175/362/425` — identik. `{groupAssignments, permissionAssignments}` (TANPA wrapper tambahan) dicocokkan ke `listMembershipAssignments` (`project-admin.ts:989-1023`, route mengembalikan `data` langsung) — identik, dan hooks.ts genuinely tidak menambah unwrap yang tidak perlu untuk endpoint ini. Seluruh `select()` di `hooks.ts` genuinely benar.
+
+**Ditemukan bug test genuine — assertion tidak pernah benar-benar berjalan (floating promise dalam test synchronous):** `members-table.test.tsx:120-131` — test `"positif: invitation belum di-accept tampil sebagai Pending; accepted tidak"` memanggil `void waitFor(...).then(() => { expect(...) })` TANPA `async`/`await` pada fungsi test. Vitest menganggap test selesai begitu fungsi synchronous ini return (seketika), SEBELUM promise `waitFor().then()` sempat resolve — sehingga `expect()` di dalam `.then()` callback berjalan SETELAH test sudah dinyatakan lulus, hasilnya tidak pernah memengaruhi pass/fail test ini. **Dibuktikan empiris:** durasi eksekusi test ini **3ms** (dijalankan ulang, dikonfirmasi konsisten) — jauh lebih cepat dari test serupa lain di file yang sama yang genuinely menunggu `waitFor` (test 1: 41ms, test 3: 8ms) — pola durasi ini konsisten dengan assertion yang tidak pernah benar-benar dieksekusi sebagai bagian dari siklus hidup test.
+
+**Konteks yang meredakan (kenapa bukan bug fungsional, murni gap test):** logic murni di baliknya (`isPendingInvitation`) SUDAH genuinely diuji benar secara synchronous & independen di test #4 ("helper murni") — 3 skenario (pending/expired/revoked) semuanya lulus tanpa masalah async apa pun. Saya juga membaca langsung `MembersTable`'s filter+render pending-row (`members-table.tsx:47,72-78`) — logic-nya genuinely benar (filter via `isPendingInvitation`, render `Pending` di kolom Status). Jadi klaim FUNGSIONAL goal ini (baris Pending tampil untuk invitation belum di-accept) kemungkinan besar genuinely benar — HANYA satu test integrasi spesifik yang gagal membuktikannya karena bug pada test itu sendiri, bukan bug pada aplikasi.
+
+**Rekomendasi fix untuk Dev (tidak saya kerjakan sendiri, sesuai batas lane AI-QA):** tambahkan `async` pada test callback dan `await waitFor(...)` (hapus `void`+`.then()`), pola sama seperti test 1/3 di file yang sama.
+
+**Verdict:** `⚠️ 65%` (lebih tinggi dari kasus 7.3.2/7.5.3 karena tidak ada bug produksi — kontrak API 100% benar dan logic inti sudah terbukti via test lain; murni satu assertion integrasi yang perlu diperbaiki agar genuinely membuktikan apa yang diklaim).
 
 <a id="qa-cl-13"></a>
 ### QA-CL-13 — 2026-08-25 · goal 7.5.1/7.5.2/7.5.4/7.6.1/7.6.2 closed ✅ (🔎 80% → ✅ 100% seluruhnya) — dependency chain kini genuinely terpenuhi
