@@ -163,7 +163,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.9.1 | 🔎 | [CL-30](#cl-30)<br>[CL-28](#cl-28) | 80 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
+| 6.9.1 | ⚠️ | [QA-CL-25](#qa-cl-25)<br>[CL-30](#cl-30)<br>[CL-28](#cl-28) | 60 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
 | 6.9.2 | ✅ | [QA-CL-24](#qa-cl-24)<br>[CL-49](#cl-49)<br>[CL-48](#cl-48)<br>[QA-CL-17](#qa-cl-17)<br>[CL-37](#cl-37)<br>[CL-31](#cl-31)<br>[CL-29](#cl-29)<br>[CL-36](#cl-36) | 100 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
 
 **Test:** 6.9.1 — jalankan `node scripts/release-check.mjs` → seluruh poin applicable `PASS`, nol `DEFERRED` yang sebenarnya sudah applicable (poin 3 boleh tetap `DEFERRED` by design). 6.9.2 — script smoke baru dijalankan reproducible (`pnpm --filter @kanban/infrastructure test:smoke-<nama>`), seluruh langkah PASS terhadap Project nyata di database test.
@@ -470,6 +470,25 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 **Tidak ada bug produksi ditemukan** — seluruh langkah genuinely lulus melalui jalur HTTP asli.
 
 **Verdict:** `✅ 100%`.
+
+<a id="qa-cl-25"></a>
+### QA-CL-25 — 2026-08-25 · goal 6.9.1 — poin 2 (smoke test) masih stale-DEFERRED, tidak pernah diupdate setelah 6.9.2 selesai (🔎 80% → ⚠️ 60%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Dependency terpenuhi:** 6.9.2 sudah `✅` (QA-CL-24) — 6.9.1 sekarang genuinely actionable, ditinjau untuk pertama kalinya sejak CL-30.
+
+**Dijalankan langsung:** `node scripts/release-check.mjs` → **4 PASS / 0 FAIL / 2 DEFERRED**. Poin 4 & 6 (yang dikerjakan CL-30) dikonfirmasi genuinely benar: poin 4 mereferensikan drill live TASK-6.5.2 + F.1 RTO/RPO (sudah diverifikasi genuinely di QA-CL-10/09 sesi sebelumnya), poin 6 mereferensikan structured logging TASK-6.6.1 (sudah diverifikasi genuinely di QA-CL-11 sesi sebelumnya).
+
+**Poin 2 TIDAK pernah disentuh — masih persis pesan lama yang sekarang genuinely salah:** `scripts/release-check.mjs:26` tetap `DEFERRED`, pesan **"endpoint domain (Project/Board/Card/dst.) belum ada — mulai Phase 1, lihat PHASE-0-TASKS.md"** — klaim ini sudah tidak benar sejak lama (kita di Phase 6, endpoint domain sudah ada sejak Phase 1-4) DAN sekarang goal 6.9.2 (smoke test end-to-end) sudah genuinely `✅` dengan 9 langkah lengkap (QA-CL-24). CL-30 sendiri jujur hanya mengerjakan poin 4 & 6 — poin 2 memang tidak bisa dikerjakan saat itu karena dependency 6.9.2 belum selesai (goal 6.9.1 waktu itu di-submit ke `🔎/80` sebelum dependency-nya sendiri terpenuhi — bukan kesalahan proses, karena goal ini secara desain memang menunggu 6.9.2 rampung untuk poin 2-nya). **Yang jadi gap sekarang: tidak ada CL susulan yang mengupdate poin 2 setelah 6.9.2 landed** — goal tetap di `🔎/80` seolah selesai, padahal DoD eksplisit goal ini ("poin 2 → update pesan mengikuti hasil TASK-6.9.2, DEFERRED→PASS") belum genuinely dikerjakan.
+
+**Poin 3 dikonfirmasi TIDAK perlu perubahan** — pesannya sudah generik ("diverifikasi manual oleh QA/AI-Planning & Review per closure fase") tanpa menyebut fase spesifik yang sudah lewat, sesuai izin eksplisit goal text ("boleh TETAP DEFERRED").
+
+**Tidak ada bug produksi** — murni satu baris pesan checklist yang stale, gap kecil tapi eksplisit disyaratkan DoD goal ini sendiri.
+
+**Rekomendasi fix untuk Dev (tidak saya kerjakan sendiri, sesuai batas lane AI-QA):** update `scripts/release-check.mjs:26` — `record(2, "Smoke test alur inti domain", "PASS", "...")` dengan referensi konkret ke `TASK-6.9.2`/`core-flow-smoke.test.ts` (pola sama seperti poin 4/6), lalu jalankan ulang `node scripts/release-check.mjs` untuk konfirmasi output `5 PASS / 0 FAIL / 1 DEFERRED`.
+
+**Verdict:** `⚠️ 60%` (gap kecil dan sudah diantisipasi sejak awal oleh desain goal — poin 4/6 solid, poin 2 tinggal satu update mekanis begitu dependency terpenuhi, yang belum sempat menyusul).
 
 <a id="review-cl-03"></a>
 ### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)
