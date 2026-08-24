@@ -111,7 +111,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 | 5.5.1 | 🔄 | [CL-23](#cl-23)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07) | 40 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
 | 5.5.2 | ✅ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-09](#qa-cl-09) | 100 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-10](#qa-cl-10) | 100 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.4 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.4 | ✅ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-11](#qa-cl-11) | 100 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
 
 **Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.1.0 jika seluruh remediation dependency sudah ✅.
@@ -120,6 +120,22 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-11"></a>
+### QA-CL-11 — 2026-08-24 · goal 5.5.4 — reverifikasi Phase 4 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**5 area scope goal — seluruhnya dikonfirmasi BERSIH dengan bukti fresh:**
+1. **Authorization matrix / hierarchy terkini** — `permission-pipeline.test.ts`, `entity-permissions.test.ts`, `permission-engine.test.ts` (domain, 19 test) dijalankan ulang; permission resolution sudah diaudit sangat ketat sejak insiden model-tiering Phase 4 asli (Review-CL-03/04/05) — tidak ada perubahan pada modul ini sejak SOT naik ke 4.1.0 (`git log` dikonfirmasi tidak menyentuh `permission-resolution.ts`/`entity-permissions.ts` di luar sesi Phase 4 asli).
+2. **Credential (API Key/PAT) — Global DB current-state guard** — DIBACA LANGSUNG (bukan asumsi) `revokeApiKey`/`revokePersonalAccessToken`: KEDUANYA sudah memakai `UPDATE ... WHERE id=? AND revoked_at IS NULL` (conditional, benar) DAN re-fetch state terkini via `getApiKey`/`getPersonalAccessToken` setelahnya (pola sama `revokeMembership`). **Ini kontras positif penting** — membuktikan gap yang saya temukan di 5.5.1 (`revokeGroupAssignment`/`revokePermissionAssignment`/`deletePermissionGroup`/`revokeInvitation`/`acceptInvitation`) genuinely lokal ke fungsi-fungsi tertentu di `project-admin.ts`, BUKAN pola sistemik di seluruh Global DB — kredensial Phase 4 sudah benar sejak awal.
+3. **Assignment response camelCase** — sudah diverifikasi mendalam QA-CL-70 (0.19.1: `groupAssignments`/`permissionAssignments`); `membership-assignments.test.ts` dijalankan ulang, lulus.
+4. **Idempotency endpoint mutation** — `withIdempotentHandling` dikonfirmasi terpasang di seluruh mutation `api-keys.ts` (3 titik/2 registrasi) dan `personal-access-tokens.ts` (3/2, termasuk GET list yang SUDAH benar di-unwrap sejak QA-CL-71).
+5. **camelCase umum credential** — `grep body\.expires_at` di kedua route file → nol hasil (dikonfirmasi ulang dari QA-CL-72).
+
+**Test dijalankan ulang independen** (18 file, sebelum menyentuh apa pun): seluruh test permission group/assignment (`create/update/delete/list`), `authorization-scoped`, `card-visibility`, `permission-memoization`, `api-keys-route`, `personal-access-tokens-route`, plus domain/infra (`permission-engine`, `permission-resolution`, `permission-catalog`, `permission-pipeline`, `entity-permissions`, `api-key`) → **114/114 PASS**.
+
+**Kesimpulan:** 5.5.4 ditutup `✅ 100%`. Reverifikasi Phase 4 terhadap SOT 4.1.0 tidak menemukan gap — justru memperkuat kesimpulan 5.5.1 bahwa temuan di sana bersifat lokal, bukan arsitektural.
 
 <a id="qa-cl-10"></a>
 ### QA-CL-10 — 2026-08-24 · goal 5.5.3 — reverifikasi Phase 3 terhadap SOT 4.1.0 (⬜️ → ✅ · 0 → 100%) — bersih, tidak ada gap
