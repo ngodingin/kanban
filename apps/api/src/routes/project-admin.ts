@@ -121,18 +121,18 @@ function readPermissionEntries(rawPermissions: unknown): Array<{ permissionId: s
       throw new PipelineError("VALIDATION_ERROR", "Item permissions wajib objek.", 400);
     }
     const item = entry as Record<string, unknown>;
-    const permissionId = item.permission_id;
+    const permissionId = item.permissionId;
     if (typeof permissionId !== "string" || permissionId.length === 0) {
-      throw new PipelineError("VALIDATION_ERROR", "Field permission_id wajib string non-kosong.", 400);
+      throw new PipelineError("VALIDATION_ERROR", "Field permissionId wajib string non-kosong.", 400);
     }
     if (seen.has(permissionId)) {
-      throw new PipelineError("VALIDATION_ERROR", `permission_id duplikat: ${permissionId}`, 400);
+      throw new PipelineError("VALIDATION_ERROR", `permissionId duplikat: ${permissionId}`, 400);
     }
     seen.add(permissionId);
-    const visibility = item.card_read_visibility;
+    const visibility = item.cardReadVisibility;
     if (visibility !== undefined && visibility !== null &&
         (typeof visibility !== "string" || !VISIBILITIES.includes(visibility))) {
-      throw new PipelineError("VALIDATION_ERROR", `card_read_visibility tidak valid: ${String(visibility)}`, 400);
+      throw new PipelineError("VALIDATION_ERROR", `cardReadVisibility tidak valid: ${String(visibility)}`, 400);
     }
     return {
       permissionId,
@@ -279,17 +279,17 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         if (typeof raw !== "object" || raw === null) {
           throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
         }
-        const groupId = raw.group_id;
-        const scopeType = raw.scope_type;
-        const scopeId = raw.scope_id;
+        const groupId = raw.groupId;
+        const scopeType = raw.scopeType;
+        const scopeId = raw.scopeId;
         if (typeof groupId !== "string" || groupId.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field group_id wajib string non-kosong.", 400);
+          throw new PipelineError("VALIDATION_ERROR", "Field groupId wajib string non-kosong.", 400);
         }
         if (typeof scopeType !== "string" || scopeType.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field scope_type wajib string non-kosong.", 400);
+          throw new PipelineError("VALIDATION_ERROR", "Field scopeType wajib string non-kosong.", 400);
         }
         if (typeof scopeId !== "string" || scopeId.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field scope_id wajib string non-kosong.", 400);
+          throw new PipelineError("VALIDATION_ERROR", "Field scopeId wajib string non-kosong.", 400);
         }
         const assignment = await deps.createGroupAssignment(projectId, membershipId, { groupId, scopeType, scopeId });
         return { assignment };
@@ -330,21 +330,21 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       if (typeof raw !== "object" || raw === null) {
         throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
       }
-      const permissionId = raw.permission_id;
-      const scopeType = raw.scope_type;
-      const scopeId = raw.scope_id;
-      const visibility = raw.card_read_visibility;
+      const permissionId = raw.permissionId;
+      const scopeType = raw.scopeType;
+      const scopeId = raw.scopeId;
+      const visibility = raw.cardReadVisibility;
       if (typeof permissionId !== "string" || permissionId.length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field permission_id wajib string non-kosong.", 400);
+        throw new PipelineError("VALIDATION_ERROR", "Field permissionId wajib string non-kosong.", 400);
       }
       if (typeof scopeType !== "string" || scopeType.length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field scope_type wajib string non-kosong.", 400);
+        throw new PipelineError("VALIDATION_ERROR", "Field scopeType wajib string non-kosong.", 400);
       }
       if (typeof scopeId !== "string" || scopeId.length === 0) {
-        throw new PipelineError("VALIDATION_ERROR", "Field scope_id wajib string non-kosong.", 400);
+        throw new PipelineError("VALIDATION_ERROR", "Field scopeId wajib string non-kosong.", 400);
       }
       if (visibility !== undefined && visibility !== null && typeof visibility !== "string") {
-        throw new PipelineError("VALIDATION_ERROR", "card_read_visibility wajib string atau null.", 400);
+        throw new PipelineError("VALIDATION_ERROR", "cardReadVisibility wajib string atau null.", 400);
       }
       const assignment = await deps.createPermissionAssignment(projectId, membershipId, {
         permissionId,
@@ -387,25 +387,25 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       if (typeof raw !== "object" || raw === null) {
         throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
       }
-      if (raw.expires_at !== undefined && raw.expires_at !== null && typeof raw.expires_at !== "string") {
-        throw new PipelineError("VALIDATION_ERROR", "expires_at wajib string atau null.", 400);
+      if (raw.expiresAt !== undefined && raw.expiresAt !== null && typeof raw.expiresAt !== "string") {
+        throw new PipelineError("VALIDATION_ERROR", "expiresAt wajib string atau null.", 400);
       }
       if (!Array.isArray(raw.assignments)) {
         throw new PipelineError("VALIDATION_ERROR", "Field assignments wajib array (minimal satu item — BR-051).", 400);
       }
       const assignments = raw.assignments.map((item) => {
         const entry = item as Record<string, unknown>;
-        if (typeof entry.group_id !== "string" || entry.group_id.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Setiap assignment wajib memiliki group_id string non-kosong.", 400);
+        if (typeof entry.groupId !== "string" || entry.groupId.length === 0) {
+          throw new PipelineError("VALIDATION_ERROR", "Setiap assignment wajib memiliki groupId string non-kosong.", 400);
         }
-        const scopeType = typeof entry.scope_type === "string" ? entry.scope_type : "project";
-        const scopeId = typeof entry.scope_id === "string" ? entry.scope_id : projectId;
-        return { groupId: entry.group_id, scopeType, scopeId };
+        const scopeType = typeof entry.scopeType === "string" ? entry.scopeType : "project";
+        const scopeId = typeof entry.scopeId === "string" ? entry.scopeId : projectId;
+        return { groupId: entry.groupId, scopeType, scopeId };
       });
       const invitation = await deps.createInvitation(projectId, identity.userId, {
         email: typeof raw.email === "string" ? raw.email : "",
         assignments,
-        ...(raw.expires_at !== undefined ? { expiresAt: raw.expires_at as string | null } : {}),
+        ...(raw.expiresAt !== undefined ? { expiresAt: raw.expiresAt as string | null } : {}),
       });
       return { invitation };
     }, 201);

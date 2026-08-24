@@ -115,7 +115,7 @@ async function permissionIdByKey(key: string): Promise<string> {
 describe("permission-assignments endpoints (goal 1.8.2)", () => {
   it("[BR-048][C.12] Positif: card.read tanpa visibility → default CREATED_BY_ME", async () => {
     const permId = await permissionIdByKey("card.read");
-    const res = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const res = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (res.status !== 201) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     if (json.data.assignment.cardReadVisibility !== "CREATED_BY_ME") {
@@ -136,7 +136,7 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
         args: [new Date().toISOString(), String(existing.rows[0]!.id)],
       });
     }
-    const res = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA, card_read_visibility: "ALL" }, "user-a");
+    const res = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA, cardReadVisibility: "ALL" }, "user-a");
     if (res.status !== 201) throw new Error(`status ${res.status}: ${await res.text()}`);
     if ((await res.json()).data.assignment.cardReadVisibility !== "ALL") throw new Error("visibility ALL tidak tersimpan");
   });
@@ -144,7 +144,7 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
   it("[B.2] negatif: visibility pada non-card.read → VALIDATION_ERROR 400", async () => {
     for (const key of ["board.read", "list.read"]) {
       const permId = await permissionIdByKey(key);
-      const res = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA, card_read_visibility: "ALL" }, "user-a");
+      const res = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA, cardReadVisibility: "ALL" }, "user-a");
       if (res.status !== 400) throw new Error(`${key} harusnya 400, dapat ${res.status}`);
       if ((await res.json()).error.code !== "VALIDATION_ERROR") throw new Error(`kode salah untuk ${key}`);
     }
@@ -152,9 +152,9 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
 
   it("[UNIQUE] negatif: duplikat aktif → INVALID_STATE 409", async () => {
     const permId = await permissionIdByKey("board.read");
-    const first = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const first = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (first.status !== 201) throw new Error(`setup pertama gagal: ${first.status}`);
-    const dup = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const dup = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (dup.status !== 409 || (await dup.json()).error.code !== "INVALID_STATE") {
       throw new Error(`duplikat harusnya 409 INVALID_STATE, dapat ${dup.status}: ${await dup.text()}`);
     }
@@ -163,15 +163,15 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
   it("[BR-042B][INV-04] negatif: scope salah / permission tak ada / membership lintas-Project ditolak", async () => {
     const permId = await permissionIdByKey("list.read");
     for (const body of [
-      { permission_id: permId, scope_type: "card", scope_id: ctx.projectIdA },
-      { permission_id: permId, scope_type: "project", scope_id: "proj-lain" },
-      { permission_id: "perm-tak-ada", scope_type: "project", scope_id: ctx.projectIdA },
+      { permissionId: permId, scopeType: "card", scopeId: ctx.projectIdA },
+      { permissionId: permId, scopeType: "project", scopeId: "proj-lain" },
+      { permissionId: "perm-tak-ada", scopeType: "project", scopeId: ctx.projectIdA },
     ]) {
       const res = await assignPerm(ctx.projectIdA, membershipIdB, body, "user-a");
-      const expected = body.permission_id === "perm-tak-ada" ? 404 : 409;
+      const expected = body.permissionId === "perm-tak-ada" ? 404 : 409;
       if (res.status !== expected) throw new Error(`body ${JSON.stringify(body)} harusnya ${expected}, dapat ${res.status}`);
     }
-    const cross = await assignPerm(ctx.projectIdA, `m-owner-${projectIdB}`, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const cross = await assignPerm(ctx.projectIdA, `m-owner-${projectIdB}`, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (cross.status !== 404 || (await cross.json()).error.code !== "RESOURCE_NOT_FOUND") {
       throw new Error(`membership lintas Project harusnya 404, dapat ${cross.status}`);
     }
@@ -179,7 +179,7 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
 
   it("[C.12] revoke: revoked_at ter-set, row tetap; re-revoke idempotent; re-assign bebas", async () => {
     const permId = await permissionIdByKey("milestone.read");
-    const created = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const created = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     const assignmentId = (await created.json()).data.assignment.id;
 
     const first = await revokePerm(ctx.projectIdA, membershipIdB, assignmentId, "user-a");
@@ -191,13 +191,13 @@ describe("permission-assignments endpoints (goal 1.8.2)", () => {
     if (second.status !== 200 || (await second.json()).data.assignment.revokedAt !== revokedAt) {
       throw new Error("re-revoke tidak idempotent");
     }
-    const reassign = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const reassign = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (reassign.status !== 201) throw new Error(`re-assign setelah revoke gagal: ${await reassign.text()}`);
   });
 
   it("[Rule-3] negatif: non-Owner assign/revoke → PERMISSION_DENIED 403", async () => {
     const permId = await permissionIdByKey("card.move");
-    const res = await assignPerm(ctx.projectIdA, membershipIdB, { permission_id: permId, scope_type: "project", scope_id: ctx.projectIdA }, "user-b");
+    const res = await assignPerm(ctx.projectIdA, membershipIdB, { permissionId: permId, scopeType: "project", scopeId: ctx.projectIdA }, "user-b");
     if (res.status !== 403 || (await res.json()).error.code !== "PERMISSION_DENIED") {
       throw new Error(`harusnya 403, dapat ${res.status}: ${await res.text()}`);
     }

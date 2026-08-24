@@ -106,8 +106,8 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
         name: "Release Ops",
         description: "grup rilis",
         permissions: [
-          { permission_id: cardRead },
-          { permission_id: projectRead, card_read_visibility: null },
+          { permissionId: cardRead },
+          { permissionId: projectRead, cardReadVisibility: null },
         ],
       }),
     });
@@ -125,14 +125,14 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
     if (created.permissions.length !== 2) throw new Error(`jumlah permission salah: ${JSON.stringify(created.permissions)}`);
   });
 
-  it("[BR-048][B.2] card_read_visibility eksplisit pada card.read disimpan apa adanya", async () => {
+  it("[BR-048][B.2] cardReadVisibility eksplisit pada card.read disimpan apa adanya", async () => {
     const cardRead = await permissionIdByKey(ctx.globalClient, "card.read");
     const res = await makeApp().request(`http://localhost/v1/projects/${ctx.projectIdA}/permission-groups`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
       body: JSON.stringify({
         name: "Wide Read",
-        permissions: [{ permission_id: cardRead, card_read_visibility: "ASSIGNED_TO_ME" }],
+        permissions: [{ permissionId: cardRead, cardReadVisibility: "ASSIGNED_TO_ME" }],
       }),
     });
     if (res.status !== 201) throw new Error(`status ${res.status}: ${await res.text()}`);
@@ -143,14 +143,14 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
     }
   });
 
-  it("[B.2] negatif: card_read_visibility utk permission selain card.read ditolak VALIDATION_ERROR", async () => {
+  it("[B.2] negatif: cardReadVisibility utk permission selain card.read ditolak VALIDATION_ERROR", async () => {
     const projectRead = await permissionIdByKey(ctx.globalClient, "project.read");
     const res = await makeApp().request(`http://localhost/v1/projects/${ctx.projectIdA}/permission-groups`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
       body: JSON.stringify({
         name: "Salah Visibility",
-        permissions: [{ permission_id: projectRead, card_read_visibility: "ALL" }],
+        permissions: [{ permissionId: projectRead, cardReadVisibility: "ALL" }],
       }),
     });
     if (res.status !== 400) throw new Error(`harusnya 400, dapat ${res.status}: ${await res.text()}`);
@@ -169,11 +169,11 @@ describe("POST /api/v1/projects/:project_id/permission-groups (goal 1.7.2)", () 
     if (json.error.code !== "PERMISSION_DENIED") throw new Error(`kode salah: ${JSON.stringify(json)}`);
   });
 
-  it("[C.12] negatif: permission_id tidak dikenal ditolak; nama kosong ditolak", async () => {
+  it("[C.12] negatif: permissionId tidak dikenal ditolak; nama kosong ditolak", async () => {
     const res = await makeApp().request(`http://localhost/v1/projects/${ctx.projectIdA}/permission-groups`, {
       method: "POST",
       headers: { "content-type": "application/json", "x-test-user": "user-a" },
-      body: JSON.stringify({ name: "X", permissions: [{ permission_id: "perm-tidak-ada" }] }),
+      body: JSON.stringify({ name: "X", permissions: [{ permissionId: "perm-tidak-ada" }] }),
     });
     if (res.status !== 400) throw new Error(`harusnya 400, dapat ${res.status}`);
     const resName = await makeApp().request(`http://localhost/v1/projects/${ctx.projectIdA}/permission-groups`, {

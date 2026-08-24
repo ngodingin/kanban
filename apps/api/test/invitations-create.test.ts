@@ -110,7 +110,7 @@ describe("POST /invitations (goal 1.9.1)", () => {
 
   it("[BR-050][BR-052A][C.13] Positif: 2 assignment valid → 201 PENDING, default expiry ±3 hari, reference tersimpan", async () => {
     const g2 = (await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "Inv-G4", permissions: [] })).id;
-    const res = await invite({ email: "eko@example.com", assignments: [{ group_id: groupId }, { group_id: g2 }] }, "user-a");
+    const res = await invite({ email: "eko@example.com", assignments: [{ groupId: groupId }, { groupId: g2 }] }, "user-a");
     if (res.status !== 201) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     const inv = json.data.invitation;
@@ -137,7 +137,7 @@ describe("POST /invitations (goal 1.9.1)", () => {
 
   it("[BR-042B][INV-04] negatif: group lintas-Project / soft-deleted / tak dikenal → RESOURCE_NOT_FOUND", async () => {
     for (const gid of [groupIdB, groupIdDeleted, "grp-tak-ada"]) {
-      const res = await invite({ email: "x@y.co", assignments: [{ group_id: gid }] }, "user-a");
+      const res = await invite({ email: "x@y.co", assignments: [{ groupId: gid }] }, "user-a");
       if (res.status !== 404 || (await res.json()).error.code !== "RESOURCE_NOT_FOUND") {
         throw new Error(`group ${gid} harusnya 404, dapat ${res.status}: ${await res.text()}`);
       }
@@ -155,9 +155,9 @@ describe("POST /invitations (goal 1.9.1)", () => {
 
   it("[C.13] negatif: email invalid / expires_at bukan ISO → VALIDATION_ERROR 400; expires_at lampau / scope salah → INVALID_STATE 409", async () => {
     for (const body of [
-      { email: "bukan-email", assignments: [{ group_id: groupId }] },
-      { email: "", assignments: [{ group_id: groupId }] },
-      { email: "z@z.co", assignments: [{ group_id: groupId }], expires_at: "bukan-tanggal" },
+      { email: "bukan-email", assignments: [{ groupId: groupId }] },
+      { email: "", assignments: [{ groupId: groupId }] },
+      { email: "z@z.co", assignments: [{ groupId: groupId }], expiresAt: "bukan-tanggal" },
     ]) {
       const res = await invite(body, "user-a");
       if (res.status !== 400 || (await res.json()).error.code !== "VALIDATION_ERROR") {
@@ -165,9 +165,9 @@ describe("POST /invitations (goal 1.9.1)", () => {
       }
     }
     for (const body of [
-      { email: "z@z.co", assignments: [{ group_id: groupId }], expires_at: "2020-01-01T00:00:00.000Z" },
-      { email: "z@z.co", assignments: [{ group_id: groupId, scope_type: "milestone", scope_id: "m1" }] },
-      { email: "z@z.co", assignments: [{ group_id: groupId, scope_type: "project", scope_id: "proj-lain" }] },
+      { email: "z@z.co", assignments: [{ groupId: groupId }], expiresAt: "2020-01-01T00:00:00.000Z" },
+      { email: "z@z.co", assignments: [{ groupId: groupId, scopeType: "milestone", scopeId: "m1" }] },
+      { email: "z@z.co", assignments: [{ groupId: groupId, scopeType: "project", scopeId: "proj-lain" }] },
     ]) {
       const res = await invite(body, "user-a");
       if (res.status !== 409 || (await res.json()).error.code !== "INVALID_STATE") {
@@ -177,7 +177,7 @@ describe("POST /invitations (goal 1.9.1)", () => {
   });
 
   it("[Rule-3] negatif: non-Owner membuat invitation → PERMISSION_DENIED 403", async () => {
-    const res = await invite({ email: "r@r.co", assignments: [{ group_id: groupId }] }, "user-b");
+    const res = await invite({ email: "r@r.co", assignments: [{ groupId: groupId }] }, "user-b");
     if (res.status !== 403 || (await res.json()).error.code !== "PERMISSION_DENIED") {
       throw new Error(`harusnya 403, dapat ${res.status}: ${await res.text()}`);
     }

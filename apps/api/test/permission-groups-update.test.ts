@@ -145,9 +145,9 @@ describe("PATCH /api/v1/projects/:project_id/permission-groups/:group_id (goal 1
     });
     const res = await patchGroup(ctx.projectIdA, groupId, {
       permissions: [
-        { permission_id: await permissionIdByKey(ctx.globalClient, "project.read") },
-        { permission_id: await permissionIdByKey(ctx.globalClient, "board.read"), card_read_visibility: null },
-        { permission_id: await permissionIdByKey(ctx.globalClient, "card.read"), card_read_visibility: "ALL" },
+        { permissionId: await permissionIdByKey(ctx.globalClient, "project.read") },
+        { permissionId: await permissionIdByKey(ctx.globalClient, "board.read"), cardReadVisibility: null },
+        { permissionId: await permissionIdByKey(ctx.globalClient, "card.read"), cardReadVisibility: "ALL" },
       ],
     }, "user-a");
     if (res.status !== 200) throw new Error(`status ${res.status}: ${await res.text()}`);
@@ -192,10 +192,10 @@ describe("PATCH /api/v1/projects/:project_id/permission-groups/:group_id (goal 1
   it("[C.12] negatif: permission tak dikenal / duplikat / field asing / tanpa field → VALIDATION_ERROR 400", async () => {
     const fresh = await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "Validasi", permissions: [] });
     for (const body of [
-      { permissions: [{ permission_id: "perm-tidak-ada" }] },
+      { permissions: [{ permissionId: "perm-tidak-ada" }] },
       { permissions: [
-        { permission_id: await permissionIdByKey(ctx.globalClient, "list.read") },
-        { permission_id: await permissionIdByKey(ctx.globalClient, "list.read") },
+        { permissionId: await permissionIdByKey(ctx.globalClient, "list.read") },
+        { permissionId: await permissionIdByKey(ctx.globalClient, "list.read") },
       ] },
       { unknown_field: 1 },
       {},

@@ -121,7 +121,7 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
   });
 
   it("[BR-042][C.12] Positif: assign project-scope ke membership → 201, row tercatat", async () => {
-    const res = await assign(ctx.projectIdA, membershipIdB, { group_id: groupId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const res = await assign(ctx.projectIdA, membershipIdB, { groupId: groupId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (res.status !== 201) throw new Error(`status ${res.status}: ${await res.text()}`);
     const json = await res.json();
     if (json.data.assignment.groupId !== groupId || json.data.assignment.revokedAt !== null) {
@@ -135,7 +135,7 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
   });
 
   it("[C.12][UNIQUE] negatif: duplikat aktif → INVALID_STATE 409", async () => {
-    const res = await assign(ctx.projectIdA, membershipIdB, { group_id: groupId, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const res = await assign(ctx.projectIdA, membershipIdB, { groupId: groupId, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (res.status !== 409) throw new Error(`harusnya 409, dapat ${res.status}: ${await res.text()}`);
     const json = await res.json();
     if (json.error.code !== "INVALID_STATE") throw new Error(`kode salah: ${JSON.stringify(json)}`);
@@ -143,7 +143,7 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
 
   it("[INV-04] negatif: membership Project lain lewat path Project ini → RESOURCE_NOT_FOUND", async () => {
     const ownerBMembership = `m-owner-${projectIdB}`;
-    const res = await assign(ctx.projectIdA, ownerBMembership, { group_id: groupIdB, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const res = await assign(ctx.projectIdA, ownerBMembership, { groupId: groupIdB, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (res.status !== 404) throw new Error(`harusnya 404, dapat ${res.status}`);
     const json = await res.json();
     if (json.error.code !== "RESOURCE_NOT_FOUND") throw new Error(`kode salah: ${JSON.stringify(json)}`);
@@ -152,8 +152,8 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
   it("[BR-042B] negatif: scope_type non-project dan scope_id != project_id → INVALID_STATE", async () => {
     const g2 = (await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "G-A2", permissions: [] })).id;
     for (const body of [
-      { group_id: g2, scope_type: "board", scope_id: ctx.projectIdA },
-      { group_id: g2, scope_type: "project", scope_id: "proj-lain" },
+      { groupId: g2, scopeType: "board", scopeId: ctx.projectIdA },
+      { groupId: g2, scopeType: "project", scopeId: "proj-lain" },
     ]) {
       const res = await assign(ctx.projectIdA, membershipIdB, body, "user-a");
       if (res.status !== 409) throw new Error(`body ${JSON.stringify(body)} harusnya 409, dapat ${res.status}`);
@@ -162,14 +162,14 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
 
   it("[BR-042B] negatif: group lintas-Project atau soft-deleted → RESOURCE_NOT_FOUND", async () => {
     for (const gid of [groupIdB, groupIdDeleted]) {
-      const res = await assign(ctx.projectIdA, membershipIdB, { group_id: gid, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+      const res = await assign(ctx.projectIdA, membershipIdB, { groupId: gid, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
       if (res.status !== 404) throw new Error(`group ${gid} harusnya 404, dapat ${res.status}`);
     }
   });
 
   it("[C.12] revoke: revoked_at ter-set, row tetap ada; re-revoke idempotent", async () => {
     const g3 = (await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "G-Revoke", permissions: [] })).id;
-    const created = await assign(ctx.projectIdA, membershipIdB, { group_id: g3, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const created = await assign(ctx.projectIdA, membershipIdB, { groupId: g3, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     const assignmentId = (await created.json()).data.assignment.id;
 
     const first = await revoke(ctx.projectIdA, membershipIdB, assignmentId, "user-a");
@@ -189,12 +189,12 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
     if (againAt !== revokedAt) throw new Error(`timestamp berubah pada re-revoke: ${againAt} vs ${revokedAt}`);
 
     // Setelah revoke, partial unique index bebas — assign ulang sukses.
-    const reassign = await assign(ctx.projectIdA, membershipIdB, { group_id: g3, scope_type: "project", scope_id: ctx.projectIdA }, "user-a");
+    const reassign = await assign(ctx.projectIdA, membershipIdB, { groupId: g3, scopeType: "project", scopeId: ctx.projectIdA }, "user-a");
     if (reassign.status !== 201) throw new Error(`re-assign setelah revoke gagal: ${reassign.status}: ${await reassign.text()}`);
   });
 
   it("[Rule-3] negatif: non-Owner assign/revoke → PERMISSION_DENIED 403", async () => {
-    const res = await assign(ctx.projectIdA, membershipIdB, { group_id: groupId, scope_type: "project", scope_id: ctx.projectIdA }, "user-b");
+    const res = await assign(ctx.projectIdA, membershipIdB, { groupId: groupId, scopeType: "project", scopeId: ctx.projectIdA }, "user-b");
     if (res.status !== 403) throw new Error(`harusnya 403, dapat ${res.status}: ${await res.text()}`);
     const json = await res.json();
     if (json.error.code !== "PERMISSION_DENIED") throw new Error(`kode salah: ${JSON.stringify(json)}`);
