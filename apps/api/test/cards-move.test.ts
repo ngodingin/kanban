@@ -153,8 +153,8 @@ describe("POST /api/v1/projects/:project_id/cards/:card_id/move — goal 2.11.1"
         "SELECT data FROM activities WHERE entity_id = 'cd_move' AND action = 'card.moved'",
       );
       const parsed = JSON.parse(String(activity.rows[0]!.data));
-      expect(parsed.from).toMatchObject({ list_id: "ls_s", board_id: "bd_1" });
-      expect(parsed.to).toMatchObject({ list_id: "ls_d", board_id: "bd_1" });
+      expect(parsed.from).toMatchObject({ listId: "ls_s", boardId: "bd_1" });
+      expect(parsed.to).toMatchObject({ listId: "ls_d", boardId: "bd_1" });
     } finally {
       await projectDb.close();
     }

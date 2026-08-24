@@ -105,9 +105,9 @@ describe("moveCard auto-orphan Board Label (goal 3.7.2)", () => {
     const labelRemoved = activities.rows.find((r) => r.action === "label.removed")!;
     expect(labelRemoved.entity_version).toBe(4);
     expect(JSON.parse(String(labelRemoved.data))).toEqual({
-      label_id: "bl_1",
-      label_scope: "board",
-      label_name: "BdLabel",
+      labelId: "bl_1",
+      labelScope: "board",
+      labelName: "BdLabel",
     });
   });
 

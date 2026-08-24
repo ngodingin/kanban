@@ -103,8 +103,8 @@ describe("moveCard — C.8 / INV-MOVE-001–004 / BR-017/018 (goal 2.10.1)", () 
 
     const [activity] = await movedActivities("cd_m1");
     expect(JSON.parse(activity!.data)).toEqual({
-      from: { list_id: "ls_s", list_title: "L ls_s", board_id: "bd_1", board_title: "B bd_1" },
-      to: { list_id: "ls_d1", list_title: "L ls_d1", board_id: "bd_1", board_title: "B bd_1" },
+      from: { listId: "ls_s", listTitle: "L ls_s", boardId: "bd_1", boardTitle: "B bd_1" },
+      to: { listId: "ls_d1", listTitle: "L ls_d1", boardId: "bd_1", boardTitle: "B bd_1" },
     });
 
     const row = await db.client.execute("SELECT list_id, version FROM cards WHERE id = 'cd_m1'");
@@ -122,7 +122,7 @@ describe("moveCard — C.8 / INV-MOVE-001–004 / BR-017/018 (goal 2.10.1)", () 
     });
     expect(moved.listId).toBe("ls_d2"); // bd_1 → bd_1b, keduanya ms_1
     const to = JSON.parse((await movedActivities("cd_m2"))[0]!.data).to;
-    expect(to.board_id).toBe("bd_1b");
+    expect(to.boardId).toBe("bd_1b");
   });
 
   it("[BR-018] negatif: move ke Board di Milestone BEDA → INVALID_DESTINATION walau permission penuh", async () => {

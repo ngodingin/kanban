@@ -97,9 +97,9 @@ describe("assignLabelToCard/removeLabelFromCard (goal 3.7.1)", () => {
     expect(activities.rows).toHaveLength(2);
     expect(activities.rows[0]).toMatchObject({ action: "label.added", entity_version: 5 });
     expect(JSON.parse(String(activities.rows[0]!.data))).toEqual({
-      label_id: "ml_1",
-      label_scope: "milestone",
-      label_name: "Feature",
+      labelId: "ml_1",
+      labelScope: "milestone",
+      labelName: "Feature",
     });
   });
 

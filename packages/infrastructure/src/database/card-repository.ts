@@ -98,7 +98,7 @@ export class DrizzleCardRepository implements CardRepository {
           ulid(),
           input.id,
           input.actorUserId,
-          JSON.stringify({ snapshot: { title: input.title, creator_user_id: input.actorUserId } }),
+          JSON.stringify({ snapshot: { title: input.title, creatorUserId: input.actorUserId } }),
           now,
         ],
       );
@@ -192,8 +192,8 @@ export class DrizzleCardRepository implements CardRepository {
           nextVersion,
           input.actorUserId,
           JSON.stringify({
-            from: { list_id: loaded.current.listId, list_title: sourceChain.title, board_id: sourceChain.boardId, board_title: sourceChain.boardTitle },
-            to: { list_id: input.destinationListId, list_title: destination.title, board_id: destination.boardId, board_title: destination.boardTitle },
+            from: { listId: loaded.current.listId, listTitle: sourceChain.title, boardId: sourceChain.boardId, boardTitle: sourceChain.boardTitle },
+            to: { listId: input.destinationListId, listTitle: destination.title, boardId: destination.boardId, boardTitle: destination.boardTitle },
           }),
           now,
         ],
@@ -225,7 +225,7 @@ export class DrizzleCardRepository implements CardRepository {
               input.cardId,
               nextVersion,
               input.actorUserId,
-              JSON.stringify({ label_id: labelId, label_scope: "board", label_name: String(row.label_name) }),
+              JSON.stringify({ labelId, labelScope: "board", labelName: String(row.label_name) }),
               now,
             ],
           );
@@ -292,7 +292,7 @@ export class DrizzleCardRepository implements CardRepository {
           if (patch.assigneeUserId !== null) {
             await this.deps.assertAssigneeActiveMember(projectId, patch.assigneeUserId);
           }
-          changes.assignee_user_id = { before: next.assigneeUserId, after: patch.assigneeUserId };
+          changes.assigneeUserId = { before: next.assigneeUserId, after: patch.assigneeUserId };
           next.assigneeUserId = patch.assigneeUserId;
         }
         if (Object.keys(changes).length === 0) {
@@ -303,7 +303,7 @@ export class DrizzleCardRepository implements CardRepository {
       } else if (operation === "archive") {
         next.archivedAt = now;
         action = "card.archived";
-        data = { previous_state: "ACTIVE" };
+        data = { previousState: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 + BR-045A — local ARCHIVED sudah dicek; chain harus ACTIVE semua.
         const decision = evaluateRestore(loaded.lifecycleBefore, [chain.listState, ...chain.upperStates]);
@@ -317,11 +317,11 @@ export class DrizzleCardRepository implements CardRepository {
         }
         next.archivedAt = null;
         action = "card.restored";
-        data = { previous_state: "ARCHIVED" };
+        data = { previousState: "ARCHIVED" };
       } else {
         next.deletedAt = now;
         action = "card.deleted";
-        data = { previous_state: loaded.lifecycleBefore };
+        data = { previousState: loaded.lifecycleBefore };
       }
 
       const nextVersion = loaded.current.version + 1;

@@ -184,7 +184,7 @@ export async function assignLabelToCard(
         cardId,
         position.cardVersion,
         actorUserId,
-        JSON.stringify({ label_id: labelId, label_scope: label.scope, label_name: label.name }),
+        JSON.stringify({ labelId, labelScope: label.scope, labelName: label.name }),
         now,
       ],
     );
@@ -231,7 +231,7 @@ export async function removeLabelFromCard(
         cardId,
         position.cardVersion,
         actorUserId,
-        JSON.stringify({ label_id: labelId, label_scope: label.scope, label_name: label.name }),
+        JSON.stringify({ labelId, labelScope: label.scope, labelName: label.name }),
         now,
       ],
     );

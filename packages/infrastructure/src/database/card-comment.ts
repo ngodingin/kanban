@@ -191,16 +191,16 @@ export async function editComment(
     const data = (typeof rawData === "string" ? JSON.parse(rawData) : rawData) as Record<string, unknown>;
     const action = String(activityRow.action);
     // Original selalu Activity comment.added — comment.edited menyimpan
-    // referensi baliknya sendiri di comment_activity_id; comment.added
+    // referensi baliknya sendiri di commentActivityId; comment.added
     // adalah originalnya sendiri. `:activity_id` per kontrak SELALU boleh
     // berupa original (Prinsip #7) — row yang dirujuk BUKAN berarti state
     // terkini kalau comment sudah pernah diedit sebelumnya, jadi teks
     // "before" WAJIB diambil dari edit TERAKHIR pada rantai ini, bukan dari
     // row yang direferensikan `:activity_id` secara langsung.
-    const originalId = action === "comment.added" ? String(activityRow.id) : String(data.comment_activity_id);
+    const originalId = action === "comment.added" ? String(activityRow.id) : String(data.commentActivityId);
     const latestRow = (
       await tx.execute(
-        "SELECT action, data FROM activities WHERE entity_id = ? AND (id = ? OR json_extract(data, '$.comment_activity_id') = ?) ORDER BY created_at DESC, id DESC LIMIT 1",
+        "SELECT action, data FROM activities WHERE entity_id = ? AND (id = ? OR json_extract(data, '$.commentActivityId') = ?) ORDER BY created_at DESC, id DESC LIMIT 1",
         [cardId, originalId, originalId],
       )
     ).rows[0]!;
@@ -221,7 +221,7 @@ export async function editComment(
         cardId,
         ctx.cardVersion,
         actorUserId,
-        JSON.stringify({ before: currentBody, after: validatedBody, comment_activity_id: originalId }),
+        JSON.stringify({ before: currentBody, after: validatedBody, commentActivityId: originalId }),
         now,
       ],
     );

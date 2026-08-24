@@ -102,7 +102,7 @@ describe("createCard — INV-LIFE-001 chain 4 level / FR-024–026 / 03-ENG A.5 
     const activity = await db.client.execute("SELECT action, data FROM activities WHERE entity_id = 'cd_new'");
     expect(activity.rows[0]).toMatchObject({ action: "card.created" });
     expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({
-      snapshot: { title: "Kerjakan", creator_user_id: OWNER },
+      snapshot: { title: "Kerjakan", creatorUserId: OWNER },
     });
   });
 
@@ -202,7 +202,7 @@ describe("update/archive/restore/delete Card — A.3/AC-020/BR-045A/C.15 (goal 2
       changes: {
         title: { before: "Kartu", after: "Baru" },
         dueDate: { before: null, after: "2026-10-10" },
-        assignee_user_id: { before: null, after: "user_member" },
+        assigneeUserId: { before: null, after: "user_member" },
       },
     });
   });
@@ -316,7 +316,7 @@ describe("update/archive/restore/delete Card — A.3/AC-020/BR-045A/C.15 (goal 2
       "SELECT data, actor_user_id FROM activities WHERE entity_id = 'cd_bl' AND action = 'card.restored'",
     );
     expect(String(activity.rows[0]!.actor_user_id)).toBe("user_b_restorer");
-    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previous_state: "ARCHIVED" });
+    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previousState: "ARCHIVED" });
   });
 
   it("[INV-LIFE-002] restore Card saat ancestor Board ARCHIVED → ditolak", async () => {

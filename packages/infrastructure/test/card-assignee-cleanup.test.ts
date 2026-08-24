@@ -112,7 +112,7 @@ describe("unassignCardFromRevokedMember — atomik per Card (goal 2.12.1)", () =
     );
     expect(activity.rows[0]).toMatchObject({ action: "card.unassigned", actor_user_id: OWNER_ACTOR });
     expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({
-      previous_assignee_user_id: "user-x",
+      previousAssigneeUserId: "user-x",
       reason: "membership_revoked",
     });
   });
@@ -204,7 +204,7 @@ describe("cleanupAssigneesForRevokedMembership — best-effort per Card (goal 2.
     for (const row of activities.rows) {
       expect(["cd_1", "cd_2", "cd_3"]).toContain(String(row.entity_id));
       expect(JSON.parse(String(row.data))).toEqual({
-        previous_assignee_user_id: "user-x",
+        previousAssigneeUserId: "user-x",
         reason: "membership_revoked",
       });
     }

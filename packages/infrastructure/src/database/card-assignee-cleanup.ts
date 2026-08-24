@@ -49,7 +49,7 @@ export async function unassignCardFromRevokedMember(
         nextVersion,
         input.actorUserId,
         JSON.stringify({
-          previous_assignee_user_id: input.revokedUserId,
+          previousAssigneeUserId: input.revokedUserId,
           reason: "membership_revoked",
         }),
         now,

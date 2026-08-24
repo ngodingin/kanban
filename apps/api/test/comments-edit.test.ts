@@ -184,7 +184,7 @@ describe("PATCH .../comments/:activity_id — goal 3.12.1", () => {
       expect(JSON.parse(String(edited!.data))).toEqual({
         before: "Versi pertama",
         after: "Versi kedua",
-        comment_activity_id: "act_orig",
+        commentActivityId: "act_orig",
       });
     } finally {
       await projectDb.close();
