@@ -6,7 +6,6 @@ import { createClient, type Client } from "@libsql/client";
 import { Hono } from "hono";
 import {
   applyGlobalMigrations,
-  applyProjectMigrations,
   newProjectId,
   registerProjectWithOwnerMembership,
   RequestPipeline,
@@ -22,7 +21,6 @@ let dir: string;
 let globalClient: Client;
 let deps: CardRoutesDeps;
 let pid: string;
-let listId: string;
 
 const identityFor = (userId: string | null): Promise<ResolvedIdentity | null> =>
   userId === null
@@ -128,8 +126,8 @@ const getList = (user: string): Promise<Response> =>
 
 describe("AC-006 — creator tanpa grant card.read → baca ditolak (goal 6.8.1)", () => {
   it("[negatif] member tanpa card.read GET Card miliknya sendiri → RESOURCE_NOT_FOUND", async () => {
-    // u-creator TIDAK punya membership di seed; gunakan u-assignee sebagai
-    // proxy "bukan creator": assignee tanpa card.read juga tidak boleh baca.
+    // u-assignee punya membership + Group yang HANYA beri card.create;
+    // status assignee TIDAK otomatis memberi akses baca (BR-045).
     const res = await getCard("cd1", "u-assignee");
     expect(res.status).toBe(404);
     expect((await res.json()).error?.code).toBe("RESOURCE_NOT_FOUND");
