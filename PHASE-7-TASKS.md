@@ -43,7 +43,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | 7.1.1 | ✅ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02) | 100 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
 | 7.1.2 | ✅ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04) | 100 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ✅ | [QA-CL-03](#qa-cl-03)<br>[Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 100 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
-| 7.1.4 | 🔎 | [CL-07](#cl-07)<br>[CL-08](#cl-08) | 80 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.4 | ✅ | [QA-CL-04](#qa-cl-04)<br>[CL-07](#cl-07)<br>[CL-08](#cl-08) | 100 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
 **Test:** Production build Vite dapat disajikan bersama Hono pada satu origin; deep link SPA bekerja; `/api/*` tidak tertangkap fallback; UI Magic Link menangani request/link-sent/expired/used/error; TanStack Query terpasang; tidak ada demo/non-MVP atau identity SaaS.
 **DoD:** Foundation React/Vite hanya berisi fitur MVP; server state lewat TanStack Query; routing memakai React Router; struktur `features/` sesuai [05-FRONTEND §6](docs/05-FRONTEND.md).
@@ -334,6 +334,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** freshness check: HEAD `594b4f5`, row 7.2.1 dibaca ulang dari disk `⬜️ 0%`; Reference `05-FRONTEND §2.1` dibaca dari disk (tabel token: primary #6366F1/indigo-500, primary-active #4F46E5, foreground slate-800, muted-foreground slate-500, border/muted slate-200, success emerald-500, warning amber-500, destructive red-500).
 **Catatan:** mulai pemetaan token §2.1 ke CSS variables shadcn (light; dark diselaraskan hue sama — penerapan penuh light+dark + radius/density tetap goal 7.2.3).
+
+<a id="qa-cl-04"></a>
+### QA-CL-04 — 2026-08-25 · goal 7.1.4 closed ✅ (🔎 80% → ✅ 100%) — Zustand genuinely UI-only
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`src/lib/ui-store.ts` dibaca penuh:** store hanya berisi `{sidebarCollapsed, toggleSidebar}` — dua field UI murni, tanpa cache server state apa pun. Komentar eksplisit melarang penyimpanan cache data server di layer ini. `zustand@5.0.15` cocok baseline revalidasi Review-CL-05.
+
+**Re-run independen:** `npx vitest run apps/web/test/ui-store.test.ts` → **2/2 PASS** — positif: toggle sidebar mengubah state; negatif (guard struktural): regex field domain/server (`card|board|project|session|query|...`) dicek nol kemunculan pada shape store, mencegah drift ke luar scope UI-state di masa depan. `pnpm --filter @kanban/web typecheck` → bersih.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-08"></a>
 ### CL-08 — 2026-08-25 · 7.1.4 → 🔎 80%
