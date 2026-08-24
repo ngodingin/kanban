@@ -80,7 +80,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.4.1 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52) | 0 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
+| 7.4.1 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 80 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
 | 7.4.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
@@ -446,6 +446,11 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** test yang sama **13/13 PASS** — negatif: `buildCardPatch` melempar untuk `listId`/`version`/`id`; positif: whitelist `title|subtitle|description|dueDate|assignee` + `expectedVersion`; integrasi: simpan description mengirim PATCH body persis `{expectedVersion:4, description:"Desk revisi"}` (field domain tak pernah dikirim). Commit: `e80f492`.
 **Catatan:** guard ganda — UI memfilter sebelum kirim, server menegakkan C.15 (cards.ts:172-177).
+
+<a id="cl-53"></a>
+### CL-53 — 2026-08-25 · 7.4.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/your-work.test.tsx` **4/4 PASS** (fetch-stub rantai hierarki penuh) — positif: bucket `bucketFor` benar (assignee==me; due<now→overdue; ≤7 hari→dueSoon; sisanya myTasks); agregasi dua Project via walk milestones→boards→lists→cards; negatif: kartu non-assignee tidak muncul, archived/deleted dikecualikan dari semua bucket, **seluruh URL request cocok pola `/api/v1/projects/:id/(milestones|boards|lists|cards)`** (BR-010 — bukti tanpa endpoint lintas-Project), tanpa userId panel tetap merender 3 bucket kosong, regex revenue/chart nol + tanpa canvas. Koreksi test: stub pencocokan suffix (urutan /lists vs /boards). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **131 file / 755 PASS**, exit 0. Commit: `0f30b93`.
 
 <a id="cl-52"></a>
 ### CL-52 — 2026-08-25 · 7.4.1 → 🔄
