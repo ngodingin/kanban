@@ -189,7 +189,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | ⚠️ | [CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
+| 2.12.1 | 🔎 | [CL-65](#cl-65)<br>[CL-64](#cl-64)<br>[CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
 
 **Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → pending guard aktif sebelum cleanup; assignment baru terhadap User pending ditolak; ketiga Card menjadi NULL + masing-masing mendapat Activity. Wajib AC-035 fault-injection: kegagalan sebelum cleanup commit rollback seluruh Card/Activity dan belum revoked; kegagalan finalisasi Global mempertahankan pending serta Card unassigned; retry menyelesaikan revoke tanpa Activity ganda. Dua request revoke konkuren tidak boleh melewati conditional state transition.
 **DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
@@ -455,6 +455,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 - Fixture Phase 1 `members-revoke.test.ts` diperbarui (proyek DB sungguhan dengan migration, bukan stub) karena wiring produksi sekarang selalu resolve Project DB — dijalankan ulang, 4 test existing tetap hijau, membuktikan tidak ada regresi behavior revoke Phase 1 (revoke sukses, Owner tidak bisa di-revoke, dst).
 `pnpm -r typecheck` → 6/6 Done. `pnpm lint` → 0 error. `pnpm exec vitest run` → **50 file/325 test PASS**.
 **Kesimpulan:** ✅ ACCEPT — goal terakhir Phase 2. **Phase 2 (Kanban Core) genap 21/21 goal ✅.**
+
+<a id="cl-65"></a>
+### CL-65 — 2026-08-24 · goal 2.12.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — overlap konkuren deterministik + konsistensi caller
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **98 file / 597 test lulus**; typecheck+lint bersih. Per QA-CL-26: test `[overlap]` baru — revoke A diklaim pending lalu DITAHAN pra-cleanup (kedua request in-flight, pending terlihat), worker B berjalan TUNTAS selama itu, A dilepas → cleanup idempotent (0 Card tersisa) + finalize conditional 0-row; assert: TEPAT SATU Activity `card.unassigned` per Card, tanpa assignee tersisa, `resA.revokedAt === resB.revokedAt`. Kode: summary revokeMembership kini SELALU di-re-read dari DB (caller kalah tidak lagi melaporkan timestamp lokal).
+**Catatan:** Overlap dibuktikan pada level protokol (kedua request in-flight; serialisasi storage oleh BEGIN IMMEDIATE sesuai desain); pendekatan lock-hostage nyata terbukti racy terhadap retry 4× dan dipilih versi deterministik ini sebagai bukti AC-035 yang stabil.
+
+<a id="cl-64"></a>
+### CL-64 — 2026-08-24 · goal 2.12.1 dikerjakan ulang (⚠️ → 🔄 · 60% dipertahankan) — konkuren deterministik + konsistensi caller
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row `⚠️/60`; QA-CL-26 dibaca — (1) test konkuren deterministik yang menahan worker pertama pasca-claim wajib; (2) caller kalah claim tidak boleh melaporkan timestamp lokal yang tidak mencerminkan DB.
+**Catatan:** Rencana: summary revokeMembership di-re-read dari DB; test overlap dua revoke dengan polling pending + gate pada cleanup.
 
 <a id="cl-63"></a>
 ### CL-63 — 2026-08-24 · goal 2.12.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — protokol BR-054C lengkap

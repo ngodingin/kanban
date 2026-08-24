@@ -36,6 +36,53 @@ const memberCol = async (col: "revoked_at" | "revocation_pending_at"): Promise<s
   return v === null || v === undefined ? null : String(v);
 };
 
+
+/** Koneksi libsql dengan retry BUSY tanpa batas ketat (untuk simulasi worker kedua). */
+function createPatientClient(
+  url: string,
+  state: { released: boolean },
+  onFirstBusy: () => void,
+  timeoutMs = 30_000,
+): Client {
+  const base = createClient({ url });
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  let signaled = false;
+  const patient = async <T>(fn: () => Promise<T>): Promise<T> => {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      try {
+        return await fn();
+      } catch (e) {
+        const err = e as { code?: unknown; cause?: { code?: unknown } ; message?: string };
+        const busy = err?.code === "SQLITE_BUSY" || err?.cause?.code === "SQLITE_BUSY" ||
+          String(err?.cause ?? e).includes("database is locked");
+        if (!busy || Date.now() > deadline) throw e;
+        if (!signaled) { signaled = true; onFirstBusy(); }
+        await sleep(10);
+      }
+    }
+  };
+  return {
+    transaction: async (mode) => {
+      const tx = await patient(() => base.transaction(mode));
+      return {
+        execute: (stmt: Parameters<typeof tx.execute>[0]) =>
+          patient(() => {
+            if (!state.released) return sleep(10).then(() => tx.execute(stmt));
+            return tx.execute(stmt);
+          }),
+        commit: () => tx.commit(),
+        rollback: () => tx.rollback(),
+        close: () => tx.close(),
+      };
+    },
+    execute: (() => { throw new Error("use tx"); }) as never,
+    batch: base.batch.bind(base),
+    closed: false,
+    close: () => base.close(),
+  } as unknown as Client;
+}
+
 beforeAll(async () => {
   dir = mkdtempSync(join(tmpdir(), "kanban-revoke-recovery-"));
   globalClient = createClient({ url: `file:${join(dir, "global.db")}` });
@@ -228,4 +275,68 @@ describe("BR-054C / AC-035 — revoke lintas-DB recovery (goal 2.12.1)", () => {
     const res = await cleanupAssigneesForRevokedMembership(projectDb, PID, MEMBER, OWNER);
     expect(res.cleaned).toBe(2);
   });
+});
+
+describe("AC-035 konkuren deterministik — dua revoke overlap (QA-CL-26, goal 2.12.1)", () => {
+  it("[overlap] dua revoke konkuren: A diklaim & ditahan pra-cleanup; B tuntas penuh; A lanjut → satu Activity per Card, hasil caller konsisten", async () => {
+    // Seed segar
+    await globalClient.execute({
+      sql: "UPDATE project_memberships SET revoked_at = NULL, revocation_pending_at = NULL WHERE id = 'm-br'",
+    });
+    await seedCard("cd9");
+
+    // Worker A: tahan SEBELUM transaksi cleanup dibuka (kedua request in-flight)
+    let aOpened!: () => void;
+    const aOpenedP = new Promise<void>((r) => (aOpened = r));
+    let releaseA!: () => void;
+    const releaseAP = new Promise<void>((r) => (releaseA = r));
+    const aProxy = {
+      transaction: async () => {
+        aOpened(); // A sudah claim pending & memulai tahap cleanup
+        await releaseAP;
+        return projectDb.transaction("write");
+      },
+      execute: (() => { throw new Error("use tx"); }) as never,
+      batch: projectDb.batch.bind(projectDb),
+      closed: false,
+      close: () => projectDb.close(),
+    } as unknown as Client;
+    const callA = revokeMembership(globalClient, {
+      projectId: PID, membershipId: "m-br", actorUserId: OWNER,
+    }, aProxy);
+    await aOpenedP;
+
+    // Bukti overlap: pending A terlihat, cleanup A belum jalan
+    expect(await memberCol("revocation_pending_at")).not.toBeNull();
+
+    // Worker B berjalan TUNTAS selama A menunggu
+    const resB = await revokeMembership(globalClient, {
+      projectId: PID, membershipId: "m-br", actorUserId: OWNER,
+    }, projectDb);
+    expect(resB.revokedAt).not.toBeNull();
+
+    // Lepaskan A: cleanup idempotent (cards sudah NULL) + finalize 0-row;
+    // summary A di-re-read dari DB → identik dengan B
+    releaseA();
+    const resA = await callA;
+    expect(resA.revokedAt).toBe(resB.revokedAt);
+    expect(await memberCol("revoked_at")).not.toBeNull();
+    expect(await memberCol("revocation_pending_at")).toBeNull();
+
+    // TEPAT SATU Activity per Card walau cleanup dipanggil dua kali
+    expect(
+      Number((
+        await projectDb.execute({
+          sql: "SELECT COUNT(*) AS n FROM activities WHERE action = 'card.unassigned' AND entity_id = 'cd9'",
+        })
+      ).rows[0]!.n),
+    ).toBe(1);
+    expect(
+      Number((
+        await projectDb.execute({
+          sql: "SELECT COUNT(*) AS n FROM cards WHERE id = 'cd9' AND assignee_user_id IS NOT NULL",
+        })
+      ).rows[0]!.n),
+    ).toBe(0);
+  }, 30_000);
 });

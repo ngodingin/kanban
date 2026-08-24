@@ -800,6 +800,13 @@ export async function revokeMembership(
       .run();
     revokedAt = finalizedAt;
   }
+  // Konsistensi caller (QA-CL-26): summary SELALU dari state DB terkini —
+  // caller yang kalah claim/finalize mengembalikan nilai final yang sama
+  // dengan pemenang, bukan timestamp lokalnya.
+  const freshRows = await db.select().from(projectMemberships)
+    .where(eq(projectMemberships.id, input.membershipId)).run();
+  const freshRevokedAt = (freshRows.rows[0] as unknown as { revoked_at: string | null }).revoked_at;
+
   const userRows = await globalClient.execute({ sql: "SELECT email, name FROM users WHERE id = ?", args: [membership.userId] });
   return {
     membershipId: membership.id,
@@ -807,7 +814,7 @@ export async function revokeMembership(
     email: String(userRows.rows[0]!.email),
     name: String(userRows.rows[0]!.name),
     createdAt: membership.createdAt,
-    revokedAt,
+    revokedAt: freshRevokedAt,
   };
 }
 
