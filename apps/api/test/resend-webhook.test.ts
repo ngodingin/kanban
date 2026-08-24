@@ -1,7 +1,7 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { createHmac } from "node:crypto";
 import { Hono } from "hono";
-import { createResendWebhookRouter, type ResendWebhookRoutesDeps } from "../src/routes/resend-webhook.ts";
+import { createResendWebhookRouter } from "../src/routes/resend-webhook.ts";
 
 const SECRET = "whsec_test_rahasia";
 const APP = new Hono().route("/", createResendWebhookRouter(() => ({ resendWebhookSecret: SECRET })));
@@ -29,7 +29,7 @@ describe("POST /internal/resend-webhook — goal 6.6.3", () => {
     const orig = process.stdout.write.bind(process.stdout);
     process.stdout.write = ((chunk: unknown) => {
       const t = typeof chunk === "string" ? chunk : String(chunk);
-      if (t.includes("resend_webhook")) logged = t;
+      if (t.includes("resend-webhook")) logged = t;
       return true;
     }) as typeof process.stdout.write;
 
@@ -41,6 +41,7 @@ describe("POST /internal/resend-webhook — goal 6.6.3", () => {
     process.stdout.write = orig;
     expect(res.status).toBe(200);
     expect(logged).toContain("email.bounced");
+    expect(logged).toContain('"message_id":"mid-1"');
   });
 
   it("[negatif] tanpa header / signature salah / timestamp kadaluarsa → 403", async () => {

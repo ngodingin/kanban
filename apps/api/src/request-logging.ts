@@ -1,8 +1,8 @@
 /**
  * TASK-6.6.1 — Structured request logging (F.4): SATU baris JSON per request
  * berisi requestId/userId/projectId/action/outcome/duration. `user_id` diisi
- * oleh pipeline via AsyncLocalStorage (request-context.ts); `project_id`
- * di-parse dari path `/projects/:id/...` bila applicable.
+ * oleh pipeline via AsyncLocalStorage (request-context.ts); `project_id`/`user_id` diisi
+ * oleh pipeline via AsyncLocalStorage (request-context.ts).
  */
 import { ulid } from "ulid";
 import type { MiddlewareHandler } from "hono";
@@ -18,14 +18,15 @@ export interface RequestLogLine {
 }
 
 /** Emit satu baris JSON — titik tunggu output log (mudah diganti transport). */
-export function emitRequestLog(line: RequestLogLine): void {
-  process.stdout.write(JSON.stringify(line) + "\n");
+/** Titik tunggu output log — semua mekanisme logging melewati fungsi ini. */
+export function emitStructuredLog(obj: Record<string, unknown> | RequestLogLine): void {
+  process.stdout.write(JSON.stringify(obj) + "\n");
 }
 
-function extractProjectId(path: string): string | undefined {
-  const m = /\/projects\/([^/]+)/.exec(path);
-  return m?.[1];
+export function emitRequestLog(line: RequestLogLine): void {
+  emitStructuredLog(line);
 }
+
 
 async function extractErrorCode(c: import("hono").Context): Promise<string | undefined> {
   if (c.res.status < 400) return undefined;

@@ -11,7 +11,7 @@
  */
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { Hono } from "hono";
-import { emitRequestLog } from "../request-logging.ts";
+import { emitStructuredLog } from "../request-logging.ts";
 
 const MAX_TIMESTAMP_AGE_SECONDS = 5 * 60;
 
@@ -66,18 +66,16 @@ export function createResendWebhookRouter(getDeps: () => ResendWebhookRoutesDeps
       return c.json({ error: { code: "VALIDATION_ERROR", message: `Event type '${type}' tidak didukung.` } }, 400);
     }
 
-    // F.4 — log teknis terpisah dari Activity domain. Alamat email TIDAK
-    // dicetak penuh (cukup indikator kejadian + message_id bila ada).
-    emitRequestLog({
+    // F.4 — log teknis terpisah dari Activity domain, SATU mekanisme
+    // structured logging (6.6.1). Alamat email TIDAK dicetak penuh;
+    // message_id Resend dicatat untuk traceability.
+    emitStructuredLog({
       request_id: id,
       action: `resend-webhook ${type}`,
       outcome: "logged",
       duration_ms: 0,
-      ...(event.data?.message_id ? {} : {}),
+      message_id: event.data?.message_id ?? null,
     });
-    process.stdout.write(
-      JSON.stringify({ event: "resend_webhook", type, message_id: event.data?.message_id ?? null }) + "\n",
-    );
 
     return c.json({ ok: true }, 200);
   });

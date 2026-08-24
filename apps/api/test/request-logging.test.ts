@@ -6,7 +6,6 @@ import { createClient, type Client } from "@libsql/client";
 import { Hono } from "hono";
 import {
   applyGlobalMigrations,
-  applyProjectMigrations,
   newProjectId,
   registerProjectWithOwnerMembership,
   RequestPipeline,
@@ -22,6 +21,7 @@ let dir: string;
 let globalClient: Client;
 let deps: MilestoneRoutesDeps;
 let pid: string;
+let origStdoutWrite: ((chunk: unknown) => boolean) | null = null;
 let logLines: Array<Record<string, unknown>>;
 
 const identityFor = (userId: string | null): Promise<ResolvedIdentity | null> =>
@@ -53,13 +53,13 @@ beforeAll(async () => {
 
   // Tangkap emitRequestLog via intercept process.stdout.write
   logLines = [];
-  const origWrite = process.stdout.write.bind(process.stdout);
+  origStdoutWrite = process.stdout.write.bind(process.stdout);
   process.stdout.write = ((chunk: unknown) => {
     const text = typeof chunk === "string" ? chunk : String(chunk);
     if (text.startsWith("{") && text.includes("request_id")) {
       try { logLines.push(JSON.parse(text)); return true; } catch { /* bukan JSON */ }
     }
-    return origWrite(chunk as never);
+    return origStdoutWrite(chunk as never);
   }) as typeof process.stdout.write;
 
   deps = buildDeps();
@@ -93,7 +93,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  process.stdout.write = process.stdout.write; // no-op restore (vitest mengelola)
+  if (origStdoutWrite) process.stdout.write = origStdoutWrite;
   await globalClient.close();
   rmSync(dir, { recursive: true, force: true });
 });

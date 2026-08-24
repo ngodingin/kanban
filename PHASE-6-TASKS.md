@@ -116,9 +116,9 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.6.1 | 🔄 | [CL-20](#cl-20)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-05](#qa-cl-05) | 70 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
+| 6.6.1 | 🔎 | [CL-21](#cl-21)<br>[CL-20](#cl-20) | 80 |[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[QA-CL-05](#qa-cl-05) | 70 | P1 | Structured logging per request (Hono middleware di `apps/api/src/index.ts`): emit satu log JSON per request berisi `request_id` (ULID baru per request), `user_id` (jika teridentifikasi), `project_id` (jika applicable), `action` (method+path atau domain command), `outcome` (status code/error code), `duration` (ms). Ganti 2 pemakaian `console.*` polos yang ada sekarang jadi bagian mekanisme ini. `project_id` WAJIB ada di log yang applicable agar bisa difilter per-Project tanpa membocorkan lintas Project (F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) | — |
 | 6.6.2 | 🔎 | [CL-15](#cl-15)<br>[CL-14](#cl-14) | 80 | P2 | Metrik minimal dari structured log 6.6.1 (BUKAN infra metrik baru — query/agregasi atas log yang sudah terstruktur, konsisten Prinsip #5): request rate, error rate per kode kanonik (`02-SPEC C.2`), latensi p50/p95, `VERSION_CONFLICT` rate (indikator kesehatan concurrency), kegagalan provisioning. Dokumentasikan cara query-nya (mis. Vercel log query/dashboard), bukan membangun dashboard kustom. | [03-ENG F.4](docs/03-ENGINEERING.md) | 6.6.1 |
-| 6.6.3 | 🔄 | [CL-22](#cl-22)<br>[CL-17](#cl-17)<br>[CL-16](#cl-16)<br>[QA-CL-07](#qa-cl-07) | 60 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
+| 6.6.3 | 🔎 | [CL-23](#cl-23)<br>[CL-22](#cl-22) | 80 |[CL-17](#cl-17)<br>[CL-16](#cl-16)<br>[QA-CL-07](#qa-cl-07) | 60 | P2 | Endpoint `POST /api/internal/resend-webhook` (pola non-pipeline sama seperti `/api/internal/prune`, TASK-5.4.1 — verifikasi signature Resend webhook, bukan `CRON_SECRET`) menangani minimal `email.bounced` dan `email.complained` (WAJIB, F.4 — sinyal kesehatan Magic Link); `email.delivered`/`email.delivery_delayed` MAY ditambahkan. Log event ke structured logging (6.6.1), BUKAN Activity domain (F.4 "Audit vs log: Activity terpisah dari technical log"). Open/click tracking Resend MUST NOT diaktifkan (keamanan token single-use, sudah dikunci SOT 2.5.2/F.4). | [03-ENG F.4](docs/03-ENGINEERING.md) (amandemen 2.5.2) | 6.6.1 |
 
 **Test:** 6.6.1 — request ke endpoint mana pun menghasilkan satu log JSON dengan seluruh field wajib terisi (assert field ada, bukan cuma "tidak crash"). 6.6.3 — payload webhook `email.bounced` valid + signature benar → 200 + log tercatat; signature salah → 401, tidak ada log event palsu; payload `email.opened`/`email.clicked` (seharusnya tidak pernah dikirim karena tracking nonaktif) → diterima tanpa error tapi tidak diproses khusus (defensive, bukan diasumsikan tidak akan pernah terjadi).
 **DoD:** `grep -rn "console\.\(log\|error\|warn\)" apps/api/src` → nol hasil di luar mekanisme structured logging 6.6.1 itu sendiri; webhook endpoint tidak pernah expose signing secret di response/log.
@@ -372,6 +372,22 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: 6.6.1 `⚠️/70` (QA-CL-05: dead extractProjectId + unused import + self-assign stdout), 6.6.3 `⚠️/60` (QA-CL-07: ternary no-op message_id + dual logging mechanism + lint). Kedua temuan berada di file yang saling berkaitan (`request-logging.ts`, `resend-webhook.ts`) — diperbaiki dalam satu pass.
 **Catatan:** 6.6.2 tetap 🔎80 menunggu 6.6.1 ✅ (dependency).
+<a id="cl-21"></a>
+### CL-21 — 2026-08-24 · goal 6.6.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 70 → 80%) — dead-code & hygiene diperbaiki
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **104 file / 633 test lulus**; typecheck+lint bersih (QA-CL-05 tuntas): `extractProjectId` dead-code DIHAPUS + docstring file dikoreksi (project_id diisi pipeline/ALS, bukan parse-path); import `applyProjectMigrations` tak terpakai dihapus; self-assignment stdout diganti simpan-orisinal + restore di afterAll.
+**Catatan:** Mekanisme logging tidak berubah (QA-CL-05 konfirmasi mekanisme benar).
+
+<a id="cl-22"></a>
+### CL-22 — 2026-08-24 · goal 6.6.3 remediasi dimulai bersama 6.6.1 (⚠️ → 🔄 · 60% dipertahankan)
+Digabung dalam entry CL-20 — temuan QA-CL-07 ditangani dalam satu pass karena file saling berkaitan.
+
+<a id="cl-23"></a>
+### CL-23 — 2026-08-24 · goal 6.6.3 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — bug message_id + satu mekanisme logging
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **104 file / 633 test lulus**; typecheck+lint bersih. Per QA-CL-07: (1) ternary no-op DIHAPUS — `message_id` kini benar-benar dicatat via field baru pada structured log (assert test `"message_id":"mid-1"`); (2) dual-mechanism DISELESAIKAN — ad-hoc `process.stdout.write` diganti `emitStructuredLog` (titik tunggu transport dari 6.6.1), baris webhook kini punya request_id/action/outcome/duration_ms konsisten.
+**Catatan:** Klaim "reproduksi dua arah" pada commit lama juga berlaku di sini — test memverifikasi invariant & hasil akhir, bukan window race sempit.
+
 <a id="cl-19"></a><a id="cl-19"></a>
 ### CL-19 — 2026-08-24 · goal 6.7.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — baseline rate limiting platform
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
