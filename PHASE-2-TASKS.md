@@ -189,7 +189,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | 🔎 | [CL-66](#cl-66)<br>[CL-65](#cl-65)<br>[CL-64](#cl-64)<br>[CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
+| 2.12.1 | 🔎 | [CL-66](#cl-66)<br>[CL-65](#cl-65)<br>[CL-64](#cl-64)<br>[CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08)<br>[QA-CL-26](#qa-cl-26) | 80 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
 
 **Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → pending guard aktif sebelum cleanup; assignment baru terhadap User pending ditolak; ketiga Card menjadi NULL + masing-masing mendapat Activity. Wajib AC-035 fault-injection: kegagalan sebelum cleanup commit rollback seluruh Card/Activity dan belum revoked; kegagalan finalisasi Global mempertahankan pending serta Card unassigned; retry menyelesaikan revoke tanpa Activity ganda. Dua request revoke konkuren tidak boleh melewati conditional state transition.
 **DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
@@ -467,6 +467,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⚠️/60`; QA-CL-26 dibaca — (1) test konkuren deterministik yang menahan worker pertama pasca-claim wajib; (2) caller kalah claim tidak boleh melaporkan timestamp lokal yang tidak mencerminkan DB.
 **Catatan:** Rencana: summary revokeMembership di-re-read dari DB; test overlap dua revoke dengan polling pending + gate pada cleanup.
+
+<a id="cl-67"></a>
+### CL-67 — 2026-08-24 · KOREKSI prosedural — kolom % row 2.12.1 tertinggal di 60 saat Gate B CL-65; dikoreksi ke 🔎/80
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Laporan sesi QA dikonfirmasi via disk: row `🔎/60` padahal CL-65 mengklaim 80% — penyebab identik dengan 5.3.1 (Gate B tanpa perubahan `%`). Dikoreksi pada commit ini. Bukti substantif tetap: overlap konkuren deterministik + summary-from-DB, **98 file / 597 test PASS**, lint bersih (CL-63/65/66).
+**Catatan:** Pola yang sama juga sempat terjadi pada CL-53-lama; ini pelanggaran berulang — dicatat untuk akuntabilitas sesi Dev.
 
 <a id="cl-66"></a>
 ### CL-66 — 2026-08-24 · goal 2.12.1 — perbaikan repo-hygiene pasca-audit QA (tanpa perubahan status; 🔎/80 dipertahankan)

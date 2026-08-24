@@ -86,7 +86,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.3.1 | 🔎 | [CL-19](#cl-19)<br>[CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 60 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
+| 5.3.1 | 🔎 | [CL-19](#cl-19)<br>[CL-18](#cl-18)<br>[CL-17](#cl-17)<br>[CL-14](#cl-14)<br>[CL-13](#cl-13)<br>[CL-12](#cl-12)<br>[CL-11](#cl-11)<br>[CL-08](#cl-08)<br>[CL-07](#cl-07)<br>[Review-CL-03](#review-cl-03)<br>[QA-CL-01](#qa-cl-01)<br>[QA-CL-02](#qa-cl-02)<br>[Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05)<br>[QA-CL-03](#qa-cl-03) | 80 | P0 **[MODEL LEBIH KUAT WAJIB]** | Implementasikan SOT 4.1.0 BR-016B: migration `project_deprovision_jobs` tanpa FK, snapshot database, UNIQUE project, state `PENDING → DATABASE_DELETED → COMPLETED`; create/load job sebelum provider delete, HTTP 404 setara sukses, conditional transition, dan cleanup Global + `COMPLETED` satu transaksi. Retry `DATABASE_DELETED` tidak boleh membuka Project DB. | [02-SPEC](docs/02-SPEC.md) BR-016, BR-016A, BR-016B; [03-ENG F.2.1](docs/03-ENGINEERING.md), F.4 | 5.1 |
 
 **Test:** AC-036 selain boundary retention dan kegagalan `deleteDatabase`: fault-injection setelah create `PENDING`, setelah Turso delete sebelum transition, pada `DATABASE_DELETED`, dan saat cleanup Global commit. Retry/restart menyelesaikan `COMPLETED` tanpa membuka Project DB hilang; HTTP 404 idempotent; dua worker konkuren tidak menggandakan cleanup/transisi.
 **DoD:** Setiap intermediate state dapat direkonsiliasi secara idempotent; kegagalan proses pada boundary Turso/Global tidak menghasilkan registry aktif permanen yang menunjuk database hilang dan tidak membuat cleanup Global mustahil dilanjutkan.
@@ -172,6 +172,12 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `pnpm lint` sebelumnya GAGAL 2 error pada `prune-projects.ts` (`transitionJob`/`finalizeProjectCleanup` yatim pasca-refactor driveDeprovision). Keduanya DIHAPUS (logika sudah ter-inline di tx); test mock arg `name` → `_name`. Setelah fix: `pnpm lint` bersih, **98 file / 597 test lulus**, smoke-migration PASS.
 **Catatan:** Merespons blocker repo-health yang dilaporkan sesi QA (lint repo-wide 5 error, 2 di antaranya milik file ini).
+
+<a id="cl-20"></a>
+### CL-20 — 2026-08-24 · KOREKSI prosedural — kolom % row 5.3.1 tertinggal di 60 saat Gate B CL-18; dikoreksi ke 🔎/80
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Laporan sesi QA dikonfirmasi via disk: row menunjukkan `🔎/60` padahal CL-18 mengklaim 80% — Gate B hanya mengubah Status+CL tanpa `%`, MENGULANG preseden QA-CL-03/26. Dikoreksi: `%` 60 → 80 pada commit ini (bersama entry koreksi). Bukti substantif tidak berubah: lint bersih, **98 file / 597 test PASS**, smoke-migration PASS (CL-19).
+**Catatan:** Dua kali pelanggaran pola yang sama (CL-63 lama, kini ini) — verifikasi ganda "%=80 SEBELUM commit" ditambahkan ke checklist pribadi sesi Dev ini; mohon QA mencatat sebagai pelanggaran berulang bila terjadi ketiga kali.
 
 <a id="cl-14"></a>
 ### CL-14 — 2026-08-24 · goal 5.3.1 selesai sisi Dev sesi ini (🔄 → 🔎 · 60 → 80%) — journal BR-016B lengkap + integrasi fix FK CL-12
