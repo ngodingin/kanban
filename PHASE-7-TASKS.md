@@ -1,13 +1,13 @@
 # Phase 7 — UI · Task & Goal Breakdown
 
-> ⏸️ **BLOCKED — JANGAN DIKERJAKAN.** Phase 7 tidak boleh dimulai sebelum **Phase 0–6 selesai & terverifikasi** (semua Exit Criteria + Definition of Done [04-DELIVERY C.3](docs/04-DELIVERY.md) hijau). Seluruh goal di file ini berstatus ⏸️ sampai gate itu terbuka.
+> ✅ **GATE DIBUKA 2026-08-25** ([Review-CL-05](#review-cl-05)) — keputusan manusia eksplisit setelah Exit Criteria Phase 0–6 diverifikasi independen genuinely terpenuhi ([Review-CL-04, PHASE-6-TASKS.md](PHASE-6-TASKS.md#review-cl-04)). Goal di bawah sekarang `⬜️` (actionable), bukan lagi `⏸️`.
 >
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 2.0.6. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
-> **Audit terbaru:** outline diselaraskan pada titik kontrak observable SOT 4.1.0 melalui [Review-CL-02](#review-cl-02); amandemen 4.1.0 bersifat control-plane internal dan tidak mengubah UI contract. File tetap bukan task implementation-ready sampai gate Phase 7 dibuka dan refresh penuh terhadap repo/API aktual dilakukan.
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)). Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
+> **Audit terbaru:** outline sudah diselaraskan bertahap ke titik kontrak observable SOT 4.0.0 ([Review-CL-02](#review-cl-02)) — dikonfirmasi ulang [Review-CL-05](#review-cl-05): amandemen 4.1.0/4.1.1 (BR-054C revoke lintas-DB, journal deprovision, F.1 RTO/RPO) bersifat control-plane/operasional internal, TIDAK mengubah API contract yang UI konsumsi. Versi dependency UI (React/Vite/React Router/Tailwind/shadcn/TanStack Query/Zustand/dnd-kit) direvalidasi terhadap npm registry saat gate dibuka — seluruhnya cocok baseline `03-ENG A.8` tanpa revisi.
 >
-> **Catatan metodologi (C.6):** task granular idealnya di-*refresh* saat fase menjadi aktif, terhadap state repo nyata (scaffold Vite, API client, hook, dsb yang sudah ada). Daftar ini adalah **outline perencanaan** yang dibuat lebih awal atas permintaan; verifikasi & sesuaikan saat Phase 7 benar-benar dibuka.
+> **Catatan metodologi (C.6):** task granular di-*refresh* saat fase menjadi aktif, terhadap state repo nyata. `apps/web/` saat ini HANYA placeholder (`package.json` kosong, `README.md`, `public/index.html` static test shell) — TIDAK ADA scaffold Vite/React/shadcn sama sekali. `TASK-7.1.1` genuinely mulai dari nol, bukan refine kode existing.
 >
-> **AI-Dev execution gate:** selama goal `⏸️`, Dev dilarang bekerja. Setelah gate dibuka, jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang dan jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
+> **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
 
 ## Prinsip Phase 7
 Bangun domain UI sebagai React/Vite SPA di atas shadcn primitives, **tanpa membiarkan template/demo mendikte domain**. Setiap komponen memetakan ke field yang ADA di [02-SPEC](docs/02-SPEC.md). UI tidak memperkenalkan field baru (priority/progress-card/status/inbox = non-goal, [05-FRONTEND §4](docs/05-FRONTEND.md)). Semua mutasi lewat domain command + optimistic locking + permission.
@@ -32,7 +32,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 > **Status gate per 2026-08-25 ([Review-CL-04, PHASE-6-TASKS.md](PHASE-6-TASKS.md#review-cl-04)):** ketiga prasyarat SEKARANG genuinely terpenuhi. Prasyarat 3 (Magic Link 0.8.4) ✅ sejak sebelumnya. Prasyarat 1 (Exit Criteria Phase 6) — `TASK-6.8`/`TASK-6.9` (dibuka [Review-CL-03](PHASE-6-TASKS.md#review-cl-03)) sekarang 9/9 goal ✅, diverifikasi independen ulang (test suite 111 file/657 test, `release-check.mjs` 5 PASS/0 FAIL/1 DEFERRED-by-design, 7 test AC-gap dibaca+dijalankan ulang tanpa temuan lemah) — **Phase 6 genuinely tuntas, 23/23 goal**. Prasyarat 2 (API domain lulus AC) menyatu dengan closure di atas. **Satu temuan minor non-blocking**: smoke test E2E (`TASK-6.9.2`) genuinely benar secara fungsional tapi lokasinya (`apps/api/test/core-flow-smoke.test.ts`) menyimpang dari pola `packages/infrastructure/scripts/smoke-*.ts` yang diminta DoD literal — housekeeping opsional, tidak menghalangi gate.
 >
-> **Gate SIAP dibuka secara teknis** — TAPI belum dieksekusi (`⏸️ → ⬜️`) di sini. Membuka Phase 7 genuinely BUTUH regenerasi penuh task breakdown di file ini terhadap state API/repo TERKINI (bukan cuma toggle status — lihat catatan metodologi C.6 di atas: "outline perencanaan... verifikasi & sesuaikan saat Phase 7 benar-benar dibuka"), scope kerja terpisah yang menunggu keputusan/instruksi eksplisit manusia, konsisten pola pembukaan Phase 6 sebelumnya ("buka phase 6" sebagai instruksi eksplisit, bukan otomatis begitu syarat teknis terpenuhi).
+> **Gate DIBUKA 2026-08-25** ([Review-CL-05](#review-cl-05)) — keputusan manusia eksplisit ("ya lakukan"), transisi `⏸️ → ⬜️` dieksekusi untuk seluruh 38 goal setelah refresh outline terhadap state repo/versi dependency terkini. Lihat Review-CL-05 untuk detail verifikasi.
 
 ---
 
@@ -40,10 +40,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | ⏸️ | — | 0 | P0 | Bootstrap `apps/web` dengan exact-pinned React/Vite + React Router + Tailwind/shadcn sesuai baseline A.8 yang direvalidasi saat gate dibuka | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | Gate |
-| 7.1.2 | ⏸️ | — | 0 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.1.3 | ⏸️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
-| 7.1.4 | ⏸️ | — | 0 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.1 | ⬜️ | — | 0 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.2 | ⬜️ | — | 0 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.3 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
+| 7.1.4 | ⬜️ | — | 0 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
 **Test:** Production build Vite dapat disajikan bersama Hono pada satu origin; deep link SPA bekerja; `/api/*` tidak tertangkap fallback; UI Magic Link menangani request/link-sent/expired/used/error; TanStack Query terpasang; tidak ada demo/non-MVP atau identity SaaS.
 **DoD:** Foundation React/Vite hanya berisi fitur MVP; server state lewat TanStack Query; routing memakai React Router; struktur `features/` sesuai [05-FRONTEND §6](docs/05-FRONTEND.md).
@@ -54,9 +54,9 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.2.1 | ⏸️ | — | 0 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.2 | ⏸️ | — | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.3 | ⏸️ | — | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.2.1 | ⬜️ | — | 0 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.2 | ⬜️ | — | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.3 | ⬜️ | — | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
 
 **Test:** Token render benar di light & dark; kontras memadai; komponen shadcn memakai token.
 **DoD:** Theme konsisten sesuai tokens; tidak ada warna hard-coded di luar token.
@@ -67,9 +67,9 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | ⏸️ | — | 0 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
-| 7.3.2 | ⏸️ | — | 0 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.3.3 | ⏸️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.1 | ⬜️ | — | 0 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.2 | ⬜️ | — | 0 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
 **DoD:** Shell context-aware; tidak menampilkan elemen non-MVP.
@@ -80,8 +80,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.4.1 | ⏸️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
-| 7.4.2 | ⏸️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
+| 7.4.1 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
+| 7.4.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
 **DoD:** Home terasa work-management tool, bukan admin panel.
@@ -92,10 +92,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.5.1 | ⏸️ | — | 0 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
-| 7.5.2 | ⏸️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
-| 7.5.3 | ⏸️ | — | 0 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
-| 7.5.4 | ⏸️ | — | 0 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.1 | ⬜️ | — | 0 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
+| 7.5.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
+| 7.5.3 | ⬜️ | — | 0 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.4 | ⬜️ | — | 0 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
 **Test:** Drag memicu move API benar; opsi Board lintas-Milestone tidak muncul; conflict ditampilkan, tidak menimpa.
 **DoD:** Interaksi Board tunduk domain command + optimistic locking; List tanpa makna status sistem.
@@ -106,8 +106,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.6.1 | ⏸️ | — | 0 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.6.2 | ⏸️ | — | 0 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.6.1 | ⬜️ | — | 0 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.6.2 | ⬜️ | — | 0 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
 
 **Test:** Card hanya menampilkan field domain yang valid; tidak ada priority/progress/status.
 **DoD:** Komponen Card patuh [05-FRONTEND §4](docs/05-FRONTEND.md).
@@ -118,10 +118,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.7.1 | ⏸️ | — | 0 | P1 | Tab Details: description, assignee, due date, labels, **current List** (bukan "status") | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.6.1 |
-| 7.7.2 | ⏸️ | — | 0 | P1 | Tab Activity: timeline immutable | [02-SPEC A.8](docs/02-SPEC.md) | 7.8.1 |
-| 7.7.3 | ⏸️ | — | 0 | P0 | Comments: add + edit (tanpa delete); tolak pada card deleted/archived | [02-SPEC A.9](docs/02-SPEC.md), [BR-033](docs/02-SPEC.md) | 7.7.1 |
-| 7.7.4 | ⏸️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Edit field via generic update hanya untuk field mutable; `listId` dan domain field `version` dilarang, sedangkan command metadata `expectedVersion` tetap wajib | [02-SPEC C.8, C.15](docs/02-SPEC.md) | 7.7.1 |
+| 7.7.1 | ⬜️ | — | 0 | P1 | Tab Details: description, assignee, due date, labels, **current List** (bukan "status") | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.7.2 | ⬜️ | — | 0 | P1 | Tab Activity: timeline immutable | [02-SPEC A.8](docs/02-SPEC.md) | 7.8.1 |
+| 7.7.3 | ⬜️ | — | 0 | P0 | Comments: add + edit (tanpa delete); tolak pada card deleted/archived | [02-SPEC A.9](docs/02-SPEC.md), [BR-033](docs/02-SPEC.md) | 7.7.1 |
+| 7.7.4 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Edit field via generic update hanya untuk field mutable; `listId` dan domain field `version` dilarang, sedangkan command metadata `expectedVersion` tetap wajib | [02-SPEC C.8, C.15](docs/02-SPEC.md) | 7.7.1 |
 
 **Test:** "current List" tidak dimodelkan sebagai status; comment tak bisa dihapus & ditolak pada card non-active; PATCH tak bisa ubah field domain.
 **DoD:** Card Detail patuh domain; tidak ada priority/progress.
@@ -132,8 +132,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.8.1 | ⏸️ | — | 0 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
-| 7.8.2 | ⏸️ | — | 0 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
+| 7.8.1 | ⬜️ | — | 0 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
+| 7.8.2 | ⬜️ | — | 0 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
 
 **Test:** Activity read-only; entity terhapus tetap terbaca via payload historis.
 **DoD:** Timeline = audit trail, immutable, bermakna historis.
@@ -144,9 +144,9 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.9.1 | ⏸️ | — | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card) | [02-SPEC Part D](docs/02-SPEC.md) | 7.3.1 |
-| 7.9.2 | ⏸️ | — | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
-| 7.9.3 | ⏸️ | — | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY | [02-SPEC A.10](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.1 | ⬜️ | — | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card) | [02-SPEC Part D](docs/02-SPEC.md) | 7.3.1 |
+| 7.9.2 | ⬜️ | — | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.3 | ⬜️ | — | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY | [02-SPEC A.10](docs/02-SPEC.md) | 7.9.1 |
 
 **Test:** UI mencerminkan model Group (bukan RBAC Role→Permissions); scope & inheritance benar.
 **DoD:** Permission UI patuh authorization model; tidak menyederhanakan jadi RBAC.
@@ -157,8 +157,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.10.1 | ⏸️ | — | 0 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.10.2 | ⏸️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
+| 7.10.1 | ⬜️ | — | 0 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.10.2 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
 **DoD:** Members & Invitation patuh invitation flow.
@@ -169,8 +169,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.11.1 | ⏸️ | — | 0 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
-| 7.11.2 | ⏸️ | — | 0 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
+| 7.11.1 | ⬜️ | — | 0 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
+| 7.11.2 | ⬜️ | — | 0 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
 
 **Test:** Secret hanya tampil sekali; revoke berfungsi; PAT di User Settings bukan Project.
 **DoD:** Credential UI patuh security model.
@@ -181,7 +181,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | ⏸️ | — | 0 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⬜️ | — | 0 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -192,10 +192,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.13.1 | ⏸️ | — | 0 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
-| 7.13.2 | ⏸️ | — | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
-| 7.13.3 | ⏸️ | — | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
-| 7.13.4 | ⏸️ | — | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.1 | ⬜️ | — | 0 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
+| 7.13.2 | ⬜️ | — | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.3 | ⬜️ | — | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
+| 7.13.4 | ⬜️ | — | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
 **Test:** Tidak ada child handling; restore hanya untuk ARCHIVED dengan ancestor ACTIVE; DELETED terminal; local state descendant tidak berubah.
 **DoD:** Lifecycle UI patuh effective ancestor state dan menjelaskan dampak terminal delete.
@@ -206,8 +206,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.14.1 | ⏸️ | — | 0 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.14.2 | ⏸️ | — | 0 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
+| 7.14.1 | ⬜️ | — | 0 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.14.2 | ⬜️ | — | 0 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
 
 **Test:** Mobile tidak menumpuk kolom vertikal; card detail full-screen.
 **DoD:** Responsive sesuai [05-FRONTEND §7](docs/05-FRONTEND.md).
@@ -222,7 +222,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 - Responsive desktop/tablet/mobile.
 
 ## Flag
-- Task di file ini adalah outline; **refresh terhadap state repo nyata saat Phase 7 dibuka** (C.6).
+- Refresh terhadap state repo nyata sudah dilakukan saat gate dibuka 2026-08-25 ([Review-CL-05](#review-cl-05)): `apps/web/` dikonfirmasi placeholder murni; versi dependency direvalidasi terhadap npm registry, cocok baseline tanpa revisi.
 - Tidak ada `[NEEDS-SPEC-AMENDMENT]` — konflik mockup sudah direkonsiliasi di [05-FRONTEND §4](docs/05-FRONTEND.md).
 
 ---
@@ -250,6 +250,25 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="review-cl-05"></a>
+### Review-CL-05 — 2026-08-25 · GATE DIBUKA — refresh outline terhadap SOT 4.1.1 + state repo nyata
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Keputusan manusia eksplisit:** "ya lakukan" — konfirmasi langsung setelah [Review-CL-04 (PHASE-6-TASKS.md)](PHASE-6-TASKS.md#review-cl-04) melaporkan Exit Criteria Phase 0–6 genuinely terpenuhi dan menawarkan pembukaan Phase 7 sebagai langkah berikutnya.
+
+**Dibaca penuh sebelum refresh** (sesuai C.6.1): `04-DELIVERY` Part A (UX Flows, seluruh A.1–A.9) dan C.1 baris Phase 7; `05-FRONTEND.md` sepenuhnya (design tokens, foundation, UI↔Domain reconciliation §4, layar utama §5, struktur §6, responsive §7); outline `PHASE-7-TASKS.md` existing (14 task, 38 goal, sudah pernah diselaraskan ke SOT 4.0.0 via [Review-CL-02](#review-cl-02)).
+
+**State repo dikonfirmasi langsung (bukan asumsi):** `apps/web/` HANYA berisi `package.json` placeholder (nama+version+engines saja), `README.md` yang eksplisit bilang "Implementasi SPA dibuka pada Phase 7", dan `public/index.html` static test shell — TIDAK ADA scaffold Vite/React/Router/Tailwind/shadcn sama sekali. `TASK-7.1.1` genuinely mulai dari nol.
+
+**Versi dependency direvalidasi terhadap npm registry** (kewajiban eksplisit `03-ENG A.8`/`05-FRONTEND §3`: "Versi exact dependency UI MUST diverifikasi ulang dan dipin ketika gate Phase 7 dibuka") — `npm view <pkg> version` dijalankan untuk seluruh baseline: React/React DOM `19.2.8`, Vite `8.2.2`, React Router `8.3.0`, Tailwind CSS `4.3.3`, shadcn CLI `4.19.0`, TanStack Query `5.102.2`, Zustand `5.0.15`, `@dnd-kit/core` `6.3.1` — **seluruhnya cocok baseline major version yang sudah dikunci (`03-ENG A.8`), TIDAK ADA revisi diperlukan**. TypeScript dikonfirmasi TETAP `6.0.2` (bukan ikut versi terbaru `7.x` yang baru dirilis) — konsisten keputusan existing menunda TypeScript 7 sampai lint tooling kompatibel ([01-PRODUCT changelog 2.0.4](docs/01-PRODUCT.md)), berlaku juga untuk `apps/web` demi satu versi TypeScript across monorepo.
+
+**Substansi outline dikonfirmasi masih akurat terhadap SOT 4.1.1** (bukan cuma 4.0.0 seperti audit Review-CL-02 sebelumnya): amandemen 4.1.0 (BR-054C revoke lintas-DB, journal deprovision BR-016B) dan 4.1.1 (F.1 RTO/RPO) keduanya **control-plane/operasional backend murni** — tidak ada field/endpoint/response shape baru yang terekspos ke API contract (`02-SPEC Part C`) yang dikonsumsi UI. Tidak ada goal existing yang perlu diubah substansinya.
+
+**Gate dibuka:** seluruh 38 goal `⏸️ → ⬜️` (transisi wewenang AI-Planning & Review, [AGENTS.md §11.1](AGENTS.md)/[§6.1](AGENTS.md)). Header file, banner, kolom Dependency `7.1.1` ("Gate" → "—"), dan section Flag diperbarui mencerminkan gate terbuka. `docs/05-FRONTEND.md` status line juga diperbarui (lihat commit yang sama).
+
+**Belum ada implementasi dimulai** — seluruh goal `⬜️` murni (bukan `🔄`), menunggu sesi AI-Dev berikutnya memilih goal sesuai dependency (`TASK-7.1.1` adalah satu-satunya goal P0 tanpa dependency, titik masuk alami).
 
 <a id="review-cl-02"></a>
 ### Review-CL-02 — 2026-08-24 · audit outline Phase 7 terhadap SOT 4.0.0

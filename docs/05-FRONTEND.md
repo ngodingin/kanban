@@ -1,8 +1,8 @@
 # 05 — FRONTEND (Design System · React/Vite Foundation · UI↔Domain Mapping)
 
-> Status: **Content ready — IMPLEMENTASI BLOCKED.** Pekerjaan frontend (PHASE-7-TASKS.md) TIDAK dimulai sebelum Phase 0–6 selesai & terverifikasi.
+> Status: **Gate dibuka 2026-08-25.** Pekerjaan frontend ([PHASE-7-TASKS.md](../PHASE-7-TASKS.md)) sekarang actionable — lihat Review-CL-05 di file itu.
 > Related: 01-PRODUCT.md, 02-SPEC.md, 03-ENGINEERING.md, 04-DELIVERY.md (Part A UX Flows)
-> SOT version: 4.1.0
+> SOT version: 4.1.1
 
 ---
 
@@ -142,4 +142,4 @@ apps/web/src/
 ## 8. Governance Frontend
 - Setiap komponen yang menampilkan data domain MUST memetakan ke field yang ADA di 02-SPEC. Menemukan kebutuhan field baru → `[NEEDS-SPEC-AMENDMENT]`, berhenti, jangan tambah diam-diam.
 - Drag & drop Card, quick-edit, dan aksi lifecycle tetap lewat domain command API, tunduk optimistic locking (`expectedVersion`) & permission — UI tidak boleh mem-bypass business rule.
-- **Implementasi frontend BLOCKED sampai Phase 0–6 selesai & terverifikasi** (lihat PHASE-7-TASKS.md).
+- **Implementasi frontend actionable sejak gate dibuka 2026-08-25** (lihat [PHASE-7-TASKS.md](../PHASE-7-TASKS.md)).
