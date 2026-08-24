@@ -69,8 +69,8 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
     });
     expect(res.status).toBe(201);
     const json = await res.json();
-    expect(json.data.personal_access_token.token.startsWith("pat_")).toBe(true);
-    expect(json.data.personal_access_token.token_hash).toBeUndefined();
+    expect(json.data.personalAccessToken.token.startsWith("pat_")).toBe(true);
+    expect(json.data.personalAccessToken.token_hash).toBeUndefined();
   });
 
   it("[isolasi] list hanya milik identity yang resolve, bukan seluruh User", async () => {
@@ -83,13 +83,13 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
       headers: { "x-test-user": "user-a" },
     });
     const jsonA = await resA.json();
-    expect(jsonA.data.personal_access_tokens.map((t: { name: string }) => t.name)).toEqual(["CLI"]);
+    expect(jsonA.data.personalAccessTokens.map((t: { name: string }) => t.name)).toEqual(["CLI"]);
 
     const resB = await app().request("http://localhost/v1/me/personal-access-tokens", {
       headers: { "x-test-user": "user-b" },
     });
     const jsonB = await resB.json();
-    expect(jsonB.data.personal_access_tokens.map((t: { name: string }) => t.name)).toEqual(["B token"]);
+    expect(jsonB.data.personalAccessTokens.map((t: { name: string }) => t.name)).toEqual(["B token"]);
   });
 
   it("[boundary] User A revoke token milik User B → RESOURCE_NOT_FOUND (bukan 403 — analog BR-034A)", async () => {
@@ -98,7 +98,7 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
       headers: { "x-test-user": "user-b", "content-type": "application/json" },
       body: JSON.stringify({ name: "ToRevoke" }),
     });
-    const tokenId = (await created.json()).data.personal_access_token.id as string;
+    const tokenId = (await created.json()).data.personalAccessToken.id as string;
 
     const denied = await app().request(
       `http://localhost/v1/me/personal-access-tokens/${tokenId}/revoke`,
@@ -112,7 +112,7 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
       { method: "POST", headers: { "x-test-user": "user-b" } },
     );
     expect(ok.status).toBe(200);
-    expect((await ok.json()).data.personal_access_token.revokedAt).not.toBeNull();
+    expect((await ok.json()).data.personalAccessToken.revokedAt).not.toBeNull();
   });
 
   it("[validation] field tak dikenal di body create → 400", async () => {
@@ -123,5 +123,24 @@ describe("POST/GET/revoke /me/personal-access-tokens — goal 4.8.1/4.8.2 (self-
     });
     expect(res.status).toBe(400);
     expect((await res.json()).error?.code).toBe("VALIDATION_ERROR");
+  });
+
+// [C.2/C.2.1] PAT multi-field invalid → VALIDATION_ERROR.details memuat SEMUA kegagalan (collect-all)
+});
+
+describe("PAT validation collect-all — goal 0.17.6", () => {
+  it("name kosong + expiresAt salah tipe + unknown field → details >= 3, tanpa fail-fast", async () => {
+    const res = await app().request("http://localhost/v1/me/personal-access-tokens", {
+      method: "POST",
+      headers: { "x-test-user": "user-a", "content-type": "application/json" },
+      body: JSON.stringify({ name: "", expiresAt: 12345, totallyUnknown: true }),
+    });
+    expect(res.status).toBe(400);
+    const err = (await res.json()).error;
+    expect(err.code).toBe("VALIDATION_ERROR");
+    const fields = err.details.map((d: { field: string }) => d.field);
+    expect(fields.some((f: string) => f === "name")).toBe(true);
+    expect(fields.some((f: string) => f === "expiresAt")).toBe(true);
+    expect(fields.some((f: string) => f.startsWith("unknownField:totallyUnknown"))).toBe(true);
   });
 });

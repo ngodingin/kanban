@@ -64,24 +64,27 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
       const body = readJsonObject(await c.req.json().catch(() => null));
       const collector = new ValidationCollector();
       const name = collector.collect("name", () => readNameField(body));
-      const expiresAtRaw = collector.collect("expires_at", () => {
-        if (body.expires_at !== undefined && body.expires_at !== null && typeof body.expires_at !== "string") {
-          throw new PipelineError("VALIDATION_ERROR", "expires_at wajib string ISO date-time.", 400);
+      const expiresAtRaw = collector.collect("expiresAt", () => {
+        if (body.expiresAt !== undefined && body.expiresAt !== null && typeof body.expiresAt !== "string") {
+          throw new PipelineError("VALIDATION_ERROR", "expiresAt wajib string ISO date-time.", 400);
         }
-        return body.expires_at as string | null | undefined;
+        return body.expiresAt as string | null | undefined;
       });
-      collector.throwIfAny();
+      // C.2.1 — unknown fields collect-all.
       for (const key of Object.keys(body)) {
-        if (key !== "name" && key !== "expires_at") {
-          throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
+        if (key !== "name" && key !== "expiresAt") {
+          collector.collect(`unknownField:${key}`, () => {
+            throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
+          });
         }
       }
+      collector.throwIfAny();
       const created = await deps.createPersonalAccessToken({
         userId: identity.userId,
         name: name!,
         ...(expiresAtRaw ? { expiresAt: expiresAtRaw } : {}),
       });
-      return { personal_access_token: created };
+      return { personalAccessToken: created };
     }, 201, getDeps().idempotencyStore),
   );
 
@@ -90,7 +93,7 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const tokens = await deps.listPersonalAccessTokens(identity.userId);
-      return { personal_access_tokens: tokens };
+      return { personalAccessTokens: tokens };
     }),
   );
 
@@ -99,7 +102,7 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const revoked = await deps.revokePersonalAccessToken(identity.userId, c.req.param("token_id"));
-      return { personal_access_token: revoked };
+      return { personalAccessToken: revoked };
       }, 200, getDeps().idempotencyStore),
   );
 

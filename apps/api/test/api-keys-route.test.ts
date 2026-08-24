@@ -78,8 +78,8 @@ describe("POST/GET/revoke /api-keys — goal 4.7.1 (route-level authz)", () => {
     });
     expect(res.status).toBe(201);
     const json = await res.json();
-    expect(json.data.api_key.secret.startsWith("ak_")).toBe(true);
-    expect(json.data.api_key.key_hash).toBeUndefined();
+    expect(json.data.apiKey.secret.startsWith("ak_")).toBe(true);
+    expect(json.data.apiKey.key_hash).toBeUndefined();
   });
 
   it("[negatif] Membership tanpa api_key.create → 403 PERMISSION_DENIED", async () => {
@@ -98,8 +98,8 @@ describe("POST/GET/revoke /api-keys — goal 4.7.1 (route-level authz)", () => {
     });
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.data.api_keys.length).toBeGreaterThanOrEqual(1);
-    expect(json.data.api_keys[0].secret).toBeUndefined();
+    expect(json.data.apiKeys.length).toBeGreaterThanOrEqual(1);
+    expect(json.data.apiKeys[0].secret).toBeUndefined();
   });
 
   it("[negatif] Membership tanpa api_key.read → 403", async () => {
@@ -115,7 +115,7 @@ describe("POST/GET/revoke /api-keys — goal 4.7.1 (route-level authz)", () => {
       headers: { "x-test-user": "user-owner", "content-type": "application/json" },
       body: JSON.stringify({ name: "ToRevoke" }),
     });
-    const keyId = (await created.json()).data.api_key.id as string;
+    const keyId = (await created.json()).data.apiKey.id as string;
 
     const denied = await app().request(`http://localhost/v1/projects/${PROJECT}/api-keys/${keyId}/revoke`, {
       method: "POST",
@@ -128,7 +128,7 @@ describe("POST/GET/revoke /api-keys — goal 4.7.1 (route-level authz)", () => {
       headers: { "x-test-user": "user-owner" },
     });
     expect(ok.status).toBe(200);
-    expect((await ok.json()).data.api_key.revokedAt).not.toBeNull();
+    expect((await ok.json()).data.apiKey.revokedAt).not.toBeNull();
   });
 
   it("[validation] field tak dikenal di body create → 400", async () => {

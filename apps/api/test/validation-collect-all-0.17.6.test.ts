@@ -180,13 +180,15 @@ describe("[TASK-0.17.6] VALIDATION_ERROR collect-all — API Key", () => {
 
   const keyApp = (): Hono => new Hono().route("/", createApiKeysRouter(() => keyDeps));
 
-  it("[CREATE API Key] name kosong + expires_at bukan string -> KEDUA field muncul sekaligus", async () => {
+  it("[CREATE API Key] name kosong + expiresAt bukan string -> KEDUA field muncul sekaligus", async () => {
     const res = await req(keyApp(), `/v1/projects/${PROJECT}/api-keys`, "POST", {
       name: "",
-      expires_at: 123,
+      expiresAt: 123,
+      unknownFieldX: 1,
     });
     expect(res.status).toBe(400);
     const json = await res.json();
-    expect(fields(json)).toEqual(["expires_at", "name"]);
+    // collect-all: name + expiresAt + unknown field, SEMUANYA dalam details
+    expect(fields(json)).toEqual(["expiresAt", "name", "unknownField:unknownFieldX"]);
   });
 });

@@ -68,18 +68,21 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
       const body = readJsonObject(await c.req.json().catch(() => null));
       const collector = new ValidationCollector();
       const name = collector.collect("name", () => readNameField(body));
-      const expiresAtRaw = collector.collect("expires_at", () => {
-        if (body.expires_at !== undefined && body.expires_at !== null && typeof body.expires_at !== "string") {
-          throw new PipelineError("VALIDATION_ERROR", "expires_at wajib string ISO date-time.", 400);
+      const expiresAtRaw = collector.collect("expiresAt", () => {
+        if (body.expiresAt !== undefined && body.expiresAt !== null && typeof body.expiresAt !== "string") {
+          throw new PipelineError("VALIDATION_ERROR", "expiresAt wajib string ISO date-time.", 400);
         }
-        return body.expires_at as string | null | undefined;
+        return body.expiresAt as string | null | undefined;
       });
-      collector.throwIfAny();
+      // C.2.1 — field tak dikenal ikut dikumpulkan collect-all, bukan fail-fast.
       for (const key of Object.keys(body)) {
-        if (key !== "name" && key !== "expires_at") {
-          throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
+        if (key !== "name" && key !== "expiresAt") {
+          collector.collect(`unknownField:${key}`, () => {
+            throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
+          });
         }
       }
+      collector.throwIfAny();
       const created = await deps.createApiKey({
         projectId,
         createdByUserId: identity.userId,
@@ -87,7 +90,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
         ...(expiresAtRaw ? { expiresAt: expiresAtRaw } : {}),
       });
       return {
-        api_key: created,
+        apiKey: created,
       };
     }, 201, getDeps().idempotencyStore),
   );
@@ -99,7 +102,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       await deps.assertPermissionKey(projectId, identity.userId, "api_key.read");
       const keys = await deps.listApiKeys(projectId);
-      return { api_keys: keys };
+      return { apiKeys: keys };
     }),
   );
 
@@ -111,7 +114,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       await deps.assertPermissionKey(projectId, identity.userId, "api_key.revoke");
       const revoked = await deps.revokeApiKey(projectId, keyId);
-      return { api_key: revoked };
+      return { apiKey: revoked };
       }, 200, getDeps().idempotencyStore),
   );
 
