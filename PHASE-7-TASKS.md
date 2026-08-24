@@ -68,7 +68,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
-| 7.3.2 | 🔎 | [QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 80 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
@@ -92,10 +92,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.5.1 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
-| 7.5.2 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
-| 7.5.3 | 🔎 | [QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20)<br>[CL-26](#cl-26)<br>[CL-28](#cl-28) | 80 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
-| 7.5.4 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-19](#cl-19)<br>[CL-21](#cl-21) | 80 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.1 | ✅ | [QA-CL-13](#qa-cl-13)<br>[QA-CL-09](#qa-cl-09)<br>[CL-15](#cl-15)<br>[CL-16](#cl-16) | 100 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
+| 7.5.2 | ✅ | [QA-CL-13](#qa-cl-13)<br>[QA-CL-09](#qa-cl-09)<br>[Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 100 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
+| 7.5.3 | ✅ | [QA-CL-12](#qa-cl-12)<br>[QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20)<br>[CL-26](#cl-26)<br>[CL-28](#cl-28) | 100 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.4 | ✅ | [QA-CL-13](#qa-cl-13)<br>[QA-CL-09](#qa-cl-09)<br>[CL-19](#cl-19)<br>[CL-21](#cl-21) | 100 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
 **Test:** Drag memicu move API benar; opsi Board lintas-Milestone tidak muncul; conflict ditampilkan, tidak menimpa.
 **DoD:** Interaksi Board tunduk domain command + optimistic locking; List tanpa makna status sistem.
@@ -106,8 +106,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.6.1 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.6.2 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.6.1 | ✅ | [QA-CL-13](#qa-cl-13)<br>[QA-CL-09](#qa-cl-09)<br>[CL-22](#cl-22)<br>[CL-23](#cl-23) | 100 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.6.2 | ✅ | [QA-CL-13](#qa-cl-13)<br>[QA-CL-09](#qa-cl-09)<br>[CL-22](#cl-22)<br>[CL-23](#cl-23) | 100 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
 
 **Test:** Card hanya menampilkan field domain yang valid; tidak ada priority/progress/status.
 **DoD:** Komponen Card patuh [05-FRONTEND §4](docs/05-FRONTEND.md).
@@ -233,6 +233,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="qa-cl-13"></a>
+### QA-CL-13 — 2026-08-25 · goal 7.5.1/7.5.2/7.5.4/7.6.1/7.6.2 closed ✅ (🔎 80% → ✅ 100% seluruhnya) — dependency chain kini genuinely terpenuhi
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Konteks:** kelima goal ini sudah diverifikasi teknis genuinely bersih di [QA-CL-09](#qa-cl-09) dan DITAHAN di `🔎/80` semata karena rantai dependency (`7.3.2 → 7.5.1 → 7.5.2 → {7.5.4}` dan `7.5.1 → 7.6.1 → 7.6.2`) belum genuinely `✅`. Dependency tersebut sekarang terpenuhi berurutan: 7.3.2 closed `✅` ([QA-CL-11](#qa-cl-11)), 7.5.3 closed `✅` ([QA-CL-12](#qa-cl-12), meski bukan dependency langsung goal-goal ini, remediasinya satu commit dengan 7.3.2), 7.5.1 sekarang dapat ditutup (dep 7.3.2 ✅) → 7.5.2 (dep 7.5.1 ✅) → 7.5.4 (dep 7.5.2 ✅) → 7.6.1 (dep 7.5.1 ✅) → 7.6.2 (dep 7.6.1 ✅).
+
+**File yang mendasari verifikasi teknis QA-CL-09 dikonfirmasi TIDAK berubah** sejak verifikasi tersebut (`git log` untuk `board-view.tsx`/`cards/mutations.ts`/`card.tsx`/`lists/hooks.ts`/`cards/hooks.ts` — commit terakhir masing-masing mendahului sesi remediasi 7.3.2/7.5.3 `ad5f21d`) — remediasi itu HANYA menyentuh `header.tsx`/`projects/hooks.ts`/`boards/hooks.ts` (dikonfirmasi `git show --stat ad5f21d`). Jadi tidak perlu re-verifikasi teknis dari nol; verifikasi QA-CL-09 tetap valid apa adanya.
+
+**Re-run independen final (mencakup seluruh cascade + 7.3.2/7.5.3 dalam satu run):** `pnpm test` → **123 file/709 test PASS**. `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` (repo-level) → 0 error. `pnpm --filter @kanban/web build` → sukses.
+
+**Tidak ada bug produksi ditemukan pada kelima goal ini** (bug yang ada — 7.3.2 & 7.5.3 — sudah closed terpisah).
+
+**Verdict:** `✅ 100%` untuk 7.5.1, 7.5.2, 7.5.4, 7.6.1, 7.6.2.
+
 <a id="qa-cl-10"></a>
 ### QA-CL-10 — 2026-08-25 · goal 7.5.3 — kandidat Board tujuan genuinely benar (same-Milestone), TAPI nama Board selalu blank (field-name mismatch sama seperti QA-CL-07) (🔎 80% → ⚠️ 40%)
 
@@ -289,11 +304,41 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verdict:** `✅ 100%`.
 
+<a id="qa-cl-11"></a>
+### QA-CL-11 — 2026-08-25 · goal 7.3.2 closed ✅ (🔎 80% → ✅ 100%) — bug envelope/field-name genuinely diperbaiki, dibuktikan via git-checkout regression
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Fix dibaca penuh:** `projects/hooks.ts` kini mendeklarasikan `MilestoneSummary{id,title}`/`BoardSummary{id,title}` terpisah dari `ProjectSummary{id,name}` (bukan reuse tipe generik lagi), tiap hook memakai `select: (d) => d.project/.milestone/.board` untuk meng-unwrap envelope bernama dengan benar. `header.tsx` kini genuinely membaca `.name` untuk Project dan `.title` untuk Milestone/Board.
+
+**Regresi dibuktikan langsung via git-checkout (bukan cuma dipercaya klaim CL-27), metodologi gold-standard sesi ini:** `git checkout ad5f21d~1 -- header.tsx hooks.ts` (kode SEBELUM fix) dijalankan terhadap test BARU (`header.test.tsx`, yang kini mock di level `fetch` dengan payload realistis) → **genuinely gagal** (`getByText("Gamma")` timeout, breadcrumb tidak pernah terisi) — identik dengan bug yang dilaporkan QA-CL-07. Kode dikembalikan ke HEAD (`git checkout HEAD --`) → 4/4 PASS kembali.
+
+**Re-run independen penuh:** `npx vitest run apps/web/test/header.test.tsx` → 4/4 PASS. `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` → 0 error. `pnpm --filter @kanban/web build` → sukses. Full suite `pnpm test` → **123 file/709 test PASS** — cocok persis klaim CL-27.
+
+**Tidak ada bug produksi tersisa.**
+
+**Verdict:** `✅ 100%`.
+
 <a id="cl-27"></a>
 ### CL-27 — 2026-08-25 · 7.3.2 → 🔎 80% (remediasi QA-CL-07)
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/header.test.tsx` **4/4 PASS** dengan stub `fetch` global — request melewati `apiRequest` + envelope kontrak nyata (`{data:{project:{...name}}}`, `{data:{milestone:{...title}}}`, `{data:{board:{...title}}}`, `{data:{projects:[...]}}`): breadcrumb terisi nama nyata `Alpha›Beta›Gamma` (bug QA-CL-07 tereksekusi dan kini lulus), context switch navigasi `/projects/p2` setelah options termuat dari endpoint, brand-only tanpa separator di `/`, negatif non-MVP nol. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **123 file / 709 PASS**, exit 0. Commit: `ad5f21d`.
 **Catatan:** akar bug = test lama mem-mock hook dengan shape fiktif; pola test kini fetch-level agar drift envelope/field tertangkap. Hooks memakai `select` untuk meng-unwrap envelope sehingga konsumen menerima entity langsung.
+
+<a id="qa-cl-12"></a>
+### QA-CL-12 — 2026-08-25 · goal 7.5.3 closed ✅ (🔎 80% → ✅ 100%) — `name`→`title` genuinely diperbaiki, dibuktikan via git-checkout regression
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Fix dibaca penuh:** `boards/hooks.ts`'s `BoardSummary` kini `{id, milestoneId, title}` (bukan `name`), `useBoards` memakai `select: (d) => d.boards` untuk unwrap envelope, `siblingBoards()` mengembalikan `{id, title}`. Field & envelope genuinely cocok `boardPayload` produksi (dicek ulang sama seperti QA-CL-11).
+
+**Regresi dibuktikan langsung via git-checkout:** `git checkout ad5f21d~1 -- boards/hooks.ts` (kode SEBELUM fix) dijalankan terhadap test BARU (`board-move-guard.test.tsx`, kini mock `fetch` dengan payload realistis bertitle) → **genuinely gagal 2/4** (`expected undefined to match object {id:"b2", title:"Backup"}` — persis bug QA-CL-10). Kode dikembalikan ke HEAD → 4/4 PASS kembali.
+
+**Re-run independen:** `npx vitest run apps/web/test/board-move-guard.test.tsx` → 4/4 PASS (mencakup 7.5.3 + 7.5.4 di file yang sama). `pnpm --filter @kanban/web typecheck`/`pnpm lint`/`pnpm --filter @kanban/web build` → seluruhnya bersih. Full suite `pnpm test` → **123 file/709 test PASS**.
+
+**Tidak ada bug produksi tersisa. Logic filter same-Milestone (inti goal ini) tidak pernah salah — hanya presentasi nama yang sekarang genuinely benar.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-28"></a>
 ### CL-28 — 2026-08-25 · 7.5.3 → 🔎 80% (remediasi QA-CL-10)
