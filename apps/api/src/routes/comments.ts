@@ -7,9 +7,10 @@ import {
   type EditCommentRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readJsonObject, ValidationCollector, type OpenProjectContext,
+import { authorize, readJsonObject, type OpenProjectContext,
   withIdempotentHandling, type IdempotencyStoreLike,
 } from "./projects.ts";
+import { parseBody, commentCreateSchema } from "./core-schemas.ts";
 
 export interface CommentRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -42,13 +43,6 @@ function editedCommentPayload(record: EditCommentRecord) {
   };
 }
 
-function readBodyField(body: unknown): string {
-  const raw = readJsonObject(body).body;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field body wajib string non-kosong.", 400);
-  }
-  return raw;
-}
 
 
 // C.10 — Comment adalah Activity Card (BR-030), TIDAK ada tabel Comment
@@ -64,10 +58,8 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.comment", projectId, { type: "card", id: c.req.param("card_id") });
       const rawBody = await c.req.json().catch(() => null);
-      const collector = new ValidationCollector();
-      const body = collector.collect("body", () => readBodyField(rawBody));
-      collector.throwIfAny();
-      const created = await addComment(ctx.database, c.req.param("card_id"), body!, ctx.userId);
+      const { body } = parseBody(commentCreateSchema, rawBody);
+      const created = await addComment(ctx.database, c.req.param("card_id"), body, ctx.userId);
       return { comment: commentPayload(created) };
     }, 201, getDeps().idempotencyStore);
   });
@@ -79,9 +71,7 @@ export function createCommentsRouter(getDeps: () => CommentRoutesDeps): Hono {
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.comment.update", projectId, { type: "card", id: c.req.param("card_id") });
       const rawBody = await c.req.json().catch(() => null);
-      const collector = new ValidationCollector();
-      const body = collector.collect("body", () => readBodyField(rawBody));
-      collector.throwIfAny();
+      const { body } = parseBody(commentCreateSchema, rawBody);
       const edited = await editComment(
         ctx.database,
         c.req.param("card_id"),

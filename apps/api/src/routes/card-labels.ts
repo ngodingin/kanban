@@ -6,9 +6,10 @@ import {
   type CardLabelAssociationRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readJsonObject, ValidationCollector, type OpenProjectContext,
+import { authorize, readJsonObject, type OpenProjectContext,
   withIdempotentHandling, type IdempotencyStoreLike,
 } from "./projects.ts";
+import { parseBody, cardLabelAssignSchema } from "./core-schemas.ts";
 
 export interface CardLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -26,13 +27,6 @@ function associationPayload(record: CardLabelAssociationRecord) {
   };
 }
 
-function readLabelIdField(body: unknown): string {
-  const raw = readJsonObject(body).labelId;
-  if (typeof raw !== "string" || raw.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field labelId wajib string non-kosong.", 400);
-  }
-  return raw;
-}
 
 
 // C.11 — assign/remove Label ke Card menumpang otorisasi card.update
@@ -47,10 +41,8 @@ export function createCardLabelsRouter(getDeps: () => CardLabelRoutesDeps): Hono
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.update", projectId, { type: "card", id: c.req.param("card_id") });
       const rawBody = await c.req.json().catch(() => null);
-      const collector = new ValidationCollector();
-      const labelId = collector.collect("labelId", () => readLabelIdField(rawBody));
-      collector.throwIfAny();
-      const created = await assignLabelToCard(ctx.database, c.req.param("card_id"), labelId!, ctx.userId);
+      const { labelId } = parseBody(cardLabelAssignSchema, rawBody);
+      const created = await assignLabelToCard(ctx.database, c.req.param("card_id"), labelId, ctx.userId);
       return { association: associationPayload(created) };
     }, 201, getDeps().idempotencyStore);
   });

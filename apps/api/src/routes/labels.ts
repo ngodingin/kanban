@@ -10,16 +10,11 @@ import {
   type MilestoneLabelRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, ValidationCollector, type OpenProjectContext,
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, type OpenProjectContext,
   withIdempotentHandling, type IdempotencyStoreLike,
 } from "./projects.ts";
+import { parseBody, labelCreateSchema, labelPatchSchema } from "./core-schemas.ts";
 
-function readLabelNameField(rawName: unknown): string {
-  if (typeof rawName !== "string" || rawName.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-  }
-  return rawName.trim();
-}
 
 export interface MilestoneLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -98,11 +93,9 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone_label.create", projectId, { type: "milestone", id: c.req.param("milestone_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const name = collector.collect("name", () => readLabelNameField(body.name));
-      collector.throwIfAny();
-      for (const key of Object.keys(body)) {
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(labelCreateSchema, rawBody);
+      for (const key of Object.keys(rawBody)) {
         if (key !== "name") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -114,7 +107,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const repository = new DrizzleMilestoneLabelRepository(ctx.database);
       const created = await repository.createMilestoneLabel(projectId, c.req.param("milestone_id"), {
         id: deps.newMilestoneLabelId(),
-        name: name!,
+        name: body.name,
         actorUserId: ctx.userId,
       });
       return { label: labelPayload(created) };
@@ -127,12 +120,9 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone_label.update", projectId, { type: "milestone", id: c.req.param("milestone_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      const name = body.name === undefined ? undefined : collector.collect("name", () => readLabelNameField(body.name));
-      collector.throwIfAny();
-      for (const key of Object.keys(body)) {
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(labelPatchSchema, rawBody);
+      for (const key of Object.keys(rawBody)) {
         if (key !== "name" && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -144,9 +134,9 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
       const repository = new DrizzleMilestoneLabelRepository(ctx.database);
       const updated = await repository.updateMilestoneLabel(projectId, {
         labelId: c.req.param("label_id"),
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        ...(name === undefined ? {} : { name }),
+        ...(body.name === undefined ? {} : { name: body.name }),
       });
       return { label: labelPayload(updated) };
     }, 200, getDeps().idempotencyStore);
@@ -206,11 +196,9 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board_label.create", projectId, { type: "board", id: c.req.param("board_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const name = collector.collect("name", () => readLabelNameField(body.name));
-      collector.throwIfAny();
-      for (const key of Object.keys(body)) {
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(labelCreateSchema, rawBody);
+      for (const key of Object.keys(rawBody)) {
         if (key !== "name") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -222,7 +210,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const repository = new DrizzleBoardLabelRepository(ctx.database);
       const created = await repository.createBoardLabel(projectId, c.req.param("board_id"), {
         id: deps.newBoardLabelId(),
-        name: name!,
+        name: body.name,
         actorUserId: ctx.userId,
       });
       return { label: boardLabelPayload(created) };
@@ -235,12 +223,9 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "board_label.update", projectId, { type: "board", id: c.req.param("board_id") });
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const expectedVersion = collector.collect("expectedVersion", () => readExpectedVersionField(body));
-      const name = body.name === undefined ? undefined : collector.collect("name", () => readLabelNameField(body.name));
-      collector.throwIfAny();
-      for (const key of Object.keys(body)) {
+      const rawBody = readJsonObject(await c.req.json().catch(() => null));
+      const body = parseBody(labelPatchSchema, rawBody);
+      for (const key of Object.keys(rawBody)) {
         if (key !== "name" && key !== "expectedVersion") {
           throw new PipelineError(
             "VALIDATION_ERROR",
@@ -252,9 +237,9 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
       const repository = new DrizzleBoardLabelRepository(ctx.database);
       const updated = await repository.updateBoardLabel(projectId, {
         labelId: c.req.param("label_id"),
-        expectedVersion: expectedVersion!,
+        expectedVersion: body.expectedVersion,
         actorUserId: ctx.userId,
-        ...(name === undefined ? {} : { name }),
+        ...(body.name === undefined ? {} : { name: body.name }),
       });
       return { label: boardLabelPayload(updated) };
     }, 200, getDeps().idempotencyStore);

@@ -134,3 +134,27 @@ export const cardMoveSchema = z.object({
   destinationListId: trimmedRequired("destinationListId"),
   expectedVersion: expectedVersionSchema,
 });
+
+// ---------- Milestone/Board Label (C.10–C.11) ----------
+
+/** name label — sama semantik trimmedRequired("name"). */
+export const labelNameSchema = trimmedRequired("name");
+
+export const labelCreateSchema = z.object({ name: labelNameSchema });
+
+export const labelPatchSchema = z.object({
+  expectedVersion: expectedVersionSchema,
+  name: labelNameSchema.optional(),
+});
+
+// ---------- Card-Label assign (C.11) ----------
+
+export const cardLabelAssignSchema = z.object({
+  labelId: trimmedRequired("labelId"),
+});
+
+// ---------- Comment (C.9) ----------
+
+export const commentCreateSchema = z.object({
+  body: trimmedRequired("body"),
+});
