@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | 🔄 | [CL-11](#cl-11) | 0 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | 🔎 | [CL-11](#cl-11)<br>[CL-12](#cl-12) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ⬜️ | — | 0 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-12"></a>
+### CL-12 — 2026-08-25 · 7.3.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/sidebar.test.tsx` **4/4 PASS** — positif: seluruh 8 item §5 tampil (Home/My Tasks/Activity/PROJECTS ▾/Members/Permissions/API Keys/Settings), route aktif bertanda `aria-current="page"` (context-aware, `/members` aktif; Home hanya di root via end-matching); negatif: nol kemunculan Inbox dan regex non-MVP (`revenue|analytics|billing|admin panel|notification`) pada container. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **117 file / 685 PASS**. Commit: `dabb090`.
+**Catatan:** layar `/login` standalone tanpa shell (branding §5); group PROJECTS ▾ statis — daftar Project nyata menyusul di goal projects feature (bukan demo domain). Root `vitest.config.ts` diberi alias `@` senada vite config agar test dapat meng-import komponen web.
 
 <a id="cl-11"></a>
 ### CL-11 — 2026-08-25 · 7.3.1 → 🔄
