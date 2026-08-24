@@ -68,7 +68,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | 🔎 | [CL-11](#cl-11)<br>[CL-12](#cl-12) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
-| 7.3.2 | 🔄 | [CL-13](#cl-13) | 0 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.2 | 🔎 | [CL-13](#cl-13)<br>[CL-14](#cl-14) | 80 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-14"></a>
+### CL-14 — 2026-08-25 · 7.3.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/header.test.tsx` **4/4 PASS** — positif: breadcrumb akurat `Alpha›Beta›Gamma` dari API (params p1/m1/b1), brand-only tanpa separator saat tanpa context, context switch `<select>` navigasi ke `/projects/p2` (terverifikasi via location probe); negatif: nol Inbox/non-MVP. `eslint` + `tsc --noEmit` + `vite build` hijau; suite penuh **118 file / 689 PASS**, exit code 0 diverifikasi eksplisit. Commit: `208111a`.
+**Catatan:** nama entity diambil hooks TanStack Query konsumen endpoint nyata C.4–C.6 (`src/features/projects/hooks.ts`); halaman domain masih placeholder sampai TASK-7.4+; select native dipakai sebagai scaffolding sebelum primitive shadcn ditambahkan goal lain.
 
 <a id="cl-13"></a>
 ### CL-13 — 2026-08-25 · 7.3.2 → 🔄
