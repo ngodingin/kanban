@@ -129,7 +129,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.7.1 | 🔎 | [CL-19](#cl-19)<br>[CL-18](#cl-18) | 80 | P3 | Rate limit dasar per credential (API Key/PAT hash)/IP pada endpoint mutation & `/auth/*`, memakai fasilitas platform Vercel (mis. Vercel Firewall/Edge Config rate limit — bukan infrastruktur khusus/Redis tambahan, F.5 eksplisit). Threshold awal permisif (mis. per-menit), didokumentasikan sebagai baseline yang MAY disesuaikan tanpa amandemen SOT (keputusan teknis murni, tidak menyentuh business invariant). | [03-ENG F.5](docs/03-ENGINEERING.md) | — |
+| 6.7.1 | ✅ | [CL-19](#cl-19)<br>[CL-18](#cl-18)<br>[QA-CL-08](#qa-cl-08) | 100 | P3 | Rate limit dasar per credential (API Key/PAT hash)/IP pada endpoint mutation & `/auth/*`, memakai fasilitas platform Vercel (mis. Vercel Firewall/Edge Config rate limit — bukan infrastruktur khusus/Redis tambahan, F.5 eksplisit). Threshold awal permisif (mis. per-menit), didokumentasikan sebagai baseline yang MAY disesuaikan tanpa amandemen SOT (keputusan teknis murni, tidak menyentuh business invariant). | [03-ENG F.5](docs/03-ENGINEERING.md) | — |
 
 **Test:** Request melebihi threshold dari credential/IP sama → `429` (atau kode yang dipakai fasilitas platform), request dari credential/IP lain tidak terpengaruh. Request di bawah threshold → tidak terganggu (regresi nihil terhadap seluruh test suite existing).
 **DoD:** Konfigurasi rate-limit terdokumentasi (threshold + scope + fasilitas yang dipakai); tidak menambah dependency infra baru di luar platform Vercel.
@@ -150,6 +150,17 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-08"></a>
+### QA-CL-08 — 2026-08-24 · goal 6.7.1 — dokumentasi rate limiting diverifikasi — ✅ 100%
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`operations/rate-limiting.md` dibaca penuh.** DoD goal ini eksplisit hanya meminta dokumentasi (threshold+scope+fasilitas) — BEDA dari 6.5.2 yang eksplisit mewajibkan drill live; tidak ada kode/aktivasi yang bisa/perlu diverifikasi lewat repo (rule diaktifkan operator di dashboard Vercel, di luar kendali kode). Konten dicocokkan terhadap F.5: fasilitas platform Vercel Firewall (bukan infra kustom/Redis) ✓; key strategy aman (hash SHA-256 kredensial — bukan plaintext, mencegah leak di log firewall) ✓; threshold jelas (100/min umum, 20/min `/api/auth/*` — permisif sesuai instruksi) ✓; langkah konfigurasi + verifikasi konkret ✓.
+
+**Tidak ada dependency** (kolom Dependency `—`), tidak ada perubahan kode — full suite dikonfirmasi tetap hijau (`pnpm exec vitest run` → 104 file/633 test PASS, tanpa regresi).
+
+**Kesimpulan:** 6.7.1 ditutup `✅ 100%`. **TASK-6.1–6.4 dan 6.7 tuntas; 6.5 dan 6.6 masih tertahan** (6.5.2 menunggu 6.5.1 SOT amendment; 6.6.1/6.6.2/6.6.3 menunggu remediasi Dev atas temuan QA-CL-05/06/07).
 
 <a id="qa-cl-07"></a>
 ### QA-CL-07 — 2026-08-24 · goal 6.6.3 — bug logging nyata + inkonsistensi mekanisme + lint gagal (🔎 80% → ⚠️ 60%)
