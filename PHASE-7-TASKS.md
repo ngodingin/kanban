@@ -40,7 +40,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | ⬜️ | — | 0 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.1 | 🔄 | [CL-01](#cl-01) | 0 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
 | 7.1.2 | ⬜️ | — | 0 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ⬜️ | — | 0 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
@@ -250,6 +250,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Bukti:** <file/rule/test yang diperiksa>
 **Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
 ```
+
+<a id="cl-01"></a>
+### CL-01 — 2026-08-25 · 7.1.1 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** discovery read-only: `git log -1` = `5c07eff plan(phase-7): buka gate ... (Review-CL-05)`, working tree bersih; row goal 7.1.1 dibaca ulang dari disk (`⬜️`, 0%, dependency `—`); baseline §2.1 dibaca penuh (AGENTS.md, PHASE-7-TASKS.md, 01-PRODUCT §0+§2.2, 02-SPEC A.16, 03-ENG A.4–A.8, 04-DELIVERY C.3–C.4, 05-FRONTEND §3); `apps/web/` terverifikasi placeholder murni (package.json tanpa deps, public/index.html statis).
+**Catatan:** mulai bootstrap `apps/web` dari nol sesuai Reference 03-ENG A.7–A.8 + 05-FRONTEND §3; exact pin mengikuti hasil revalidasi Review-CL-05; scope dibatasi foundation (React/Vite/Router/Tailwind/shadcn) — TanStack Query/Zustand/dnd-kit adalah goal 7.1.3/7.1.4/7.5.x.
 
 <a id="review-cl-05"></a>
 ### Review-CL-05 — 2026-08-25 · GATE DIBUKA — refresh outline terhadap SOT 4.1.1 + state repo nyata

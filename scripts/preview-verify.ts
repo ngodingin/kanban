@@ -1,13 +1,26 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { extname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 import { ulid } from "ulid";
 import { createGlobalClient } from "../packages/infrastructure/src/database/factory.ts";
 import { createApiApp } from "../apps/api/src/index.ts";
 
 const ORIGIN = process.env.BETTER_AUTH_URL ?? "http://localhost:8787";
 const port = Number(new URL(ORIGIN).port) || 8787;
-const staticDir = resolve(import.meta.dirname, "../apps/web/public");
+// TASK-7.1.1 — static origin kini production build Vite (apps/web/dist);
+// build otomatis bila belum ada.
+const staticDir = resolve(import.meta.dirname, "../apps/web/dist");
+if (!existsSync(resolve(staticDir, "index.html"))) {
+  const built = spawnSync("pnpm", ["--filter", "@kanban/web", "run", "build"], {
+    cwd: resolve(import.meta.dirname, ".."),
+    stdio: "inherit",
+  });
+  if (built.status !== 0) {
+    throw new Error(`[preview-verify] build @kanban/web gagal (exit ${built.status})`);
+  }
+}
 
 const captured: string[] = [];
 const { app, getAuth } = createApiApp({

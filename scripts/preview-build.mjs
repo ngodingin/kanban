@@ -2,10 +2,23 @@ import { build } from "esbuild";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
 
 const output = resolve(import.meta.dirname, "../.vercel/output");
 const apiDir = resolve(output, "functions/api.func");
 const staticDir = resolve(output, "static");
+
+// TASK-7.1.1 — static origin kini berasal dari production build Vite
+// (apps/web/dist), bukan lagi public/index.html statis. Build web di sini
+// agar vercel.json buildCommand tetap satu langkah.
+const webBuild = spawnSync(
+  "pnpm",
+  ["--filter", "@kanban/web", "run", "build"],
+  { cwd: resolve(import.meta.dirname, ".."), stdio: "inherit" },
+);
+if (webBuild.status !== 0) {
+  throw new Error(`[preview-build] build @kanban/web gagal (exit ${webBuild.status})`);
+}
 
 await rm(output, { recursive: true, force: true });
 await mkdir(apiDir, { recursive: true });
@@ -52,7 +65,7 @@ await cp(
   { recursive: true },
 );
 
-await cp(resolve(import.meta.dirname, "../apps/web/public"), staticDir, { recursive: true });
+await cp(resolve(import.meta.dirname, "../apps/web/dist"), staticDir, { recursive: true });
 
 await writeFile(
   resolve(apiDir, ".vc-config.json"),
