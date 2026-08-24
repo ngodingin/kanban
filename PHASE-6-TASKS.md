@@ -82,7 +82,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.3.1 | 🔄 | [CL-09](#cl-09) | 0 | P1 | Audit SATU PASS lintas SELURUH endpoint (13 file route): setiap error path memetakan ke kode kanonik `02-SPEC C.2` yang benar (status HTTP + code pair sesuai definisi terkunci — `INVALID_STATE` selalu 409, `INTERNAL_ERROR` untuk kegagalan tak terduga, `VALIDATION_ERROR` untuk payload invalid, dst). Beda dari `TASK-0.15`/`0.19`/`0.20`/`0.21` (fix titik spesifik yang sudah ditemukan) — goal ini adalah sweep akhir memastikan TIDAK ADA titik lain yang lolos. Jika ditemukan gap baru, perbaiki di goal ini. | [02-SPEC C.2](docs/02-SPEC.md) | — |
+| 6.3.1 | 🔎 | [CL-10](#cl-10)<br>[CL-09](#cl-09) | 80 | P1 | Audit SATU PASS lintas SELURUH endpoint (13 file route): setiap error path memetakan ke kode kanonik `02-SPEC C.2` yang benar (status HTTP + code pair sesuai definisi terkunci — `INVALID_STATE` selalu 409, `INTERNAL_ERROR` untuk kegagalan tak terduga, `VALIDATION_ERROR` untuk payload invalid, dst). Beda dari `TASK-0.15`/`0.19`/`0.20`/`0.21` (fix titik spesifik yang sudah ditemukan) — goal ini adalah sweep akhir memastikan TIDAK ADA titik lain yang lolos. Jika ditemukan gap baru, perbaiki di goal ini. | [02-SPEC C.2](docs/02-SPEC.md) | — |
 
 **Test:** Untuk setiap route, picu minimal satu error case per kategori applicable (not-found, validation, state-conflict, unexpected) → assert code+status pair sesuai C.2, bukan cuma "response bukan 500 mentah".
 **DoD:** `grep -rn 'apiError(' apps/api/src packages/contracts/src` dikonfirmasi manual — setiap pemanggilan memakai code+status pair yang valid sesuai `CODE_TO_HTTP`; tidak ada string literal status yang menyimpang dari mapping kanonik.
@@ -221,7 +221,14 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-09 — 2026-08-24 · goal 6.3.1 mulai dikerjakan (⬜️ → 🔄 · 0%) — audit error-mapping menyeluruh
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `—`. C.2 dibaca sebagai acuan pasangan kode→HTTP kanonik.
-<a id="cl-08"></a><a id="cl-08"></a>
+<a id="cl-10"></a>
+### CL-10 — 2026-08-24 · goal 6.3.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — audit error-mapping menyeluruh
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti audit (ekstraksi semua PipelineError di apps/api + infrastructure):** 79 throw-site; pasangan (code→HTTP): INVALID_STATE/409 ×20 ✓, VALIDATION_ERROR/400 ×28 ✓, RESOURCE_NOT_FOUND/404 ×20 ✓, PERMISSION_DENIED/403 ×6 ✓, lainnya ✓ — semua kode ∈ kanonik C.2; satu-satunya mismatch: INVITATION_EXPIRED/409 ✗ (kanonik 410) pada 2 site project-admin.ts.
+**Diperbaiki:** INVITATION_EXPIRED 409→410 (expired & tanpa-assignment); test parity Phase 1 expired kini assert 410 (INVALID_STATE tetap 409). Wrapper auth index.ts diverifikasi sudah INTERNAL_ERROR/500 ✓. Full suite **102 file / 628 test PASS**; typecheck+lint bersih.
+**Catatan proses:** replace blanket sempat menukar dua assertion INVALID_STATE menjadi 410 — tertangkap verifikasi mandiri dan dikembalikan sebelum commit ini.
+
+<a id="cl-08"></a><a id="cl-08"></a><a id="cl-08"></a>
 ### CL-08 — 2026-08-24 · goal 6.2.3 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — Zod admin/credential
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** `pnpm exec vitest run` → **102 file / 628 test lulus**; typecheck+lint bersih. Implementasi: skema groupCreate/Update, groupAssignmentCreate, permissionAssignmentCreate, invitationCreateSchema(projectId) (urutan assignments→expiresAt menjaga urutan details yang di-assert test Phase 1), apiKeyCreateSchema/patCreateSchema + bridge parseCredentialBody (kontrak unknownField:* per-key). Handler: create/update Permission Group, group/permission assignment create, invitation create, api-keys create, PAT create.
