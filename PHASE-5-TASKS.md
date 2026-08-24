@@ -108,10 +108,10 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
-| 5.5.2 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.3 | ⏸️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
-| 5.5.4 | ⏸️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.1 | ⬜️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.2 | ⬜️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.3 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
+| 5.5.4 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.5 | ⏸️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04) | 0 | P0 | Reverifikasi Phase 5: retention/subtree no-orphan, journal deprovision BR-016B, trigger recovery, dan worker concurrency. | [02-SPEC A.14](docs/02-SPEC.md), FR-047; [03-ENG C.6](docs/03-ENGINEERING.md), F.2.1, F.4; [04-DEL AC-036](docs/04-DELIVERY.md) | 5.3.1, 5.4.1 |
 
 **Test:** Tiap goal menjalankan suite relevan + negative/fault-injection/cross-project/concurrency sesuai jenis perubahan; verifikasi tidak boleh hanya membaca CL lama. Nama test tetap traceable ke BR/FR/AC. Phase 1–5 hanya boleh dianggap valid terhadap 4.1.0 jika seluruh remediation dependency sudah ✅.
@@ -120,6 +120,24 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-06"></a>
+### QA-CL-06 — 2026-08-24 · buka gate 5.5.1–5.5.4 (⏸️ → ⬜️) — seluruh dependency remediation ✅; 5.5.5 tetap blocked
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Pemicu:** penutupan 5.3.1 (QA-CL-05) dan 2.12.1 ([PHASE-2-TASKS.md](PHASE-2-TASKS.md) QA-CL-27) melengkapi seluruh dependency yang dicatat QA-CL-04 sebagai blocker: `0.17.3/0.17.4/0.17.6/0.18.1/0.18.2/0.19.1/0.19.2/0.21.1/0.21.2/0.21.3/2.12.1` (Phase 0 dan 2.12.1) semuanya `✅` per pengecekan langsung ke `PHASE-0-TASKS.md`/`PHASE-2-TASKS.md` hari ini.
+
+**Dependency dicek satu-per-satu per goal** (bukan asumsi "Phase 0 selesai jadi semua terbuka"):
+- 5.5.1 dep `0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1` → seluruhnya ✅.
+- 5.5.2 dep `2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3` → seluruhnya ✅.
+- 5.5.3 dep `0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3` → seluruhnya ✅.
+- 5.5.4 dep `0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3` → seluruhnya ✅.
+- 5.5.5 dep `5.3.1, 5.4.1` → `5.3.1` ✅ TAPI `5.4.1` masih `⚠️` (Dev belum memperbaiki gap concurrency journal-recovery yang ditolak QA-CL-03) — **TETAP `⏸️`, bukan Gate candidate**, tidak dibuka.
+
+**Keputusan manusia dikonfirmasi eksplisit** sebelum transisi ini (bukan inisiatif QA sepihak): "Ya, buka & lanjut verifikasi P0" — sesuai AGENTS.md §11.0.1 ("QA/reviewer hanya boleh memverifikasi pembukaan gate setelah scope itu dikonfirmasi manusia").
+
+**Status:** 5.5.1–5.5.4 `⏸️ → ⬜️` (P0, Gate candidate dibuka — objektif dependency terpenuhi). Isi goal-goal ini sendiri (reverifikasi Phase 1–4 penuh terhadap SOT 4.1.0, berpotensi menghasilkan remediation baru) BELUM dikerjakan — itu langkah berikutnya.
 
 <a id="qa-cl-05"></a>
 ### QA-CL-05 — 2026-08-24 · verifikasi independen 5.3.1 pasca-remediasi QA-CL-03 (BR-016B journal + ownership transisi) — ✅ 100%
