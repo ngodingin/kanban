@@ -42,7 +42,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.1.1 | ✅ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02) | 100 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
 | 7.1.2 | 🔎 | [CL-03](#cl-03)<br>[CL-04](#cl-04) | 80 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.1.3 | 🔄 | [Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05) | 0 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
+| 7.1.3 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 80 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ⬜️ | — | 0 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
 **Test:** Production build Vite dapat disajikan bersama Hono pada satu origin; deep link SPA bekerja; `/api/*` tidak tertangkap fallback; UI Magic Link menangani request/link-sent/expired/used/error; TanStack Query terpasang; tidak ada demo/non-MVP atau identity SaaS.
@@ -232,6 +232,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-06"></a>
+### CL-06 — 2026-08-25 · 7.1.3 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/api-client.test.tsx` **9/9 PASS** (2× berurutan, deterministik) — positif: GET envelope `{data}` dipetakan benar dengan `credentials: same-origin`, `Idempotency-Key` + JSON body terlampir pada POST, VALIDATION_ERROR membawa `details[]` lengkap, TanStack Query provider me-render data server state; negatif: error kanonik `VERSION_CONFLICT` → `ApiError{code,status}`, `IDEMPOTENCY_IN_PROGRESS` → tepat **satu** fetch tanpa auto-retry (tidak ada side-effect kedua), `IDEMPOTENCY_CONFLICT` → satu fetch lalu ditolak, network failure → `NETWORK_ERROR` status 0, `newIdempotencyKey()` 100/100 unik. `tsc --noEmit` hijau; `eslint` hijau; `vite build` hijau; suite penuh `pnpm test` **114 file / 676 PASS**. Commit: `3d9b7be`.
+**Catatan:** layer API (`src/lib/api/client.ts`) terpisah dari UI per 05-FRONTEND §3.2; QueryClient default dipertahankan (tanpa perilaku domain baru); retry sadar MAY memakai key sama sesuai C.3 poin 5 — keputusan UI-level untuk goal konsumen nanti.
 
 <a id="cl-05"></a>
 ### CL-05 — 2026-08-25 · 7.1.3 → 🔄
