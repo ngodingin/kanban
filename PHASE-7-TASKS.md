@@ -106,8 +106,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.6.1 | 🔄 | [CL-22](#cl-22) | 0 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.6.2 | 🔄 | [CL-22](#cl-22) | 0 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.6.1 | 🔎 | [CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | Card: title · description preview · labels · assignee · due date | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.6.2 | 🔎 | [CL-22](#cl-22)<br>[CL-23](#cl-23) | 80 | P1 | **Tanpa** priority, **tanpa** progress, **tanpa** status field | [05-FRONTEND §4](docs/05-FRONTEND.md) | 7.6.1 |
 
 **Test:** Card hanya menampilkan field domain yang valid; tidak ada priority/progress/status.
 **DoD:** Komponen Card patuh [05-FRONTEND §4](docs/05-FRONTEND.md).
@@ -238,6 +238,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/board-move-guard.test.tsx` **4/4 PASS** — positif: `siblingBoards(boards,"m1","b1")` hanya mengembalikan board Milestone sama non-diri (`Sprint 1 — Backup`); `useBoards` mengambil `GET /api/v1/projects/p1/milestones/m1/boards` (scoping per-Milestone struktural, boards.ts:80). Commit: `4adf434`. Suite penuh 700 PASS (lihat CL-21).
 **Catatan:** kandidat move antar Board dijamin same-Milestone dua lapis: endpoint sudah scoped + filter UI mengecualikan board asal.
+
+<a id="cl-23"></a>
+### CL-23 — 2026-08-25 · 7.6.1 + 7.6.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/card.test.tsx` **5/5 PASS** — positif: title/description-preview(>80 terpotong+…)/labels/assignee/due-date (`<time datetime>` ISO persis) tampil; helper `previewDescription`+`formatDueDate` aman untuk null/invalid; negatif (7.6.2): regex `\bpriority\b|\bprogress\b|\bstatus\b|high|medium|low` nol kemunculan, tanpa `role="progressbar"`, tanpa elemen `[data-field=status/priority]`, kartu minimal tanpa daftar label/time/marker assignee. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **122 file / 705 PASS**, exit 0. Commit: `985161d`.
+**Catatan:** KanbanCard kini dipakai BoardColumn (menggantikan li polos) — drag tetap bekerja via useDraggable di dalam komponen; assignee dirender penanda pendek `● <4 char akhir ULID>` karena endpoint konsumsi nama user belum dibungkus hook di fase ini (bukan field baru, hanya presentasi data yang ada).
 
 <a id="cl-22"></a>
 ### CL-22 — 2026-08-25 · 7.6.1 + 7.6.2 → 🔄
