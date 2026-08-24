@@ -149,8 +149,8 @@ describe("POST /invitations/:invitation_id/accept (goal 1.9.2)", () => {
       args: [new Date(Date.now() - 60_000).toISOString(), invitationId],
     });
     const res = await accept(invitationId, "user-d");
-    if (res.status !== 409 || (await res.json()).error.code !== "INVITATION_EXPIRED") {
-      throw new Error(`harusnya 409 INVITATION_EXPIRED, dapat ${res.status}: ${await res.text()}`);
+    if (res.status !== 410 || (await res.json()).error.code !== "INVITATION_EXPIRED") {
+      throw new Error(`harusnya 410 INVITATION_EXPIRED, dapat ${res.status}: ${await res.text()}`);
     }
     const memberships = await ctx.globalClient.execute({
       sql: "SELECT COUNT(*) AS n FROM project_memberships WHERE user_id = 'user-d'",

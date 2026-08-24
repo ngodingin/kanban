@@ -692,14 +692,14 @@ export async function acceptInvitation(
       throw new PipelineError("INVITATION_ALREADY_USED", "Invitation sudah pernah diterima.", 409);
     }
     if (Date.parse(invitation.expiresAt) <= Date.parse(now)) {
-      throw new PipelineError("INVITATION_EXPIRED", "Invitation sudah kedaluwarsa.", 409);
+      throw new PipelineError("INVITATION_EXPIRED", "Invitation sudah kedaluwarsa.", 410);
     }
     const existingMembership = await tx.select().from(projectMemberships)
       .where(sql`${projectMemberships.projectId} = ${invitation.projectId} AND ${projectMemberships.userId} = ${input.userId}`);
     const groupRows = await tx.select().from(invitationGroupAssignments)
       .where(eq(invitationGroupAssignments.invitationId, invitation.id));
     if (groupRows.length === 0) {
-      throw new PipelineError("INVITATION_EXPIRED", "Invitation tidak memiliki assignment yang valid.", 409);
+      throw new PipelineError("INVITATION_EXPIRED", "Invitation tidak memiliki assignment yang valid.", 410);
     }
 
 
