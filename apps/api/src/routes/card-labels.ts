@@ -1,12 +1,11 @@
 import { Hono } from "hono";
 import {
   assignLabelToCard,
-  PipelineError,
   removeLabelFromCard,
   type CardLabelAssociationRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readJsonObject, type OpenProjectContext,
+import { authorize, type OpenProjectContext,
   withIdempotentHandling, type IdempotencyStoreLike,
 } from "./projects.ts";
 import { parseBody, cardLabelAssignSchema } from "./core-schemas.ts";

@@ -14,7 +14,15 @@ import {
   type ProjectMemberSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse, ValidationCollector, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
+import { toApiErrorResponse, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
+import {
+  parseBody,
+  groupCreateSchema,
+  groupUpdateSchema,
+  groupAssignmentCreateSchema,
+  permissionAssignmentCreateSchema,
+  invitationCreateSchema,
+} from "./core-schemas.ts";
 
 // Wrapper untuk mengurangi duplikasi try/catch di semua handler endpoint.
 async function withErrorHandling<T>(
@@ -111,93 +119,43 @@ export interface ProjectAdminRoutesDeps {
   revokeInvitation(projectId: string, invitationId: string): Promise<InvitationListSummary>;
 }
 
-const MAX_GROUP_NAME_LENGTH = 255;
 
-function readPermissionEntries(rawPermissions: unknown): Array<{ permissionId: string; cardReadVisibility?: string | null }> {
-  if (!Array.isArray(rawPermissions)) throw new PipelineError("VALIDATION_ERROR", "Field permissions wajib array.", 400);
-  const VISIBILITIES = ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ALL"];
-  const seen = new Set<string>();
-  return rawPermissions.map((entry) => {
-    if (typeof entry !== "object" || entry === null) {
-      throw new PipelineError("VALIDATION_ERROR", "Item permissions wajib objek.", 400);
-    }
-    const item = entry as Record<string, unknown>;
-    const permissionId = item.permissionId;
-    if (typeof permissionId !== "string" || permissionId.length === 0) {
-      throw new PipelineError("VALIDATION_ERROR", "Field permissionId wajib string non-kosong.", 400);
-    }
-    if (seen.has(permissionId)) {
-      throw new PipelineError("VALIDATION_ERROR", `permissionId duplikat: ${permissionId}`, 400);
-    }
-    seen.add(permissionId);
-    const visibility = item.cardReadVisibility;
-    if (visibility !== undefined && visibility !== null &&
-        (typeof visibility !== "string" || !VISIBILITIES.includes(visibility))) {
-      throw new PipelineError("VALIDATION_ERROR", `cardReadVisibility tidak valid: ${String(visibility)}`, 400);
-    }
-    return {
-      permissionId,
-      cardReadVisibility: typeof visibility === "string" ? visibility : null,
-    };
-  });
-}
 
-function readGroupNameField(rawName: unknown): string {
-  if (typeof rawName !== "string") throw new PipelineError("VALIDATION_ERROR", "Field name wajib string.", 400);
-  const name = rawName.trim();
-  if (name.length === 0) throw new PipelineError("VALIDATION_ERROR", "Field name tidak boleh kosong.", 400);
-  if (name.length > MAX_GROUP_NAME_LENGTH) {
-    throw new PipelineError("VALIDATION_ERROR", `Field name maksimal ${MAX_GROUP_NAME_LENGTH} karakter.`, 400);
-  }
-  return name;
-}
-
-function readGroupDescriptionField(rawDescription: unknown): string | null {
-  if (rawDescription === undefined || rawDescription === null) return null;
-  if (typeof rawDescription !== "string") {
-    throw new PipelineError("VALIDATION_ERROR", "Field description wajib string atau null.", 400);
-  }
-  return rawDescription.trim();
-}
 
 function readCreateGroupBody(body: unknown): CreatePermissionGroupPayload {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
-  }
-  const raw = body as Record<string, unknown>;
-  const collector = new ValidationCollector();
-  const name = collector.collect("name", () => readGroupNameField(raw.name));
-  const description = collector.collect("description", () => readGroupDescriptionField(raw.description));
-  const permissions = collector.collect("permissions", () => readPermissionEntries(raw.permissions ?? []));
-  collector.throwIfAny();
-  return { name: name!, description: description ?? null, permissions: permissions! };
+  // TASK-6.2.3 — parsing manual diganti skema Zod (paritas pesan dipertahankan).
+  const parsed = parseBody(groupCreateSchema, body);
+  return {
+    name: parsed.name,
+    description: parsed.description ?? null,
+    permissions: parsed.permissions ?? [],
+  };
 }
 
 // Minimal satu field harus hadir; field tak dikenal ditolak agar client tidak
 // mengira field lain ikut berubah (C.15 semangat: PATCH terkontrol).
 function readUpdateGroupBody(body: unknown): UpdatePermissionGroupPayload {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
-  }
-  const raw = body as Record<string, unknown>;
-  const collector = new ValidationCollector();
-  const name = raw.name === undefined ? undefined : collector.collect("name", () => readGroupNameField(raw.name));
-  const description = raw.description === undefined ? undefined : collector.collect("description", () => readGroupDescriptionField(raw.description));
-  const permissions = raw.permissions === undefined ? undefined : collector.collect("permissions", () => readPermissionEntries(raw.permissions));
-  collector.throwIfAny();
+  // TASK-6.2.3 — Zod untuk struktur + pesan; aturan allowed-keys & minimal
+  // satu field tetap diverifikasi di sini (pesan persis versi lama).
+  const parsed = parseBody(groupUpdateSchema, body);
+  const raw = (body ?? {}) as Record<string, unknown>;
   const allowed = ["name", "description", "permissions"];
   for (const key of Object.keys(raw)) {
     if (!allowed.includes(key)) {
       throw new PipelineError("VALIDATION_ERROR", `Field tidak dikenal: ${key}`, 400);
     }
   }
-  if (name === undefined && description === undefined && permissions === undefined) {
-    throw new PipelineError("VALIDATION_ERROR", "Minimal satu field (name/description/permissions) wajib ada.", 400);
+  if (parsed.name === undefined && parsed.description === undefined && parsed.permissions === undefined) {
+    throw new PipelineError(
+      "VALIDATION_ERROR",
+      "Minimal satu field (name/description/permissions) wajib ada.",
+      400,
+    );
   }
   return {
-    ...(name === undefined ? {} : { name }),
-    ...(description === undefined ? {} : { description }),
-    ...(permissions === undefined ? {} : { permissions }),
+    ...(parsed.name === undefined ? {} : { name: parsed.name }),
+    ...(parsed.description === undefined ? {} : { description: parsed.description }),
+    ...(parsed.permissions === undefined ? {} : { permissions: parsed.permissions }),
   };
 }
 
@@ -287,26 +245,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         if (typeof raw !== "object" || raw === null) {
           throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
         }
-        const collector = new ValidationCollector();
-        const groupId = collector.collect("groupId", () => {
-          if (typeof raw.groupId !== "string" || raw.groupId.length === 0) {
-            throw new PipelineError("VALIDATION_ERROR", "Field groupId wajib string non-kosong.", 400);
-          }
-          return raw.groupId;
-        });
-        const scopeType = collector.collect("scopeType", () => {
-          if (typeof raw.scopeType !== "string" || raw.scopeType.length === 0) {
-            throw new PipelineError("VALIDATION_ERROR", "Field scopeType wajib string non-kosong.", 400);
-          }
-          return raw.scopeType;
-        });
-        const scopeId = collector.collect("scopeId", () => {
-          if (typeof raw.scopeId !== "string" || raw.scopeId.length === 0) {
-            throw new PipelineError("VALIDATION_ERROR", "Field scopeId wajib string non-kosong.", 400);
-          }
-          return raw.scopeId;
-        });
-        collector.throwIfAny();
+        const { groupId, scopeType, scopeId } = parseBody(groupAssignmentCreateSchema, raw);
         const assignment = await deps.createGroupAssignment(projectId, membershipId, { groupId: groupId!, scopeType: scopeType!, scopeId: scopeId! });
         return { assignment };
       },
@@ -347,37 +286,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       if (typeof raw !== "object" || raw === null) {
         throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
       }
-      const collector = new ValidationCollector();
-      const permissionId = collector.collect("permissionId", () => {
-        if (typeof raw.permissionId !== "string" || raw.permissionId.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field permissionId wajib string non-kosong.", 400);
-        }
-        return raw.permissionId;
-      });
-      const scopeType = collector.collect("scopeType", () => {
-        if (typeof raw.scopeType !== "string" || raw.scopeType.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field scopeType wajib string non-kosong.", 400);
-        }
-        return raw.scopeType;
-      });
-      const scopeId = collector.collect("scopeId", () => {
-        if (typeof raw.scopeId !== "string" || raw.scopeId.length === 0) {
-          throw new PipelineError("VALIDATION_ERROR", "Field scopeId wajib string non-kosong.", 400);
-        }
-        return raw.scopeId;
-      });
-      const visibility = collector.collect("cardReadVisibility", () => {
-        if (raw.cardReadVisibility !== undefined && raw.cardReadVisibility !== null && typeof raw.cardReadVisibility !== "string") {
-          throw new PipelineError("VALIDATION_ERROR", "cardReadVisibility wajib string atau null.", 400);
-        }
-        return raw.cardReadVisibility as string | null | undefined;
-      });
-      collector.throwIfAny();
+      const parsedAssign = parseBody(permissionAssignmentCreateSchema, raw);
       const assignment = await deps.createPermissionAssignment(projectId, membershipId, {
-        permissionId: permissionId!,
-        scopeType: scopeType!,
-        scopeId: scopeId!,
-        ...(visibility !== undefined ? { cardReadVisibility: visibility } : {}),
+        permissionId: parsedAssign.permissionId,
+        scopeType: parsedAssign.scopeType,
+        scopeId: parsedAssign.scopeId,
+        ...(parsedAssign.cardReadVisibility !== undefined ? { cardReadVisibility: parsedAssign.cardReadVisibility } : {}),
       });
       return { assignment };
     }, 201, getDeps().idempotencyStore);
@@ -414,32 +328,11 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       if (typeof raw !== "object" || raw === null) {
         throw new PipelineError("VALIDATION_ERROR", "Body request wajib objek JSON.", 400);
       }
-      const collector = new ValidationCollector();
-      const expiresAt = collector.collect("expiresAt", () => {
-        if (raw.expiresAt !== undefined && raw.expiresAt !== null && typeof raw.expiresAt !== "string") {
-          throw new PipelineError("VALIDATION_ERROR", "expiresAt wajib string atau null.", 400);
-        }
-        return raw.expiresAt as string | null | undefined;
-      });
-      const assignments = collector.collect("assignments", () => {
-        if (!Array.isArray(raw.assignments)) {
-          throw new PipelineError("VALIDATION_ERROR", "Field assignments wajib array (minimal satu item — BR-051).", 400);
-        }
-        return raw.assignments.map((item) => {
-          const entry = item as Record<string, unknown>;
-          if (typeof entry.groupId !== "string" || entry.groupId.length === 0) {
-            throw new PipelineError("VALIDATION_ERROR", "Setiap assignment wajib memiliki groupId string non-kosong.", 400);
-          }
-          const scopeType = typeof entry.scopeType === "string" ? entry.scopeType : "project";
-          const scopeId = typeof entry.scopeId === "string" ? entry.scopeId : projectId;
-          return { groupId: entry.groupId, scopeType, scopeId };
-        });
-      });
-      collector.throwIfAny();
+const invParsed = parseBody(invitationCreateSchema(projectId), raw);
       const invitation = await deps.createInvitation(projectId, identity.userId, {
         email: typeof raw.email === "string" ? raw.email : "",
-        assignments: assignments!,
-        ...(expiresAt !== undefined ? { expiresAt } : {}),
+        assignments: invParsed.assignments,
+        ...(invParsed.expiresAt !== undefined ? { expiresAt: invParsed.expiresAt } : {}),
       });
       return { invitation };
     }, 201, getDeps().idempotencyStore);

@@ -13,7 +13,6 @@ import {
   readExpectedVersionField,
   readJsonObject,
   toApiErrorResponse,
-  ValidationCollector,
   withIdempotentHandling,
   type IdempotencyStoreLike,
   type OpenProjectContext,

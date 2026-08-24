@@ -2,12 +2,11 @@ import { Hono } from "hono";
 import {
   addComment,
   editComment,
-  PipelineError,
   type CardCommentRecord,
   type EditCommentRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readJsonObject, type OpenProjectContext,
+import { authorize, type OpenProjectContext,
   withIdempotentHandling, type IdempotencyStoreLike,
 } from "./projects.ts";
 import { parseBody, commentCreateSchema } from "./core-schemas.ts";

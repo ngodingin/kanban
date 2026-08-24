@@ -2,12 +2,12 @@ import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ok } from "@kanban/contracts";
 import {
-  PipelineError,
   ResolveIdentityStep,
   type PersonalAccessTokenSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse, ValidationCollector, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
+import { toApiErrorResponse, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
+import { parseCredentialBody, patCreateSchema } from "./core-schemas.ts";
 
 export interface PersonalAccessTokensRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -21,20 +21,7 @@ export interface PersonalAccessTokensRoutesDeps {
   listPersonalAccessTokens(userId: string): Promise<PersonalAccessTokenSummary[]>;
 }
 
-function readJsonObject(raw: unknown): Record<string, unknown> {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new PipelineError("VALIDATION_ERROR", "Body wajib JSON object.", 400);
-  }
-  return raw as Record<string, unknown>;
-}
 
-function readNameField(body: Record<string, unknown>): string {
-  const name = body.name;
-  if (typeof name !== "string" || name.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-  }
-  return name;
-}
 
 async function withErrorHandling<T>(
   c: import("hono").Context,
@@ -61,28 +48,15 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
     withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const name = collector.collect("name", () => readNameField(body));
-      const expiresAtRaw = collector.collect("expiresAt", () => {
-        if (body.expiresAt !== undefined && body.expiresAt !== null && typeof body.expiresAt !== "string") {
-          throw new PipelineError("VALIDATION_ERROR", "expiresAt wajib string ISO date-time.", 400);
-        }
-        return body.expiresAt as string | null | undefined;
-      });
-      // C.2.1 — unknown fields collect-all.
-      for (const key of Object.keys(body)) {
-        if (key !== "name" && key !== "expiresAt") {
-          collector.collect(`unknownField:${key}`, () => {
-            throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
-          });
-        }
-      }
-      collector.throwIfAny();
+      const body = parseCredentialBody(
+        patCreateSchema,
+        await c.req.json().catch(() => null),
+        ["name", "expiresAt"],
+      );
       const created = await deps.createPersonalAccessToken({
         userId: identity.userId,
-        name: name!,
-        ...(expiresAtRaw ? { expiresAt: expiresAtRaw } : {}),
+        name: body.name,
+        ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
       });
       return { personalAccessToken: created };
     }, 201, getDeps().idempotencyStore),

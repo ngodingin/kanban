@@ -2,12 +2,12 @@ import { Hono } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ok } from "@kanban/contracts";
 import {
-  PipelineError,
   ResolveIdentityStep,
   type ApiKeySummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse, ValidationCollector, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
+import { toApiErrorResponse, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
+import { parseCredentialBody, apiKeyCreateSchema } from "./core-schemas.ts";
 
 export interface ApiKeysRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -23,24 +23,7 @@ export interface ApiKeysRoutesDeps {
   idempotencyStore?: IdempotencyStoreLike;
 }
 
-interface Body {
-  [key: string]: unknown;
-}
 
-function readJsonObject(raw: unknown): Body {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    throw new PipelineError("VALIDATION_ERROR", "Body wajib JSON object.", 400);
-  }
-  return raw as Body;
-}
-
-function readNameField(body: Body): string {
-  const name = body.name;
-  if (typeof name !== "string" || name.trim().length === 0) {
-    throw new PipelineError("VALIDATION_ERROR", "Field name wajib string non-kosong.", 400);
-  }
-  return name;
-}
 
 async function withErrorHandling<T>(
   c: import("hono").Context,
@@ -65,29 +48,16 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       await deps.assertPermissionKey(projectId, identity.userId, "api_key.create");
-      const body = readJsonObject(await c.req.json().catch(() => null));
-      const collector = new ValidationCollector();
-      const name = collector.collect("name", () => readNameField(body));
-      const expiresAtRaw = collector.collect("expiresAt", () => {
-        if (body.expiresAt !== undefined && body.expiresAt !== null && typeof body.expiresAt !== "string") {
-          throw new PipelineError("VALIDATION_ERROR", "expiresAt wajib string ISO date-time.", 400);
-        }
-        return body.expiresAt as string | null | undefined;
-      });
-      // C.2.1 — field tak dikenal ikut dikumpulkan collect-all, bukan fail-fast.
-      for (const key of Object.keys(body)) {
-        if (key !== "name" && key !== "expiresAt") {
-          collector.collect(`unknownField:${key}`, () => {
-            throw new PipelineError("VALIDATION_ERROR", `Field '${key}' tidak dikenal.`, 400);
-          });
-        }
-      }
-      collector.throwIfAny();
+      const body = parseCredentialBody(
+        apiKeyCreateSchema,
+        await c.req.json().catch(() => null),
+        ["name", "expiresAt"],
+      );
       const created = await deps.createApiKey({
         projectId,
         createdByUserId: identity.userId,
-        name: name!,
-        ...(expiresAtRaw ? { expiresAt: expiresAtRaw } : {}),
+        name: body.name,
+        ...(body.expiresAt ? { expiresAt: body.expiresAt } : {}),
       });
       return {
         apiKey: created,
