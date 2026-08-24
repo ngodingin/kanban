@@ -69,7 +69,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.3.3 | 🔄 | [CL-63](#cl-63) | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.3 | 🔎 | [CL-63](#cl-63)<br>[CL-65](#cl-65) | 80 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
 **DoD:** Shell context-aware; tidak menampilkan elemen non-MVP.
@@ -181,7 +181,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔄 | [CL-62](#cl-62) | 0 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -557,6 +557,23 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ### CL-58 — 2026-08-25 · 7.2.2 → 🔎 80%
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/design-tokens-2.test.ts` **6/6 PASS** — positif: `@import "@fontsource-variable/inter"` self-host exact-pin `5.3.0` di package.json; `--font-sans: "Inter Variable"`; skala §2.2 lengkap 12 token (H1 32/40 w700, H2 24/32 w600, H3 20/28 w600, Body 14/20, Small 12/16); body memakai `font-sans`. Koreksi test: asersi placeholder diganti daftar substring eksplisit. Suite penuh **133 file / 764 PASS**, exit 0. Commit: `24f9859`.
+
+<a id="cl-65"></a>
+### CL-65 — 2026-08-25 · 7.3.3 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/branding.test.tsx` **3/3 PASS** — positif: branding "Powered by NGodingiN" hadir di layar autentikasi dan sidebar-bawah (kedua permukaan §5); negatif: nav konten board tidak membawa branding. Implementasi sudah ada sejak 7.1.2 (login) dan 7.3.1 (sidebar) — goal ini mengikatnya dengan test agar tidak hilang. Suite penuh **137 file / 775 PASS**, exit 0. Commit: `28e43ee`.
+
+<a id="cl-64"></a>
+### CL-64 — 2026-08-25 · 7.12.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/command-palette.test.tsx` **4/4 PASS** — positif: palette ⌘K merender perintah navigasi; `filterCommands` mempersempit by query; aksi domain disuntik layar aktif via callback (`extraCommands`) dan dijalankan tepat sekali. Negatif: closed → render nihil; Escape memicu onClose. `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh 775 PASS. Commit: `28e43ee`.
+**Catatan:** palette hanya MENJALANKAN domain command milik layar aktif — tidak ada jalur mutasi sendiri, tidak mem-bypass permission/lifecycle (§3.1 "bukan search engine").
+
+<a id="cl-63"></a>
+### CL-63 — 2026-08-25 · 7.3.3 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `54536b5`, row 7.3.3 dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.1 ✅); Reference 05-FRONTEND §5 (branding di layar autentikasi/sidebar-bawah/footer saja); grep source: branding telah dirender di login-page.tsx:71 dan sidebar.tsx:70.
+**Catatan:** goal terbukti sudah terpenuhi implementasi existing — deliverable utama = test pengikat (branding.test.tsx) agar branding tidak hilang saat refactor berikutnya.
 
 <a id="cl-62"></a>
 ### CL-62 — 2026-08-25 · 7.12.1 → 🔄
