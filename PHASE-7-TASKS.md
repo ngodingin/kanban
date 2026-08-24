@@ -157,7 +157,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.10.1 | 🔄 | [QA-CL-14](#qa-cl-14)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44) | 65 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.10.1 | 🔎 | [QA-CL-14](#qa-cl-14)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45) | 80 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.10.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 80 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
@@ -381,6 +381,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** temuan QA diverifikasi dari disk: `members-table.test.tsx` test #2 memakai `void waitFor(...).then(...)` pada fungsi test sinkron — assertion floating, tak pernah memengaruhi hasil (durasi 3ms vs 41ms/8ms test serupa). Kontrak API dikonfirmasi QA genuinely benar (tidak ada pola bug 7.3.2/7.5.3).
 **Catatan:** perbaikan = test dijadikan async + `await findByText` + asersi sinkron setelahnya; ditambah asersi negatif bahwa invitation accepted TIDAK dirender sebagai baris Pending (maksud asli assertion yang mati itu). Catatan proaktif: QA-CL-16 menyinggung `describeRestoreBlock` (scope 7.13.3) yang regex-nya tidak cocok format pesan server aktual — Dev mengetahui dan menunggu penolakan formal 7.13.3 untuk remediasinya, tidak mencampur scope di commit ini.
+
+<a id="cl-45"></a>
+### CL-45 — 2026-08-25 · 7.10.1 → 🔎 80% (remediasi QA-CL-14)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/members-table.test.tsx` **4/4 PASS** — test yang diperbaiki kini async dengan `await findByText` (durasi 8ms, pola genuinely-waiting sesuai rujukan QA; sebelumnya 3ms vacuous) + asersi negatif baru: invitation accepted TIDAK dirender sebagai baris Pending. `tsc --noEmit` + `eslint` hijau; suite penuh **129 file / 738 PASS**, exit 0. Commit: `c73ff4f`.
+**Catatan:** tidak ada perubahan kode produksi — kontrak API sudah dikonfirmasi QA benar (QA-CL-14); murni perbaikan integritas test. Commit yang sama membawa hunk penutupan 7.13.2 milik sesi QA (QA-CL-16) yang tertinggal uncommitted — dibawa utuh tanpa modifikasi.
 
 <a id="qa-cl-16"></a>
 ### QA-CL-16 — 2026-08-25 · goal 7.13.2 closed ✅ (🔎 80% → ✅ 100%)
