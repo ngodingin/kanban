@@ -54,7 +54,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.2.1 | 🔎 | [CL-09](#cl-09)<br>[CL-10](#cl-10) | 80 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.1 | ✅ | [QA-CL-05](#qa-cl-05)<br>[CL-09](#cl-09)<br>[CL-10](#cl-10) | 100 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.2.2 | ⬜️ | — | 0 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.2.3 | ⬜️ | — | 0 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
 
@@ -322,6 +322,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** freshness check: HEAD `1fe314d`, row 7.3.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.2.1 🔎 sisi Dev — implementasi token + test hijau); Reference `05-FRONTEND §4,§5` dibaca dari disk (sidebar: Home · My Tasks · Activity · PROJECTS ▾ · Members · Permissions · API Keys · Settings; Inbox BUANG).
 **Catatan:** mulai komponen Sidebar + app shell layout (login standalone tanpa sidebar); daftar Project nyata menyusul di goal projects feature — group PROJECTS ▾ untuk sekarang statis tanpa data demo.
+
+<a id="qa-cl-05"></a>
+### QA-CL-05 — 2026-08-25 · goal 7.2.1 closed ✅ (🔎 80% → ✅ 100%) — token values dikonfirmasi cocok tabel SOT §2.1 persis
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`src/index.css` dibaca penuh, dicocokkan langsung terhadap tabel `05-FRONTEND §2.1`:** seluruh 8 token semantik (primary `#6366F1`/indigo-500, primary-active `#4F46E5`/indigo-600, foreground `#1E293B`/slate-800, muted-foreground `#64748B`/slate-500, border/muted `#E2E8F0`/slate-200, success `#10B981`/emerald-500, warning `#F59E0B`/amber-500, destructive `#EF4444`/red-500) cocok PERSIS baris demi baris dengan tabel SOT — bukan cuma dipercaya dari klaim CL. Nilai oklch yang dipakai (mis. `oklch(0.585 0.233 277.117)` untuk indigo-500) sesuai palet default Tailwind v4 yang dipublikasikan resmi, konsisten dengan hex sumbernya. Blok `.dark` tersedia dengan hue keluarga sama; `@theme inline` mengekspos seluruh token ke utility Tailwind.
+
+**Re-run independen:** `npx vitest run apps/web/test/design-tokens.test.ts` → **3/3 PASS** — dibaca penuh: nilai oklch tiap token di `:root` dicek match persis; token terekspose ke `--color-*` Tailwind + blok `.dark` ada; guard struktural scan `src/**/*.{ts,tsx}` memastikan NOL warna hard-coded (`#hex`/`rgb()`/`hsl()`) di luar `index.css` — mencegah drift ke styling ad-hoc di masa depan. `pnpm --filter @kanban/web typecheck` → bersih. `pnpm --filter @kanban/web build` → sukses.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-10"></a>
 ### CL-10 — 2026-08-25 · 7.2.1 → 🔎 80%
