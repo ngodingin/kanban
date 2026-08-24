@@ -2,7 +2,8 @@ import { useParams, useNavigate } from "react-router";
 import { useProjects, useProject, useMilestone, useBoard } from "@/features/projects/hooks";
 
 // Header app shell — breadcrumb Project › Milestone › Board + context switch
-// (05-FRONTEND §5). Nama entity dari API nyata; tanpa demo data.
+// (05-FRONTEND §5). Kontrak API nyata: Project `name`, Milestone/Board
+// `title` (C.4–C.6); nama diambil via TanStack Query — tanpa demo data.
 function Crumb({ label }: { label: string }) {
   return <span className="text-sm font-medium text-foreground">{label}</span>;
 }
@@ -19,10 +20,6 @@ export function Header() {
   const milestoneQuery = useMilestone(projectId, params.milestoneId);
   const boardQuery = useBoard(projectId, params.milestoneId, params.boardId);
 
-  const projectList = Array.isArray(projectsQuery.data)
-    ? projectsQuery.data
-    : (projectsQuery.data?.projects ?? []);
-
   return (
     <header className="flex items-center justify-between border-b border-border px-4 py-2">
       <nav aria-label="Breadcrumb" className="flex items-center gap-2">
@@ -32,13 +29,13 @@ export function Header() {
             {params.milestoneId ? (
               <>
                 <Separator />
-                <Crumb label={milestoneQuery.data?.name ?? "…"} />
+                <Crumb label={milestoneQuery.data?.title ?? "…"} />
               </>
             ) : null}
             {params.boardId ? (
               <>
                 <Separator />
-                <Crumb label={boardQuery.data?.name ?? "…"} />
+                <Crumb label={boardQuery.data?.title ?? "…"} />
               </>
             ) : null}
           </>
@@ -61,7 +58,7 @@ export function Header() {
           <option value="" disabled>
             Pilih Project…
           </option>
-          {projectList.map((p) => (
+          {(projectsQuery.data ?? []).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
             </option>

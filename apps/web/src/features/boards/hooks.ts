@@ -4,12 +4,13 @@ import { apiRequest } from "@/lib/api/client";
 export interface BoardSummary {
   id: string;
   milestoneId: string;
-  name: string;
+  title: string;
 }
 
 // GET /v1/projects/:project_id/milestones/:milestone_id/boards → { boards }
 // Endpoint SUDAH scoping per Milestone — kandidat move antar Board secara
-// struktural tidak mungkin lintas-Milestone (BR-018).
+// struktural tidak mungkin lintas-Milestone (BR-018). Field entity Board
+// adalah `title` (C.6), bukan `name`.
 export function useBoards(projectId: string | undefined, milestoneId: string | undefined) {
   return useQuery({
     queryKey: ["boards", projectId, milestoneId],
@@ -18,6 +19,7 @@ export function useBoards(projectId: string | undefined, milestoneId: string | u
       apiRequest<{ boards: BoardSummary[] }>(
         `/api/v1/projects/${projectId}/milestones/${milestoneId}/boards`,
       ),
+    select: (d) => d.boards,
   });
 }
 
@@ -26,8 +28,8 @@ export function siblingBoards(
   boards: ReadonlyArray<BoardSummary>,
   currentMilestoneId: string,
   currentBoardId: string,
-): Array<{ id: string; name: string }> {
+): Array<{ id: string; title: string }> {
   return boards
     .filter((b) => b.milestoneId === currentMilestoneId && b.id !== currentBoardId)
-    .map(({ id, name }) => ({ id, name }));
+    .map(({ id, title }) => ({ id, title }));
 }

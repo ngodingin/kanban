@@ -21,31 +21,50 @@ function jsonRes(status: number, body: unknown): Response {
 }
 
 describe("TASK-7.5.3 — move antar Board hanya dalam Milestone sama (BR-018)", () => {
+  // Field entity Board = `title` (C.6, QA-CL-10) — bukan `name`.
   const boards: BoardSummary[] = [
-    { id: "b1", milestoneId: "m1", name: "Sprint 1 — Utama" },
-    { id: "b2", milestoneId: "m1", name: "Sprint 1 — Backup" },
-    { id: "b3", milestoneId: "m2", name: "Sprint 2" },
+    { id: "b1", milestoneId: "m1", title: "Sprint 1 — Utama" },
+    { id: "b2", milestoneId: "m1", title: "Sprint 1 — Backup" },
+    { id: "b3", milestoneId: "m2", title: "Sprint 2" },
   ];
 
   test("positif: kandidat hanya board Milestone sama, board asal dikecualikan", () => {
     expect(siblingBoards(boards, "m1", "b1")).toEqual([
-      { id: "b2", name: "Sprint 1 — Backup" },
+      { id: "b2", title: "Sprint 1 — Backup" },
     ]);
   });
 
   test("negatif: board lintas-Milestone tidak pernah ditawarkan", () => {
-    const names = siblingBoards(boards, "m1", "b1").map((b) => b.name);
-    expect(names).not.toContain("Sprint 2");
+    const titles = siblingBoards(boards, "m1", "b1").map((b) => b.title);
+    expect(titles).not.toContain("Sprint 2");
     // Milestone berbeda sekalipun satu-satunya board lain → kandidat kosong.
     expect(siblingBoards(boards, "m9", "b1")).toEqual([]);
   });
 
-  test("positif: hook useBoards mengambil endpoint scoping per-Milestone", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        jsonRes(200, { data: { boards: [{ id: "b2", milestoneId: "m1", name: "Backup" }] } }),
-      );
+  test("positif: hook useBoards mengambil endpoint scoping per-Milestone dan meng-unwrap {boards} dengan field title", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (String(url).endsWith("/api/v1/projects/p1/milestones/m1/boards")) {
+        return Promise.resolve(
+          jsonRes(200, {
+            data: {
+              boards: [
+                {
+                  id: "b2",
+                  milestoneId: "m1",
+                  title: "Backup",
+                  createdAt: "2026-08-01T00:00:00.000Z",
+                  updatedAt: "2026-08-01T00:00:00.000Z",
+                  archivedAt: null,
+                  deletedAt: null,
+                  version: 1,
+                },
+              ],
+            },
+          }),
+        );
+      }
+      return Promise.reject(new Error(`unexpected url ${url}`));
+    });
     vi.stubGlobal("fetch", fetchMock);
 
     const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -55,6 +74,7 @@ describe("TASK-7.5.3 — move antar Board hanya dalam Milestone sama (BR-018)", 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     const [url] = fetchMock.mock.calls[0] as [string];
     expect(url).toBe("/api/v1/projects/p1/milestones/m1/boards");
+    expect(result.current.data?.[0]).toMatchObject({ id: "b2", title: "Backup" });
   });
 });
 

@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -7,28 +7,15 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { Header } from "../src/components/layout/header";
 import { queryClient } from "../src/lib/query-client";
 
-const mocks = vi.hoisted(() => ({
-  useProjects: vi.fn(),
-  useProject: vi.fn(),
-  useMilestone: vi.fn(),
-  useBoard: vi.fn(),
-}));
-
-vi.mock("../src/features/projects/hooks", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("../src/features/projects/hooks")>();
-  return {
-    ...mod,
-    useProjects: mocks.useProjects,
-    useProject: mocks.useProject,
-    useMilestone: mocks.useMilestone,
-    useBoard: mocks.useBoard,
-  };
-});
-
-function idleQuery<T>(data: T | undefined, isLoading = false) {
-  return { data, isLoading, error: null } as ReturnType<
-    typeof mocks.useProject
-  >;
+// QA-CL-07 remediasi: TIDAK mem-mock hook — stub global fetch sehingga
+// request melewati apiRequest + envelope/field KONTRAK NYATA (C.4–C.6).
+// Drift shape seperti {project}/{milestone}/{board} + name vs title kini
+// tertangkap test.
+function jsonRes(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "content-type": "application/json" },
+  });
 }
 
 function renderHeader(path: string) {
@@ -54,27 +41,94 @@ function renderHeader(path: string) {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   queryClient.clear();
-  for (const fn of Object.values(mocks)) fn.mockReset();
 });
 
 describe("TASK-7.3.2 — Header breadcrumb Project › Milestone › Board + context switch", () => {
-  test("positif: breadcrumb akurat mengikuti params dengan nama dari API", () => {
-    mocks.useProjects.mockReturnValue(idleQuery({ projects: [] }));
-    mocks.useProject.mockReturnValue(idleQuery({ id: "p1", name: "Alpha" }));
-    mocks.useMilestone.mockReturnValue(idleQuery({ id: "m1", name: "Beta" }));
-    mocks.useBoard.mockReturnValue(idleQuery({ id: "b1", name: "Gamma" }));
+  test("positif: breadcrumb memakai nama nyata dari kontrak API ({project.name}, {milestone.title}, {board.title})", async () => {
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      if (String(url).endsWith("/api/v1/projects")) {
+        return Promise.resolve(
+          jsonRes(200, {
+            data: {
+              projects: [
+                { id: "p1", name: "Alpha" },
+                { id: "p2", name: "Omega" },
+              ],
+            },
+          }),
+        );
+      }
+      if (String(url).endsWith("/milestones/m1/boards/b1")) {
+        return Promise.resolve(
+          jsonRes(200, {
+            data: {
+              board: {
+                id: "b1",
+                milestoneId: "m1",
+                title: "Gamma",
+                createdAt: "2026-08-01T00:00:00.000Z",
+                updatedAt: "2026-08-01T00:00:00.000Z",
+                archivedAt: null,
+                deletedAt: null,
+                version: 4,
+              },
+            },
+          }),
+        );
+      }
+      if (String(url).includes("/milestones/m1")) {
+        return Promise.resolve(
+          jsonRes(200, {
+            data: {
+              milestone: {
+                id: "m1",
+                title: "Beta",
+                createdAt: "2026-08-01T00:00:00.000Z",
+                updatedAt: "2026-08-01T00:00:00.000Z",
+                archivedAt: null,
+                deletedAt: null,
+                version: 2,
+              },
+            },
+          }),
+        );
+      }
+      return Promise.resolve(
+        jsonRes(200, {
+          data: {
+            project: {
+              id: "p1",
+              name: "Alpha",
+              createdAt: "2026-08-01T00:00:00.000Z",
+              updatedAt: "2026-08-01T00:00:00.000Z",
+              archivedAt: null,
+              deletedAt: null,
+              version: 9,
+            },
+          },
+        }),
+      );
+    });
+    vi.stubGlobal("fetch", fetchMock);
 
     renderHeader("/projects/p1/milestones/m1/boards/b1");
+    await waitFor(() => expect(screen.getByText("Gamma")).toBeTruthy());
     const nav = screen.getByLabelText("Breadcrumb");
     expect(nav.textContent).toBe("Alpha›Beta›Gamma");
   });
 
-  test("positif: tanpa context Project menampilkan brand saja", () => {
-    mocks.useProjects.mockReturnValue(idleQuery({ projects: [] }));
-    mocks.useProject.mockReturnValue(idleQuery(undefined));
-    mocks.useMilestone.mockReturnValue(idleQuery(undefined));
-    mocks.useBoard.mockReturnValue(idleQuery(undefined));
+  test("positif: tanpa context menampilkan brand; tanpa data → ellipsis bukan crash", () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (String(url).endsWith("/api/v1/projects")) {
+          return Promise.resolve(jsonRes(200, { data: { projects: [] } }));
+        }
+        return Promise.resolve(jsonRes(404, { error: { code: "RESOURCE_NOT_FOUND", message: "x" } }));
+      }),
+    );
     renderHeader("/");
     expect(screen.getByText("NGodingin Kanban")).toBeTruthy();
     expect(screen.queryByText("›")).toBeNull();
@@ -82,19 +136,40 @@ describe("TASK-7.3.2 — Header breadcrumb Project › Milestone › Board + con
 
   test("positif: context switch navigasi ke project terpilih", async () => {
     const user = userEvent.setup();
-    mocks.useProjects.mockReturnValue(
-      idleQuery({
-        projects: [
-          { id: "p1", name: "Alpha" },
-          { id: "p2", name: "Omega" },
-        ],
+    let lastPath = "/projects/p1";
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url: string) => {
+        if (String(url).endsWith("/api/v1/projects")) {
+          return Promise.resolve(
+            jsonRes(200, {
+              data: {
+                projects: [
+                  { id: "p1", name: "Alpha" },
+                  { id: "p2", name: "Omega" },
+                ],
+              },
+            }),
+          );
+        }
+        return Promise.resolve(
+          jsonRes(200, {
+            data: {
+              project: {
+                id: "p1",
+                name: "Alpha",
+                createdAt: "2026-08-01T00:00:00.000Z",
+                updatedAt: "2026-08-01T00:00:00.000Z",
+                archivedAt: null,
+                deletedAt: null,
+                version: 1,
+              },
+            },
+          }),
+        );
       }),
     );
-    mocks.useProject.mockReturnValue(idleQuery({ id: "p1", name: "Alpha" }));
-    mocks.useMilestone.mockReturnValue(idleQuery(undefined));
-    mocks.useBoard.mockReturnValue(idleQuery(undefined));
 
-    let lastPath = "/projects/p1";
     render(
       <MemoryRouter initialEntries={["/projects/p1"]}>
         <QueryClientProvider client={queryClient}>
@@ -113,15 +188,18 @@ describe("TASK-7.3.2 — Header breadcrumb Project › Milestone › Board + con
       </MemoryRouter>,
     );
 
+    await waitFor(() =>
+      expect((screen.getByLabelText("Pilih Project") as HTMLSelectElement).options.length).toBe(3),
+    );
     await user.selectOptions(screen.getByLabelText("Pilih Project"), "p2");
     expect(lastPath).toBe("/projects/p2");
   });
 
   test("negatif: header tidak memuat Inbox / elemen non-MVP", () => {
-    mocks.useProjects.mockReturnValue(idleQuery({ projects: [] }));
-    mocks.useProject.mockReturnValue(idleQuery(undefined));
-    mocks.useMilestone.mockReturnValue(idleQuery(undefined));
-    mocks.useBoard.mockReturnValue(idleQuery(undefined));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonRes(200, { data: { projects: [] } })),
+    );
     const { container } = renderHeader("/");
     expect(container.textContent).not.toMatch(/inbox|revenue|analytics|billing/i);
   });

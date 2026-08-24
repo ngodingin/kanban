@@ -68,7 +68,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
-| 7.3.2 | ⚠️ | [QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14) | 35 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.2 | 🔄 | [QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26) | 35 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
@@ -94,7 +94,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.5.1 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-15](#cl-15)<br>[CL-16](#cl-16) | 80 | P0 | Render kolom = List (nama bebas) + count; card list | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.1](docs/02-SPEC.md) | 7.3.2 |
 | 7.5.2 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[Review-CL-02](#review-cl-02)<br>[CL-17](#cl-17)<br>[CL-18](#cl-18) | 80 | P0 | Drag Card antar List → panggil move API dengan JSON `{ destinationListId, expectedVersion }` | [02-SPEC C.8 move](docs/02-SPEC.md), [AC-020](docs/04-DELIVERY.md) | 7.5.1 |
-| 7.5.3 | ⚠️ | [QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20) | 40 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
+| 7.5.3 | 🔄 | [QA-CL-10](#qa-cl-10)<br>[CL-19](#cl-19)<br>[CL-20](#cl-20)<br>[CL-26](#cl-26) | 40 | P0 | Move antar Board hanya tawarkan Board dalam Milestone sama | [02-SPEC BR-018](docs/02-SPEC.md) | 7.5.2 |
 | 7.5.4 | 🔎 | [QA-CL-09](#qa-cl-09)<br>[CL-19](#cl-19)<br>[CL-21](#cl-21) | 80 | P0 | Tangani `VERSION_CONFLICT` → pesan + reload (bukan auto-overwrite) | [04-DELIVERY A.3](docs/04-DELIVERY.md), [BR-021](docs/02-SPEC.md) | 7.5.2 |
 
 **Test:** Drag memicu move API benar; opsi Board lintas-Milestone tidak muncul; conflict ditampilkan, tidak menimpa.
@@ -288,6 +288,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tidak ada bug produksi ditemukan.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-26"></a>
+### CL-26 — 2026-08-25 · 7.3.2 + 7.5.3 → 🔄 (remediasi QA-CL-07 / QA-CL-10)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** klaim QA diverifikasi ulang langsung dari source API sebelum coding: single-GET terbungkus `{project:...}` (projects.ts:239,410), `{milestone:...}` (milestones.ts:108), `{board:...}` (boards.ts:105); field entity — Project `name` (projectStatePayload), Milestone `title` (milestones.ts:32), Board `title` (boards.ts:34); list boards → `{boards:[{id,milestoneId,title}]}` (boards.ts:87); list projects → `{projects:[...]}` (projects.ts:366). Konsumen `.name` bermasalah hanya di header.tsx (3 crumb) + hooks; list/card/labels/activities sudah cocok kontraknya.
+**Catatan:** akar masalah = test 7.3.2 mem-mock level hook dengan shape fiktif yang sudah "benar", menutupi drift envelope+field. Remediasi: perbaiki hooks ke kontrak nyata + tulis ulang test header memakai fetch-stub melalui apiRequest sungguhan (bukan mock hook), sesuai kritik QA.
 
 <a id="cl-25"></a>
 ### CL-25 — 2026-08-25 · 7.8.1 → 🔎 80%
