@@ -7,7 +7,8 @@ const css = readFileSync(join(webRoot, "src/index.css"), "utf8");
 
 describe("TASK-7.2.1 — color tokens 05-FRONTEND §2.1 (indigo + slate + semantic)", () => {
   test("positif: seluruh token semantik terdefinisi di :root dengan nilai sesuai tabel SOT", () => {
-    const rootBlock = css.slice(css.indexOf(":root"), css.indexOf(".dark"));
+    const rootStart = css.indexOf(":root");
+    const rootBlock = css.slice(rootStart, css.indexOf(".dark {", rootStart));
     const expected: Array<[string, string]> = [
       ["--primary:", "0.585 0.233 277.117"], // indigo-500 #6366F1
       ["--primary-active:", "0.511 0.262 276.966"], // indigo-600 #4F46E5
