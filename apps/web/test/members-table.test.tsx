@@ -117,17 +117,18 @@ describe("TASK-7.10.1 — Tabel Members (User · Group · Status Active/Pending)
     expect(row.textContent).toContain("Active");
   });
 
-  test("positif: invitation belum di-accept tampil sebagai Pending; accepted tidak", () => {
+  test("positif: invitation belum di-accept tampil sebagai Pending; accepted tidak", async () => {
     vi.stubGlobal("fetch", stubApi());
     render(
       <QueryClientProvider client={queryClient}>
         <MembersTable projectId="p1" />
       </QueryClientProvider>,
     );
-    void waitFor(() => expect(screen.getByText("baru@example.com")).toBeTruthy()).then(() => {
-      const row = screen.getByText("baru@example.com").closest("tr")!;
-      expect(row.textContent).toContain("Pending");
-    });
+    // Await sungguhan — assertion floating (QA-CL-14) tidak boleh terulang.
+    const pendingRow = (await screen.findByText("baru@example.com")).closest("tr")!;
+    expect(pendingRow.textContent).toContain("Pending");
+    // Invitation yang sudah accepted TIDAK dirender sebagai baris Pending.
+    expect(screen.queryByText("lama@example.com")).toBeNull();
   });
 
   test("negatif: membership revoked berstatus Revoked, bukan Active", async () => {

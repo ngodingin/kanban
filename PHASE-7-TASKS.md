@@ -157,7 +157,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.10.1 | ⚠️ | [QA-CL-14](#qa-cl-14)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38) | 65 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.10.1 | 🔄 | [QA-CL-14](#qa-cl-14)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44) | 65 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.10.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 80 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
@@ -193,7 +193,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.13.1 | ✅ | [QA-CL-15](#qa-cl-15)<br>[CL-30](#cl-30)<br>[CL-31](#cl-31) | 100 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
-| 7.13.2 | 🔎 | [CL-32](#cl-32)<br>[CL-33](#cl-33) | 80 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.2 | ✅ | [QA-CL-16](#qa-cl-16)<br>[CL-32](#cl-32)<br>[CL-33](#cl-33) | 100 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
 | 7.13.3 | 🔎 | [CL-32](#cl-32)<br>[CL-34](#cl-34) | 80 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
 | 7.13.4 | 🔎 | [CL-35](#cl-35)<br>[CL-36](#cl-36) | 80 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
@@ -375,6 +375,27 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
 **Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-44"></a>
+### CL-44 — 2026-08-25 · 7.10.1 → 🔄 (remediasi QA-CL-14)
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** temuan QA diverifikasi dari disk: `members-table.test.tsx` test #2 memakai `void waitFor(...).then(...)` pada fungsi test sinkron — assertion floating, tak pernah memengaruhi hasil (durasi 3ms vs 41ms/8ms test serupa). Kontrak API dikonfirmasi QA genuinely benar (tidak ada pola bug 7.3.2/7.5.3).
+**Catatan:** perbaikan = test dijadikan async + `await findByText` + asersi sinkron setelahnya; ditambah asersi negatif bahwa invitation accepted TIDAK dirender sebagai baris Pending (maksud asli assertion yang mati itu). Catatan proaktif: QA-CL-16 menyinggung `describeRestoreBlock` (scope 7.13.3) yang regex-nya tidak cocok format pesan server aktual — Dev mengetahui dan menunggu penolakan formal 7.13.3 untuk remediasinya, tidak mencampur scope di commit ini.
+
+<a id="qa-cl-16"></a>
+### QA-CL-16 — 2026-08-25 · goal 7.13.2 closed ✅ (🔎 80% → ✅ 100%)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`guards.ts`'s `availableLifecycleActions` dibaca penuh:** logic genuinely benar sesuai state machine A.3 (dikonfirmasi ulang terhadap pemahaman invariant lifecycle dari sesi-sesi sebelumnya) — `deletedAt` set → `[]` (terminal, TIDAK ada restore, sesuai INV-LIFE-002/004); `archivedAt` set (tanpa deletedAt) → `["restore"]` saja; keduanya null → `["archive","delete"]`. `LifecycleActionsMenu` dikonfirmasi merender NOL tombol untuk entity DELETED (bukan tombol restore ter-disable — genuinely tidak ada elemen sama sekali).
+
+**Catatan proses:** ditemukan bug genuine pada `describeRestoreBlock` di file yang sama (`guards.ts`) — regex ekstraksi ancestor-kind tidak cocok format pesan error server sungguhan (dicek langsung `board-repository.ts:168-170`: format asli `"Ancestor tidak ACTIVE: <Entity> <id> (<state>) — ... (INV-LIFE-001)"`, BUKAN pola `"...karena <entity> induknya..."` yang diasumsikan regex). **Ini BUKAN bug goal 7.13.2** — fungsi tsb genuinely milik scope 7.13.3 (dites terpisah di describe block `"TASK-7.13.3"` pada file test yang sama, `lifecycle-guards.test.tsx:76-138`), akan dilaporkan saat review 7.13.3.
+
+**Re-run independen (scope 7.13.2 saja):** 3 test dalam describe block `"TASK-7.13.2"` → **3/3 PASS** genuinely benar (bagian 7.13.3 di file yang sama diperiksa terpisah). `pnpm --filter @kanban/web typecheck`/`pnpm lint` → bersih.
+
+**Tidak ada bug produksi pada scope goal ini.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-42"></a>
 ### CL-42 — 2026-08-25 · 7.11.1 → 🔎 80%
