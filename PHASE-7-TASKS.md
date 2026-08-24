@@ -41,7 +41,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.1.1 | ✅ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02) | 100 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
-| 7.1.2 | 🔎 | [CL-03](#cl-03)<br>[CL-04](#cl-04) | 80 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.2 | ✅ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04) | 100 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 80 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | 🔎 | [CL-07](#cl-07)<br>[CL-08](#cl-08) | 80 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
@@ -358,6 +358,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** freshness check: HEAD `9a0ea64`, row 7.1.3 dibaca ulang dari disk `⬜️ 0%` (dependency 7.1.1 ✅ via QA-CL-01); Reference dibaca dari disk: `02-SPEC C.2/C.2.1/C.3` (envelope `{data}`/`{error{code,message,details?}}`, kode kanonik, kontrak idempotency poin 1–8) dan `05-FRONTEND §3.2`.
 **Catatan:** mulai API client layer terpisah di `src/lib/api/` + QueryClient provider; pin `@tanstack/react-query@5.102.2` hasil revalidasi Review-CL-05. Kebijakan client: TIDAK ada auto-retry pada `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` (ditampilkan sebagai error bertipe, tanpa side-effect kedua); retry eksplisit MAY memakai key yang sama sesuai C.3 poin 5.
+
+<a id="qa-cl-02"></a>
+### QA-CL-02 — 2026-08-25 · goal 7.1.2 closed ✅ (🔎 80% → ✅ 100%) — Magic Link UI genuinely no-password/no-social, anti-enumeration confirmed
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**`login-page.tsx`/`auth-client.ts` dibaca penuh:** satu form email (tanpa password/social provider apa pun), `authClient.signIn.magicLink({ email, callbackURL: same-origin })`, tiga state ditangani (`idle`/`submitting`/`sent`/`error`) plus `?error=` dari redirect verify menampilkan pesan netral "Tautan tidak valid atau sudah kedaluwarsa" — TIDAK ada perbedaan pesan antara error jaringan vs email tak terdaftar (kedua kasus jatuh ke pesan generik yang sama "Terjadi kesalahan. Coba lagi."), konsisten prinsip anti-enumeration 03-ENG A.14.
+
+**Versi client-server dikonfirmasi selaras:** `better-auth@1.6.30` exact-pinned SAMA di `apps/web/package.json` dan `packages/infrastructure/package.json` — tidak ada version drift antara client Magic Link dan server auth config.
+
+**Re-run independen:** `npx vitest run apps/web/test/magic-link-ui.test.tsx` → **5/5 PASS** — dibaca penuh, genuinely menguji: tidak ada input password/tombol provider di DOM; submit memanggil `signIn.magicLink` dengan `email`+`callbackURL` same-origin lalu render state "sent"; kegagalan request (network down) menampilkan pesan generik TANPA kata "terdaftar"/"belum punya akun"/"not found" (asserted eksplisit via regex negatif pada `document.body.textContent` — bukan cuma dicek untuk satu elemen); `?error=INVALID_TOKEN` → pesan expired/used netral; tombol submit `disabled` saat status `submitting` (anti double-submit, dibuktikan dengan promise yang sengaja digantung sebelum di-resolve). `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` (repo-level) → 0 error. `pnpm --filter @kanban/web build` → sukses.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-04"></a>
 ### CL-04 — 2026-08-25 · 7.1.2 → 🔎 80%
