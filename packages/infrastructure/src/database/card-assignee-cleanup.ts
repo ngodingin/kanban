@@ -34,10 +34,17 @@ async function unassignCardInTx(tx: Tx, input: UnassignRevokedAssigneeInput): Pr
 
   const now = new Date().toISOString();
   const nextVersion = currentVersion + 1;
-  await tx.execute(
+  const updated = await tx.execute(
     "UPDATE cards SET assignee_user_id = NULL, updated_at = ?, version = ? WHERE id = ? AND assignee_user_id = ? AND version = ?",
     [now, nextVersion, input.cardId, input.revokedUserId, currentVersion],
   );
+  // TASK-6.1.1 — docstring di atas SUDAH mengklaim guard ini "menjamin tidak
+  // ada Activity tanpa mutation yang sesuai... skip tanpa efek samping" —
+  // TAPI implementasi sebelumnya TIDAK PERNAH memverifikasi rowsAffected,
+  // jadi klaim itu tidak benar-benar ditegakkan (Activity tetap ditulis
+  // walau UPDATE ternyata no-op). Diperbaiki di sini agar docstring dan
+  // kode konsisten.
+  if (Number(updated.rowsAffected ?? 0) === 0) return false;
   await tx.execute(
     "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, 'card.unassigned', ?, ?)",
     [

@@ -169,6 +169,71 @@ describe("unassignCardFromRevokedMember — atomik per Card (goal 2.12.1)", () =
     const row = await project.client.execute("SELECT assignee_user_id, version FROM cards WHERE id = 'cd_2'");
     expect(row.rows[0]).toMatchObject({ assignee_user_id: "user-x", version: 1 });
   });
+
+  it("[TASK-6.1.1, regresi] version berubah TEPAT di antara SELECT dan UPDATE (simulasi TOCTOU) -> UPDATE 0-row terdeteksi, TIDAK return true/Activity palsu", async () => {
+    // Docstring unassignCardInTx MENGKLAIM guard `AND version = ?` "menjamin
+    // tidak ada Activity tanpa mutation yang sesuai... skip tanpa efek
+    // samping" — tapi klaim itu HANYA benar jika rowsAffected DIPERIKSA
+    // setelah UPDATE. Test ini menyuntik perubahan version PERSIS di antara
+    // baca (SELECT) dan tulis (UPDATE) fungsi ini SENDIRI — dalam BEGIN
+    // IMMEDIATE nyata skenario ini mustahil dari koneksi LAIN (transaksi
+    // writer diserialize, 03-ENG baris 202), tapi inilah persis yang
+    // dibuktikan defense-in-depth: KALAU asumsi serialisasi itu pernah
+    // dilanggar (refactor masa depan, driver berbeda), kode WAJIB tetap
+    // benar (gagal loud/skip), bukan diam-diam menulis Activity untuk
+    // mutation yang sebenarnya tidak terjadi.
+    await seedCards();
+    const real = project.client;
+    const wrapped = {
+      transaction: async () => {
+        const tx = await real.transaction("write");
+        let injected = false;
+        return {
+          execute: async (sqlOrOpts: string | { sql: string; args?: InArgs }, maybeArgs?: InArgs) => {
+            const sql = typeof sqlOrOpts === "string" ? sqlOrOpts : sqlOrOpts.sql;
+            const args = typeof sqlOrOpts === "string" ? maybeArgs : sqlOrOpts.args;
+            const result = await tx.execute({ sql, args: args ?? [] });
+            // Suntik TEPAT setelah SELECT assignee_user_id/version (baca
+            // helper unassignCardInTx) — sebelum fungsi sempat UPDATE
+            // dengan version yang baru saja dibacanya (kini basi).
+            if (!injected && sql.startsWith("SELECT assignee_user_id, version FROM cards")) {
+              injected = true;
+              await tx.execute({
+                sql: "UPDATE cards SET version = version + 1 WHERE id = ?",
+                args: Array.isArray(args) ? [args[0]] : [],
+              });
+            }
+            return result;
+          },
+          commit: () => tx.commit(),
+          rollback: () => tx.rollback(),
+        };
+      },
+      execute: ((sql: string, args?: InArgs) => real.execute({ sql, args: args ?? [] })) as unknown,
+      closed: false,
+      protocol: "http",
+      url: "",
+    } as unknown as Client;
+
+    const changed = await unassignCardFromRevokedMember(wrapped, {
+      cardId: "cd_1",
+      revokedUserId: "user-x",
+      actorUserId: OWNER_ACTOR,
+    });
+    // Fix TASK-6.1.1: rowsAffected=0 terdeteksi -> skip, return false.
+    expect(changed).toBe(false);
+
+    // TIDAK ada Activity card.unassigned yang tertulis untuk mutation yang
+    // SEBENARNYA tidak pernah terjadi (UPDATE asli 0 baris).
+    const activity = await project.client.execute(
+      "SELECT COUNT(*) AS n FROM activities WHERE entity_id = 'cd_1' AND action = 'card.unassigned'",
+    );
+    expect(Number(activity.rows[0]?.n)).toBe(0);
+
+    // assignee TIDAK ter-NULL-kan (mutation asli memang tidak pernah commit).
+    const card = await project.client.execute("SELECT assignee_user_id, version FROM cards WHERE id = 'cd_1'");
+    expect(card.rows[0]).toMatchObject({ assignee_user_id: "user-x", version: 2 });
+  });
 });
 
 describe("cleanupAssigneesForRevokedMembership — best-effort per Card (goal 2.12.1)", () => {

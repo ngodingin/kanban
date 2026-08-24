@@ -201,10 +201,14 @@ export class DrizzleMilestoneLabelRepository implements MilestoneLabelRepository
       }
 
       const nextVersion = loaded.current.version + 1;
-      await tx.execute(
+      const updated = await tx.execute(
         "UPDATE milestone_labels SET name = ?, archived_at = ?, deleted_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?",
         [next.name, next.archivedAt, next.deletedAt, now, nextVersion, labelId, expectedVersion],
       );
+      // TASK-6.1.1 — defense-in-depth, lihat catatan project-repository.ts.
+      if (Number(updated.rowsAffected ?? 0) === 0) {
+        throw new LabelVersionConflictError(expectedVersion, loaded.current.version);
+      }
       await insertActivity(tx, labelId, nextVersion, actorUserId, action, data, now);
 
       return { ...next, updatedAt: now, version: nextVersion };

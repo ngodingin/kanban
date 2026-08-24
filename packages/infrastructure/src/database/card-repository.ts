@@ -179,10 +179,14 @@ export class DrizzleCardRepository implements CardRepository {
 
       const now = new Date().toISOString();
       const nextVersion = loaded.current.version + 1;
-      await tx.execute(
+      const movedRow = await tx.execute(
         "UPDATE cards SET list_id = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?",
         [input.destinationListId, now, nextVersion, input.cardId, input.expectedVersion],
       );
+      // TASK-6.1.1 — defense-in-depth, lihat catatan project-repository.ts.
+      if (Number(movedRow.rowsAffected ?? 0) === 0) {
+        throw new CardVersionConflictError(input.expectedVersion, loaded.current.version);
+      }
       // B.5 v1.0.2 — card.moved membawa from/to denormalisasi (list+board).
       await tx.execute(
         "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, 'card.moved', ?, ?)",
@@ -325,7 +329,7 @@ export class DrizzleCardRepository implements CardRepository {
       }
 
       const nextVersion = loaded.current.version + 1;
-      await tx.execute(
+      const updated = await tx.execute(
         "UPDATE cards SET title = ?, subtitle = ?, description = ?, due_date = ?, assignee_user_id = ?, archived_at = ?, deleted_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?",
         [
           next.title,
@@ -341,6 +345,10 @@ export class DrizzleCardRepository implements CardRepository {
           input.expectedVersion,
         ],
       );
+      // TASK-6.1.1 — defense-in-depth, lihat catatan project-repository.ts.
+      if (Number(updated.rowsAffected ?? 0) === 0) {
+        throw new CardVersionConflictError(input.expectedVersion, loaded.current.version);
+      }
       await tx.execute(
         "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'card', ?, ?, ?, ?, ?, ?)",
         [ulid(), input.cardId, nextVersion, input.actorUserId, action, JSON.stringify(data), now],

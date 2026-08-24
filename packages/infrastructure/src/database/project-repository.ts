@@ -133,10 +133,19 @@ export class DrizzleProjectRepository implements ProjectRepository {
       const now = new Date().toISOString();
       const next = buildNext(current, now, lifecycleBefore);
       const nextVersion = current.version + 1;
-      await tx.execute(
+      const updated = await tx.execute(
         "UPDATE project_state SET name = ?, updated_at = ?, archived_at = ?, deleted_at = ?, version = ? WHERE project_id = ? AND version = ?",
         [next.name, now, next.archivedAt, next.deletedAt, nextVersion, projectId, expectedVersion],
       );
+      // TASK-6.1.1 — defense-in-depth: pre-check di atas SUDAH cukup benar
+      // (baca+cek+tulis dalam satu tx "write" == BEGIN IMMEDIATE, 03-ENG
+      // baris 202, fully serialize concurrent writer), tapi rowsAffected=0
+      // di sini berarti invariant serialisasi itu somehow tidak terjaga —
+      // MUST gagal loud (bukan silent phantom-success) alih-alih lanjut
+      // menulis Activity untuk mutation yang sebenarnya tidak terjadi.
+      if (Number(updated.rowsAffected ?? 0) === 0) {
+        throw new ProjectVersionConflictError(expectedVersion, current.version);
+      }
       await tx.execute(
         "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'project', ?, ?, ?, ?, ?, ?)",
         [ulid(), projectId, nextVersion, actorUserId, next.activityAction, JSON.stringify(next.activityData), now],

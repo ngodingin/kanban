@@ -226,7 +226,7 @@ export class DrizzleBoardRepository implements BoardRepository {
       }
 
       const nextVersion = loaded.current.version + 1;
-      await tx.execute(
+      const updated = await tx.execute(
         "UPDATE boards SET title = ?, description = ?, archived_at = ?, deleted_at = ?, updated_at = ?, version = ? WHERE id = ? AND version = ?",
         [
           next.title,
@@ -239,6 +239,10 @@ export class DrizzleBoardRepository implements BoardRepository {
           input.expectedVersion,
         ],
       );
+      // TASK-6.1.1 — defense-in-depth, lihat catatan project-repository.ts.
+      if (Number(updated.rowsAffected ?? 0) === 0) {
+        throw new BoardVersionConflictError(input.expectedVersion, loaded.current.version);
+      }
       await tx.execute(
         "INSERT INTO activities (id, entity_type, entity_id, entity_version, actor_user_id, action, data, created_at) VALUES (?, 'board', ?, ?, ?, ?, ?, ?)",
         [ulid(), input.boardId, nextVersion, input.actorUserId, action, JSON.stringify(data), now],
