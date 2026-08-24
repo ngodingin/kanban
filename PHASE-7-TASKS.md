@@ -206,8 +206,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.14.1 | 🔄 | [CL-54](#cl-54) | 0 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.14.2 | 🔄 | [CL-54](#cl-54) | 0 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
+| 7.14.1 | 🔎 | [CL-54](#cl-54)<br>[CL-55](#cl-55) | 80 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.14.2 | 🔎 | [CL-54](#cl-54)<br>[CL-56](#cl-56) | 80 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
 
 **Test:** Mobile tidak menumpuk kolom vertikal; card detail full-screen.
 **DoD:** Responsive sesuai [05-FRONTEND §7](docs/05-FRONTEND.md).
@@ -240,7 +240,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi UI:** `apps/web/src/features/credentials/hooks.ts` dan `apps/web/src/features/credentials/credential-panels.tsx` dibaca ulang; PAT hanya memakai `/api/v1/me/personal-access-tokens` dan revoke nested `/revoke`, tidak menyentuh path `/projects/*`.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx apps/api/test/personal-access-tokens-route.test.ts apps/api/test/personal-access-tokens-route.test.ts packages/infrastructure/test/pat.test.ts"'` → **UI 4/4 PASS, API/domain 12/12 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx apps/api/test/personal-access-tokens-route.test.ts packages/infrastructure/test/pat.test.ts"'` → **UI 4/4 PASS; API route 5/5 PASS; domain/infrastructure 7/7 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -251,7 +251,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi UI:** `apps/web/src/features/credentials/hooks.ts` dan `apps/web/src/features/credentials/credential-panels.tsx` meng-unwarp `data.apiKey`, hanya menampilkan secret dari response create, dan list metadata tidak merender secret/hash.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx"'` → **4/4 PASS**. `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/api/test/api-keys-route.test.ts packages/infrastructure/test/api-key.test.ts"'` → **12/12 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/credentials.test.tsx"'` → **4/4 PASS**. `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/api/test/api-keys-route.test.ts packages/infrastructure/test/api-key.test.ts"'` → **API route 6/6 PASS; domain/infrastructure 10/10 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -286,7 +286,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi langsung:** `apps/web/src/features/cards/detail-hooks.ts` memblok `listId`, `version`, dan field domain lain di sisi klien, lalu selalu menambahkan `expectedVersion` untuk PATCH detail.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/cards-patch.test.ts packages/infrastructure/test/ac028-ac029.test.ts"'` → **UI 13/13 PASS, API/domain 10/10 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/cards-patch.test.ts packages/infrastructure/test/ac028-ac029.test.ts"'` → **UI 13/13 PASS; API route 5/5 PASS; domain/infrastructure 1/1 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -297,7 +297,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` hanya menampilkan tombol Edit untuk actor pemilik komentar; tidak ada jalur delete. `apps/web/src/features/comments/thread.ts` merangkai rantai `comment.added`/`comment.edited` tanpa menimpa activity historis.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/comments-create.test.ts apps/api/test/comments-edit.test.ts packages/infrastructure/test/ac012-comment-persist.test.ts"'` → **UI 13/13 PASS, API/domain 13/13 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/comments-create.test.ts apps/api/test/comments-edit.test.ts packages/infrastructure/test/ac012-comment-persist.test.ts"'` → **UI 13/13 PASS; API route 12/12 PASS; domain/infrastructure 1/1 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -308,7 +308,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 **Verifikasi langsung:** `apps/web/src/components/kanban/card-detail.tsx` merender timeline dari `useCardActivities()` sebagai daftar baca-saja; tidak ada tombol aksi di section timeline.
 
-**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/activities-list.test.ts"'` → **UI 13/13 PASS, API 7/7 PASS**.
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/card-detail.test.tsx apps/api/test/activities-list.test.ts"'` → **UI 13/13 PASS; API route 6/6 PASS**.
 
 **Verdict:** `✅ 100%`.
 
@@ -547,6 +547,16 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** test yang sama **13/13 PASS** — negatif: `buildCardPatch` melempar untuk `listId`/`version`/`id`; positif: whitelist `title|subtitle|description|dueDate|assignee` + `expectedVersion`; integrasi: simpan description mengirim PATCH body persis `{expectedVersion:4, description:"Desk revisi"}` (field domain tak pernah dikirim). Commit: `e80f492`.
 **Catatan:** guard ganda — UI memfilter sebelum kirim, server menegakkan C.15 (cards.ts:172-177).
+
+<a id="cl-55"></a>
+### CL-55 — 2026-08-25 · 7.14.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/responsive.test.tsx` **3/3 PASS** — sidebar `hidden md:flex` (mobile tersembunyi per §7), width `md:w-56` normal / `md:w-14` saat collapsed via ui-store. Verifikasi class-level (happy-dom tidak menghitung layout). `tsc --noEmit` + `eslint` + `vite build` hijau; suite penuh **132 file / 758 PASS**, exit 0. Commit: `14eca5e`.
+
+<a id="cl-56"></a>
+### CL-56 — 2026-08-25 · 7.14.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **3/3 PASS** — container board `overflow-x-auto flex-nowrap` dengan kolom `w-64 shrink-0` (tidak menumpuk vertikal di mobile, §7); CardDetailPanel `max-md:fixed inset-0 z-40 md:relative` = full-screen mobile. Commit: `14eca5e`.
 
 <a id="cl-54"></a>
 ### CL-54 — 2026-08-25 · 7.14.1 + 7.14.2 → 🔄
