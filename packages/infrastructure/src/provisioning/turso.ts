@@ -1,79 +1,77 @@
 const API = "https://api.turso.tech/v1";
-
 export interface TursoEnv {
-  org: string;
-  group: string;
-  apiToken: string;
+    org: string;
+    group: string;
+    apiToken: string;
 }
-
 export interface CreatedDatabase {
-  name: string;
-  hostname: string;
+    name: string;
+    hostname: string;
 }
-
-/**
- * Status HTTP terstruktur (bukan cuma di-embed ke pesan) — dipakai caller
- * yang perlu membedakan kelas error (mis. 404 "tidak ada" vs error lain)
- * tanpa string-matching rapuh terhadap `.message` (pelajaran CL-65).
- */
 export class TursoApiError extends Error {
-  readonly status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-    this.name = "TursoApiError";
-  }
+    readonly status: number;
+    constructor(status: number, message: string) {
+        super(message);
+        this.status = status;
+        this.name = "TursoApiError";
+    }
 }
-
 async function api<T>(env: TursoEnv, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${env.apiToken}`,
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  if (!res.ok) throw new TursoApiError(res.status, `Turso API ${res.status} ${path}: ${await res.text()}`);
-  return (await res.json()) as T;
+    const res = await fetch(`${API}${path}`, {
+        ...init,
+        headers: {
+            Authorization: `Bearer ${env.apiToken}`,
+            ...(init?.body ? { "Content-Type": "application/json" } : {}),
+            ...init?.headers,
+        },
+    });
+    if (!res.ok)
+        throw new TursoApiError(res.status, `Turso API ${res.status} ${path}: ${await res.text()}`);
+    return (await res.json()) as T;
 }
-
 export async function createDatabase(env: TursoEnv, name: string): Promise<CreatedDatabase> {
-  const body = await api<{ database: { Hostname: string } }>(
-    env,
-    `/organizations/${env.org}/databases?group=${env.group}`,
-    { method: "POST", body: JSON.stringify({ name, group: env.group }) },
-  );
-  return { name, hostname: body.database.Hostname };
+    const body = await api<{
+        database: {
+            Hostname: string;
+        };
+    }>(env, `/organizations/${env.org}/databases?group=${env.group}`, { method: "POST", body: JSON.stringify({ name, group: env.group }) });
+    return { name, hostname: body.database.Hostname };
 }
-
 export async function mintDatabaseToken(env: TursoEnv, name: string, expiration = "1y"): Promise<string> {
-  const body = await api<{ jwt: string }>(env, `/databases/${name}/auth/tokens`, {
-    method: "POST",
-    body: JSON.stringify({ expiration }),
-  });
-  return body.jwt;
+    const body = await api<{
+        jwt: string;
+    }>(env, `/databases/${name}/auth/tokens`, {
+        method: "POST",
+        body: JSON.stringify({ expiration }),
+    });
+    return body.jwt;
 }
-
 export async function deleteDatabase(env: TursoEnv, name: string): Promise<void> {
-  await api<{ database?: unknown }>(env, `/organizations/${env.org}/databases/${name}`, { method: "DELETE" });
+    await api<{
+        database?: unknown;
+    }>(env, `/organizations/${env.org}/databases/${name}`, { method: "DELETE" });
 }
-
 export async function databaseExists(env: TursoEnv, name: string): Promise<boolean> {
-  try {
-    await api<{ database?: unknown }>(env, `/organizations/${env.org}/databases/${name}`);
-    return true;
-  } catch (error) {
-    if (error instanceof TursoApiError && error.status === 404) return false;
-    throw error;
-  }
+    try {
+        await api<{
+            database?: unknown;
+        }>(env, `/organizations/${env.org}/databases/${name}`);
+        return true;
+    }
+    catch (error) {
+        if (error instanceof TursoApiError && error.status === 404)
+            return false;
+        throw error;
+    }
 }
-
 export async function getDatabase(env: TursoEnv, name: string): Promise<CreatedDatabase> {
-  const body = await api<{ database: { Hostname: string } }>(env, `/organizations/${env.org}/databases/${name}`);
-  return { name, hostname: body.database.Hostname };
+    const body = await api<{
+        database: {
+            Hostname: string;
+        };
+    }>(env, `/organizations/${env.org}/databases/${name}`);
+    return { name, hostname: body.database.Hostname };
 }
-
 export function projectDatabaseName(projectId: string): string {
-  return `proj-${projectId.toLowerCase().replace(/[^a-z0-9-]/g, "")}`;
+    return `proj-${projectId.toLowerCase().replace(/[^a-z0-9-]/g, "")}`;
 }

@@ -22,6 +22,34 @@
       "when": 1787394137460,
       "tag": "0002_permissions_key_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1787536173212,
+      "tag": "0003_idempotency_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1787539653946,
+      "tag": "0004_idempotency_atomic_claim",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1787545039645,
+      "tag": "0005_outstanding_aqueduct",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1787546010352,
+      "tag": "0006_round_ravenous",
+      "breakpoints": true
     }
   ]
 }
