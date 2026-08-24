@@ -193,8 +193,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.13.1 | 🔎 | [CL-30](#cl-30)<br>[CL-31](#cl-31) | 80 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
-| 7.13.2 | ⬜️ | — | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
-| 7.13.3 | ⬜️ | — | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
+| 7.13.2 | 🔄 | [CL-32](#cl-32) | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.3 | 🔄 | [CL-32](#cl-32) | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
 | 7.13.4 | ⬜️ | — | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
 **Test:** Tidak ada child handling; restore hanya untuk ARCHIVED dengan ancestor ACTIVE; DELETED terminal; local state descendant tidak berubah.
@@ -339,6 +339,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tidak ada bug produksi tersisa. Logic filter same-Milestone (inti goal ini) tidak pernah salah — hanya presentasi nama yang sekarang genuinely benar.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-32"></a>
+### CL-32 — 2026-08-25 · 7.13.2 + 7.13.3 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `d091c6c`, kedua row dibaca ulang dari disk `⬜️ 0%` (dependency 7.13.1 🔎 sisi Dev); Reference dibaca dari disk: 04-DELIVERY A.5 (cek ancestor chain → DENY dengan pesan "Pulihkan [parent] terlebih dahulu"; UI SHOULD tombol "Restore parent first"; entity DELETED tanpa tombol restore, hanya di Audit view sampai prune) dan INV-LIFE-002/004.
+**Catatan:** dua goal satu unit koheren (menu aksi lifecycle berbasis state): helper murni menentukan aksi yang tersedia per state (7.13.2) + klasifikasi penolakan restore ancestor-inactive menjadi hint shortcut "Restore parent first" (7.13.3). Handoff tetap per goal.
 
 <a id="cl-31"></a>
 ### CL-31 — 2026-08-25 · 7.13.1 → 🔎 80%

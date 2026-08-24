@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { LifecycleAction, LifecycleEntityKind } from "@/features/lifecycle/hooks";
 
 // Modal konfirmasi archive/delete (04-DELIVERY A.4): menjelaskan dampak
@@ -26,6 +27,7 @@ export function ConfirmLifecycleDialog({
   action,
   pending,
   error,
+  footerNote,
   onConfirm,
   onCancel,
 }: {
@@ -34,6 +36,7 @@ export function ConfirmLifecycleDialog({
   action: LifecycleAction;
   pending?: boolean;
   error?: string | null;
+  footerNote?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -53,6 +56,7 @@ export function ConfirmLifecycleDialog({
           {error}
         </p>
       ) : null}
+      {footerNote}
       <div className="mt-4 flex justify-end gap-2">
         <button type="button" onClick={onCancel} className="rounded-md border border-input px-3 py-1.5 text-sm">
           Batal
