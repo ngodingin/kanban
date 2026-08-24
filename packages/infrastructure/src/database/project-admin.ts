@@ -294,7 +294,16 @@ export async function deletePermissionGroup(globalClient: Client, projectId: str
     throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${groupId} tidak ditemukan di Project ini.`, 404);
   }
   const now = new Date().toISOString();
-  await db.update(permissionGroups).set({ deletedAt: now, updatedAt: now }).where(eq(permissionGroups.id, groupId)).run();
+  // BR-019/invariant #7 — conditional write + ownership via RETURNING:
+  // race dengan worker lain yang menang terdeteksi dan dikonsistenkan
+  // dengan kontrak sequential (sudah-deleted → 404).
+  const claimed = await db.update(permissionGroups)
+    .set({ deletedAt: now, updatedAt: now })
+    .where(and(eq(permissionGroups.id, groupId), isNull(permissionGroups.deletedAt)))
+    .returning({ id: permissionGroups.id });
+  if (claimed.length === 0) {
+    throw new PipelineError("RESOURCE_NOT_FOUND", `Permission Group ${groupId} tidak ditemukan di Project ini.`, 404);
+  }
   const updated = await db.select().from(permissionGroups).where(eq(permissionGroups.id, groupId));
   return (await attachPermissions(globalClient, updated))[0]!;
 }
@@ -394,9 +403,29 @@ export async function revokeGroupAssignment(
     return { id: row.id, membershipId: row.membershipId, groupId: row.groupId, scopeType: row.scopeType, scopeId: row.scopeId, createdAt: row.createdAt, revokedAt: row.revokedAt };
   }
   const now = new Date().toISOString();
-  await db.update(membershipGroupAssignments).set({ revokedAt: now })
-    .where(eq(membershipGroupAssignments.id, input.assignmentId)).run();
-  return { id: row.id, membershipId: row.membershipId, groupId: row.groupId, scopeType: row.scopeType, scopeId: row.scopeId, createdAt: row.createdAt, revokedAt: now };
+  // BR-019/invariant #7 — conditional write; race-loser mengembalikan state
+  // aktual milik pemenang (idempoten), bukan timestamp lokal.
+  const claimed = await db.update(membershipGroupAssignments).set({ revokedAt: now })
+    .where(and(
+      eq(membershipGroupAssignments.id, input.assignmentId),
+      isNull(membershipGroupAssignments.revokedAt),
+    ))
+    .returning({
+      id: membershipGroupAssignments.id,
+      membershipId: membershipGroupAssignments.membershipId,
+      groupId: membershipGroupAssignments.groupId,
+      scopeType: membershipGroupAssignments.scopeType,
+      scopeId: membershipGroupAssignments.scopeId,
+      createdAt: membershipGroupAssignments.createdAt,
+      revokedAt: membershipGroupAssignments.revokedAt,
+    });
+  if (claimed.length > 0) {
+    return { ...claimed[0]!, revokedAt: claimed[0]!.revokedAt };
+  }
+  const fresh = await db.select().from(membershipGroupAssignments)
+    .where(eq(membershipGroupAssignments.id, input.assignmentId));
+  const f = fresh[0]!;
+  return { id: f.id, membershipId: f.membershipId, groupId: f.groupId, scopeType: f.scopeType, scopeId: f.scopeId, createdAt: f.createdAt, revokedAt: f.revokedAt ?? now };
 }
 
 function parseCardReadVisibility(raw: string | null | undefined): "CREATED_BY_ME" | "ASSIGNED_TO_ME" | "ALL" {
@@ -496,9 +525,28 @@ export async function revokePermissionAssignment(
     return { id: row.id, membershipId: row.membershipId, permissionId: row.permissionId, scopeType: row.scopeType, scopeId: row.scopeId, cardReadVisibility: row.cardReadVisibility, createdAt: row.createdAt, revokedAt: row.revokedAt };
   }
   const now = new Date().toISOString();
-  await db.update(membershipPermissionAssignments).set({ revokedAt: now })
-    .where(eq(membershipPermissionAssignments.id, input.assignmentId)).run();
-  return { id: row.id, membershipId: row.membershipId, permissionId: row.permissionId, scopeType: row.scopeType, scopeId: row.scopeId, cardReadVisibility: row.cardReadVisibility, createdAt: row.createdAt, revokedAt: now };
+  const claimed = await db.update(membershipPermissionAssignments).set({ revokedAt: now })
+    .where(and(
+      eq(membershipPermissionAssignments.id, input.assignmentId),
+      isNull(membershipPermissionAssignments.revokedAt),
+    ))
+    .returning({
+      id: membershipPermissionAssignments.id,
+      membershipId: membershipPermissionAssignments.membershipId,
+      permissionId: membershipPermissionAssignments.permissionId,
+      scopeType: membershipPermissionAssignments.scopeType,
+      scopeId: membershipPermissionAssignments.scopeId,
+      cardReadVisibility: membershipPermissionAssignments.cardReadVisibility,
+      createdAt: membershipPermissionAssignments.createdAt,
+      revokedAt: membershipPermissionAssignments.revokedAt,
+    });
+  if (claimed.length > 0) {
+    return { ...claimed[0]!, revokedAt: claimed[0]!.revokedAt };
+  }
+  const fresh = await db.select().from(membershipPermissionAssignments)
+    .where(eq(membershipPermissionAssignments.id, input.assignmentId));
+  const f = fresh[0]!;
+  return { id: f.id, membershipId: f.membershipId, permissionId: f.permissionId, scopeType: f.scopeType, scopeId: f.scopeId, cardReadVisibility: f.cardReadVisibility, createdAt: f.createdAt, revokedAt: f.revokedAt ?? now };
 }
 
 export interface InvitationSummary {
@@ -615,90 +663,112 @@ export async function acceptInvitation(
   input: { invitationId: string; userId: string; userEmail: string },
 ): Promise<AcceptInvitationResult> {
   const db = drizzle(globalClient);
-  const rows = await db.select().from(invitations).where(eq(invitations.id, input.invitationId));
-  if (rows.length === 0) {
+  const pre = await db.select().from(invitations).where(eq(invitations.id, input.invitationId));
+  if (pre.length === 0) {
     throw new PipelineError("RESOURCE_NOT_FOUND", `Invitation ${input.invitationId} tidak ditemukan.`, 404);
   }
-  const invitation = rows[0]!;
   const now = new Date().toISOString();
-  // BR-054A: email validation — non-specific error to prevent enumeration
-  if (input.userEmail.toLowerCase() !== invitation.email.toLowerCase()) {
+  // BR-054A — email check boleh di luar tx (tidak state-dependent).
+  if (input.userEmail.toLowerCase() !== pre[0]!.email.toLowerCase()) {
     throw new PipelineError("PERMISSION_DENIED", "Tidak dapat menerima invitation ini.", 403);
-  }
-  if (invitation.revokedAt !== null) {
-    throw new PipelineError("INVALID_STATE", "Invitation sudah di-revoke.", 409);
-  }
-  if (invitation.acceptedAt !== null) {
-    throw new PipelineError("INVITATION_ALREADY_USED", "Invitation sudah pernah diterima.", 409);
-  }
-  if (Date.parse(invitation.expiresAt) <= Date.parse(now)) {
-    throw new PipelineError("INVITATION_EXPIRED", "Invitation sudah kedaluwarsa.", 409);
-  }
-  const existingMembership = await db.select().from(projectMemberships)
-    .where(sql`${projectMemberships.projectId} = ${invitation.projectId} AND ${projectMemberships.userId} = ${input.userId}`);
-  const groupRows = await db.select().from(invitationGroupAssignments)
-    .where(eq(invitationGroupAssignments.invitationId, invitation.id));
-  if (groupRows.length === 0) {
-    throw new PipelineError("INVITATION_EXPIRED", "Invitation tidak memiliki assignment yang valid.", 409);
   }
 
   let membershipId = "";
-  await runInDrizzleWriteTransaction(db, async (tx) => {
-    if (existingMembership.length > 0) {
-      // BR-054B: reactivate revoked membership
-      const existing = existingMembership[0]!;
-      if (existing.revokedAt === null) {
-        throw new PipelineError("INVALID_STATE", "User sudah menjadi member aktif pada Project ini.", 409);
-      }
-      membershipId = existing.id;
-      await tx.update(projectMemberships).set({ revokedAt: null }).where(eq(projectMemberships.id, membershipId)).run();
-      // BR-053: revoke old active assignments before inserting new ones (preserve history)
-      await tx.update(membershipGroupAssignments).set({ revokedAt: now }).where(
-        sql`${membershipGroupAssignments.membershipId} = ${membershipId} AND ${membershipGroupAssignments.revokedAt} IS NULL`,
-      ).run();
-      await tx.update(membershipPermissionAssignments).set({ revokedAt: now }).where(
-        sql`${membershipPermissionAssignments.membershipId} = ${membershipId} AND ${membershipPermissionAssignments.revokedAt} IS NULL`,
-      ).run();
-    } else {
-      membershipId = ulid();
-      await tx.insert(projectMemberships).values({
-        id: membershipId,
-        projectId: invitation.projectId,
-        userId: input.userId,
-        createdAt: now,
-        revokedAt: null,
-      }).run();
-    }
-    for (const row of groupRows) {
-      await tx.insert(membershipGroupAssignments).values({
-        id: ulid(),
-        membershipId,
-        groupId: row.groupId,
-        scopeType: row.scopeType,
-        scopeId: row.scopeId,
-        createdAt: now,
-        revokedAt: null,
-      }).run();
-    }
-    await tx.update(invitations).set({ acceptedAt: now }).where(eq(invitations.id, invitation.id)).run();
-  });
-  return {
-    projectId: invitation.projectId,
-    membershipId,
-    userId: input.userId,
-    acceptedAt: now,
-    appliedGroupAssignments: groupRows.map((r) => ({ groupId: r.groupId, scopeType: r.scopeType, scopeId: r.scopeId })),
-    invitation: {
-      id: invitation.id,
-      email: invitation.email,
-      expiresAt: invitation.expiresAt,
-      acceptedAt: now,
-      revokedAt: invitation.revokedAt,
-      createdAt: invitation.createdAt,
-    },
-  };
-}
+  let result!: AcceptInvitationResult;
 
+  // BR-019/invariant #7 (QA-CL-07) — seluruh validasi current-state dipindah
+  // ke DALAM transaksi; race accept-vs-revoke diselesaikan oleh conditional
+  // write terakhir sehingga accepted+revoked mustahil bersamaan.
+  await runInDrizzleWriteTransaction(db, async (tx) => {
+    const rows = await tx.select().from(invitations).where(eq(invitations.id, input.invitationId));
+    const invitation = rows[0];
+    if (!invitation) {
+      throw new PipelineError("RESOURCE_NOT_FOUND", `Invitation ${input.invitationId} tidak ditemukan.`, 404);
+    }
+    if (invitation.revokedAt !== null) {
+      throw new PipelineError("INVALID_STATE", "Invitation sudah di-revoke.", 409);
+    }
+    if (invitation.acceptedAt !== null) {
+      throw new PipelineError("INVITATION_ALREADY_USED", "Invitation sudah pernah diterima.", 409);
+    }
+    if (Date.parse(invitation.expiresAt) <= Date.parse(now)) {
+      throw new PipelineError("INVITATION_EXPIRED", "Invitation sudah kedaluwarsa.", 409);
+    }
+    const existingMembership = await tx.select().from(projectMemberships)
+      .where(sql`${projectMemberships.projectId} = ${invitation.projectId} AND ${projectMemberships.userId} = ${input.userId}`);
+    const groupRows = await tx.select().from(invitationGroupAssignments)
+      .where(eq(invitationGroupAssignments.invitationId, invitation.id));
+    if (groupRows.length === 0) {
+      throw new PipelineError("INVITATION_EXPIRED", "Invitation tidak memiliki assignment yang valid.", 409);
+    }
+
+
+      if (existingMembership.length > 0) {
+        // BR-054B: reactivate revoked membership
+        const existing = existingMembership[0]!;
+        if (existing.revokedAt === null) {
+          throw new PipelineError("INVALID_STATE", "User sudah menjadi member aktif pada Project ini.", 409);
+        }
+        membershipId = existing.id;
+        await tx.update(projectMemberships).set({ revokedAt: null }).where(eq(projectMemberships.id, membershipId)).run();
+        // BR-053: revoke old active assignments before inserting new ones (preserve history)
+        await tx.update(membershipGroupAssignments).set({ revokedAt: now }).where(
+          sql`${membershipGroupAssignments.membershipId} = ${membershipId} AND ${membershipGroupAssignments.revokedAt} IS NULL`,
+        ).run();
+        await tx.update(membershipPermissionAssignments).set({ revokedAt: now }).where(
+          sql`${membershipPermissionAssignments.membershipId} = ${membershipId} AND ${membershipPermissionAssignments.revokedAt} IS NULL`,
+        ).run();
+      } else {
+        membershipId = ulid();
+        await tx.insert(projectMemberships).values({
+          id: membershipId,
+          projectId: invitation.projectId,
+          userId: input.userId,
+          createdAt: now,
+          revokedAt: null,
+        }).run();
+      }
+      for (const row of groupRows) {
+        await tx.insert(membershipGroupAssignments).values({
+          id: ulid(),
+          membershipId,
+          groupId: row.groupId,
+          scopeType: row.scopeType,
+          scopeId: row.scopeId,
+          createdAt: now,
+          revokedAt: null,
+        }).run();
+      }
+      // Finalize conditional — kalah race → INVALID_STATE (accepted+revoked mustahil).
+      const claimedInv = await tx.update(invitations).set({ acceptedAt: now })
+        .where(and(
+          eq(invitations.id, invitation.id),
+          isNull(invitations.acceptedAt),
+          isNull(invitations.revokedAt),
+        ))
+        .returning({ id: invitations.id });
+      if (claimedInv.length === 0) {
+        throw new PipelineError("INVALID_STATE", "Invitation sudah di-revoke oleh request lain.", 409);
+      }
+
+      result = {
+        projectId: invitation.projectId,
+        membershipId,
+        userId: input.userId,
+        acceptedAt: now,
+        appliedGroupAssignments: groupRows.map((r) => ({ groupId: r.groupId, scopeType: r.scopeType, scopeId: r.scopeId })),
+        invitation: {
+          id: invitation.id,
+          email: invitation.email,
+          expiresAt: invitation.expiresAt,
+          acceptedAt: now,
+          revokedAt: invitation.revokedAt,
+          createdAt: invitation.createdAt,
+        },
+      };
+  });
+  return result;
+}
 export interface ProjectMemberSummary {
   membershipId: string;
   userId: string;
@@ -864,8 +934,19 @@ export async function revokeInvitation(
   const now = new Date().toISOString();
   let revokedAt = invitation.revokedAt;
   if (revokedAt === null) {
+    // BR-019/invariant #7 — conditional write; kalah race terhadap accept
+    // → INVALID_STATE (kombinasi accepted+revoked mustahil).
+    const claimed = await db.update(invitations).set({ revokedAt: now })
+      .where(and(
+        eq(invitations.id, input.invitationId),
+        isNull(invitations.revokedAt),
+        isNull(invitations.acceptedAt),
+      ))
+      .returning({ id: invitations.id });
+    if (claimed.length === 0) {
+      throw new PipelineError("INVALID_STATE", "Invitation sudah diterima dan tidak dapat di-revoke.", 409);
+    }
     revokedAt = now;
-    await db.update(invitations).set({ revokedAt }).where(eq(invitations.id, input.invitationId)).run();
   }
   return {
     id: invitation.id,
