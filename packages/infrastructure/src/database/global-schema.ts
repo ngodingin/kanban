@@ -106,6 +106,8 @@ export const projectMemberships = sqliteTable(
       .references(() => users.id),
     createdAt: text("created_at").notNull(),
     revokedAt: text("revoked_at"),
+    /** BR-054C — guard lintas-DB: pending memblok assignee baru, authorization tetap sampai revoked_at. */
+    revocationPendingAt: text("revocation_pending_at"),
   },
   (t) => [uniqueIndex("project_memberships_project_user_unique").on(t.projectId, t.userId)],
 );

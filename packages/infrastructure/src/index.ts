@@ -84,6 +84,7 @@ export {
   type PermissionGroupSummary,
   type ProjectMemberSummary,
   type UpdatePermissionGroupInput,
+  assertAssigneeNotRevocationPending,
   getMembershipInProject,
   listMembershipAssignments,
   assertPermissionKey,

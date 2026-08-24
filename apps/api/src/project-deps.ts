@@ -20,6 +20,7 @@ import {
   RequestPipeline,
   requireActiveMember,
   revokeGroupAssignment,
+  assertAssigneeNotRevocationPending,
   revokeMembership,
   revokeInvitation,
   revokePermissionAssignment,
@@ -156,7 +157,8 @@ export function buildCardRoutesDeps(input: BuildCardRoutesDepsInput): CardRoutes
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
     newCardId: newProjectId,
-    assertAssigneeActiveMember: (projectId, userId) => requireActiveMember(globalClient, projectId, userId),
+    assertAssigneeActiveMember: (projectId, userId) =>
+      assertAssigneeNotRevocationPending(globalClient, projectId, userId),
   };
 }
 

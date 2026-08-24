@@ -1,5 +1,5 @@
 import type { Client } from "@libsql/client";
-import { asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
 import { ulid } from "ulid";
 import {
@@ -42,6 +42,30 @@ export async function hasActiveMembership(globalClient: Client, projectId: strin
 // Authorization interim Phase 1 (lihat CL-25): read = member aktif,
 // mutasi = Owner-only. Project tak dikenal → RESOURCE_NOT_FOUND sebelum
 // pemeriksaan membership.
+/**
+ * BR-054C (2) — guard khusus pemilihan assignee BARU: membership harus aktif
+ * DAN tidak sedang `revocation_pending_at`. Authorization lama tetap berlaku
+ * sampai `revoked_at` commit — guard ini HANYA memblok assignment baru.
+ */
+export async function assertAssigneeNotRevocationPending(
+  globalClient: Client,
+  projectId: string,
+  userId: string,
+): Promise<void> {
+  await requireActiveMember(globalClient, projectId, userId);
+  const result = await globalClient.execute({
+    sql: "SELECT revocation_pending_at FROM project_memberships WHERE project_id = ? AND user_id = ? AND revoked_at IS NULL AND revocation_pending_at IS NOT NULL LIMIT 1",
+    args: [projectId, userId],
+  });
+  if (result.rows[0]) {
+    throw new PipelineError(
+      "INVALID_STATE",
+      "User sedang dalam proses pencabutan Membership — tidak dapat dipilih sebagai assignee baru (BR-054C).",
+      409,
+    );
+  }
+}
+
 export async function requireActiveMember(globalClient: Client, projectId: string, userId: string): Promise<void> {
   const ownerId = await getProjectOwnerId(globalClient, projectId);
   if (ownerId === null) {
@@ -733,18 +757,48 @@ export async function revokeMembership(
   if (membership.revokedAt === null && membership.userId === (await getProjectOwnerId(globalClient, input.projectId))) {
     throw new PipelineError("INVALID_STATE", "Owner Membership tidak dapat di-revoke — Project wajib memiliki tepat satu Owner aktif (FR-002).", 409);
   }
+
+  // BR-054C — protokol lintas-DB retryable:
+  // (1) claim conditional `revocation_pending_at` (idempotent untuk retry —
+  //     claim kedua adalah no-op; proses tetap dilanjutkan sebagai recovery).
   let revokedAt = membership.revokedAt;
   if (revokedAt === null) {
-    revokedAt = new Date().toISOString();
-    await db.update(projectMemberships).set({ revokedAt }).where(eq(projectMemberships.id, input.membershipId)).run();
-  }
-  if (projectDb) {
-    await cleanupAssigneesForRevokedMembership(
-      projectDb,
-      input.projectId,
-      membership.userId,
-      input.actorUserId ?? membership.userId,
-    );
+    // BR-054C (1) — claim conditional `revocation_pending_at`. Retry setelah
+    // crash menemui pending sudah terisi: claim ini no-op dan alur tetap
+    // dilanjutkan sebagai recovery (idempotent).
+    await db.update(projectMemberships)
+      .set({ revocationPendingAt: new Date().toISOString() })
+      .where(and(
+        eq(projectMemberships.id, input.membershipId),
+        isNull(projectMemberships.revokedAt),
+        isNull(projectMemberships.revocationPendingAt),
+      ))
+      .run();
+
+    // BR-054C (3) — cleanup SELURUH Card + satu Activity per Card dalam SATU
+    // transaksi Project DB. Gagal di sini = rollback penuh; pending guard
+    // tetap aktif (authorization belum dicabut) sampai retry.
+    if (projectDb) {
+      await cleanupAssigneesForRevokedMembership(
+        projectDb,
+        input.projectId,
+        membership.userId,
+        input.actorUserId ?? membership.userId,
+      );
+    }
+
+    // BR-054C (4) — finalisasi conditional: `revoked_at` + clear pending.
+    // Authorization baru benar-benar dicabut pada commit ini.
+    const finalizedAt = new Date().toISOString();
+    await db.update(projectMemberships)
+      .set({ revokedAt: finalizedAt, revocationPendingAt: null })
+      .where(and(
+        eq(projectMemberships.id, input.membershipId),
+        isNull(projectMemberships.revokedAt),
+        isNotNull(projectMemberships.revocationPendingAt),
+      ))
+      .run();
+    revokedAt = finalizedAt;
   }
   const userRows = await globalClient.execute({ sql: "SELECT email, name FROM users WHERE id = ?", args: [membership.userId] });
   return {

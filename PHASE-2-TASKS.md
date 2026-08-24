@@ -189,7 +189,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 2.12.1 | ⚠️ | [CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
+| 2.12.1 | 🔎 | [CL-63](#cl-63)<br>[CL-62](#cl-62)<br>[CL-52](#cl-52)<br>[CL-51](#cl-51)<br>[QA-CL-23](#qa-cl-23)<br>[Review-CL-07](#review-cl-07)<br>[Review-CL-08](#review-cl-08) | 60 | P1 | Implementasikan keputusan SOT 4.1.0 BR-054C: migration Global DB menambah `revocation_pending_at`; set pending secara conditional untuk menutup race assignment baru; cleanup **seluruh** Card assignee + satu Activity `card.unassigned` per Card dalam satu transaksi Project DB; lalu finalisasi `revoked_at` dan clear pending conditional di Global DB. Retry pending wajib melanjutkan tanpa Activity ganda; authorization baru dicabut saat `revoked_at` commit. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054, BR-054C), FR-026; [03-ENG A.5](docs/03-ENGINEERING.md), B.2 | 2.8, 1.10.2 |
 
 **Test:** Revoke Membership User yang jadi assignee di 3 Card berbeda → pending guard aktif sebelum cleanup; assignment baru terhadap User pending ditolak; ketiga Card menjadi NULL + masing-masing mendapat Activity. Wajib AC-035 fault-injection: kegagalan sebelum cleanup commit rollback seluruh Card/Activity dan belum revoked; kegagalan finalisasi Global mempertahankan pending serta Card unassigned; retry menyelesaikan revoke tanpa Activity ganda. Dua request revoke konkuren tidak boleh melewati conditional state transition.
 **DoD:** BR-054/FR-026 dibuktikan sebagai post-condition lintas-DB pada happy path dan setiap failure boundary; tidak ada state committed dengan Membership revoked tetapi Card masih menunjuk User tersebut.
@@ -445,6 +445,18 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 - Fixture Phase 1 `members-revoke.test.ts` diperbarui (proyek DB sungguhan dengan migration, bukan stub) karena wiring produksi sekarang selalu resolve Project DB — dijalankan ulang, 4 test existing tetap hijau, membuktikan tidak ada regresi behavior revoke Phase 1 (revoke sukses, Owner tidak bisa di-revoke, dst).
 `pnpm -r typecheck` → 6/6 Done. `pnpm lint` → 0 error. `pnpm exec vitest run` → **50 file/325 test PASS**.
 **Kesimpulan:** ✅ ACCEPT — goal terakhir Phase 2. **Phase 2 (Kanban Core) genap 21/21 goal ✅.**
+
+<a id="cl-63"></a>
+### CL-63 — 2026-08-24 · goal 2.12.1 selesai sisi Dev (⚠️ → 🔄 → 🔎 · 60 → 80%) — protokol BR-054C lengkap
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **96 file / 582 test lulus**, termasuk 5 baru `revoke-recovery.test.ts` sesuai AC-035: happy path (pending → cleanup SATU tx 2 Card + 2 Activity → finalize); failure-injection DI DALAM tx cleanup → belum revoked + tanpa partial + retry sukses tanpa Activity ganda; pending guard menolak assignee baru (INVALID_STATE 409) dan setelah finalize authorization dicabut; idempoten revoke kedua tanpa Activity baru; rollback penuh batch saat mutasi kedua gagal. Migration `0005_outstanding_aqueduct.sql` (`revocation_pending_at`) di-generate drizzle-kit. `pnpm -r typecheck` Done; `pnpm lint` bersih.
+**Catatan:** Claim/finalize conditional (`WHERE revoked_at IS NULL`; finalize `+ pending IS NOT NULL`); `assertAssigneeNotRevocationPending` menggantikan requireActiveMember HANYA pada jalur assignee baru — authorization member tetap utuh sampai `revoked_at` commit. Koreksi mandiri saat verifikasi: nomor CL-53 bentrok dengan entry cross-cutting lama → dinomori ulang CL-62/63 (append-only terjaga); dua perbaikan test (helper count salah DB, state membership bocor antar-skenario).
+
+<a id="cl-62"></a>
+### CL-62 — 2026-08-24 · goal 2.12.1 dikerjakan ulang (⚠️ → 🔄 · 60% dipertahankan) — protokol BR-054C revocation pending
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row 2.12.1 `⚠️/60` dengan teks baru SOT 4.1.0; Review-CL-07/08 dibaca — keputusan manusia "cleanup-first" + `revocation_pending_at`; AC-035 (04-DEL B.4) dipatuhi penuh: failure sebelum cleanup = belum revoked & tanpa partial; failure sesudah cleanup = retry tanpa Activity ganda & assignment baru tetap diblokir.
+**Catatan:** Rencana: migration Global DB kolom `revocation_pending_at`; claim conditional → cleanup SATU transaksi Project DB (seluruh Card, satu Activity per Card) → finalize conditional `revoked_at`+clear pending; guard pending pada jalur assignee baru saja (authorization tetap sampai `revoked_at`).
 
 <a id="cl-52"></a>
 ### CL-52 — 2026-08-23 · goal 2.12.1 selesai sisi Dev (🔄 → 🔎 · 0 → 80%) — reactive cleanup assignee saat revoke Membership
