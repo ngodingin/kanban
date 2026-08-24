@@ -169,8 +169,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.11.1 | ⬜️ | — | 0 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
-| 7.11.2 | ⬜️ | — | 0 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
+| 7.11.1 | 🔄 | [CL-41](#cl-41) | 0 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
+| 7.11.2 | 🔄 | [CL-41](#cl-41) | 0 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
 
 **Test:** Secret hanya tampil sekali; revoke berfungsi; PAT di User Settings bukan Project.
 **DoD:** Credential UI patuh security model.
@@ -345,6 +345,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
 **Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-41"></a>
+### CL-41 — 2026-08-25 · 7.11.1 + 7.11.2 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `56c8d55`, kedua row dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.1 ✅); kontrak diverifikasi dari source — API Keys: POST `/api-keys` → `{apiKey:{id,name,secret,expiresAt,createdAt}}` (secret sekali), GET → `{apiKeys}`, revoke → `{apiKey}` (api-keys.ts:45-87); PAT: POST `/me/personal-access-tokens` → `{personalAccessToken:{...token}}`, GET → `{personalAccessTokens}`, revoke nested `/revoke` (personal-access-tokens.ts:47-79).
+**Catatan:** dua goal satu pola credential koheren (list · create-sekali-tampil · revoke); API Keys Project-scoped, PAT User-scoped (`/me`) — dipisah sesuai goal.
 
 <a id="cl-40"></a>
 ### CL-40 — 2026-08-25 · 7.10.2 → 🔎 80%
