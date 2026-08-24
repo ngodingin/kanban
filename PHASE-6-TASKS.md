@@ -68,7 +68,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.2.1 | 🔄 | [CL-04](#cl-04) | 0 | P1 | Ganti parsing manual (`readTitleField`/`readOptionalStringField`/dst, `apps/api/src/routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`) dengan skema Zod eksplisit per payload (create/update/move) — validasi tipe, required/optional, dan batas (mis. `title` non-empty string) di satu titik per entity, error digabung ke `VALIDATION_ERROR.details` (sudah ada pola collect-all dari `TASK-0.17.4`, reuse helper yang sama — JANGAN bikin mekanisme kedua). | [02-SPEC C.2](docs/02-SPEC.md) (VALIDATION_ERROR), C.5, C.8; [03-ENG A.8](docs/03-ENGINEERING.md) (Zod terkunci) | — |
+| 6.2.1 | 🔎 | [CL-05](#cl-05)<br>[CL-04](#cl-04) | 80 | P1 | Ganti parsing manual (`readTitleField`/`readOptionalStringField`/dst, `apps/api/src/routes/milestones.ts`, `boards.ts`, `lists.ts`, `cards.ts`) dengan skema Zod eksplisit per payload (create/update/move) — validasi tipe, required/optional, dan batas (mis. `title` non-empty string) di satu titik per entity, error digabung ke `VALIDATION_ERROR.details` (sudah ada pola collect-all dari `TASK-0.17.4`, reuse helper yang sama — JANGAN bikin mekanisme kedua). | [02-SPEC C.2](docs/02-SPEC.md) (VALIDATION_ERROR), C.5, C.8; [03-ENG A.8](docs/03-ENGINEERING.md) (Zod terkunci) | — |
 | 6.2.2 | ⬜️ | — | 0 | P1 | Sama seperti 6.2.1 untuk `labels.ts`, `card-labels.ts`, `comments.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.9–C.11 | — |
 | 6.2.3 | ⬜️ | — | 0 | P1 | Sama seperti 6.2.1 untuk `project-admin.ts` (Membership/Permission Group/scoped assignment/Invitation) dan `api-keys.ts`/`personal-access-tokens.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.12–C.14 | — |
 | 6.2.4 | ⬜️ | — | 0 | P2 | Sama seperti 6.2.1 untuk `projects.ts`. | [02-SPEC C.2](docs/02-SPEC.md), C.4 | — |
@@ -213,7 +213,13 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 **Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `—`; seluruh pola parsing manual di milestones/boards/lists/cards.ts dipetakan (title trim-nonempty, optional string/null, progress int 0–100, expectedVersion int≥1, assignee trim/null, move destinationListId). Zod 4.4.3 terkunci di root/infrastructure — apps/api perlu tambah dep exact-pin.
 **Catatan:** Bridge tunggal `parseBody(schema, body)` → PipelineError VALIDATION_ERROR + details collect-all (reuse semantik TASK-0.17.4); pesan error Indonesia dipertahankan identik; loop C.15/BR-017 unknown-field TETAP di tempatnya (pesan spesifik).
 
-<a id="cl-01"></a>
+<a id="cl-05"></a>
+### CL-05 — 2026-08-24 · goal 6.2.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — Zod schemas core routes
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `pnpm exec vitest run` → **102 file / 628 test lulus** (seluruh test existing hijau tanpa modifikasi = bukti parity perilaku); `pnpm -r typecheck` Done; lint bersih. Implementasi: `core-schemas.ts` — bridge `parseBody` (ZodError → VALIDATION_ERROR + details collect-all, SATU mekanisme reuse semantik TASK-0.17.4) + skema milestoneCreate/Patch, boardCreate/Patch, listCreate/Patch, cardCreate/Patch, cardMove; pesan validasi Indonesia dipertahankan identik; loop C.15/BR-017 unknown-field tetap dengan rawBody. Test baru `core-schemas-validation.test.ts`: multi-field invalid → details lengkap; payload valid → trim+default parity.
+**Catatan:** apps/api tambah dep exact-pin `zod@4.4.3`. Lifecycle endpoints tetap readExpectedVersionField. **Catatan prosedural:** update row/CL tertinggal dari commit kode 3b343ce (pola row Gate A tidak berkaki `<br>` menyebabkan regex Gate B meleset) — dilengkapi pada commit ini sesuai §6.1.
+
+<a id="cl-01"></a><a id="cl-01"></a>
 ### CL-01 — 2026-08-24 · goals 6.1.1, 6.1.2, 6.4.1 — audit optimistic-locking + concurrency test + audit-consistency mutation→Activity (⬜️×3 → 🔎×3 · 0 → 80%)
 **Role:** AI-Dev · **Model:** claude-sonnet-5 (Claude Code)
 
