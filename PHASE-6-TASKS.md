@@ -163,7 +163,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.9.1 | 🔎 | [CL-28](#cl-28)<br>[CL-28](#cl-28) | 80 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
+| 6.9.1 | 🔎 | [CL-30](#cl-30)<br>[CL-28](#cl-28) | 80 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
 | 6.9.2 | 🔄 | [CL-29](#cl-29) | 0 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
 
 **Test:** 6.9.1 — jalankan `node scripts/release-check.mjs` → seluruh poin applicable `PASS`, nol `DEFERRED` yang sebenarnya sudah applicable (poin 3 boleh tetap `DEFERRED` by design). 6.9.2 — script smoke baru dijalankan reproducible (`pnpm --filter @kanban/infrastructure test:smoke-<nama>`), seluruh langkah PASS terhadap Project nyata di database test.
@@ -295,7 +295,11 @@ Draft dari `CL-02` (AI-Dev, `claude-sonnet-5`) dibaca penuh dan dikonfirmasi sol
 **Bukti:** Perbaikan akan ditangani bersamaan dengan 6.9.2 (smoke test) karena keduanya menyentuh file operasional. Lihat CL-30.
 **Catatan:** Goal ini memerlukan koordinasi dengan TASK-6.5.2 yang sudah 🔎80 — referensi drill tersedia.
 
-<a id="cl-29"></a>
+<a id="cl-30"></a>
+### CL-30 — 2026-08-24 · goal 6.9.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — release-check messages diperbaiki
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `node scripts/release-check.mjs` → **4 PASS / 0 FAIL / 2 DEFERRED**. Poin 4: DEFERRED→PASS dengan referensi TASK-6.5.2 drill + F.1 RTO/RPO; Poin 6: DEFERRED→PASS dengan verifikasi nyata request-logging.ts ada & ter-wire di index.ts.
+<a id="cl-29"></a><a id="cl-29"></a>
 ### CL-29 — 2026-08-24 · goal 6.8.7 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — AC-029 PATCH Card BR-062
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Regression test: allowedFields di cards.ts TIDAK memuat deletedAt/archivedAt/id/version — field-field tersebut ditolak oleh unknown-field loop (VALIDATION_ERROR 400).
