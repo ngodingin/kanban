@@ -69,7 +69,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.3.3 | ⬜️ | — | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.3.3 | 🔄 | [CL-63](#cl-63) | 0 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Navigasi antar Project mengganti context; Inbox tidak ada; breadcrumb akurat.
 **DoD:** Shell context-aware; tidak menampilkan elemen non-MVP.
@@ -181,7 +181,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | ⬜️ | — | 0 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | 🔄 | [CL-62](#cl-62) | 0 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -557,6 +557,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ### CL-58 — 2026-08-25 · 7.2.2 → 🔎 80%
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/design-tokens-2.test.ts` **6/6 PASS** — positif: `@import "@fontsource-variable/inter"` self-host exact-pin `5.3.0` di package.json; `--font-sans: "Inter Variable"`; skala §2.2 lengkap 12 token (H1 32/40 w700, H2 24/32 w600, H3 20/28 w600, Body 14/20, Small 12/16); body memakai `font-sans`. Koreksi test: asersi placeholder diganti daftar substring eksplisit. Suite penuh **133 file / 764 PASS**, exit 0. Commit: `24f9859`.
+
+<a id="cl-62"></a>
+### CL-62 — 2026-08-25 · 7.12.1 → 🔄
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** freshness check: HEAD `54536b5`, row 7.12.1 dibaca ulang dari disk `⬜️ 0%` (dependency 7.3.1 ✅); Reference 05-FRONTEND §3.1 (command palette OPSIONAL — hanya navigasi/aksi yang sudah ada; bukan search engine) + §5.
+**Catatan:** aksi Create/Move/Archive Card memanggil domain command yang SAMA dengan UI biasa (tanpa bypass rule); navigasi = route existing.
 
 <a id="cl-61"></a>
 ### CL-61 — 2026-08-25 · 7.4.2 → 🔎 80%
