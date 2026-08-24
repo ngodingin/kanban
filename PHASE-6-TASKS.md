@@ -187,6 +187,23 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
+<a id="review-cl-04"></a>
+### Review-CL-04 — 2026-08-25 · verifikasi total independen TASK-6.8/6.9 (23/23 Phase 6) — Exit Criteria genuinely terpenuhi, 1 temuan minor non-blocking
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5 (dengan 2 sub-agent paralel `claude-sonnet-5`: spot-check 7 test AC-gap TASK-6.8, spot-check TASK-6.9 release-check.mjs + smoke E2E)
+
+**Konteks:** sesi Dev+QA paralel menutup `TASK-6.8` (7 goal) dan `TASK-6.9` (2 goal) yang dibuka [Review-CL-03](#review-cl-03) — Phase 6 klaim 23/23 ✅. Diminta verifikasi total independen ulang sebelum gate Phase 7 dipertimbangkan.
+
+**Verifikasi definitif dijalankan ulang sendiri:** `pnpm -r typecheck` → 6/6 Done; `pnpm lint` → bersih; `pnpm exec vitest run` → **111 file/657 test PASS** (naik dari 633, konsisten penambahan test TASK-6.8/6.9); `node scripts/release-check.mjs` → **5 PASS/0 FAIL/1 DEFERRED** (poin 3 tetap DEFERRED by design, bukan gap).
+
+**Spot-check kode independen TASK-6.8 (sub-agent 1)** — ketujuh test file dibaca langsung + dijalankan ulang (`17/17 PASS`): 6.8.1/6.8.2 (AC-006/007, satu file `ac006-card-read.test.ts`) genuinely membuktikan creator/assignee tanpa grant ditolak akses; 6.8.3 (AC-012) genuinely membuktikan comment historis terbaca pasca-delete via read-path asli; 6.8.4 (AC-019) genuinely membuktikan rollback GABUNGAN listId+version+label+Activity via proxy injection tepat sasaran (dikonfirmasi lewat trace SQL literal di `card-repository.ts`); 6.8.5 (AC-025) genuinely membuktikan assignment eksklusif ke scope Milestone yang benar (cakupan sedikit sempit — hanya skenario single-scope, bukan kelemahan fatal); 6.8.6 (AC-028) genuinely membuktikan Co-Owner tetap bukan Owner via 2 lapis pembuktian (HTTP + repository layer); 6.8.7 (AC-029) genuinely membuktikan BR-062 ditegakkan untuk Card, pola persis entity lain. **Tidak ada test lemah/asal-lulus ditemukan** — histori CL sendiri (QA-CL-14/16/17/18/19) mencatat versi *sebelumnya* sempat lemah, tapi remediasi (CL-43/45/47/51) genuinely memperbaikinya dan versi final di disk sudah solid.
+
+**Spot-check independen TASK-6.9 (sub-agent 2):** 6.9.1 (`release-check.mjs`) genuinely benar — dijalankan ulang, output persis klaim; poin 2/6 memakai mekanisme cek NYATA (file-existence + string-check), bukan pesan statis. 6.9.2 (smoke E2E) genuinely benar SECARA FUNGSIONAL — dijalankan ulang `10/10 PASS`, rangkaian 9 langkah lengkap (invite→accept→milestone→board→list→card→comment→move→archive→restore→delete, state mengalir berurutan lintas satu Project nyata, assertion cek state akhir bukan cuma "tidak throw"). **TAPI ditemukan gap kepatuhan DoD literal**: goal 6.9.2 eksplisit meminta pola `packages/infrastructure/scripts/smoke-*.ts` + entry `package.json` `test:smoke-*` — implementasi aktual ditaruh di `apps/api/test/core-flow-smoke.test.ts` (file vitest biasa dijalankan via `pnpm exec vitest run`, BUKAN script standalone), dan TIDAK terdaftar sebagai entry `test:smoke-*` baru. Deviasi ini konsisten sejak awal (CL-36) tapi tidak pernah didiskusikan/dijustifikasi eksplisit di Closure Log manapun.
+
+**Keputusan atas temuan gap 6.9.2:** MURNI ketidaksesuaian DoD-teks-literal, BUKAN gap fungsional/perilaku (cakupan behavioral genuinely solid, dikonfirmasi independen). Tidak dibuka sebagai goal baru/tidak mengembalikan ke Dev — dicatat sebagai temuan referensi, konsisten pola Review-CL-19/21 sebelumnya untuk temuan non-blocking. Jika relokasi file diinginkan di masa depan, itu murni housekeeping opsional.
+
+**Kesimpulan:** Phase 6 (23/23 goal) genuinely tuntas secara substansi — seluruh 36 AC (`04-DELIVERY B.4`) sekarang genuinely teruji (29 dikonfirmasi [Review-CL-03](#review-cl-03), 7 gap ditutup `TASK-6.8` dan dikonfirmasi ulang di sini), F.6 Release Checklist genuinely mencerminkan state repo nyata (`TASK-6.9`). **Exit Criteria Phase 6 genuinely terpenuhi.** Pembukaan gate Phase 7 (⏸️→⬜️) TIDAK dieksekusi di entry ini — itu memerlukan regenerasi penuh `PHASE-7-TASKS.md` terhadap state API/repo terkini (bukan cuma toggle status, sesuai catatan metodologi C.6 di file itu sendiri) dan merupakan scope kerja terpisah, menunggu keputusan/instruksi eksplisit manusia untuk memulainya (pola konsisten pembukaan Phase 6 sebelumnya).
+
 <a id="qa-cl-13"></a>
 ### QA-CL-13 — 2026-08-24 · goal 6.8.1/6.8.2 — bug otorisasi nyata diperbaiki dan dibuktikan, tapi lint gagal (🔎 80% → ⚠️ 70% keduanya)
 
