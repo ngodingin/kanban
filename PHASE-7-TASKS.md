@@ -193,8 +193,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.13.1 | 🔎 | [CL-30](#cl-30)<br>[CL-31](#cl-31) | 80 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
-| 7.13.2 | 🔄 | [CL-32](#cl-32) | 0 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
-| 7.13.3 | 🔄 | [CL-32](#cl-32) | 0 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
+| 7.13.2 | 🔎 | [CL-32](#cl-32)<br>[CL-33](#cl-33) | 80 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.3 | 🔎 | [CL-32](#cl-32)<br>[CL-34](#cl-34) | 80 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
 | 7.13.4 | ⬜️ | — | 0 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
 **Test:** Tidak ada child handling; restore hanya untuk ARCHIVED dengan ancestor ACTIVE; DELETED terminal; local state descendant tidak berubah.
@@ -339,6 +339,18 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tidak ada bug produksi tersisa. Logic filter same-Milestone (inti goal ini) tidak pernah salah — hanya presentasi nama yang sekarang genuinely benar.**
 
 **Verdict:** `✅ 100%`.
+
+<a id="cl-33"></a>
+### CL-33 — 2026-08-25 · 7.13.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/lifecycle-guards.test.tsx` **6/6 PASS** — positif: `availableLifecycleActions` ACTIVE→[archive,delete], ARCHIVED→[restore]; menu ARCHIVED hanya merender tombol Pulihkan. Negatif: DELETED→[] dan komponen merender **nol** tombol (terminal, tanpa restore — INV-LIFE-002/004). Suite penuh 721 PASS. Commit: `e9934e9`.
+**Catatan:** helper murni dari local state (`archivedAt`/`deletedAt`) — tidak ada tombol restore untuk DELETED; audit view read-only adalah 7.13.4.
+
+<a id="cl-34"></a>
+### CL-34 — 2026-08-25 · 7.13.3 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **6/6 PASS** — positif: `describeRestoreBlock` mengenali INVALID_STATE dan mengekstrak ancestor dari pesan pola server A.5 ("karena Board induknya masih ARCHIVED" → ancestorKind "board"); skenario end-to-end fetch-stub: restore List → 409 INVALID_STATE → alert dalam dialog + tombol shortcut **"Restore board first"** yang benar-benar POST `/api/v1/projects/p1/boards/b1/restore` dengan `{expectedVersion:5}` milik parent. Negatif: PERMISSION_DENIED tidak memunculkan shortcut. Koreksi selama pengerjaan: regex ancestor (kata setelah "karena", bukan entity pertama) + shortcut dirender di dalam dialog via prop `footerNote`. Commit: `e9934e9`.
+**Catatan:** shortcut aktif memenuhi "UI SHOULD tampilkan tombol Restore parent first, bukan hanya pesan error pasif" (A.5); tanpa info parent, hint tetap tampil tanpa tombol.
 
 <a id="cl-32"></a>
 ### CL-32 — 2026-08-25 · 7.13.2 + 7.13.3 → 🔄
