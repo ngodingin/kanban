@@ -132,7 +132,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.8.1 | 🔎 | [CL-24](#cl-24)<br>[CL-25](#cl-25) | 80 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
+| 7.8.1 | ✅ | [QA-CL-08](#qa-cl-08)<br>[CL-24](#cl-24)<br>[CL-25](#cl-25) | 100 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
 | 7.8.2 | ⬜️ | — | 0 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
 
 **Test:** Activity read-only; entity terhapus tetap terbaca via payload historis.
@@ -238,6 +238,23 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** `npx vitest run apps/web/test/board-move-guard.test.tsx` **4/4 PASS** — positif: `siblingBoards(boards,"m1","b1")` hanya mengembalikan board Milestone sama non-diri (`Sprint 1 — Backup`); `useBoards` mengambil `GET /api/v1/projects/p1/milestones/m1/boards` (scoping per-Milestone struktural, boards.ts:80). Commit: `4adf434`. Suite penuh 700 PASS (lihat CL-21).
 **Catatan:** kandidat move antar Board dijamin same-Milestone dua lapis: endpoint sudah scoped + filter UI mengecualikan board asal.
+
+<a id="qa-cl-08"></a>
+### QA-CL-08 — 2026-08-25 · goal 7.8.1 closed ✅ (🔎 80% → ✅ 100%) — field/envelope shape genuinely cross-checked terhadap API asli (pelajaran QA-CL-07 diterapkan)
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Mengingat bug yang baru ditemukan di 7.3.2 (QA-CL-07: mock-di-level-hook menutupi mismatch envelope/field-name), goal ini diperiksa dengan perhatian khusus pada hal yang sama — hasilnya BERSIH.** `hooks.ts`'s `useActivities` genuinely mendeklarasikan `apiRequest<{ activities: ActivityEntry[] }>(...)` (BUKAN flat, sudah antisipasi wrapper) — dicocokkan langsung ke `apps/api/src/routes/activities.ts:67/90` (`return { activities: records.map(activityPayload) }`) — cocok persis. Seluruh 7 field `ActivityEntry` (`id/entityType/entityId/entityVersion/actorUserId/action/data/createdAt`) dicocokkan satu-satu ke `activityPayload` (`activities.ts:18-27`) — genuinely identik, tidak ada field karangan/salah nama.
+
+**`groupByDay` adalah fungsi murni, diuji langsung tanpa mock apa pun** (bukan lewat komponen) — genuinely membuktikan logic pengelompokan hari + urutan waktu menurun benar, independen dari layer data-fetching.
+
+**Test lain memang tetap mock di level hook (kelemahan metodologi sama seperti 7.3.2)** — TAPI dicocokkan manual (di atas) bahwa `entry()` helper test menghasilkan bentuk yang PERSIS sama dengan `activityPayload` produksi, sehingga tidak ada divergence tersembunyi di sini.
+
+**Re-run independen:** `npx vitest run apps/web/test/activity-timeline.test.tsx` → **4/4 PASS**. `pnpm --filter @kanban/web typecheck` → bersih. `pnpm lint` → 0 error. Read-only genuinely dikonfirmasi: `activity-timeline.tsx` tidak punya `<button>`/handler mutasi apa pun.
+
+**Tidak ada bug produksi ditemukan.**
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-25"></a>
 ### CL-25 — 2026-08-25 · 7.8.1 → 🔎 80%
