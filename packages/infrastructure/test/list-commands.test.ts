@@ -222,7 +222,7 @@ describe("update/archive/delete List — A.3 / AC-020 / FR-023 (goal 2.6.1)", ()
     const activity = await db.client.execute(
       "SELECT data FROM activities WHERE entity_id = 'ls_ok' AND action = 'list.restored'",
     );
-    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previous_state: "ARCHIVED" });
+    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previousState: "ARCHIVED" });
   });
 
   it("[A.3] delete dari ARCHIVED diizinkan dengan previous_state ARCHIVED", async () => {
@@ -240,7 +240,7 @@ describe("update/archive/delete List — A.3 / AC-020 / FR-023 (goal 2.6.1)", ()
     const activity = await db.client.execute(
       "SELECT data, entity_version FROM activities WHERE entity_id = 'ls_d' AND action = 'list.deleted'",
     );
-    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previous_state: "ARCHIVED" });
+    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previousState: "ARCHIVED" });
     expect(Number(activity.rows[0]!.entity_version)).toBe(2);
   });
 

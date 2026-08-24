@@ -177,7 +177,7 @@ describe("Milestone Label domain commands — C.11/INV-LIFE (goal 3.3.1)", () =>
     const all = await labelActivities("ml_ad");
     expect(all).toHaveLength(1); // hanya archived — label di-seed langsung, bukan via create
     expect(all[0]!.action).toBe("milestone_label.archived");
-    expect(JSON.parse(all[0]!.data)).toEqual({ previous_state: "ACTIVE" });
+    expect(JSON.parse(all[0]!.data)).toEqual({ previousState: "ACTIVE" });
 
     await seedLabel("ml_e");
     await expect(

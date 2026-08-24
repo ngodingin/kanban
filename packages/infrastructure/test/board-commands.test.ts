@@ -248,7 +248,7 @@ describe("update/archive/delete Board — state machine A.3 / AC-020 (goal 2.4.1
     const activity = await db.client.execute(
       "SELECT data FROM activities WHERE entity_id = 'bd_ok' AND action = 'board.restored'",
     );
-    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previous_state: "ARCHIVED" });
+    expect(JSON.parse(String(activity.rows[0]!.data))).toEqual({ previousState: "ARCHIVED" });
   });
 
   it("[BR-013] positif: archive Board tidak mengubah List/Card descendant", async () => {

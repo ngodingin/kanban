@@ -105,7 +105,7 @@ describe("DrizzleProjectRepository — project lifecycle domain commands (goal 1
 
       const acts = await listActivities();
       expect(acts[0]).toMatchObject({ action: "project.archived", entity_version: 2 });
-      expect(JSON.parse(acts[0].data)).toEqual({ previous_state: "ACTIVE" });
+      expect(JSON.parse(acts[0].data)).toEqual({ previousState: "ACTIVE" });
     });
 
     it("restoreProject dari ARCHIVED mengosongkan archived_at dan menulis Activity project.restored", async () => {
@@ -117,7 +117,7 @@ describe("DrizzleProjectRepository — project lifecycle domain commands (goal 1
 
       const acts = await listActivities();
       expect(acts[0]).toMatchObject({ action: "project.restored", entity_version: 3 });
-      expect(JSON.parse(acts[0].data)).toEqual({ previous_state: "ARCHIVED" });
+      expect(JSON.parse(acts[0].data)).toEqual({ previousState: "ARCHIVED" });
     });
 
     it("deleteProject dari ARCHIVED diizinkan (state machine A.3: ARCHIVED -> DELETED)", async () => {
@@ -128,7 +128,7 @@ describe("DrizzleProjectRepository — project lifecycle domain commands (goal 1
 
       const acts = await listActivities();
       expect(acts[0]).toMatchObject({ action: "project.deleted", entity_version: 3 });
-      expect(JSON.parse(acts[0].data)).toEqual({ previous_state: "ARCHIVED" });
+      expect(JSON.parse(acts[0].data)).toEqual({ previousState: "ARCHIVED" });
     });
 
     it("deleteProject dari ACTIVE diizinkan (state machine A.3: ACTIVE -> DELETED)", async () => {
@@ -137,7 +137,7 @@ describe("DrizzleProjectRepository — project lifecycle domain commands (goal 1
       expect(result.deletedAt).not.toBeNull();
 
       const acts = await listActivities();
-      expect(JSON.parse(acts[0].data)).toEqual({ previous_state: "ACTIVE" });
+      expect(JSON.parse(acts[0].data)).toEqual({ previousState: "ACTIVE" });
     });
 
     it("siklus archive lalu restore menghasilkan dua Activity terpisah dan version monoton naik (BR-019)", async () => {

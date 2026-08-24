@@ -289,7 +289,7 @@ describe("archive/restore/delete — state machine A.3 (goal 2.2.1)", () => {
     expect(archived.deletedAt).toBeNull();
     const [activity] = await listActivities("ms_arc");
     expect(activity!.action).toBe("milestone.archived");
-    expect(JSON.parse(activity!.data)).toEqual({ previous_state: "ACTIVE" });
+    expect(JSON.parse(activity!.data)).toEqual({ previousState: "ACTIVE" });
   });
 
   it("[A.3] negatif: archive dari ARCHIVED ditolak; delete dari DELETED ditolak (terminal)", async () => {
@@ -328,7 +328,7 @@ describe("archive/restore/delete — state machine A.3 (goal 2.2.1)", () => {
     expect(restored.version).toBe(2);
     const [activity] = await listActivities("ms_ok");
     expect(activity!.action).toBe("milestone.restored");
-    expect(JSON.parse(activity!.data)).toEqual({ previous_state: "ARCHIVED" });
+    expect(JSON.parse(activity!.data)).toEqual({ previousState: "ARCHIVED" });
   });
 
   it("[INV-LIFE-004] negatif: restore entity DELETED selalu ditolak walau ancestor ACTIVE", async () => {
@@ -350,7 +350,7 @@ describe("archive/restore/delete — state machine A.3 (goal 2.2.1)", () => {
     expect(deleted.deletedAt).not.toBeNull();
     expect(deleted.archivedAt).not.toBeNull(); // BR-013 — archived_at tidak disentuh delete
     const [activity] = await listActivities("ms_d");
-    expect(JSON.parse(activity!.data)).toEqual({ previous_state: "ARCHIVED" });
+    expect(JSON.parse(activity!.data)).toEqual({ previousState: "ARCHIVED" });
     expect(activity!.entity_version).toBe(2);
   });
 });

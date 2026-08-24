@@ -178,7 +178,7 @@ export class DrizzleMilestoneRepository implements MilestoneRepository {
       } else if (operation === "archive") {
         next.archivedAt = now;
         action = "milestone.archived";
-        data = { previous_state: "ACTIVE" };
+        data = { previousState: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 — local ARCHIVED sudah dicek; ancestor Project harus ACTIVE.
         const decision = evaluateRestore(loaded.lifecycleBefore, [projectBefore]);
@@ -192,11 +192,11 @@ export class DrizzleMilestoneRepository implements MilestoneRepository {
         }
         next.archivedAt = null;
         action = "milestone.restored";
-        data = { previous_state: "ARCHIVED" };
+        data = { previousState: "ARCHIVED" };
       } else {
         next.deletedAt = now;
         action = "milestone.deleted";
-        data = { previous_state: loaded.lifecycleBefore };
+        data = { previousState: loaded.lifecycleBefore };
       }
 
       const nextVersion = loaded.current.version + 1;

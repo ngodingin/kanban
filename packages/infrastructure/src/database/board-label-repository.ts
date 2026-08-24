@@ -180,7 +180,7 @@ export class DrizzleBoardLabelRepository implements BoardLabelRepository {
       } else if (operation === "archive") {
         next.archivedAt = now;
         action = `${ACTIVITY_ENTITY}.archived`;
-        data = { previous_state: "ACTIVE" };
+        data = { previousState: "ACTIVE" };
       } else if (operation === "restore") {
         const projectRow = (
           await tx.execute("SELECT archived_at, deleted_at FROM project_state LIMIT 1")
@@ -197,11 +197,11 @@ export class DrizzleBoardLabelRepository implements BoardLabelRepository {
         }
         next.archivedAt = null;
         action = `${ACTIVITY_ENTITY}.restored`;
-        data = { previous_state: "ARCHIVED" };
+        data = { previousState: "ARCHIVED" };
       } else {
         next.deletedAt = now;
         action = `${ACTIVITY_ENTITY}.deleted`;
-        data = { previous_state: loaded.lifecycleBefore };
+        data = { previousState: loaded.lifecycleBefore };
       }
 
       const nextVersion = loaded.current.version + 1;

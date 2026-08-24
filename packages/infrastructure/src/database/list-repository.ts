@@ -161,7 +161,7 @@ export class DrizzleListRepository implements ListRepository {
       } else if (operation === "archive") {
         next.archivedAt = now;
         action = "list.archived";
-        data = { previous_state: "ACTIVE" };
+        data = { previousState: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 — local ARCHIVED sudah dicek; chain Board→Milestone→Project ACTIVE semua.
         const decision = evaluateRestore(loaded.lifecycleBefore, [chain.boardState, ...chain.upperStates]);
@@ -175,11 +175,11 @@ export class DrizzleListRepository implements ListRepository {
         }
         next.archivedAt = null;
         action = "list.restored";
-        data = { previous_state: "ARCHIVED" };
+        data = { previousState: "ARCHIVED" };
       } else {
         next.deletedAt = now;
         action = "list.deleted";
-        data = { previous_state: loaded.lifecycleBefore };
+        data = { previousState: loaded.lifecycleBefore };
       }
 
       const nextVersion = loaded.current.version + 1;

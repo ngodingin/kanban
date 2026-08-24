@@ -198,7 +198,7 @@ export class DrizzleBoardRepository implements BoardRepository {
       } else if (operation === "archive") {
         next.archivedAt = now;
         action = "board.archived";
-        data = { previous_state: "ACTIVE" };
+        data = { previousState: "ACTIVE" };
       } else if (operation === "restore") {
         // INV-LIFE-002/004 — local ARCHIVED sudah dicek; chain Milestone+Project harus ACTIVE.
         const decision = evaluateRestore(loaded.lifecycleBefore, [milestoneBefore, projectBefore]);
@@ -218,11 +218,11 @@ export class DrizzleBoardRepository implements BoardRepository {
         }
         next.archivedAt = null;
         action = "board.restored";
-        data = { previous_state: "ARCHIVED" };
+        data = { previousState: "ARCHIVED" };
       } else {
         next.deletedAt = now;
         action = "board.deleted";
-        data = { previous_state: loaded.lifecycleBefore };
+        data = { previousState: loaded.lifecycleBefore };
       }
 
       const nextVersion = loaded.current.version + 1;

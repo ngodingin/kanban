@@ -73,7 +73,7 @@ export class DrizzleProjectRepository implements ProjectRepository {
       archivedAt: now,
       deletedAt: null,
       activityAction: "project.archived",
-      activityData: { previous_state: "ACTIVE" },
+      activityData: { previousState: "ACTIVE" },
     }));
   }
 
@@ -83,7 +83,7 @@ export class DrizzleProjectRepository implements ProjectRepository {
       archivedAt: null,
       deletedAt: null,
       activityAction: "project.restored",
-      activityData: { previous_state: "ARCHIVED" },
+      activityData: { previousState: "ARCHIVED" },
     }));
   }
 
@@ -93,7 +93,7 @@ export class DrizzleProjectRepository implements ProjectRepository {
       archivedAt: current.archivedAt,
       deletedAt: now,
       activityAction: "project.deleted",
-      activityData: { previous_state: lifecycleBefore },
+      activityData: { previousState: lifecycleBefore },
     }));
   }
 
