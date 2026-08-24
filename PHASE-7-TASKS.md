@@ -118,10 +118,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.7.1 | 🔄 | — | 0 | P1 | Tab Details: description, assignee, due date, labels, **current List** (bukan "status") | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.6.1 |
-| 7.7.2 | 🔄 | — | 0 | P1 | Tab Activity: timeline immutable | [02-SPEC A.8](docs/02-SPEC.md) | 7.8.1 |
-| 7.7.3 | 🔄 | — | 0 | P0 | Comments: add + edit (tanpa delete); tolak pada card deleted/archived | [02-SPEC A.9](docs/02-SPEC.md), [BR-033](docs/02-SPEC.md) | 7.7.1 |
-| 7.7.4 | 🔄 | [Review-CL-02](#review-cl-02) | 0 | P0 | Edit field via generic update hanya untuk field mutable; `listId` dan domain field `version` dilarang, sedangkan command metadata `expectedVersion` tetap wajib | [02-SPEC C.8, C.15](docs/02-SPEC.md) | 7.7.1 |
+| 7.7.1 | 🔎 | [CL-46](#cl-46)<br>[CL-47](#cl-47) | 80 | P1 | Tab Details: description, assignee, due date, labels, **current List** (bukan "status") | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.6.1 |
+| 7.7.2 | 🔎 | [CL-46](#cl-46)<br>[CL-48](#cl-48) | 80 | P1 | Tab Activity: timeline immutable | [02-SPEC A.8](docs/02-SPEC.md) | 7.8.1 |
+| 7.7.3 | 🔎 | [CL-46](#cl-46)<br>[CL-49](#cl-49) | 80 | P0 | Comments: add + edit (tanpa delete); tolak pada card deleted/archived | [02-SPEC A.9](docs/02-SPEC.md), [BR-033](docs/02-SPEC.md) | 7.7.1 |
+| 7.7.4 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-46](#cl-46)<br>[CL-50](#cl-50) | 80 | P0 | Edit field via generic update hanya untuk field mutable; `listId` dan domain field `version` dilarang, sedangkan command metadata `expectedVersion` tetap wajib | [02-SPEC C.8, C.15](docs/02-SPEC.md) | 7.7.1 |
 
 **Test:** "current List" tidak dimodelkan sebagai status; comment tak bisa dihapus & ditolak pada card non-active; PATCH tak bisa ubah field domain.
 **DoD:** Card Detail patuh domain; tidak ada priority/progress.
@@ -133,7 +133,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.8.1 | ✅ | [QA-CL-08](#qa-cl-08)<br>[CL-24](#cl-24)<br>[CL-25](#cl-25) | 100 | P1 | Timeline historis grouped by day/time (audit, bukan notification feed) | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC A.8](docs/02-SPEC.md) | 7.3.1 |
-| 7.8.2 | 🔄 | — | 0 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
+| 7.8.2 | 🔎 | [CL-46](#cl-46)<br>[CL-51](#cl-51) | 80 | P1 | Render payload memakai konteks historis (nama List lama tetap tampil) | [03-ENG B.5](docs/03-ENGINEERING.md), [BR-028](docs/02-SPEC.md) | 7.8.1 |
 
 **Test:** Activity read-only; entity terhapus tetap terbaca via payload historis.
 **DoD:** Timeline = audit trail, immutable, bermakna historis.
@@ -381,6 +381,32 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** ox-alpha (opencode)
 **Bukti:** temuan QA diverifikasi dari disk: `members-table.test.tsx` test #2 memakai `void waitFor(...).then(...)` pada fungsi test sinkron — assertion floating, tak pernah memengaruhi hasil (durasi 3ms vs 41ms/8ms test serupa). Kontrak API dikonfirmasi QA genuinely benar (tidak ada pola bug 7.3.2/7.5.3).
 **Catatan:** perbaikan = test dijadikan async + `await findByText` + asersi sinkron setelahnya; ditambah asersi negatif bahwa invitation accepted TIDAK dirender sebagai baris Pending (maksud asli assertion yang mati itu). Catatan proaktif: QA-CL-16 menyinggung `describeRestoreBlock` (scope 7.13.3) yang regex-nya tidak cocok format pesan server aktual — Dev mengetahui dan menunggu penolakan formal 7.13.3 untuk remediasinya, tidak mencampur scope di commit ini.
+
+<a id="cl-47"></a>
+### CL-47 — 2026-08-25 · 7.7.1 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** `npx vitest run apps/web/test/card-detail.test.tsx` **13/13 PASS** (fetch-stub, envelope nyata) — positif: field domain tampil (description/due/assignee/labels) dan **current List dirender label "List" dengan judul dari `GET /lists/:id`** ("Todo"); asersi negatif: tidak ada label "Status" (§4). Commit: `e80f492`.
+
+<a id="cl-48"></a>
+### CL-48 — 2026-08-25 · 7.7.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **13/13 PASS** — tab Activity merender grup hari + aksi dari endpoint kartu (`/cards/:id/activities`) dan **read-only**: nol `<button>` di dalam section timeline. Commit: `e80f492`.
+
+<a id="cl-49"></a>
+### CL-49 — 2026-08-25 · 7.7.3 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **13/13 PASS** — positif: `deriveCommentThread` merangkai rantai edit (`comment.added`+`comment.edited{commentActivityId,before,after}`) ke body terkini; tambah komentar POST `{body}`; edit PATCH `/comments/:activity_id`. Negatif: tombol Edit hanya milik actor session; tanpa session → nol tombol Edit; nol tombol delete di mana pun (C.10). Commit: `e80f492`.
+
+<a id="cl-50"></a>
+### CL-50 — 2026-08-25 · 7.7.4 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **13/13 PASS** — negatif: `buildCardPatch` melempar untuk `listId`/`version`/`id`; positif: whitelist `title|subtitle|description|dueDate|assignee` + `expectedVersion`; integrasi: simpan description mengirim PATCH body persis `{expectedVersion:4, description:"Desk revisi"}` (field domain tak pernah dikirim). Commit: `e80f492`.
+**Catatan:** guard ganda — UI memfilter sebelum kirim, server menegakkan C.15 (cards.ts:172-177).
+
+<a id="cl-51"></a>
+### CL-51 — 2026-08-25 · 7.8.2 → 🔎 80%
+**Role:** AI-Dev · **Model:** ox-alpha (opencode)
+**Bukti:** test yang sama **13/13 PASS** — `describeActivity` memakai konteks historis payload B.5: moved → `Dipindahkan dari List “Todo Lama” ke “Review”` (nama lama tetap tampil dari `data.from.listTitle`, tanpa lookup state kini); comment.edited → teks after; archived → previousState; fallback = action mentah tanpa pengarangan. Commit: `e80f492`.
 
 <a id="cl-46"></a>
 ### CL-46 — 2026-08-25 · 7.7.1 + 7.7.2 + 7.7.3 + 7.7.4 + 7.8.2 → 🔄
