@@ -46,8 +46,3 @@ export function extractIdempotencyKey(headers: { get(name: string): string | nul
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
-
-export interface IdempotencyStore {
-  get(key: string, scope: string): Promise<unknown | null>;
-  put(key: string, scope: string, result: unknown): Promise<void>;
-}

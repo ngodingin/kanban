@@ -10,7 +10,9 @@ import {
   type MilestoneLabelRecord,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, ValidationCollector, type OpenProjectContext } from "./projects.ts";
+import { authorize, readExpectedVersionField, readJsonObject, toApiErrorResponse, ValidationCollector, type OpenProjectContext,
+  withIdempotentHandling, type IdempotencyStoreLike,
+} from "./projects.ts";
 
 function readLabelNameField(rawName: unknown): string {
   if (typeof rawName !== "string" || rawName.trim().length === 0) {
@@ -21,12 +23,14 @@ function readLabelNameField(rawName: unknown): string {
 
 export interface MilestoneLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
+  idempotencyStore?: IdempotencyStoreLike;
   newMilestoneLabelId(): string;
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
 }
 
 export interface BoardLabelRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
+  idempotencyStore?: IdempotencyStoreLike;
   newBoardLabelId(): string;
   openProjectContext(request: Request, projectId: string): Promise<OpenProjectContext>;
 }
@@ -89,7 +93,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
   });
 
   router.post("/v1/projects/:project_id/milestones/:milestone_id/labels", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -114,11 +118,11 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
         actorUserId: ctx.userId,
       });
       return { label: labelPayload(created) };
-    }, 201);
+    }, 201, getDeps().idempotencyStore);
   });
 
   router.patch("/v1/projects/:project_id/milestones/:milestone_id/labels/:label_id", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -145,7 +149,7 @@ export function createMilestoneLabelsRouter(getDeps: () => MilestoneLabelRoutesD
         ...(name === undefined ? {} : { name }),
       });
       return { label: labelPayload(updated) };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   const lifecycleCommands = {
@@ -197,7 +201,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
   });
 
   router.post("/v1/projects/:project_id/boards/:board_id/labels", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -222,11 +226,11 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
         actorUserId: ctx.userId,
       });
       return { label: boardLabelPayload(created) };
-    }, 201);
+    }, 201, getDeps().idempotencyStore);
   });
 
   router.patch("/v1/projects/:project_id/boards/:board_id/labels/:label_id", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -253,7 +257,7 @@ export function createBoardLabelsRouter(getDeps: () => BoardLabelRoutesDeps): Ho
         ...(name === undefined ? {} : { name }),
       });
       return { label: boardLabelPayload(updated) };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   const lifecycleCommands = {

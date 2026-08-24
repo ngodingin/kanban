@@ -91,7 +91,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
 
   router.post("/v1/projects/:project_id/milestones", async (c) => {
     const deps = getDeps();
-    return withIdempotentHandling(c, deps, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "milestone.create", projectId);
@@ -146,7 +146,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
     });
   });
 
-  router.patch("/v1/projects/:project_id/milestones/:milestone_id", async (c) => {    return withErrorHandling(c, async () => {
+  router.patch("/v1/projects/:project_id/milestones/:milestone_id", async (c) => {    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -182,7 +182,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
         dueDate,
       });
       return { milestone: milestonePayload(updated) };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   const lifecycleCommands = {
@@ -197,7 +197,7 @@ export function createMilestonesRouter(getDeps: () => MilestoneRoutesDeps): Hono
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/milestones/:milestone_id/${action}`, async (c) => {
       const deps = getDeps();
-      return withIdempotentHandling(c, deps, async () => {
+      return withIdempotentHandling(c, getDeps(), async () => {
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
         await authorize(ctx, `milestone.${action}`, projectId, { type: "milestone", id: c.req.param("milestone_id") });

@@ -50,6 +50,7 @@ export interface BuildProjectRoutesDepsInput {
 // Perakitan deps produksi dipisah dari index.ts agar jalur ini sendiri
 // dapat dilewati test routing (invariant #4 / BR-007 / A.4) tanpa Vercel,
 // Better Auth, maupun jaringan — lihat apps/api/test/project-routing.test.ts.
+
 export function buildProjectRoutesDeps(input: BuildProjectRoutesDepsInput): ProjectRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
@@ -110,10 +111,12 @@ export interface BuildMilestoneRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildMilestoneRoutesDeps(input: BuildMilestoneRoutesDepsInput): MilestoneRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
     newMilestoneId: newProjectId,
   };
 }
@@ -124,10 +127,12 @@ export interface BuildBoardRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildBoardRoutesDeps(input: BuildBoardRoutesDepsInput): BoardRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
     newBoardId: newProjectId,
   };
 }
@@ -138,10 +143,12 @@ export interface BuildListRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildListRoutesDeps(input: BuildListRoutesDepsInput): ListRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
     newListId: newProjectId,
   };
 }
@@ -152,10 +159,12 @@ export interface BuildCardRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildCardRoutesDeps(input: BuildCardRoutesDepsInput): CardRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
     newCardId: newProjectId,
     assertAssigneeActiveMember: (projectId, userId) =>
       assertAssigneeNotRevocationPending(globalClient, projectId, userId),
@@ -168,9 +177,12 @@ export interface BuildActivityRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildActivityRoutesDeps(input: BuildActivityRoutesDepsInput): ActivityRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
-  return buildProjectContextDeps(identityResolver, globalClient, turso);
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+  }
 }
 
 export interface BuildCommentRoutesDepsInput {
@@ -179,9 +191,13 @@ export interface BuildCommentRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildCommentRoutesDeps(input: BuildCommentRoutesDepsInput): CommentRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
-  return buildProjectContextDeps(identityResolver, globalClient, turso);
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
+  };
 }
 
 export interface BuildCardLabelRoutesDepsInput {
@@ -190,9 +206,13 @@ export interface BuildCardLabelRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildCardLabelRoutesDeps(input: BuildCardLabelRoutesDepsInput): CardLabelRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
-  return buildProjectContextDeps(identityResolver, globalClient, turso);
+  return {
+    ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
+  };
 }
 
 export interface BuildMilestoneLabelRoutesDepsInput {
@@ -201,10 +221,12 @@ export interface BuildMilestoneLabelRoutesDepsInput {
   turso: TursoEnv | null;
 }
 
+
 export function buildMilestoneLabelRoutesDeps(input: BuildMilestoneLabelRoutesDepsInput): MilestoneLabelRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
   return {
     ...buildProjectContextDeps(identityResolver, globalClient, turso),
+    idempotencyStore: new DbIdempotencyStore(globalClient),
     newMilestoneLabelId: newProjectId,
   };
 }
@@ -214,6 +236,7 @@ export interface BuildBoardLabelRoutesDepsInput {
   globalClient: Client;
   turso: TursoEnv | null;
 }
+
 
 export function buildBoardLabelRoutesDeps(input: BuildBoardLabelRoutesDepsInput): BoardLabelRoutesDeps {
   const { identityResolver, globalClient, turso } = input;
@@ -266,6 +289,7 @@ function buildProjectContextDeps(
 // Deps untuk router admin Global-DB (permission groups, assignments,
 // invitations, members) — pola sama dengan buildProjectRoutesDeps agar
 // wiring produksi selalu dapat dilewati test (pelajaran QA-CL-04).
+
 export function buildProjectAdminDeps(input: {
   identityResolver: IdentityResolver;
   globalClient: Client;
@@ -274,6 +298,7 @@ export function buildProjectAdminDeps(input: {
   const { identityResolver, globalClient, turso } = input;
   const databaseResolver = new SqliteProjectDatabaseResolver(globalClient);
   const projectClientFactory = createCachedProjectDbClientFactory({ turso });
+  const idempotencyStore = new DbIdempotencyStore(globalClient);
   const resolveProjectDbClient = async (projectId: string): Promise<Client | null> => {
     const mapping = await databaseResolver.resolve(projectId);
     if (!mapping) return null;
@@ -341,6 +366,7 @@ export function buildProjectAdminDeps(input: {
       assertPermissionKey(globalClient, projectId, requesterUserId, key),
     listMembershipAssignments: (projectId, membershipId) =>
       listMembershipAssignments(globalClient, projectId, membershipId),
+    idempotencyStore,
     revokeMembership: async (projectId, membershipId, actorUserId) => {
       const projectDb = await resolveProjectDbClient(projectId);
       return revokeMembership(globalClient, { projectId, membershipId, actorUserId }, projectDb);

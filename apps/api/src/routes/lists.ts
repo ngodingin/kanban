@@ -67,7 +67,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
 
   router.post("/v1/projects/:project_id/boards/:board_id/lists", async (c) => {
     const deps = getDeps();
-    return withIdempotentHandling(c, deps, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "list.create", projectId, { type: "board", id: c.req.param("board_id") });
@@ -113,7 +113,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
   });
 
   router.patch("/v1/projects/:project_id/lists/:list_id", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -140,7 +140,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
         ...(title === undefined ? {} : { title }),
       });
       return { list: listPayload(updated) };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   const lifecycleCommands = {
@@ -155,7 +155,7 @@ export function createListsRouter(getDeps: () => ListRoutesDeps): Hono {
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/lists/:list_id/${action}`, async (c) => {
       const deps = getDeps();
-      return withIdempotentHandling(c, deps, async () => {
+      return withIdempotentHandling(c, getDeps(), async () => {
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
         await authorize(ctx, `list.${action}`, projectId, { type: "list", id: c.req.param("list_id") });

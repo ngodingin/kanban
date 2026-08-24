@@ -7,7 +7,7 @@ import {
   type ApiKeySummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse, ValidationCollector } from "./projects.ts";
+import { toApiErrorResponse, ValidationCollector, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
 
 export interface ApiKeysRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
@@ -20,6 +20,7 @@ export interface ApiKeysRoutesDeps {
   }): Promise<{ id: string; name: string; secret: string; expiresAt: string | null; createdAt: string }>;
   revokeApiKey(projectId: string, keyId: string): Promise<ApiKeySummary>;
   listApiKeys(projectId: string): Promise<ApiKeySummary[]>;
+  idempotencyStore?: IdempotencyStoreLike;
 }
 
 interface Body {
@@ -59,7 +60,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
   const router = new Hono();
 
   router.post("/v1/projects/:project_id/api-keys", async (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
@@ -88,7 +89,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
       return {
         api_key: created,
       };
-    }, 201),
+    }, 201, getDeps().idempotencyStore),
   );
 
   router.get("/v1/projects/:project_id/api-keys", async (c) =>
@@ -103,7 +104,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
   );
 
   router.post("/v1/projects/:project_id/api-keys/:key_id/revoke", async (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const keyId = c.req.param("key_id");
@@ -111,7 +112,7 @@ export function createApiKeysRouter(getDeps: () => ApiKeysRoutesDeps): Hono {
       await deps.assertPermissionKey(projectId, identity.userId, "api_key.revoke");
       const revoked = await deps.revokeApiKey(projectId, keyId);
       return { api_key: revoked };
-    }),
+      }, 200, getDeps().idempotencyStore),
   );
 
   return router;

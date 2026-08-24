@@ -16,13 +16,6 @@ async function appliedCount(): Promise<number> {
   return Number(res.rows[0]?.n ?? 0);
 }
 
-async function tableCount(): Promise<number> {
-  const res = await client.execute(
-    "SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__drizzle%'",
-  );
-  return Number(res.rows[0]?.n ?? 0);
-}
-
 try {
   await migrate(db, { migrationsFolder });
   const afterFirst = await appliedCount();
@@ -36,8 +29,39 @@ try {
     throw new Error(`journal setelah apply ulang = ${afterSecond}, harus tetap ${migrationFileCount} (idempotent)`);
   }
 
-  const tables = await tableCount();
-  if (tables !== 16) throw new Error(`jumlah tabel setelah apply ulang = ${tables}, harus 16`);
+  // Daftar ekspektasinya eksplisit (diselaraskan dengan global-schema.ts) —
+  // perubahan skema WAJIB memperbarui daftar ini, menjadi gate review yang
+  // sengaja (QA-CL-68: harness tidak boleh diam saat skema berubah).
+  const expectedTableNames = [
+    "api_keys",
+    "auth_accounts",
+    "auth_sessions",
+    "auth_verifications",
+    "group_permissions",
+    "idempotency_keys",
+    "invitation_group_assignments",
+    "invitations",
+    "membership_group_assignments",
+    "membership_permission_assignments",
+    "permission_groups",
+    "permissions",
+    "personal_access_tokens",
+    "project_databases",
+    "project_deprovision_jobs",
+    "project_memberships",
+    "projects",
+    "users",
+  ].sort();
+  const actualTables = (
+    await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT LIKE '__drizzle%' ORDER BY name",
+    )
+  ).rows.map((r) => String(r.name));
+  if (JSON.stringify(actualTables) !== JSON.stringify(expectedTableNames)) {
+    throw new Error(
+      `daftar tabel tidak cocok — hilang: ${expectedTableNames.filter((t) => !actualTables.includes(t)).join(",") || "-"}; ekstra: ${actualTables.filter((t) => !expectedTableNames.includes(t)).join(",") || "-"}`,
+    );
+  }
 
   await client.execute("INSERT INTO permissions (id, key) VALUES ('perm_idem', 'card.move')");
   await migrate(db, { migrationsFolder });

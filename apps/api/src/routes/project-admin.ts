@@ -14,7 +14,7 @@ import {
   type ProjectMemberSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse, ValidationCollector } from "./projects.ts";
+import { toApiErrorResponse, ValidationCollector, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
 
 // Wrapper untuk mengurangi duplikasi try/catch di semua handler endpoint.
 async function withErrorHandling<T>(
@@ -101,6 +101,7 @@ export interface ProjectAdminRoutesDeps {
     opts: { status?: Array<"active" | "revoked"> },
   ): Promise<ProjectMemberSummary[]>;
   assertPermissionKey(projectId: string, requesterUserId: string, key: string): Promise<void>;
+  idempotencyStore?: IdempotencyStoreLike;
   listMembershipAssignments(
     projectId: string,
     membershipId: string,
@@ -218,8 +219,9 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   );
 
   router.post("/v1/projects/:project_id/permission-groups", (c) =>
-    withErrorHandling(
+    withIdempotentHandling(
       c,
+      getDeps(),
       async () => {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
@@ -233,11 +235,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         return { group };
       },
       201,
+      getDeps().idempotencyStore,
     ),
   );
 
   router.patch("/v1/projects/:project_id/permission-groups/:group_id", (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const groupId = c.req.param("group_id");
@@ -249,11 +252,11 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       const payload = readUpdateGroupBody(await c.req.json().catch(() => null));
       const group = await deps.updatePermissionGroup(projectId, groupId, payload);
       return { group };
-    }),
+    }, 200, getDeps().idempotencyStore),
   );
 
   router.post("/v1/projects/:project_id/permission-groups/:group_id/delete", (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const groupId = c.req.param("group_id");
@@ -264,12 +267,13 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       await deps.assertProjectOwner(projectId, identity.userId);
       const group = await deps.deletePermissionGroup(projectId, groupId);
       return { group };
-    }),
+    }, 200, getDeps().idempotencyStore),
   );
 
   router.post("/v1/projects/:project_id/members/:membership_id/group-assignments", (c) =>
-    withErrorHandling(
+    withIdempotentHandling(
       c,
+      getDeps(),
       async () => {
         const deps = getDeps();
         const projectId = c.req.param("project_id");
@@ -307,11 +311,12 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         return { assignment };
       },
       201,
+      getDeps().idempotencyStore,
     ),
   );
 
   router.post("/v1/projects/:project_id/members/:membership_id/group-assignments/:assignment_id/revoke", (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -325,11 +330,11 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         c.req.param("assignment_id"),
       );
       return { assignment };
-    }),
+    }, 200, getDeps().idempotencyStore),
   );
 
   router.post("/v1/projects/:project_id/members/:membership_id/permission-assignments", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const membershipId = c.req.param("membership_id");
@@ -375,11 +380,11 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         ...(visibility !== undefined ? { cardReadVisibility: visibility } : {}),
       });
       return { assignment };
-    }, 201);
+    }, 201, getDeps().idempotencyStore);
   });
 
   router.post("/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -397,7 +402,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   });
 
   router.post("/v1/projects/:project_id/invitations", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -437,7 +442,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
         ...(expiresAt !== undefined ? { expiresAt } : {}),
       });
       return { invitation };
-    }, 201);
+    }, 201, getDeps().idempotencyStore);
   });
 
   router.get("/v1/projects/:project_id/members", async (c) => {
@@ -489,7 +494,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   });
 
   router.post("/v1/projects/:project_id/members/:membership_id/revoke", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const identity = await new ResolveIdentityStep({
@@ -500,7 +505,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       await deps.assertProjectOwner(projectId, identity.userId);
       const membership = await deps.revokeMembership(projectId, c.req.param("membership_id"), identity.userId);
       return { membership };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   router.post("/v1/invitations/:invitation_id/accept", (c) =>
@@ -529,7 +534,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
   });
 
   router.post("/v1/projects/:project_id/invitations/:invitation_id/revoke", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({
         resolveIdentity: deps.resolveIdentity,
@@ -538,7 +543,7 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       await deps.assertProjectOwner(projectId, identity.userId);
       const invitation = await deps.revokeInvitation(projectId, c.req.param("invitation_id"));
       return { invitation };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   return router;

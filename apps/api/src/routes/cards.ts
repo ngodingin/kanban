@@ -102,7 +102,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
 
   router.post("/v1/projects/:project_id/lists/:list_id/cards", async (c) => {
     const deps = getDeps();
-    return withIdempotentHandling(c, deps, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       await authorize(ctx, "card.create", projectId, { type: "list", id: c.req.param("list_id") });
@@ -184,7 +184,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
   });
 
   router.patch("/v1/projects/:project_id/cards/:card_id", async (c) => {
-    return withErrorHandling(c, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
@@ -222,12 +222,12 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
         assigneeUserId: assignee,
       });
       return { card: cardPayload(updated) };
-    });
+    }, 200, getDeps().idempotencyStore);
   });
 
   router.post("/v1/projects/:project_id/cards/:card_id/move", async (c) => {
     const deps = getDeps();
-    return withIdempotentHandling(c, deps, async () => {
+    return withIdempotentHandling(c, getDeps(), async () => {
       const projectId = c.req.param("project_id");
       const ctx = await deps.openProjectContext(c.req.raw, projectId);
       // BR-044 — card.move permission terpisah dari card.update; interim Owner-only.
@@ -278,7 +278,7 @@ export function createCardsRouter(getDeps: () => CardRoutesDeps): Hono {
   for (const [action, command] of Object.entries(lifecycleCommands)) {
     router.post(`/v1/projects/:project_id/cards/:card_id/${action}`, async (c) => {
       const deps = getDeps();
-      return withIdempotentHandling(c, deps, async () => {
+      return withIdempotentHandling(c, getDeps(), async () => {
         const projectId = c.req.param("project_id");
         const ctx = await deps.openProjectContext(c.req.raw, projectId);
         await authorize(ctx, `card.${action}`, projectId, { type: "card", id: c.req.param("card_id") });

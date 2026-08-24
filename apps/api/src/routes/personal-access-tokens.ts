@@ -7,10 +7,11 @@ import {
   type PersonalAccessTokenSummary,
   type ResolvedIdentity,
 } from "@kanban/infrastructure";
-import { toApiErrorResponse, ValidationCollector } from "./projects.ts";
+import { toApiErrorResponse, ValidationCollector, withIdempotentHandling, type IdempotencyStoreLike } from "./projects.ts";
 
 export interface PersonalAccessTokensRoutesDeps {
   resolveIdentity(request: Request): Promise<ResolvedIdentity | null>;
+  idempotencyStore?: IdempotencyStoreLike;
   createPersonalAccessToken(input: {
     userId: string;
     name: string;
@@ -57,7 +58,7 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
   const router = new Hono();
 
   router.post("/v1/me/personal-access-tokens", async (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const body = readJsonObject(await c.req.json().catch(() => null));
@@ -81,16 +82,16 @@ export function createPersonalAccessTokensRouter(getDeps: () => PersonalAccessTo
         ...(expiresAtRaw ? { expiresAt: expiresAtRaw } : {}),
       });
       return { personal_access_token: created };
-    }, 201),
+    }, 201, getDeps().idempotencyStore),
   );
 
   router.get("/v1/me/personal-access-tokens", async (c) =>
-    withErrorHandling(c, async () => {
+    withIdempotentHandling(c, getDeps(), async () => {
       const deps = getDeps();
       const identity = await new ResolveIdentityStep({ resolveIdentity: deps.resolveIdentity }).run(c.req.raw);
       const tokens = await deps.listPersonalAccessTokens(identity.userId);
       return { personal_access_tokens: tokens };
-    }),
+    }, 200, getDeps().idempotencyStore),
   );
 
   router.post("/v1/me/personal-access-tokens/:token_id/revoke", async (c) =>

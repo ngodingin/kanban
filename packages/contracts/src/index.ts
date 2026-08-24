@@ -6,5 +6,4 @@ export {
   extractIdempotencyKey,
   IDEMPOTENCY_HEADER,
   type DomainErrorLike,
-  type IdempotencyStore,
 } from "./http-mapping.ts";

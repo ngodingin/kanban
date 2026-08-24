@@ -4,6 +4,7 @@ import { ok } from "@kanban/contracts";
 import {
   BetterAuthIdentityResolver,
   CompositeIdentityResolver,
+  DbIdempotencyStore,
   assertPermissionKey,
   pruneAllRegisteredProjects,
   createApiKey,
@@ -127,6 +128,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         revokePersonalAccessToken: (userId, tokenId) =>
           revokePersonalAccessToken(r.globalClient, { userId, tokenId }),
         listPersonalAccessTokens: (userId) => listPersonalAccessTokens(r.globalClient, userId),
+        idempotencyStore: new DbIdempotencyStore(r.globalClient),
       };
       patDeps = deps;
     }
@@ -149,6 +151,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         createApiKey: (input) => createApiKey(r.globalClient, input),
         revokeApiKey: (projectId, keyId) => revokeApiKey(r.globalClient, { projectId, keyId }),
         listApiKeys: (projectId) => listApiKeys(r.globalClient, projectId),
+        idempotencyStore: new DbIdempotencyStore(r.globalClient),
       };
       apiKeysDeps = deps;
     }
