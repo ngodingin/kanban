@@ -46,8 +46,10 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 6.5 Backup & Disaster Recovery dasar (F.1)                ── independen
 6.6 Observability minimal + Resend webhook (F.4)          ── independen
 6.7 Rate limiting dasar (F.5, SHOULD)                      ── independen
+6.8 Tutup gap Acceptance Criteria B.4 (7 goal)             ── independen (ditemukan saat audit Exit Criteria)
+6.9 F.6 Release Checklist: perbaiki gap operasional         ── independen (6.9.1 depend 6.9.2)
 
-Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada dependency antar-task.
+Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada dependency antar-task (kecuali 6.9.1 <- 6.9.2 seperti dicatat).
 ```
 
 ---
@@ -136,11 +138,45 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 ---
 
+## TASK-6.8 — Tutup gap Acceptance Criteria B.4 ditemukan saat verifikasi Exit Criteria Phase 6  (dep: —)
+
+> Ditemukan lewat audit traceability independen 36 AC ([Review-CL-03](#review-cl-03)): 29/36 skenario genuinely teruji (sebagian tanpa sitasi ID literal tapi tercakup via tag BR-xxx/INV-xxx setara) — 7 AC berikut punya gap nyata. Keputusan manusia eksplisit 2026-08-24: tutup SEMUA sebelum Phase 7 dibuka (bukan opsi "terima risiko" atau "cukup yang nol-test saja").
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 6.8.1 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-006 (nol test).** Test: Given User creator Card tapi `card.read` TIDAK applicable untuk User itu di scope manapun (tidak ada Group/direct grant apa pun, termasuk default `CREATED_BY_ME` yang butuh grant eksplisit — bukan otomatis dari status creator); When User itu coba baca/list Card yang dibuatnya sendiri; Then MUST ditolak (bukan otomatis terlihat karena jadi creator). Reuse helper `setVisibilityGlobal("")` yang sudah ada di `card-visibility.test.ts` tapi belum pernah dipanggil test manapun. | [02-SPEC A.11](docs/02-SPEC.md) (BR-045 dst); [04-DELIVERY AC-006](docs/04-DELIVERY.md) | — |
+| 6.8.2 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-007 (nol test).** Sama seperti 6.8.1 untuk assignee: Given User di-assign ke Card tapi `card.read` tidak applicable; When baca Card itu; Then MUST ditolak. | [02-SPEC A.11](docs/02-SPEC.md); [04-DELIVERY AC-007](docs/04-DELIVERY.md) | — |
+| 6.8.3 | ⬜️ | — | 0 | P1 | **AC-012 (nol test).** Test: Given Card punya Comment (Activity `comment.added`/`comment.edited`); When Card di-delete (DELETED, terminal); Then Comment historis TETAP terbaca via `GET /activities`/endpoint per-entity, sesuai akses baca yang berlaku (bukan ikut hilang/tersembunyi karena Card-nya sudah DELETED — konsisten BR-028 konteks historis + Activity immutability). | [02-SPEC A.8](docs/02-SPEC.md) (BR-028); [04-DELIVERY AC-012](docs/04-DELIVERY.md) | — |
+| 6.8.4 | ⬜️ | — | 0 | P0 **[MODEL LEBIH KUAT WAJIB]** | **AC-019 (nol test untuk kombinasi spesifik).** Failure-injection test pada `moveCard`: Given move Card lintas List/Board (dengan label association ikut berubah); When Activity append/salah satu langkah GAGAL di tengah transaksi; Then `listId`, `version`, label association, DAN Activity MUST seluruhnya rollback bersama (bukan cuma diuji terpisah-pisah seperti pola generik Card update/Project yang sudah ada di `audit-consistency-mutation-activity.test.ts`). | [02-SPEC A.16](docs/02-SPEC.md) poin 9; [04-DELIVERY AC-019](docs/04-DELIVERY.md) | — |
+| 6.8.5 | ⬜️ | — | 0 | P1 **[MODEL LEBIH KUAT WAJIB]** | **AC-025 (jalur sukses belum teruji).** Test: Given Invitation dengan scoped assignment (Group Contributor di Milestone X); When invitation di-accept; Then Membership MUST punya Group assignment TEPAT di Milestone X — assert eksplisit assignment TIDAK muncul di scope Project/Milestone lain. Test existing (`invitations-create.test.ts`) hanya menguji jalur negatif (scope invalid ditolak), belum kasus sukses ini. | [02-SPEC A.12](docs/02-SPEC.md) (BR-054A/B); [04-DELIVERY AC-025](docs/04-DELIVERY.md) | — |
+| 6.8.6 | ⬜️ | — | 0 | P1 **[MODEL LEBIH KUAT WAJIB]** | **AC-028 (bagian kedua belum teruji).** Test: Given member Co-Owner Group (sudah terbukti dapat seluruh permission katalog, `baseline-groups.test.ts`); Then member itu MUST TETAP BUKAN Owner — assert eksplisit: tidak bisa revoke Owner asli, tidak muncul sebagai `ownerUserId`, dan Membership Co-Owner itu sendiri TETAP bisa di-revoke oleh Owner (Owner tidak kehilangan kontrol tertinggi). | [02-SPEC A.10](docs/02-SPEC.md) (BR-037); [04-DELIVERY AC-028](docs/04-DELIVERY.md) | — |
+| 6.8.7 | ⬜️ | — | 0 | P2 | **AC-029 (kombinasi spesifik belum teruji).** Test: Given Card ada; When `PATCH` Card dengan field `deletedAt`/`archivedAt`/`id`/`version` (BR-062); Then MUST ditolak/diabaikan — reuse pola persis yang SUDAH ada & terbukti benar untuk List/Board/Milestone (`boards-patch.test.ts`/`lists-patch.test.ts`/`milestones-patch.test.ts`), terapkan ke `cards-patch.test.ts` (yang saat ini baru menguji `listId`, bukan seluruh field BR-062). | [02-SPEC A.15](docs/02-SPEC.md) (BR-062); [04-DELIVERY AC-029](docs/04-DELIVERY.md) | — |
+
+**Test:** Tiap goal ADALAH test baru itu sendiri (Test = DoD di sini, pola sama TASK-6.1.2/6.4.1) — lulus berarti skenario Given/When/Then AC terkait terbukti benar. Jika ternyata DITEMUKAN bug nyata saat menulis test (perilaku salah, bukan cuma test hilang), PERBAIKI di goal yang sama (pola sama TASK-6.1.1) dan catat eksplisit di CL — jangan buka goal terpisah untuk temuan yang lahir dari goal ini sendiri.
+**DoD:** Nama test/describe mereferensikan ID `AC-0xx` eksplisit (menutup juga gap traceability B.6 untuk ketujuh AC ini, bukan cuma menutup gap fungsional).
+
+---
+
+## TASK-6.9 — F.6 Release Checklist: perbaiki gap operasional  (dep: —)
+
+> Ditemukan bersamaan audit Exit Criteria Phase 6 ([Review-CL-03](#review-cl-03)): `scripts/release-check.mjs` (dipasang Phase 0, `TASK-0.12.5`) hardcode pesan `DEFERRED` yang merujuk state Phase 0 untuk poin 2/4/6 — TIDAK PERNAH diupdate seiring fase-fase berikutnya menuntaskan kapabilitas itu. CI saat ini melaporkan "4 DEFERRED" walau backup (6.5) dan observability (6.6) sudah genuinely selesai — gate release yang seharusnya jadi pemeriksaan nyata malah menampilkan info usang/menyesatkan.
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 6.9.1 | ⬜️ | — | 0 | P1 | Perbarui `scripts/release-check.mjs`: poin 4 (backup) → `PASS` dengan referensi konkret ke bukti drill `TASK-6.5.2` + F.1 RTO/RPO (`docs/03-ENGINEERING.md`, amandemen 4.1.1); poin 6 (observability) → `PASS` dengan verifikasi nyata (mis. cek `apps/api/src/request-logging.ts` ada & diimpor di `index.ts`, bukan cuma pesan statis); poin 2 (smoke test) → update pesan mengikuti hasil `TASK-6.9.2` (`DEFERRED`→`PASS` setelah smoke script tersedia, bukan lagi "belum ada — mulai Phase 1"); poin 3 (DoD per fase) boleh TETAP `DEFERRED` (desainnya memang verifikasi manual QA per closure, bukan gap — hanya pesannya boleh diperjelas tidak lagi menyebut fase spesifik yang sudah lewat). | [03-ENG F.6](docs/03-ENGINEERING.md) | 6.9.2 |
+| 6.9.2 | ⬜️ | — | 0 | P1 | Smoke test alur inti end-to-end (F.6 poin 2, pola sama `packages/infrastructure/scripts/smoke-*.ts` — API-level, TIDAK perlu UI/Playwright): satu rangkaian create Project (+ provisioning) → scoped invite → accept → create Milestone/Board/List/Card → move Card → archive → restore → delete terminal → comment, dijalankan berurutan terhadap satu Project nyata, assert setiap langkah sukses DAN state akhir konsisten (bukan cuma "tidak error"). Melengkapi (bukan menggantikan) integration test per-langkah yang sudah ada. | [04-DELIVERY B.2](docs/04-DELIVERY.md) (piramida E2E), F.6 poin 2 | — |
+
+**Test:** 6.9.1 — jalankan `node scripts/release-check.mjs` → seluruh poin applicable `PASS`, nol `DEFERRED` yang sebenarnya sudah applicable (poin 3 boleh tetap `DEFERRED` by design). 6.9.2 — script smoke baru dijalankan reproducible (`pnpm --filter @kanban/infrastructure test:smoke-<nama>`), seluruh langkah PASS terhadap Project nyata di database test.
+**DoD:** `scripts/release-check.mjs` output tidak lagi memuat frasa yang merujuk state Phase 0/1 yang sudah lewat; smoke script baru terdaftar di `package.json` mengikuti pola `smoke-*` existing.
+
+---
+
 ## Exit Criteria Phase 6 (syarat mulai Phase 7)
-- Seluruh Task 6.1–6.7 `✅` (6.7 tetap disyaratkan closed walau prioritas `P3` — SHOULD di F.5 adalah level rekomendasi isi fitur, bukan izin melewati verifikasi goal).
-- Definition of Done penuh [04-DELIVERY C.3](docs/04-DELIVERY.md) hijau (bukan hanya subset per-fase seperti Phase 0–5) — C.6.4 eksplisit "Phase 6 (Hardening) dan keseluruhan MVP MUST memenuhi Definition of Done penuh di C.3".
-- Backup Global DB terverifikasi & restore pernah diuji ([03-ENG F.6](docs/03-ENGINEERING.md) poin 4).
-- Metrik observability (F.4) aktif untuk endpoint yang dirilis ([03-ENG F.6](docs/03-ENGINEERING.md) poin 6).
+- Seluruh Task 6.1–6.9 `✅` (6.7 tetap disyaratkan closed walau prioritas `P3`; 6.8/6.9 ditambahkan setelah audit Exit Criteria menemukan gap — keputusan manusia eksplisit 2026-08-24 menutup semuanya sebelum Phase 7, [Review-CL-03](#review-cl-03)).
+- Definition of Done penuh [04-DELIVERY C.3](docs/04-DELIVERY.md) hijau (bukan hanya subset per-fase seperti Phase 0–5) — C.6.4 eksplisit "Phase 6 (Hardening) dan keseluruhan MVP MUST memenuhi Definition of Done penuh di C.3". Termasuk: seluruh 36 AC (`04-DELIVERY B.4`) genuinely teruji (`TASK-6.8` menutup 7 gap yang ditemukan).
+- Backup Global DB terverifikasi & restore pernah diuji ([03-ENG F.6](docs/03-ENGINEERING.md) poin 4) — DAN `scripts/release-check.mjs` mencerminkan ini secara otomatis (`TASK-6.9.1`).
+- Metrik observability (F.4) aktif untuk endpoint yang dirilis ([03-ENG F.6](docs/03-ENGINEERING.md) poin 6) — DAN `scripts/release-check.mjs` mencerminkan ini secara otomatis (`TASK-6.9.1`).
+- Smoke test alur inti end-to-end tersedia & lulus ([03-ENG F.6](docs/03-ENGINEERING.md) poin 2, `TASK-6.9.2`).
 
 ## Flag terbuka (sesuai C.6.5)
 - `[NEEDS-DECISION]` opsional, tidak blocking — TASK-6.5.1: upgrade plan Turso (retensi PITR 24 jam vs 10/30/90 hari) adalah keputusan biaya/risiko bisnis untuk manusia, dicatat saat goal itu dikerjakan.
@@ -150,6 +186,27 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 ## Closure Log
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-03"></a>
+### Review-CL-03 — 2026-08-24 · verifikasi total independen Exit Criteria Phase 6 — 9 gap ditemukan, TASK-6.8/6.9 dibuka (keputusan manusia: tutup semua sebelum Phase 7)
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5 (dengan 2 sub-agent paralel `claude-sonnet-5`: cross-check traceability 36 AC, spot-check kode goal berisiko tinggi)
+
+**Konteks:** setelah seluruh 14 goal Phase 6 closed `✅` oleh sesi Dev+QA paralel (HEAD `44ea583`), diminta verifikasi total independen Exit Criteria Phase 6 sebelum gate Phase 7 dipertimbangkan terbuka.
+
+**Verifikasi definitif dijalankan ulang sendiri:** `pnpm -r typecheck` → 6/6 Done; `pnpm lint` → bersih; `pnpm exec vitest run` → **104 file/633 test PASS**. Konsisten dengan klaim CL/QA-CL sepanjang Phase 6.
+
+**Spot-check kode independen (sub-agent 1)** untuk goal berisiko tertinggi (6.1.1, 6.1.2, 6.4.1, 6.2.1–6.2.4) — dibaca LANGSUNG (bukan percaya narasi CL): seluruh 8 titik `rowsAffected`/version-check dikonfirmasi benar (guard sebelum `INSERT activities`, mencegah phantom-Activity); `audit-consistency-mutation-activity.test.ts` dikonfirmasi genuinely exhaustive (14/14 repository tercakup, assertion ketat bukan lemah); migrasi Zod dikonfirmasi TIDAK membuka celah BR-062 (loop whitelist unknown-field tetap ada, mengiterasi `rawBody` mentah). **Tidak ada regresi/gap baru ditemukan** — satu catatan non-blocking: `routes/projects.ts` PATCH tidak punya loop whitelist seperti route lain, tapi dikonfirmasi via `git show 43d4d75` ini PRE-EXISTING dari sebelum Phase 6 (bukan regresi migrasi), dicatat untuk referensi masa depan bukan goal baru.
+
+**Cross-check traceability 36 AC (sub-agent 2, `04-DELIVERY B.4` vs seluruh test file)** — metodologi: grep sitasi ID eksplisit + baca skenario test yang tidak menyitir ID untuk menilai substansi. Hasil: 10/36 sitasi eksplisit, 19/36 tanpa sitasi tapi skenario genuinely tercakup (via tag BR-xxx/INV-xxx setara), **7/36 punya gap nyata**: AC-006, AC-007, AC-012, AC-019 genuinely NOL test; AC-025, AC-028, AC-029 tercakup sebagian (bagian tertentu Given/When/Then tidak pernah dieksekusi test manapun).
+
+**Temuan independen saya sendiri — F.6 Release Checklist:** (1) `scripts/release-check.mjs` (dipasang `TASK-0.12.5` Phase 0) hardcode pesan `DEFERRED` untuk poin 2/4/6 yang merujuk state Phase 0 — TIDAK PERNAH diupdate walau backup (6.5) dan observability (6.6) sudah genuinely selesai; dijalankan langsung (`node scripts/release-check.mjs`) mengonfirmasi output usang ini nyata, bukan dugaan. (2) Tidak ada smoke/E2E test alur inti end-to-end dalam satu rangkaian (F.6 poin 2, `04-DELIVERY B.2` piramida E2E) — `e2e/health.spec.ts` cuma health-check; `smoke-project-behavior.ts` cuma constraint-level, bukan domain-command flow.
+
+**Kesimpulan verifikasi:** Phase 6 SENDIRI (14 goal awal) genuinely solid — TAPI Exit Criteria yang saya tetapkan sendiri ("DoD penuh C.3, bukan subset") BELUM genuinely terpenuhi karena 7 gap AC + 2 gap F.6 di atas. Dilaporkan lengkap ke manusia dengan 3 opsi (tutup semua / terima risiko buka Phase 7 / tutup hanya yang nol-test). **Keputusan manusia eksplisit: tutup SEMUA gap sebelum Phase 7** (opsi paling ketat, direkomendasikan).
+
+**Dibuka:** `TASK-6.8` (7 goal, satu per AC gap — goal 6.8.1/6.8.2/6.8.4/6.8.5/6.8.6 ditandai `[MODEL LEBIH KUAT WAJIB]` karena menyentuh authorization/atomicity/10-invariant-inti; 6.8.3/6.8.7 model ringan boleh, risiko lebih rendah) dan `TASK-6.9` (2 goal, perbaikan `release-check.mjs` + smoke E2E baru). Exit Criteria Phase 6 diperbarui mencantumkan keduanya sebagai syarat wajib. Pola konsisten `TASK-6.1.1`/`6.4.1`: jika penulisan test di `TASK-6.8` menemukan bug NYATA (bukan cuma test hilang), perbaiki di goal yang sama, jangan buka goal terpisah.
+
+**Belum ada implementasi dimulai untuk `TASK-6.8`/`6.9`** — seluruh goal `⬜️`, menunggu sesi Dev berikutnya.
 
 <a id="qa-cl-12"></a>
 ### QA-CL-12 — 2026-08-24 · goal 6.6.2 ditutup (🔎 80% → ✅ 100%) — dependency 6.6.1 terpenuhi

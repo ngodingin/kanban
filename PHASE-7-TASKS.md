@@ -30,6 +30,8 @@ Sebelum ketiga hal ini ✅, semua task di bawah tetap ⏸️.
 
 Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate candidate**—belum otomatis terbuka. QA atau AI-Planning & Review/reviewer wajib memverifikasi gate dan mencatat `QA-CL`/`Review-CL` + commit sebelum melakukan `⏸️ → ⬜️`.
 
+> **Status gate per 2026-08-24 ([Review-CL-03, PHASE-6-TASKS.md](PHASE-6-TASKS.md#review-cl-03)):** prasyarat 3 (Magic Link 0.8.4 integration test) ✅ terpenuhi. Prasyarat 1 (Exit Criteria Phase 6) **BELUM** — audit total independen menemukan 7 gap Acceptance Criteria (`04-DELIVERY B.4`: AC-006/007/012/019/025/028/029) dan 2 gap operasional F.6 Release Checklist, dibuka sebagai `TASK-6.8`/`TASK-6.9` di [PHASE-6-TASKS.md](PHASE-6-TASKS.md) — keputusan manusia eksplisit menutup SEMUANYA sebelum gate ini boleh dianggap terbuka. Prasyarat 2 (API domain lulus AC terkait) menyatu dengan closure `TASK-6.8` (AC adalah acceptance criteria API domain yang sama). **Jangan buka gate ini sampai `TASK-6.8`/`6.9` ✅ dan Review-CL baru mengonfirmasi ulang.**
+
 ---
 
 ## TASK-7.1 — React/Vite foundation setup
