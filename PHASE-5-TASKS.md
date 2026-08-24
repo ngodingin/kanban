@@ -108,7 +108,7 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 5.5.1 | ⬜️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
+| 5.5.1 | ⚠️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06)<br>[QA-CL-07](#qa-cl-07) | 40 | P0 | Reverifikasi Phase 1: Project/admin/Invitation terhadap JSON `camelCase`, collect-all validation, wrapper Invitation, idempotency, Global DB concurrency tanpa `version`, dan Membership pending-revocation SOT 4.1.0. | [02-SPEC C.2–C.4](docs/02-SPEC.md), C.12–C.14; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.4, 0.17.6, 0.18.2, 0.19.1, 0.19.2, 0.21.1, 0.21.2, 0.21.3, 2.12.1 |
 | 5.5.2 | ⬜️ | [Review-CL-04](#review-cl-04)<br>[Review-CL-05](#review-cl-05) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 2: hierarchy/Card move/assignee cleanup terhadap camelCase, Activity payload, optimistic-lock scope, failure boundary BR-054C, serta Project isolation. | [02-SPEC A.3–A.7](docs/02-SPEC.md), A.12, A.16; [04-DEL AC-020](docs/04-DELIVERY.md), AC-035 | 2.12.1, 0.17.1, 0.17.4, 0.17.5, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.3 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 3: Label/Comment/Activity read-write path terhadap camelCase, immutable Activity, lifecycle ancestor, atomicity, dan authorization final Phase 4. | [02-SPEC A.8–A.10](docs/02-SPEC.md), C.9–C.11; [03-ENG B.5](docs/03-ENGINEERING.md) | 0.17.2, 0.17.4, 0.17.6, 0.18.1, 0.18.2, 0.21.1, 0.21.2, 0.21.3 |
 | 5.5.4 | ⬜️ | [Review-CL-04](#review-cl-04) <br>[QA-CL-04](#qa-cl-04)<br>[QA-CL-06](#qa-cl-06) | 0 | P0 | Reverifikasi Phase 4: seluruh authorization matrix, hierarchy terkini, credential, assignment response camelCase, Global DB current-state transaction/constraint, dan idempotency endpoint mutation. | [02-SPEC A.10–A.13](docs/02-SPEC.md), C.12–C.14, D.1–D.4; [04-DEL C.3](docs/04-DELIVERY.md) | 0.17.3, 0.17.6, 0.19.1, 0.21.1, 0.21.2, 0.21.3 |
@@ -120,6 +120,40 @@ Status dan `%` pada level **Task** dihitung dari goal menurut [AGENTS.md §6.2](
 ---
 
 ## Closure Log
+
+<a id="qa-cl-07"></a>
+### QA-CL-07 — 2026-08-24 · goal 5.5.1 — reverifikasi Phase 1 terhadap SOT 4.1.0 (⬜️ → ⚠️ · 0 → 40%) — 5 area bersih, 1 gap konkurensi genuinely ditemukan
+
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Catatan proses:** goal ini dikerjakan langsung sebagai audit/verifikasi lane AI-QA (bukan didelegasikan ke Dev dulu) — konsisten preseden QA-CL-04 dan sesuai teks goal sendiri ("QA/reviewer evidence"). Ditemukan gap yang butuh perubahan kode → **TIDAK diperbaiki sendiri** (batas lane yang sebenarnya penting), didokumentasikan sebagai temuan dan dikembalikan.
+
+**5 dari 6 area scope goal — dikonfirmasi BERSIH (spot-check fresh, bukan cuma mengutip QA-CL lama):**
+1. **camelCase JSON** — `grep` `body\.(group_id|scope_type|scope_id|permission_id|card_read_visibility|expires_at)` di `apps/api/src/routes/project-admin.ts` → nol hasil.
+2. **Collect-all validation** — sudah diverifikasi mendalam QA-CL-72 (0.17.6), termasuk `project-admin.ts`.
+3. **Wrapper Invitation** — `grep` mengonfirmasi `{ invitation }`/`{ invitations }` konsisten di create/accept/list/revoke (baris 444/519/532/545).
+4. **Idempotency wiring** — `withIdempotentHandling` dikonfirmasi terpasang di seluruh 11 registrasi `router.post`/`router.patch` file ini (12 pemanggilan — loop lifecycle menghasilkan lebih dari satu titik pemanggilan per template), konsisten audit menyeluruh QA-CL-71.
+5. **Membership pending-revocation (BR-054C)** — sudah diverifikasi mendalam QA-CL-27 di [PHASE-2-TASKS.md](PHASE-2-TASKS.md) sesi ini juga, termasuk reproduksi race overlap.
+
+**Area ke-6 — "Global DB concurrency tanpa version" — GAP GENUINELY DITEMUKAN:**
+
+Invariant #7 (AGENTS.md) / BR-019 ([02-SPEC](docs/02-SPEC.md):204): "Global control/authorization records MUST use transactional current-state validation and database constraints" — berlaku untuk SEMUA record Global DB (Membership, Permission Group/assignment, Invitation), bukan cuma Membership revoke (BR-054C eksplisit).
+
+`revokeMembership` (BR-054C, diverifikasi QA-CL-27) benar: `UPDATE ... WHERE id=? AND revokedAt IS NULL AND revocationPendingAt IS NULL` — conditional, current-state divalidasi ULANG di titik tulis, bukan cuma dibaca sebelumnya.
+
+**TAPI 4 mutation Global DB lain di file yang SAMA (`project-admin.ts`) TIDAK memakai pola ini — check-then-act tanpa guard kondisional di UPDATE:**
+- `revokeGroupAssignment` (baris 381-399): `db.select()` cek `revokedAt !== null` (return awal kalau sudah revoked), TAPI `UPDATE ... WHERE id = ?` (TANPA `AND revoked_at IS NULL`) — dua request revoke konkuren bisa sama-sama lolos cek awal, keduanya UPDATE tanpa validasi ulang state di titik tulis.
+- `revokePermissionAssignment` (baris 483-501): pola identik.
+- `deletePermissionGroup` (baris 289-300): pola identik (`UPDATE ... WHERE id = groupId`, tanpa `AND deleted_at IS NULL`).
+- `revokeInvitation` (baris 850-869) + `acceptInvitation` (baris 613-681): **paling serius** — SELURUH pengecekan state (`revokedAt`, `acceptedAt`, `expiresAt`) di `acceptInvitation` terjadi SEBELUM `runInDrizzleWriteTransaction` dimulai (baris 618-636, transaksi baru mulai baris 646), dan `UPDATE invitations SET acceptedAt=now WHERE id=?` di DALAM tx TETAP tanpa guard kondisional (baris 681). Skenario race genuinely mungkin: request accept dan request revoke pada Invitation yang sama, hampir bersamaan — accept membaca `revokedAt=null` (valid), revoke commit duluan (set `revokedAt=now`), accept lanjut tanpa re-cek dan commit `acceptedAt=now` — hasil akhir: Invitation dengan `revokedAt` DAN `acceptedAt` SAMA-SAMA terisi, kombinasi yang seharusnya mustahil secara bisnis (dan Membership/Group assignment sudah terlanjur dibuat dari Invitation yang "seharusnya" sudah revoked).
+
+**Bukan ditebak — pola perbandingan langsung terhadap `revokeMembership` yang SUDAH benar di file yang SAMA** membuktikan gap ini bukan keterbatasan arsitektur, melainkan inkonsistensi penerapan: BR-054C secara eksplisit disebut nama di SOT sehingga di-harden, sementara 4 mutation lain yang sama-sama tunduk invariant #7/BR-019 secara umum tidak ikut di-harden saat itu.
+
+**Belum ditulis test reproduksi race untuk temuan ini** (di luar mandat QA — bukti korektnes butuh fix dulu sebelum test regresi bermakna) — deskripsi skenario di atas cukup presisi (nama fungsi, baris, urutan interleaving) untuk Dev mereproduksi dan memperbaiki tanpa menebak ulang.
+
+**Rekomendasi fix (dicatat sebagai arahan, bukan diimplementasikan sendiri):** tambah `AND revoked_at IS NULL` (dan `AND deleted_at IS NULL` untuk Permission Group) ke keempat UPDATE first-write tersebut, cek `rowsAffected` untuk mendeteksi race-loser (pola identik `revokeMembership`); untuk `acceptInvitation`, pindahkan re-validasi `revokedAt`/`acceptedAt` ke DALAM `runInDrizzleWriteTransaction` (baca ulang row di dalam tx sebelum melanjutkan), bukan mengandalkan state yang dibaca sebelum transaksi dimulai.
+
+**Kesimpulan:** 5.5.1 **BELUM ✅**. `%` diset `40` (5/6 area genuinely bersih dengan bukti, 1 area invariant-critical gagal) — dikembalikan untuk remediasi Dev sebelum reverifikasi ulang.
 
 <a id="qa-cl-06"></a>
 ### QA-CL-06 — 2026-08-24 · buka gate 5.5.1–5.5.4 (⏸️ → ⬜️) — seluruh dependency remediation ✅; 5.5.5 tetap blocked
