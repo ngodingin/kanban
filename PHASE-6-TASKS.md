@@ -129,7 +129,7 @@ Seluruh task boleh dikerjakan paralel oleh sesi Dev berbeda — tidak ada depend
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 6.7.1 | ⬜️ | — | 0 | P3 | Rate limit dasar per credential (API Key/PAT hash)/IP pada endpoint mutation & `/auth/*`, memakai fasilitas platform Vercel (mis. Vercel Firewall/Edge Config rate limit — bukan infrastruktur khusus/Redis tambahan, F.5 eksplisit). Threshold awal permisif (mis. per-menit), didokumentasikan sebagai baseline yang MAY disesuaikan tanpa amandemen SOT (keputusan teknis murni, tidak menyentuh business invariant). | [03-ENG F.5](docs/03-ENGINEERING.md) | — |
+| 6.7.1 | 🔎 | [CL-19](#cl-19)<br>[CL-18](#cl-18) | 80 | P3 | Rate limit dasar per credential (API Key/PAT hash)/IP pada endpoint mutation & `/auth/*`, memakai fasilitas platform Vercel (mis. Vercel Firewall/Edge Config rate limit — bukan infrastruktur khusus/Redis tambahan, F.5 eksplisit). Threshold awal permisif (mis. per-menit), didokumentasikan sebagai baseline yang MAY disesuaikan tanpa amandemen SOT (keputusan teknis murni, tidak menyentuh business invariant). | [03-ENG F.5](docs/03-ENGINEERING.md) | — |
 
 **Test:** Request melebihi threshold dari credential/IP sama → `429` (atau kode yang dipakai fasilitas platform), request dari credential/IP lain tidak terpengaruh. Request di bawah threshold → tidak terganggu (regresi nihil terhadap seluruh test suite existing).
 **DoD:** Konfigurasi rate-limit terdokumentasi (threshold + scope + fasilitas yang dipakai); tidak menambah dependency infra baru di luar platform Vercel.
@@ -235,7 +235,17 @@ CLEANUP: kanban-drill-project-restored-1787574915568 dihapus
 ### CL-14 — 2026-08-24 · goal 6.6.2 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `6.6.1` 🔎80. Deliverable = dokumentasi query (Prinsip #5: tanpa infra baru); lokasi di luar SOT (`docs/` terkunci untuk Dev): `operations/log-metrics.md`.
-<a id="cl-16"></a>
+<a id="cl-18"></a>
+### CL-18 — 2026-08-24 · goal 6.7.1 mulai dikerjakan (⬜️ → 🔄 · 0%)
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** Freshness check dari disk: row `⬜️/0`; F.5 eksplisit: pakai fasilitas platform (Vercel Firewall), bukan infrastruktur kustom/Redis.
+<a id="cl-19"></a>
+### CL-19 — 2026-08-24 · goal 6.7.1 selesai sisi Dev (⬜️ → 🔄 → 🔎 · 0 → 80%) — baseline rate limiting platform
+**Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
+**Bukti:** `operations/rate-limiting.md` — scope (mutation + /auth/*), rate-limit key per credential-hash/IP, threshold awal permisif 100/min & 20/min auth, langkah konfigurasi Vercel Firewall + verifikasi 429. Tanpa infrastruktur kustom/Redis sesuai F.5.
+**Catatan:** Threshold MAY disesuaikan tanpa amandemen SOT; aktivasi rule dilakukan di dashboard/API Vercel oleh operator (bukan bagian repo).
+
+<a id="cl-17"></a><a id="cl-17"></a><a id="cl-16"></a>
 ### CL-16 — 2026-08-24 · goal 6.6.3 mulai dikerjakan (⬜️ → 🔄 · 0%)
 **Role:** AI-Dev · **Model:** ox-alpha-free (opencode)
 **Bukti:** Freshness check dari disk: row `⬜️/0`, dependency `6.6.1` 🔎80. Pola non-pipeline seperti /api/internal/prune; verifikasi signature Resend (svix-style HMAC-SHA256), bukan CRON_SECRET.
