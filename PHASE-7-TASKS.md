@@ -40,7 +40,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | 🔎 | [CL-01](#cl-01)<br>[CL-02](#cl-02) | 80 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.1 | ✅ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02) | 100 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
 | 7.1.2 | ⬜️ | — | 0 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ⬜️ | [Review-CL-02](#review-cl-02) | 0 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ⬜️ | — | 0 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
@@ -231,25 +231,26 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
-```
-<a id="cl-01"></a>
-### CL-01 — YYYY-MM-DD · <ID goal> <status baru>
-**Role:** AI-Dev · **Model:** <nama/identifier model aktual; jika tidak diekspos, nama platform>
-**Bukti:** <output command / log / screenshot yang bisa diverifikasi ulang>
-**Catatan:** <penyimpangan dari Scope asli, atau alasan gagal jika ⚠️>
+<!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
 
 <a id="qa-cl-01"></a>
-### QA-CL-01 — YYYY-MM-DD · <ID goal> <status baru>
-**Role:** AI-QA · **Model:** <nama/identifier model aktual; jika tidak diekspos, nama platform>
-**Bukti:** <hasil verifikasi ulang yang reproducible>
-**Catatan:** <hasil QA, atau alasan gagal jika ⚠️>
+### QA-CL-01 — 2026-08-25 · goal 7.1.1 closed ✅ (🔎 80% → ✅ 100%) — bootstrap apps/web genuinely verified, template CL-numbering collision fixed
 
-<a id="review-cl-01"></a>
-### Review-CL-01 — YYYY-MM-DD · <ID goal> <hasil review>
-**Role:** AI-Planning & Review · **Model:** <nama/identifier model aktual; jika tidak diekspos, nama platform>
-**Bukti:** <file/rule/test yang diperiksa>
-**Catatan:** <temuan architecture drift/konsistensi, atau "tidak ada temuan">
-```
+**Role:** AI-QA · **Model:** claude-sonnet-5 (Claude Code)
+
+**Housekeeping ditemukan & diperbaiki dulu:** goal table CL-01 link mengarah ke anchor `#cl-01` yang, sebelum perbaikan ini, muncul DUA kali di file — sekali di template contoh format Closure Log (heading asli `### CL-01 — YYYY-MM-DD · <ID goal>...` di dalam code fence, bukan entry sungguhan) dan sekali lagi di entry asli goal ini. Karena HTML/browser mengambil kecocokan pertama untuk id anchor duplikat, link `[CL-01](#cl-01)` di tabel goal akan salah arah ke template, bukan ke entry sungguhan. Diperbaiki dengan mengganti blok template jadi komentar HTML satu-baris (pola sama yang sudah dipakai `PHASE-5-TASKS.md`/`PHASE-6-TASKS.md`) — dikonfirmasi `grep -oE '^### (CL|QA-CL|Review-CL)-[0-9]+ —' PHASE-7-TASKS.md | sort | uniq -c | awk '$1>1'` kini kosong. **Catatan (tidak diperbaiki, di luar scope):** `PHASE-0-TASKS.md` punya pola template identik dengan collision yang sama (`CL-01`/`QA-CL-01` masing-masing 2×) — file historis Phase 0 sudah closed, housekeeping kosmetik, dicatat untuk referensi bukan diperbaiki sekarang.
+
+**Versi dependency dikonfirmasi persis cocok baseline Review-CL-05** (`apps/web/package.json` dibaca langsung): React/React DOM `19.2.8`, Vite `8.2.2`, React Router `8.3.0`, Tailwind CSS `4.3.3`, shadcn CLI `4.19.0` — seluruhnya exact-pinned sesuai revalidasi npm registry.
+
+**Re-run independen seluruh klaim CL-02:** `pnpm --filter @kanban/web typecheck` → bersih. `pnpm --filter @kanban/web build` → sukses (`dist/index.html` + aset ter-hash `index-InAmEDTz.css`/`index-DSPIojoi.js`, vite 8.2.2). `pnpm lint` (repo-level) → 0 error. `npx vitest run apps/web/test/web-serving.test.ts` → **5/5 PASS** — dibaca penuh: test genuinely membangun production build Vite betulan lalu menyajikannya via Hono app asli (`createApiApp` dari `apps/api/src/index.ts`, bukan stub), menguji topologi satu-origin identik `scripts/preview-build.mjs` (filesystem → `/api/*` ke Hono → fallback `index.html` untuk SPA deep link), termasuk kasus negatif (`/api/v1/tidak-ada` → 404 non-HTML, TIDAK tertangkap fallback SPA). Full suite `pnpm test` → **112 file/662 test PASS** — cocok persis klaim. `node scripts/preview-build.mjs` → sukses, `.vercel/output/static` genuinely berisi build produksi (warning `import.meta`/CJS yang muncul berasal dari `packages/infrastructure/src/database/migrate.ts`, pre-existing, tidak disentuh goal ini, bukan regresi baru).
+
+**Struktur `apps/web/src/` dibaca — foundation-only, tanpa pelanggaran domain-field non-goal:** hanya `App.tsx` (route `/` + `*` NotFound minimal), `main.tsx`, `index.css`, `lib/utils.ts` — tidak ada field UI yang belum ada di `02-SPEC` (konsisten larangan `05-FRONTEND §4`: priority/progress-card/status/inbox non-goal). Sesuai scope goal ("bootstrap", bukan screen domain).
+
+**Keputusan teknis di CL-02 diverifikasi masuk akal:** `tsconfig.json` (dibaca langsung) genuinely tanpa `baseUrl`, `paths` relatif ke `./src` — cocok klaim; `vite.config.ts` genuinely punya dev-only proxy `/api → localhost:3100` dengan komentar yang menjelaskan alasannya (paritas origin dev/prod).
+
+**Tidak ada bug produksi ditemukan** — bootstrap genuinely solid dan verified end-to-end.
+
+**Verdict:** `✅ 100%`.
 
 <a id="cl-02"></a>
 ### CL-02 — 2026-08-25 · 7.1.1 → 🔎 80%
