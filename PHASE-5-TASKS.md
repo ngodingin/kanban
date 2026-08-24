@@ -13,6 +13,8 @@
 > **TASK-5.3 (prune Project-level) tidak lagi punya prasyarat outstanding — unblocked.** Item #2 boleh dikerjakan kapan saja, tidak terkait dependency Phase 5 manapun.
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
+>
+> **⏸️ GATE EKSPLISIT (keputusan manusia, 2026-08-24): JANGAN generate `PHASE-6-TASKS.md` atau mulai kerja Phase 6 apa pun sebelum SELURUH fase 0–5 genuinely tuntas sesuai SOT dan lolos code review dengan ketat** — bukan cukup seluruh goal bertanda `✅` di file masing-masing. Phase 5 di file ini SUDAH 5/5 `✅`, TAPI Phase 0 punya **6 goal terbuka** (`TASK-0.15`–`TASK-0.20`, [PHASE-0-TASKS.md](PHASE-0-TASKS.md)) yang ditemukan lewat code review LANJUTAN setelah Phase 1–5 sudah dianggap selesai — termasuk 2 temuan breaking (`INVALID_STATE`+500, camelCase migration termasuk gap `routes/projects.ts` + regresi response `project-admin.ts`) yang genuinely melanggar SOT terkunci hari ini. Sebelum membuka Phase 6: (1) tuntaskan `TASK-0.15`–`TASK-0.20` sampai `✅`; (2) lakukan review ketat ulang atas Phase 1–5 secara spesifik terhadap SOT versi TERKINI (`3.0.0`, bukan versi saat masing-masing fase awalnya digenerate — Phase 5 digenerate saat SOT masih `2.11.0`) untuk memastikan tidak ada gap serupa yang tersembunyi karena SOT berubah SETELAH fase itu ditutup. Jangan anggap `✅` lama otomatis valid terhadap SOT baru tanpa reverifikasi eksplisit.
 
 ## Prinsip Phase 5
 

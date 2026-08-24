@@ -5,6 +5,8 @@
 > **Konteks:** belum ada repo — Phase 0 adalah bootstrapping. Path file adalah *usulan* sesuai [03-ENGINEERING A.7](docs/03-ENGINEERING.md); sesuaikan saat implementasi. File ini working list, **terpisah dari SOT**.
 >
 > **AI-Dev execution gate:** jangan ubah implementasi sebelum goal `🔄` + `CL` terpasang. Jangan menyatakan selesai sebelum goal `🔎`/`80%` + CL baru + test hijau + commit. Format handoff wajib mengikuti [AGENTS.md §0](AGENTS.md).
+>
+> **⏸️ GATE Phase 6 (keputusan manusia, 2026-08-24, lihat [Review-CL-22](#review-cl-22)):** `TASK-0.15`–`TASK-0.20` di file ini WAJIB `✅` — dan Phase 1–5 WAJIB direverifikasi ketat terhadap SOT versi terkini — sebelum `PHASE-6-TASKS.md` boleh digenerate atau dikerjakan. Detail di header [PHASE-5-TASKS.md](PHASE-5-TASKS.md).
 
 ## Prinsip Phase 0
 Membangun **plumbing**, bukan domain endpoint. Endpoint domain (Project CRUD dst.) mulai Phase 1. Authorization *resolution* hanya disiapkan sebagai **seam kosong**; implementasi penuh di Phase 4.
@@ -343,6 +345,17 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 - `grep -rn "Idempotency-Key\|IDEMPOTENCY_HEADER" apps/api/src` (di luar `projects.ts`) → nol hasil — dikonfirmasi endpoint Milestone/Board/List/Card/Label/Comment/dst SAMA SEKALI tidak menyentuh mekanisme ini.
 **Kesimpulan:** Temuan Review-CL-19 terkonfirmasi akurat 100% — gap ini nyata, bukan salah baca kode. C.3 menjanjikan proteksi retry-safety untuk mutasi berisiko (create/move/archive/delete), tapi hari ini TIDAK ADA proteksi apa pun — request yang diulang jaringan bisa menghasilkan duplicate side-effect (mis. 2 Card tercipta dari 1 klik "create" yang timeout lalu di-retry client).
 **Catatan:** Tidak ada perubahan kode di goal ini (sesuai sifatnya). Lanjut ke 0.16.2 (implementasi `IdempotencyStore`) sebagai goal berikutnya dalam alur kerja yang sama (dependency linear 0.16.1→0.16.2→0.16.3, sesuai instruksi manusia mengerjakan Task ini).
+
+<a id="review-cl-22"></a>
+### Review-CL-22 — 2026-08-24 · GATE Phase 6 ditetapkan (keputusan manusia eksplisit) — dicatat di header PHASE-0 & PHASE-5
+
+**Role:** AI-Planning & Review · **Model:** Claude Sonnet 5
+
+**Keputusan manusia:** "jangan lanjut ke phase-6 sebelum semua phase yang selesai sesuai dengan SOT dan lolos semua hasil code review dengan ketat" — diberikan langsung setelah [Review-CL-21](#review-cl-21) (review total seluruh fase) menemukan bahwa Phase 5 sudah `✅` 5/5 di file-nya sendiri TAPI Phase 0 punya 6 goal terbuka (`TASK-0.15`–`TASK-0.20`) yang ditemukan lewat code review LANJUTAN setelah Phase 1–5 sudah ditutup — bukti bahwa status `✅` per-fase tidak otomatis berarti "genuinely tuntas sesuai SOT" kalau SOT berubah (2.0.8 → 3.0.0) atau code review lanjutan menemukan gap SETELAH fase itu ditutup.
+
+**Ditegakkan sebagai gate tertulis** (bukan cuma dicatat di sini) — header file ini dan [PHASE-5-TASKS.md](PHASE-5-TASKS.md) (titik alami di mana sesi berikutnya akan mulai generate `PHASE-6-TASKS.md`) keduanya diberi notice eksplisit `⏸️`: `PHASE-6-TASKS.md` TIDAK BOLEH digenerate/dikerjakan sebelum (1) `TASK-0.15`–`TASK-0.20` seluruhnya `✅`, DAN (2) Phase 1–5 direverifikasi ketat terhadap SOT versi TERKINI (bukan versi saat fase itu awalnya digenerate).
+
+**Catatan untuk sesi berikutnya:** Phase 5 digenerate saat SOT `2.11.0`; Phase 1–4 digenerate jauh lebih awal (SOT lebih lama lagi). SOT sekarang `3.0.0` (camelCase, breaking). Reverifikasi Phase 1–5 harus eksplisit mengecek apakah masing-masing fase punya gap serupa `0.17.5`/`TASK-0.19` (field/response yang seharusnya camelCase tapi luput karena ditulis sebelum amandemen 3.0.0) — bukan cuma percaya tanda `✅` lama.
 
 <a id="review-cl-21"></a>
 ### Review-CL-21 — 2026-08-24 · review total & penuh seluruh fase (Phase 0–7) — 3 goal baru dibuka, 1 gap cakupan ditutup, 4 temuan dicatat sebagai referensi
