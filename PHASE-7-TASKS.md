@@ -144,7 +144,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.9.0 | 🔎 | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68) | 80 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
+| 7.9.0 | ⚠️ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32) | 75 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
 | 7.9.1 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
 | 7.9.3 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-32"></a>
+### QA-CL-32 — 2026-08-28 · goal 7.9.0 gagal verifikasi ulang (🔎 80% → ⚠️ 75%) — `INVALID_STATE` salah dipetakan ke HTTP 500
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi perilaku scope:** endpoint catalog, Group/direct assignment lima scope, penolakan scope palsu, invitation persistence, dan acceptance Milestone scope telah diperiksa ulang. Targeted suite **6 file / 34 test PASS**; `pnpm run lint` dan `pnpm run typecheck` PASS. Source `createInvitation()` kini menyimpan `assignment.scopeType`, dan `AC-025` membuktikan row invitation Milestone diteruskan ke Membership sebagai `milestone` dengan scopeId yang sama.
+
+**Regresi full-suite:** `pnpm test` → **137 file / 783 test PASS; 1 file / 1 test FAIL**. `packages/contracts/test/invalid-state-locked.test.ts` menemukan `validateScopeResource()` melempar `new PipelineError("INVALID_STATE", ..., 500)` saat Project DB tidak tersedia. Kontrak C.2 mengunci `INVALID_STATE` sebagai HTTP `409`; `500` harus memakai kode kanonik error internal yang sesuai, bukan `INVALID_STATE`. Ini membuat full regression suite merah.
+
+**Tindakan Dev yang diperlukan:** ganti kombinasi error internal tersebut ke kode/status kanonik C.2 yang cocok untuk kegagalan dependency/infrastruktur (atau gunakan `INVALID_STATE` dengan `409` hanya bila benar-benar state domain), lalu tambahkan/pertahankan test mapping. Jalankan ulang `pnpm test`, lint, dan typecheck sebelum handoff baru. Jangan mengubah SOT.
+
+**Verdict:** `⚠️ 75%`. Fungsi scope tampak benar, tetapi kontrak error dan full suite belum lulus.
 
 <a id="qa-cl-31"></a>
 ### QA-CL-31 — 2026-08-28 · goal 7.9.0 gagal verifikasi ulang (🔎 80% → ⚠️ 60%) — invitation scope tervalidasi tetapi disimpan sebagai `project`
