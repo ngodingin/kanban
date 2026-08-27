@@ -666,7 +666,7 @@ export async function createInvitation(
         id: ulid(),
         invitationId,
         groupId: assignment.groupId,
-        scopeType: "project",
+        scopeType: assignment.scopeType as ScopedScopeType,
         scopeId: assignment.scopeId,
       }).run();
     }
