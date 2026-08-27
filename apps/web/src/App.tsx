@@ -2,6 +2,7 @@ import { Route, Routes, useParams } from "react-router";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { LoginPage } from "./features/auth/login-page";
+import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
 
 function Home() {
   return (
@@ -62,6 +63,14 @@ export default function App() {
           </Shell>
         }
       />
+      <Route
+        path="/projects/:projectId/permissions"
+        element={
+          <Shell>
+            <PermissionsPage />
+          </Shell>
+        }
+      />
 
       {/* Route non-domain tetap memakai shell tanpa breadcrumb context. */}
       <Route
@@ -90,4 +99,8 @@ function MilestonePlaceholder() {
 function BoardPlaceholder() {
   const { boardId } = useParams();
   return <div className="p-6 text-sm text-muted-foreground">Board {boardId}</div>;
+}
+function PermissionsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  return <PermissionGroupsEditor projectId={projectId!} />;
 }
