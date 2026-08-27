@@ -3,7 +3,7 @@
 > Project codename: **NGodingin Kanban**
 > Type: Project Management / Kanban Platform (API-based, multi-tenant via Project isolation)
 > Status: MVP Baseline — Source of Truth (SOT)
-> Version: 4.1.1
+> Version: 4.2.0
 
 ---
 
@@ -57,7 +57,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 4.1.1
+SPEC_VERSION = 4.2.0
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 4.1.1
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **4.2.0** — Menambah endpoint read-only `GET /api/v1/projects/:project_id/permissions` di C.12 untuk mengekspos katalog Permission sebagai `{ id, key, description }` di dalam envelope `{ permissions }`. Keputusan manusia 2026-08-28 setelah blocker TASK-7.9 ditemukan: UI Permission Groups tidak dapat membuat/ubah Group atau direct Permission assignment tanpa mengetahui `permissionId` ULID hasil seed Global DB, sementara client hanya dapat memahami `permission.key` kanonik seperti `card.read`. Endpoint baru menjaga kontrak mutation existing tetap memakai `permissionId`, mencegah UI meng-hard-code ID atau menebak data, dan tetap Project-scoped/read-only melalui pipeline authorization. Goal implementasi dibuka di `PHASE-7-TASKS.md` sebagai prerequisite TASK-7.9. Minor — kapabilitas baca baru backward-compatible untuk UI Permission Groups, tidak mengubah endpoint yang sudah ada.
 - **4.1.1** — Melengkapi `03-ENGINEERING F.1` dengan RTO/RPO konkret (sebelumnya hanya prinsip umum "ditetapkan sebelum rilis") berdasarkan riset+drill nyata TASK-6.5.1/6.5.2 (PHASE-6-TASKS.md): Turso PITR (Point-in-Time Recovery) adalah fitur platform otomatis at-commit, bukan mekanisme kustom yang dibangun; organisasi proyek pada plan `starter` (terkonfirmasi via Turso API) memberi retensi 24 jam, RPO mendekati nol, RTO praktis <15 menit per database (restore mentah terukur <10 detik, drill nyata terhadap Global DB staging + satu Project DB throwaway, row count/sample cocok persis, resource cloud dibersihkan). Draft disiapkan AI-Dev (CL-02, `PHASE-6-TASKS.md`) namun sengaja TIDAK diterapkan sendiri (larangan mutlak Dev menyentuh SOT, `04-DELIVERY C.4`) — diterapkan lane AI-Planning & Review setelah draft diverifikasi. Opsi upgrade plan Turso untuk retensi lebih panjang (10/30/90 hari) adalah keputusan biaya/risiko bisnis terpisah, dicatat non-blocking. Patch — klarifikasi operasional/dokumentasi kapabilitas provider yang sudah ada, tidak mengubah business invariant/authorization/lifecycle/API semantics.
 - **4.1.0** — Dua keputusan manusia 2026-08-24 menutup temuan Review-CL-07 Phase 2 dan Review-CL-04 Phase 5. **Membership revoke lintas-DB** kini memakai guard `revocation_pending_at`: intent dicatat atomik di Global DB dan memblokir assignment baru, seluruh Card assignee dibersihkan bersama Activity dalam satu transaksi Project DB, lalu `revoked_at` difinalisasi conditional di Global DB; retry/crash recovery wajib idempotent. **Project deprovision** kini memakai journal Global DB `project_deprovision_jobs` dengan state `PENDING → DATABASE_DELETED → COMPLETED`, sehingga kegagalan setelah Turso DB terhapus tetapi sebelum cleanup registry commit dapat dilanjutkan tanpa perlu membuka Project DB yang sudah hilang. Minor karena menambah state control-plane/backward-compatible dan memperkuat failure semantics; tidak mengubah bentuk sukses API publik.
 - **4.0.0** — **BREAKING.** Tiga keputusan manusia 2026-08-24 menutup `[NEEDS-DECISION]` Review-CL-23. **(1) Cakupan concurrency diperjelas dan dipersempit:** optimistic `version`/`expectedVersion` berlaku pada entity domain versioned di Project DB (`project_state`, Milestone, Board, List, Card, Milestone Label, Board Label). Record control/authorization Global DB (Membership, Permission Group dan assignment, Invitation, API Key, PAT) tidak memperoleh field version pada MVP; korektnesnya ditegakkan lewat current-state validation dalam transaksi, constraint database, idempotency bila applicable, dan evaluasi authorization terkini. Command internal yang memutasi entity versioned tetap wajib conditional version check walau tidak menerima payload client. **(2) C.3 idempotency diperkuat:** fingerprint request wajib disimpan; key+scope sama dengan payload berbeda ditolak `409 IDEMPOTENCY_CONFLICT`; request identik yang masih in-flight ditolak `409 IDEMPOTENCY_IN_PROGRESS` tanpa mengeksekusi side-effect kedua; completed request identik me-replay response sukses tersimpan; failure melepaskan claim agar aman di-retry. **(3) C.13 mengunci wrapper response Invitation:** create/accept/revoke memakai `{ invitation }`, list memakai `{ invitations }` di dalam envelope `data`. Goal implementasi dibuka di TASK-0.19.2 dan TASK-0.21. Major karena mengubah bentuk response Invitation serta perilaku retry/concurrency yang terlihat client.

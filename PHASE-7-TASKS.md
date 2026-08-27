@@ -144,9 +144,10 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.9.1 | ⬜️ | [CL-29](#cl-29) | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card) | [02-SPEC Part D](docs/02-SPEC.md) | 7.3.1 |
-| 7.9.2 | ⬜️ | [CL-29](#cl-29) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
-| 7.9.3 | ⬜️ | [CL-29](#cl-29) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY | [02-SPEC A.10](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.0 | ⬜️ | [Review-CL-06](#review-cl-06) | 0 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
+| 7.9.1 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
+| 7.9.2 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.3 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
 
 **Test:** UI mencerminkan model Group (bukan RBAC Role→Permissions); scope & inheritance benar.
 **DoD:** Permission UI patuh authorization model; tidak menyederhanakan jadi RBAC.
@@ -223,7 +224,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 ## Flag
 - Refresh terhadap state repo nyata sudah dilakukan saat gate dibuka 2026-08-25 ([Review-CL-05](#review-cl-05)): `apps/web/` dikonfirmasi placeholder murni; versi dependency direvalidasi terhadap npm registry, cocok baseline tanpa revisi.
-- Tidak ada `[NEEDS-SPEC-AMENDMENT]` — konflik mockup sudah direkonsiliasi di [05-FRONTEND §4](docs/05-FRONTEND.md).
+- ~~`[NEEDS-SPEC-AMENDMENT]` TASK-7.9 katalog Permission tidak tersedia untuk UI~~ → **DISELESAIKAN 2026-08-28 (manusia):** SOT 4.2.0 menambah `GET /api/v1/projects/:project_id/permissions`; goal 7.9.0 dibuka sebagai prerequisite backend support sebelum UI Permission Groups.
+- Tidak ada `[NEEDS-SPEC-AMENDMENT]` terbuka — konflik mockup sudah direkonsiliasi di [05-FRONTEND §4](docs/05-FRONTEND.md).
 
 ---
 
@@ -232,6 +234,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-06"></a>
+### Review-CL-06 — 2026-08-28 · keputusan manusia membuka prerequisite TASK-7.9; SOT 4.2.0 permission catalog endpoint
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Scope `TASK-7.9` `[NEEDS-SPEC-AMENDMENT]` dikonfirmasi manusia. CL-29 diverifikasi ulang dari disk: mutation Permission Group/direct assignment menerima `permissionId` ULID seeded di Global DB, tetapi tidak ada endpoint yang mengekspos katalog `{ id, key, description }` ke client; UI Permission Groups tidak bisa membangun checklist/picker tanpa hard-code atau menebak ID. SOT `02-SPEC C.12`, Part D, `04-DELIVERY A.7`, `05-FRONTEND §5`, dan kode `permission-catalog.ts`/`project-admin.ts` dibaca untuk impact scan.
+
+**Keputusan manusia:** tambahkan endpoint read-only `GET /api/v1/projects/:project_id/permissions` yang mengembalikan `{ permissions:[{id,key,description}] }` dalam envelope C.2. Mutation existing tetap memakai `permissionId`; `key` dipakai UI sebagai label/mapping kanonik. `SPEC_VERSION` dinaikkan `4.1.1 → 4.2.0` karena ini kapabilitas API baru backward-compatible. Goal 7.9.0 dibuka sebagai prerequisite Dev untuk endpoint katalog dan dukungan assignment scope lima level yang sudah diwajibkan SOT.
+
+**Catatan:** Tidak ada kode implementasi disentuh lane ini. Status 7.9.x tetap `⬜️ 0%`; blocker spec-amendment tertutup, sehingga Dev berikutnya dapat mulai dari 7.9.0 sesuai dependency.
 
 <a id="qa-cl-29"></a>
 ### QA-CL-29 — 2026-08-24 · goal 7.11.2 closed ✅ (🔎 80% → ✅ 100%) — PAT tetap di `/me`, token tampil sekali, dan otorisasi tetap user-scoped

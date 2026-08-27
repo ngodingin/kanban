@@ -495,6 +495,7 @@ Assign ke Card: `{ "labelId": "label_123" }`. Server menentukan scope Label & me
 ```http
 GET    /api/v1/projects/:project_id/members
 POST   /api/v1/projects/:project_id/members/:membership_id/revoke
+GET    /api/v1/projects/:project_id/permissions
 GET    /api/v1/projects/:project_id/permission-groups
 POST   /api/v1/projects/:project_id/permission-groups
 PATCH  /api/v1/projects/:project_id/permission-groups/:group_id
@@ -506,6 +507,8 @@ POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignment
 POST   /api/v1/projects/:project_id/members/:membership_id/permission-assignments/:assignment_id/revoke
 ```
 `GET /members` mengembalikan seluruh Membership Project — dipakai antara lain untuk menemukan `membership_id` sebelum membuat scoped assignment. Query param opsional `status` (comma-separated, subset dari `active,revoked`) MAY membatasi hasil; tanpa param ini, response MUST mencakup keduanya (aktif dan revoked). `POST /members/:membership_id/revoke` mencabut otorisasi berjalan (`project_memberships.revoked_at`) tanpa menghapus data historis (BR-053) — `creator_user_id`/`activity.actor_user_id` yang merujuk User tersebut tetap utuh; tidak menghapus/revoke `membership_group_assignments`/`membership_permission_assignments` secara individual (assignment tetap ada sebagai riwayat, tetapi non-applicable begitu Membership induk revoked).
+
+`GET /permissions` mengembalikan katalog Permission read-only yang tersedia untuk Project sebagai `{ permissions: [{ id, key, description }] }` di dalam envelope sukses C.2. `id` adalah identifier internal yang wajib dipakai endpoint mutation Permission Group/direct assignment (`permissionId`), sedangkan `key` adalah nama kanonik D.1 yang dipakai UI untuk menampilkan pilihan manusiawi dan menjaga mapping stabil. Endpoint ini tidak membuat Permission baru, tidak mengubah Group/assignment, dan MUST NOT mengekspos data rahasia. Tanpa endpoint ini, UI Permission Groups tidak dapat membangun checklist Permission atau direct Permission picker tanpa hard-code ID hasil seed.
 
 `POST /permission-groups/:group_id/delete` adalah soft-delete (`permission_groups.deleted_at`, BR-041): Membership yang punya assignment ke Group tersebut kehilangan permission yang di-grant Group itu, tanpa menghapus riwayat `membership_group_assignments`.
 
