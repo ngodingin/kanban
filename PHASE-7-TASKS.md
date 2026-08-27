@@ -145,7 +145,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
-| 7.9.1 | 🔎 | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71) | 80 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
+| 7.9.1 | ⚠️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34) | 35 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
 | 7.9.3 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
 
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-34"></a>
+### QA-CL-34 — 2026-08-28 · goal 7.9.1 gagal verifikasi (🔎 80% → ⚠️ 35%) — assignment scoped ke Membership dan route Permission belum diimplementasikan
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/permission-groups-editor.test.tsx` → **4/4 PASS** dan `pnpm --filter @kanban/web typecheck` PASS. Komponen memakai katalog C.12 untuk checklist Permission tanpa hard-code `permissionId`; editor create/edit/delete definisi Group tersedia.
+
+**Kegagalan deliverable inti:** `apps/web/src/features/permissions/permission-groups-editor.tsx` tidak mengimpor/memanggil `useGroupAssignments`, `useCreateGroupAssignment`, atau `useRevokeGroupAssignment`; UI tidak menampilkan Membership, pemilih scope Project/Milestone/Board/List/Card, daftar assignment, maupun revoke. `apps/web/src/App.tsx` juga tidak mengimpor/merender `PermissionGroupsEditor`, sehingga menu sidebar `/permissions` menuju fallback NotFound dan editor tidak dapat dipakai. Test Dev hanya menguji daftar/form Group, sehingga tidak membuktikan scoped assignment atau route sebenarnya.
+
+**Tindakan Dev yang diperlukan:** tambahkan route Permission yang Project-scoped dan memberi `projectId` nyata ke editor; bangun UI untuk memilih Membership, Group, dan scope hierarchy, lalu buat/list/revoke Group assignment memakai endpoint C.12. Tambahkan test positif payload nyata `{groupId, scopeType, scopeId}` untuk lima scope, test negatif scope/Member invalid atau error API yang terlihat, serta test routing yang membuktikan layar dapat diakses. Direct Permission tetap scope goal 7.9.3. Jangan mengubah SOT.
+
+**Verdict:** `⚠️ 35%`. CRUD definisi Group ada, tetapi assignment scoped Membership—setengah inti goal—dan akses layar belum ada.
 
 <a id="qa-cl-33"></a>
 ### QA-CL-33 — 2026-08-28 · goal 7.9.0 closed ✅ (🔎 80% → ✅ 100%) — katalog Permission dan scoped assignment lima level patuh SOT
