@@ -6,6 +6,7 @@ import { createClient, type Client } from "@libsql/client";
 import { Hono } from "hono";
 import {
   applyGlobalMigrations,
+  applyProjectMigrations,
   newProjectId,
   registerProjectWithOwnerMembership,
 } from "@kanban/infrastructure";
@@ -21,6 +22,7 @@ interface TestCtx {
   deps: ReturnType<typeof buildProjectAdminDeps>;
   dir: string;
   projectIdA: string;
+  milestoneIdA: string;
 }
 
 let ctx: TestCtx;
@@ -39,23 +41,37 @@ beforeAll(async () => {
   }
 
   const projectIdA = `pg-a-${newProjectId()}`;
+  const projectDbA = createClient({ url: `file:${join(dir, "project-a.db")}` });
+  await applyProjectMigrations(projectDbA);
   await registerProjectWithOwnerMembership(globalClient, {
     projectId: projectIdA,
-    databaseId: `file:${join(dir, "unused-a.db")}`,
+    databaseId: `file:${join(dir, "project-a.db")}`,
     ownerUserId: "user-a",
     now,
   });
+  // Create actual resources in Project A for scope validation tests.
+  const milestoneIdA = `ms-a-${newProjectId()}`;
+  await projectDbA.execute({
+    sql: "INSERT INTO milestones (id, title, progress, created_at, updated_at, version) VALUES (?, 'Milestone A', 0, ?, ?, 1)",
+    args: [milestoneIdA, now, now],
+  });
+  // Membership kedua milik Project lain — untuk uji boundary.
+  const projectDbB = createClient({ url: `file:${join(dir, "project-b.db")}` });
+  await applyProjectMigrations(projectDbB);
   await registerProjectWithOwnerMembership(globalClient, {
     projectId: projectIdB,
-    databaseId: `file:${join(dir, "unused-b.db")}`,
+    databaseId: `file:${join(dir, "project-b.db")}`,
     ownerUserId: "user-c",
     now,
   });
+  await projectDbA.close();
+  await projectDbB.close();
 
   ctx = {
     globalClient,
     dir,
     projectIdA,
+    milestoneIdA,
     deps: buildProjectAdminDeps({
       identityResolver: {
         resolveIdentity: async (request) => {
@@ -151,6 +167,11 @@ describe("POST /invitations (goal 1.9.1)", () => {
     if (Number(leftovers.rows[0]!.n) !== 1) {
       throw new Error(`ada invitation sisa dari transaksi gagal: ${Number(leftovers.rows[0]!.n)}`);
     }
+  });
+
+  it("[C.13][BR-042B] Positif: invitation dengan milestone scope valid → 201", async () => {
+    const res = await invite({ email: "valid@z.co", assignments: [{ groupId: groupId, scopeType: "milestone", scopeId: ctx.milestoneIdA }] }, "user-a");
+    if (res.status !== 201) throw new Error(`harusnya 201, dapat ${res.status}: ${await res.text()}`);
   });
 
   it("[C.13] negatif: email invalid / expires_at bukan ISO → VALIDATION_ERROR 400; expires_at lampau / scope salah → INVALID_STATE 409", async () => {

@@ -6,6 +6,7 @@ import { createClient, type Client } from "@libsql/client";
 import { Hono } from "hono";
 import {
   applyGlobalMigrations,
+  applyProjectMigrations,
   newProjectId,
   registerProjectWithOwnerMembership,
 } from "@kanban/infrastructure";
@@ -13,15 +14,19 @@ import { buildProjectAdminDeps, type ProjectAdminDepsInput } from "../src/projec
 import { createProjectAdminRouter } from "../src/routes/project-admin.ts";
 
 // Goal 1.8.1 — POST /members/:membership_id/group-assignments (+ /revoke)
-// (C.12): assign scoped Group ke Membership; Phase 1 scope_type='project'
-// & scope_id=project_id (BR-042B); duplikat aktif ditolak UNIQUE; revoke
-// mempertahankan riwayat; Owner-only interim.
+// (C.12): assign scoped Group ke Membership; scope_type lima level
+// (BR-042B); duplikat aktif ditolak UNIQUE; revoke mempertahankan riwayat;
+// Owner-only interim.
 
 interface TestCtx {
   globalClient: Client;
   deps: ReturnType<typeof buildProjectAdminDeps>;
   dir: string;
   projectIdA: string;
+  milestoneIdA: string;
+  boardIdA: string;
+  listIdA: string;
+  cardIdA: string;
 }
 
 let ctx: TestCtx;
@@ -58,11 +63,34 @@ beforeAll(async () => {
   }
 
   const projectIdA = `pg-a-${newProjectId()}`;
+  const projectDbA = createClient({ url: `file:${join(dir, "project-a.db")}` });
+  await applyProjectMigrations(projectDbA);
   await registerProjectWithOwnerMembership(globalClient, {
     projectId: projectIdA,
-    databaseId: `file:${join(dir, "unused-a.db")}`,
+    databaseId: `file:${join(dir, "project-a.db")}`,
     ownerUserId: "user-a",
     now,
+  });
+  // Create actual resources in Project A for scope validation tests.
+  const milestoneIdA = `ms-a-${newProjectId()}`;
+  await projectDbA.execute({
+    sql: "INSERT INTO milestones (id, title, progress, created_at, updated_at, version) VALUES (?, 'Milestone A', 0, ?, ?, 1)",
+    args: [milestoneIdA, now, now],
+  });
+  const boardIdA = `bd-a-${newProjectId()}`;
+  await projectDbA.execute({
+    sql: "INSERT INTO boards (id, milestone_id, title, created_at, updated_at, version) VALUES (?, ?, 'Board A', ?, ?, 1)",
+    args: [boardIdA, milestoneIdA, now, now],
+  });
+  const listIdA = `ls-a-${newProjectId()}`;
+  await projectDbA.execute({
+    sql: "INSERT INTO lists (id, board_id, title, created_at, updated_at, version) VALUES (?, ?, 'List A', ?, ?, 1)",
+    args: [listIdA, boardIdA, now, now],
+  });
+  const cardIdA = `cd-a-${newProjectId()}`;
+  await projectDbA.execute({
+    sql: "INSERT INTO cards (id, list_id, creator_user_id, title, created_at, updated_at, version) VALUES (?, ?, 'user-a', 'Card A', ?, ?, 1)",
+    args: [cardIdA, listIdA, now, now],
   });
   membershipIdB = `m-b-${projectIdA}`;
   await globalClient.execute({
@@ -70,14 +98,27 @@ beforeAll(async () => {
     args: [membershipIdB, projectIdA, now],
   });
   // Membership kedua milik Project lain — untuk uji boundary.
+  const projectDbB = createClient({ url: `file:${join(dir, "project-b.db")}` });
+  await applyProjectMigrations(projectDbB);
   await registerProjectWithOwnerMembership(globalClient, {
     projectId: projectIdB,
-    databaseId: `file:${join(dir, "unused-b.db")}`,
+    databaseId: `file:${join(dir, "project-b.db")}`,
     ownerUserId: "user-c",
     now,
   });
+  await projectDbA.close();
+  await projectDbB.close();
 
-  ctx = { globalClient, dir, projectIdA, deps: buildProjectAdminDeps({ identityResolver: makeIdentityResolver(), globalClient }) };
+  ctx = {
+    globalClient,
+    dir,
+    projectIdA,
+    milestoneIdA,
+    boardIdA,
+    listIdA,
+    cardIdA,
+    deps: buildProjectAdminDeps({ identityResolver: makeIdentityResolver(), globalClient }),
+  };
 });
 
 afterAll(async () => {
@@ -149,11 +190,28 @@ describe("group-assignments endpoints (goal 1.8.1)", () => {
     if (json.error.code !== "RESOURCE_NOT_FOUND") throw new Error(`kode salah: ${JSON.stringify(json)}`);
   });
 
-  it("[BR-042B] negatif: scope_type non-project dan scope_id != project_id → INVALID_STATE", async () => {
+  it("[BR-042B][C.12] Positif: assign ke lima scope valid → 201", async () => {
     const g2 = (await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "G-A2", permissions: [] })).id;
+    const validBodies = [
+      { groupId: g2, scopeType: "project", scopeId: ctx.projectIdA },
+      { groupId: g2, scopeType: "milestone", scopeId: ctx.milestoneIdA },
+      { groupId: g2, scopeType: "board", scopeId: ctx.boardIdA },
+      { groupId: g2, scopeType: "list", scopeId: ctx.listIdA },
+      { groupId: g2, scopeType: "card", scopeId: ctx.cardIdA },
+    ];
+    for (const body of validBodies) {
+      const res = await assign(ctx.projectIdA, membershipIdB, body, "user-a");
+      if (res.status !== 201) throw new Error(`body ${JSON.stringify(body)} harusnya 201, dapat ${res.status}: ${await res.text()}`);
+    }
+  });
+
+  it("[BR-042B] negatif: scope_type non-project dan scope_id tidak ada → INVALID_STATE", async () => {
+    const g2 = (await ctx.deps.createPermissionGroup(ctx.projectIdA, { name: "G-A3", permissions: [] })).id;
     for (const body of [
       { groupId: g2, scopeType: "board", scopeId: ctx.projectIdA },
       { groupId: g2, scopeType: "project", scopeId: "proj-lain" },
+      { groupId: g2, scopeType: "milestone", scopeId: "ms-tak-ada" },
+      { groupId: g2, scopeType: "card", scopeId: "cd-tak-ada" },
     ]) {
       const res = await assign(ctx.projectIdA, membershipIdB, body, "user-a");
       if (res.status !== 409) throw new Error(`body ${JSON.stringify(body)} harusnya 409, dapat ${res.status}`);

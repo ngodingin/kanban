@@ -26,6 +26,45 @@ import { cleanupAssigneesForRevokedMembership } from "./card-assignee-cleanup.ts
 // plane), BUKAN Project DB — persistence tetap di balik boundary ini dan
 // selalu menegakkan Project boundary lewat parameter projectId (invariant #4).
 
+/**
+ * BR-042B — Validasi bahwa scope resource ada dan berada dalam Project yang sama.
+ * Untuk scopeType "project", scopeId wajib sama dengan projectId.
+ * Untuk scopeType lainnya, scopeId harus merujuk ke resource yang ada di Project DB.
+ */
+export async function validateScopeResource(
+  projectDb: Client | null,
+  projectId: string,
+  scopeType: string,
+  scopeId: string,
+): Promise<void> {
+  if (scopeType === "project") {
+    if (scopeId !== projectId) {
+      throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+    }
+    return;
+  }
+  if (!projectDb) {
+    throw new PipelineError("INVALID_STATE", "Project DB tidak tersedia untuk validasi scope resource.", 500);
+  }
+  const tableMap: Record<string, string> = {
+    milestone: "milestones",
+    board: "boards",
+    list: "lists",
+    card: "cards",
+  };
+  const table = tableMap[scopeType];
+  if (!table) {
+    throw new PipelineError("VALIDATION_ERROR", `scope_type '${scopeType}' tidak valid.`, 400);
+  }
+  const result = await projectDb.execute({
+    sql: `SELECT id FROM ${table} WHERE id = ?`,
+    args: [scopeId],
+  });
+  if (result.rows.length === 0) {
+    throw new PipelineError("INVALID_STATE", `${scopeType} '${scopeId}' tidak ditemukan di Project ini (BR-042B).`, 409);
+  }
+}
+
 export async function getProjectOwnerId(globalClient: Client, projectId: string): Promise<string | null> {
   const db = drizzle(globalClient);
   const rows = await db.select({ ownerUserId: projects.ownerUserId }).from(projects)
@@ -351,6 +390,7 @@ export interface GroupAssignmentSummary {
 export async function createGroupAssignment(
   globalClient: Client,
   input: { projectId: string; membershipId: string; groupId: string; scopeType: string; scopeId: string },
+  projectDb?: Client | null,
 ): Promise<GroupAssignmentSummary> {
   const membership = await requireActiveMembershipRow(globalClient, input.projectId, input.membershipId);
   if (membership.revokedAt !== null) {
@@ -360,9 +400,7 @@ export async function createGroupAssignment(
   if (!validScopeTypes.includes(input.scopeType)) {
     throw new PipelineError("VALIDATION_ERROR", `scope_type '${input.scopeType}' tidak valid. Harus salah satu: ${validScopeTypes.join(", ")}.`, 400);
   }
-  if (input.scopeType === "project" && input.scopeId !== input.projectId) {
-    throw new PipelineError("VALIDATION_ERROR", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 400);
-  }
+  await validateScopeResource(projectDb ?? null, input.projectId, input.scopeType, input.scopeId);
   const groupRows = await drizzle(globalClient).select().from(permissionGroups)
     .where(sql`${permissionGroups.id} = ${input.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
   if (groupRows.length === 0 || groupRows[0]!.deletedAt !== null) {
@@ -459,6 +497,7 @@ export async function createPermissionAssignment(
     scopeId: string;
     cardReadVisibility?: string | null;
   },
+  projectDb?: Client | null,
 ): Promise<PermissionAssignmentSummary> {
   const membership = await requireActiveMembershipRow(globalClient, input.projectId, input.membershipId);
   if (membership.revokedAt !== null) {
@@ -468,9 +507,7 @@ export async function createPermissionAssignment(
   if (!validScopeTypes.includes(input.scopeType)) {
     throw new PipelineError("VALIDATION_ERROR", `scope_type '${input.scopeType}' tidak valid. Harus salah satu: ${validScopeTypes.join(", ")}.`, 400);
   }
-  if (input.scopeType === "project" && input.scopeId !== input.projectId) {
-    throw new PipelineError("VALIDATION_ERROR", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 400);
-  }
+  await validateScopeResource(projectDb ?? null, input.projectId, input.scopeType, input.scopeId);
   const permRows = await globalClient.execute({ sql: "SELECT key FROM permissions WHERE id = ?", args: [input.permissionId] });
   if (permRows.rows.length === 0) {
     throw new PipelineError("RESOURCE_NOT_FOUND", `Permission ${input.permissionId} tidak ditemukan.`, 404);
@@ -574,6 +611,7 @@ export async function createInvitation(
     assignments: Array<{ groupId: string; scopeType: string; scopeId: string }>;
     expiresAt?: string | null;
   },
+  projectDb?: Client | null,
 ): Promise<InvitationSummary> {
   const email = input.email.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -602,9 +640,7 @@ export async function createInvitation(
     if (!validScopeTypes.includes(assignment.scopeType)) {
       throw new PipelineError("VALIDATION_ERROR", `scope_type '${assignment.scopeType}' tidak valid. Harus salah satu: ${validScopeTypes.join(", ")}.`, 400);
     }
-    if (assignment.scopeType === "project" && assignment.scopeId !== input.projectId) {
-      throw new PipelineError("VALIDATION_ERROR", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 400);
-    }
+    await validateScopeResource(projectDb ?? null, input.projectId, assignment.scopeType, assignment.scopeId);
     const groupRows = await drizzle(globalClient).select().from(permissionGroups)
       .where(sql`${permissionGroups.id} = ${assignment.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
     if (groupRows.length === 0 || groupRows[0]!.deletedAt !== null) {

@@ -330,35 +330,41 @@ export function buildProjectAdminDeps(input: {
         ...(payload.permissions !== undefined ? { permissions: payload.permissions } : {}),
       }),
     deletePermissionGroup: (projectId, groupId) => deletePermissionGroup(globalClient, projectId, groupId),
-    createGroupAssignment: async (projectId, membershipId, input) =>
-      createGroupAssignment(globalClient, {
+    createGroupAssignment: async (projectId, membershipId, input) => {
+      const projectDb = await resolveProjectDbClient(projectId);
+      return createGroupAssignment(globalClient, {
         projectId,
         membershipId,
         groupId: input.groupId,
         scopeType: input.scopeType,
         scopeId: input.scopeId,
-      }),
+      }, projectDb);
+    },
     revokeGroupAssignment: (projectId, membershipId, assignmentId) =>
       revokeGroupAssignment(globalClient, { projectId, membershipId, assignmentId }),
-    createPermissionAssignment: async (projectId, membershipId, input) =>
-      createPermissionAssignment(globalClient, {
+    createPermissionAssignment: async (projectId, membershipId, input) => {
+      const projectDb = await resolveProjectDbClient(projectId);
+      return createPermissionAssignment(globalClient, {
         projectId,
         membershipId,
         permissionId: input.permissionId,
         scopeType: input.scopeType,
         scopeId: input.scopeId,
         ...(input.cardReadVisibility !== undefined ? { cardReadVisibility: input.cardReadVisibility } : {}),
-      }),
+      }, projectDb);
+    },
     revokePermissionAssignment: (projectId, membershipId, assignmentId) =>
       revokePermissionAssignment(globalClient, { projectId, membershipId, assignmentId }),
-    createInvitation: async (projectId, invitedByUserId, input) =>
-      createInvitation(globalClient, {
+    createInvitation: async (projectId, invitedByUserId, input) => {
+      const projectDb = await resolveProjectDbClient(projectId);
+      return createInvitation(globalClient, {
         projectId,
         invitedByUserId,
         email: input.email,
         assignments: input.assignments,
         ...(input.expiresAt !== undefined ? { expiresAt: input.expiresAt } : {}),
-      }),
+      }, projectDb);
+    },
     acceptInvitation: (invitationId, userId, userEmail) => acceptInvitation(globalClient, { invitationId, userId, userEmail }),
     listMembers: async (projectId, requesterUserId, opts) => {
       await requireActiveMember(globalClient, projectId, requesterUserId);
