@@ -44,7 +44,7 @@ export async function validateScopeResource(
     return;
   }
   if (!projectDb) {
-    throw new PipelineError("INVALID_STATE", "Project DB tidak tersedia untuk validasi scope resource.", 500);
+    throw new PipelineError("INTERNAL_ERROR", "Project DB tidak tersedia untuk validasi scope resource.", 500);
   }
   const tableMap: Record<string, string> = {
     milestone: "milestones",
