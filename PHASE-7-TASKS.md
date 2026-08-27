@@ -144,7 +144,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.9.0 | 🔎 | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67) | 80 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
+| 7.9.0 | ⚠️ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31) | 60 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
 | 7.9.1 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
 | 7.9.3 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-31"></a>
+### QA-CL-31 — 2026-08-28 · goal 7.9.0 gagal verifikasi ulang (🔎 80% → ⚠️ 60%) — invitation scope tervalidasi tetapi disimpan sebagai `project`
+
+**Role:** AI-QA · **Model:** Codex
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/api/test/permissions-list.test.ts apps/api/test/group-assignments.test.ts apps/api/test/permission-assignments.test.ts apps/api/test/invitations-create.test.ts apps/api/test/invitations-accept.test.ts packages/infrastructure/test/ac025-scoped-invite.test.ts"'` → **6 file / 34 test PASS**. Perbaikan `9fa04bc` benar untuk Group dan direct Permission: resource scope yang palsu/type-mismatch kini ditolak dan lima scope valid diterima.
+
+**Temuan source-level yang tidak dicakup test:** `packages/infrastructure/src/database/project-admin.ts:664-671` memvalidasi `assignment.scopeType`, tetapi kemudian selalu menyimpan `scopeType: "project"` pada `invitationGroupAssignments`, bukannya `assignment.scopeType`. Contoh invitation Milestone yang test terima `201` akan tersimpan sebagai scope Project; saat acceptance, hasil authorization menjadi lebih luas dari yang diundang. Ini melanggar BR-042, BR-042B, dan BR-051/052 (reference Group + hierarchy scope harus dipertahankan), serta mengubah semantic authorization tanpa test gagal.
+
+**Tindakan Dev yang diperlukan:** simpan `scopeType: assignment.scopeType`; tambahkan assertion persistence pada create invitation dan acceptance end-to-end untuk scope non-Project (minimal Milestone, sebaiknya tabel lima scope) agar membership hasil invitation mempertahankan type dan scopeId yang sama. Jalankan ulang suite di atas, lint, serta typecheck sebelum mengembalikan `🔎 80%`. Jangan mengubah SOT.
+
+**Verdict:** `⚠️ 60%`. Endpoint katalog dan assignment langsung kini benar, tetapi jalur invitation tetap memperluas scope secara diam-diam.
 
 <a id="qa-cl-30"></a>
 ### QA-CL-30 — 2026-08-28 · goal 7.9.0 gagal verifikasi (🔎 80% → ⚠️ 40%) — scope assignment menerima resource palsu/lintas hierarchy
