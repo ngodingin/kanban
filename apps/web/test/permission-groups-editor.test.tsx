@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, test, vi } from "vitest";
+import App from "../src/App";
 import { PermissionGroupsEditor } from "../src/features/permissions/permission-groups-editor";
 import { queryClient } from "../src/lib/query-client";
 
@@ -105,6 +106,16 @@ function renderEditor(projectId = "p1") {
     <MemoryRouter initialEntries={[`/projects/${projectId}/permissions`]}>
       <QueryClientProvider client={queryClient}>
         <PermissionGroupsEditor projectId={projectId} />
+      </QueryClientProvider>
+    </MemoryRouter>,
+  );
+}
+
+function renderApp(path: string) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <QueryClientProvider client={queryClient}>
+        <App />
       </QueryClientProvider>
     </MemoryRouter>,
   );
@@ -245,5 +256,104 @@ describe("TASK-7.9.1 — Permission Groups Editor", () => {
       );
       expect(postCalls.length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe("TASK-7.9.1 — App Route Integration", () => {
+  test("positif: /projects/p1/permissions merender PermissionGroupsEditor", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    renderApp("/projects/p1/permissions");
+    await waitFor(() => expect(screen.getByText("Groups")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+  });
+
+  test("positif: sidebar Permissions link mengarah ke project-scoped route", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    renderApp("/projects/p1/permissions");
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+    const permissionsLink = screen.getByRole("link", { name: "Permissions" });
+    expect(permissionsLink.getAttribute("href")).toBe("/projects/p1/permissions");
+  });
+});
+
+describe("TASK-7.9.1 — Five Scope Payloads", () => {
+  test.each([
+    { scopeType: "project", scopeId: "p1", expectedScopeId: "p1" },
+    { scopeType: "milestone", scopeId: "m1", expectedScopeId: "m1" },
+    { scopeType: "board", scopeId: "b1", expectedScopeId: "b1" },
+    { scopeType: "list", scopeId: "l1", expectedScopeId: "l1" },
+    { scopeType: "card", scopeId: "c1", expectedScopeId: "c1" },
+  ])("positif: submit assignment scope $scopeType mengirim payload benar", async ({ scopeType, scopeId, expectedScopeId }) => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for assignment form to appear
+    await waitFor(() => expect(screen.getByText("Assign")).toBeTruthy());
+
+    // Select group
+    const groupSelect = screen.getByLabelText("Group") as HTMLSelectElement;
+    await user.selectOptions(groupSelect, "g1");
+
+    // Select scope type
+    const scopeSelect = screen.getByLabelText("Scope") as HTMLSelectElement;
+    await user.selectOptions(scopeSelect, scopeType);
+
+    // Fill scope ID for non-project scopes
+    if (scopeType !== "project") {
+      const scopeIdInput = screen.getByLabelText("Scope ID") as HTMLInputElement;
+      await user.type(scopeIdInput, scopeId);
+    }
+
+    // Click assign button
+    const assignButton = screen.getByRole("button", { name: "Assign" });
+    await user.click(assignButton);
+
+    // Wait for the API call and verify payload
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/group-assignments"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+      const lastCall = postCalls[postCalls.length - 1];
+      const body = JSON.parse(lastCall[1].body as string);
+      expect(body).toEqual({
+        groupId: "g1",
+        scopeType: scopeType,
+        scopeId: expectedScopeId,
+      });
+    });
+  });
+
+  test("negatif: non-Project scope tanpa scopeId tidak dapat di-submit", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for assignment form to appear
+    await waitFor(() => expect(screen.getByText("Assign")).toBeTruthy());
+
+    // Select group
+    const groupSelect = screen.getByLabelText("Group") as HTMLSelectElement;
+    await user.selectOptions(groupSelect, "g1");
+
+    // Select milestone scope (non-project)
+    const scopeSelect = screen.getByLabelText("Scope") as HTMLSelectElement;
+    await user.selectOptions(scopeSelect, "milestone");
+
+    // Don't fill scope ID
+    const assignButton = screen.getByRole("button", { name: "Assign" });
+    expect(assignButton.disabled).toBe(true);
   });
 });

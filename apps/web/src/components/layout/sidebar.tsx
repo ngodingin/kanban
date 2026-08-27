@@ -1,4 +1,4 @@
-import { NavLink } from "react-router";
+import { NavLink, useParams } from "react-router";
 import { useUiStore } from "@/lib/ui-store";
 
 // App shell — sidebar context-aware (05-FRONTEND §5). Tanpa Inbox:
@@ -9,15 +9,17 @@ const NAV_ITEMS = [
   { to: "/activity", label: "Activity", end: false },
 ] as const;
 
+// Project-scoped items — path will be prefixed with /projects/:projectId
 const PROJECT_ITEMS = [
-  { to: "/members", label: "Members" },
-  { to: "/permissions", label: "Permissions" },
-  { to: "/api-keys", label: "API Keys" },
-  { to: "/settings", label: "Settings" },
+  { segment: "/members", label: "Members" },
+  { segment: "/permissions", label: "Permissions" },
+  { segment: "/api-keys", label: "API Keys" },
+  { segment: "/settings", label: "Settings" },
 ] as const;
 
 export function Sidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const { projectId } = useParams<{ projectId: string }>();
 
   return (
     <aside
@@ -50,21 +52,26 @@ export function Sidebar() {
           PROJECTS ▾
         </div>
 
-        {PROJECT_ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `rounded-md px-3 py-2 text-sm ${
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-accent"
-              }`
-            }
-          >
-            {item.label}
-          </NavLink>
-        ))}
+        {PROJECT_ITEMS.map((item) => {
+          const to = projectId
+            ? `/projects/${projectId}${item.segment}`
+            : item.segment;
+          return (
+            <NavLink
+              key={item.segment}
+              to={to}
+              className={({ isActive }) =>
+                `rounded-md px-3 py-2 text-sm ${
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-foreground hover:bg-accent"
+                }`
+              }
+            >
+              {item.label}
+            </NavLink>
+          );
+        })}
       </nav>
       <div className="border-t border-border p-3 text-xs text-muted-foreground">
         Powered by NGodingiN

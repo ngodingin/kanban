@@ -145,7 +145,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
-| 7.9.1 | ⚠️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35) | 65 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
+| 7.9.1 | 🔎 | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35)<br>[CL-74](#cl-74) | 80 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
 | 7.9.3 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
 
@@ -313,6 +313,27 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-74"></a>
+### CL-74 — 2026-08-28 · goal 7.9.1 → 🔎 80% — sidebar navigation + scope validation + 5-scope tests
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** QA-CL-35 mengidentifikasi 3 kekurangan: (1) sidebar masih menuju `/permissions`, (2) test belum membuktikan payload 5 scope, (3) test belum menguji route App. Semua sudah diperbaiki:
+
+1. **Sidebar navigation:** `apps/web/src/components/layout/sidebar.tsx` diubah menjadi context-aware — PROJECT_ITEMS sekarang membangun link Project-scoped dari `useParams<{ projectId: string }>()`. Link `/permissions` sekarang menjadi `/projects/:projectId/permissions` saat dalam context project.
+
+2. **Scope validation:** `PermissionGroupsEditor` sekarang menolak submit scope non-Project tanpa scopeId (tombol Assign disabled).
+
+3. **Tests (16 total):**
+   - 8 existing tests (CRUD groups, member list, assignment submit/revoke)
+   - 2 App route integration tests (render editor via URL, sidebar link href)
+   - 5 scope payload tests (`test.each` untuk project/milestone/board/list/card — assert body persis `{groupId, scopeType, scopeId}`)
+   - 1 negative test (non-Project scope tanpa scopeId → button disabled)
+
+`pnpm run lint` pass, `pnpm run typecheck` pass, `pnpm vitest run` → **139 file / 800 test PASS**.
+
+**Catatan:** Goal 7.9.1 naik dari ⚠️ 65% ke 🔎 80%. QA perlu re-verify.
 
 <a id="cl-73"></a>
 ### CL-73 — 2026-08-28 · goal 7.9.1 → 🔄 80% — route + membership selector + assignment UI

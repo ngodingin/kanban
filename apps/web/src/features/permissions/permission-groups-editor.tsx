@@ -107,6 +107,8 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   function handleAssignSubmit(e: FormEvent) {
     e.preventDefault();
     if (!selectedMembershipId || !assignGroupId) return;
+    // Validate scopeId is required for non-Project scopes
+    if (assignScopeType !== "project" && !assignScopeId.trim()) return;
     createAssignmentMutation.mutate(
       {
         membershipId: selectedMembershipId,
@@ -366,7 +368,11 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
               )}
               <button
                 type="submit"
-                disabled={createAssignmentMutation.isPending || !assignGroupId}
+                disabled={
+                  createAssignmentMutation.isPending ||
+                  !assignGroupId ||
+                  (assignScopeType !== "project" && !assignScopeId.trim())
+                }
                 className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
               >
                 {createAssignmentMutation.isPending ? "Assigning..." : "Assign"}
