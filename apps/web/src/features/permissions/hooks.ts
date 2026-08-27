@@ -10,7 +10,7 @@ export interface Permission {
 export interface PermissionGroup {
   id: string;
   name: string;
-  permissions: Array<{ permissionId: string; key: string }>;
+  permissions: Array<{ permissionId: string; key: string; cardReadVisibility?: string | null }>;
 }
 
 export interface GroupAssignment {

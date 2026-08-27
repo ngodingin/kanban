@@ -22,8 +22,8 @@ const PERMISSIONS = [
 ];
 
 const GROUPS = [
-  { id: "g1", name: "Manager", permissions: [{ permissionId: "p1", key: "card.read" }] },
-  { id: "g2", name: "Contributor", permissions: [{ permissionId: "p1", key: "card.read" }, { permissionId: "p2", key: "card.update" }] },
+  { id: "g1", name: "Manager", permissions: [{ permissionId: "p1", key: "card.read", cardReadVisibility: "ALL" }] },
+  { id: "g2", name: "Contributor", permissions: [{ permissionId: "p1", key: "card.read", cardReadVisibility: "ASSIGNED_TO_ME" }, { permissionId: "p2", key: "card.update" }] },
 ];
 
 const MEMBERS = [
@@ -355,5 +355,91 @@ describe("TASK-7.9.1 — Five Scope Payloads", () => {
     // Don't fill scope ID
     const assignButton = screen.getByRole("button", { name: "Assign" });
     expect(assignButton.disabled).toBe(true);
+  });
+});
+
+describe("TASK-7.9.2 — Card Visibility Selector", () => {
+  test("positif: edit group menampilkan visibility existing untuk card.read", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+    await user.click(screen.getByText("Manager"));
+
+    // Manager has card.read with visibility ALL
+    await waitFor(() => {
+      const visibilitySelect = screen.getByDisplayValue("ALL") as HTMLSelectElement;
+      expect(visibilitySelect).toBeTruthy();
+    });
+  });
+
+  test("positif: visibility default adalah CREATED_BY_ME saat create baru", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+    await user.click(screen.getByText("+ Baru"));
+
+    // Check card.read checkbox
+    const cardReadCheckbox = screen.getByText("card.read").closest("label")!.querySelector("input[type=checkbox]") as HTMLInputElement;
+    await user.click(cardReadCheckbox);
+
+    // Visibility selector should appear with default CREATED_BY_ME
+    await waitFor(() => {
+      const visibilitySelect = screen.getByDisplayValue("CREATED_BY_ME") as HTMLSelectElement;
+      expect(visibilitySelect).toBeTruthy();
+    });
+  });
+
+  test("positif: visibility selector tidak muncul jika card.read tidak dipilih", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+    await user.click(screen.getByText("+ Baru"));
+
+    // Only check card.update (not card.read)
+    const cardUpdateCheckbox = screen.getByText("card.update").closest("label")!.querySelector("input[type=checkbox]") as HTMLInputElement;
+    await user.click(cardUpdateCheckbox);
+
+    // Visibility selector should NOT appear
+    expect(screen.queryByText("Visibility:")).toBeNull();
+  });
+
+  test("positif: ubah visibility terkirim saat submit", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Click Manager to edit
+    await user.click(screen.getByText("Manager"));
+    await waitFor(() => {
+      const visibilitySelect = screen.getByDisplayValue("ALL") as HTMLSelectElement;
+      expect(visibilitySelect).toBeTruthy();
+    });
+
+    // Change visibility to CREATED_BY_ME
+    const visibilitySelect = screen.getByDisplayValue("ALL") as HTMLSelectElement;
+    await user.selectOptions(visibilitySelect, "CREATED_BY_ME");
+
+    // Submit
+    await user.click(screen.getByText("Simpan"));
+
+    // Wait for the API call and verify payload includes cardReadVisibility
+    await waitFor(() => {
+      const patchCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "PATCH" && String(c[0]).includes("/permission-groups/g1"),
+      );
+      expect(patchCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(patchCalls[patchCalls.length - 1][1].body as string);
+      expect(body.permissions).toContainEqual(
+        expect.objectContaining({
+          permissionId: "p1",
+          cardReadVisibility: "CREATED_BY_ME",
+        }),
+      );
+    });
   });
 });

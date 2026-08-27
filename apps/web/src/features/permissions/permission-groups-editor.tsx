@@ -10,9 +10,13 @@ import {
   useCreateGroupAssignment,
   useRevokeGroupAssignment,
   SCOPES,
+  type Permission,
   type PermissionGroup,
   type GroupAssignment,
 } from "./hooks";
+
+const CARD_READ_VISIBILITIES = ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ALL"] as const;
+type CardReadVisibility = (typeof CARD_READ_VISIBILITIES)[number];
 
 interface PermissionGroupsEditorProps {
   projectId: string;
@@ -32,8 +36,10 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   const [isCreating, setIsCreating] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [newGroupPermissions, setNewGroupPermissions] = useState<string[]>([]);
+  const [newGroupVisibility, setNewGroupVisibility] = useState<CardReadVisibility>("CREATED_BY_ME");
   const [editGroupName, setEditGroupName] = useState("");
   const [editGroupPermissions, setEditGroupPermissions] = useState<string[]>([]);
+  const [editGroupVisibility, setEditGroupVisibility] = useState<CardReadVisibility>("CREATED_BY_ME");
 
   // Assignment state
   const [selectedMembershipId, setSelectedMembershipId] = useState<string | null>(null);
@@ -48,10 +54,17 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   const assignmentsQuery = useGroupAssignments(projectId, selectedMembershipId ?? undefined);
   const assignments = assignmentsQuery.data ?? [];
 
+  function findCardReadPermission(): Permission | undefined {
+    return permissions.find((p) => p.key === "card.read");
+  }
+
   function handleSelectGroup(group: PermissionGroup) {
     setSelectedGroupId(group.id);
     setEditGroupName(group.name);
     setEditGroupPermissions(group.permissions.map((p) => p.permissionId));
+    // Load existing visibility for card.read
+    const cardReadEntry = group.permissions.find((p) => p.key === "card.read");
+    setEditGroupVisibility((cardReadEntry?.cardReadVisibility as CardReadVisibility) ?? "CREATED_BY_ME");
     setIsCreating(false);
   }
 
@@ -60,15 +73,21 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
     setSelectedGroupId(null);
     setNewGroupName("");
     setNewGroupPermissions([]);
+    setNewGroupVisibility("CREATED_BY_ME");
   }
 
   function handleCreateSubmit(e: FormEvent) {
     e.preventDefault();
     if (!newGroupName.trim()) return;
+    const cardReadPerm = findCardReadPermission();
+    const permissionsPayload = newGroupPermissions.map((id) => ({
+      permissionId: id,
+      cardReadVisibility: cardReadPerm && id === cardReadPerm.id ? newGroupVisibility : undefined,
+    }));
     createMutation.mutate(
       {
         name: newGroupName,
-        permissions: newGroupPermissions.map((id) => ({ permissionId: id })),
+        permissions: permissionsPayload,
       },
       {
         onSuccess: (data) => {
@@ -76,6 +95,7 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
           setIsCreating(false);
           setNewGroupName("");
           setNewGroupPermissions([]);
+          setNewGroupVisibility("CREATED_BY_ME");
         },
       },
     );
@@ -84,11 +104,16 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   function handleEditSubmit(e: FormEvent) {
     e.preventDefault();
     if (!selectedGroupId) return;
+    const cardReadPerm = findCardReadPermission();
+    const permissionsPayload = editGroupPermissions.map((id) => ({
+      permissionId: id,
+      cardReadVisibility: cardReadPerm && id === cardReadPerm.id ? editGroupVisibility : undefined,
+    }));
     updateMutation.mutate({
       groupId: selectedGroupId,
       payload: {
         name: editGroupName,
-        permissions: editGroupPermissions.map((id) => ({ permissionId: id })),
+        permissions: permissionsPayload,
       },
     });
   }
@@ -209,15 +234,33 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
               <fieldset className="flex flex-col gap-1">
                 <legend className="text-xs text-muted-foreground">Permissions</legend>
                 {permissions.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={newGroupPermissions.includes(p.id)}
-                      onChange={() => togglePermission(p.id, false)}
-                    />
-                    <span className="font-mono text-xs">{p.key}</span>
-                    <span className="text-xs text-muted-foreground">{p.description}</span>
-                  </label>
+                  <div key={p.id}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={newGroupPermissions.includes(p.id)}
+                        onChange={() => togglePermission(p.id, false)}
+                      />
+                      <span className="font-mono text-xs">{p.key}</span>
+                      <span className="text-xs text-muted-foreground">{p.description}</span>
+                    </label>
+                    {p.key === "card.read" && newGroupPermissions.includes(p.id) && (
+                      <label className="ml-6 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        Visibility:
+                        <select
+                          value={newGroupVisibility}
+                          onChange={(e) => setNewGroupVisibility(e.target.value as CardReadVisibility)}
+                          className="rounded border border-input bg-background px-1 py-0.5 text-xs"
+                        >
+                          {CARD_READ_VISIBILITIES.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
                 ))}
               </fieldset>
               <div className="flex gap-2">
@@ -268,15 +311,33 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
               <fieldset className="flex flex-col gap-1">
                 <legend className="text-xs text-muted-foreground">Permissions</legend>
                 {permissions.map((p) => (
-                  <label key={p.id} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={editGroupPermissions.includes(p.id)}
-                      onChange={() => togglePermission(p.id, true)}
-                    />
-                    <span className="font-mono text-xs">{p.key}</span>
-                    <span className="text-xs text-muted-foreground">{p.description}</span>
-                  </label>
+                  <div key={p.id}>
+                    <label className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={editGroupPermissions.includes(p.id)}
+                        onChange={() => togglePermission(p.id, true)}
+                      />
+                      <span className="font-mono text-xs">{p.key}</span>
+                      <span className="text-xs text-muted-foreground">{p.description}</span>
+                    </label>
+                    {p.key === "card.read" && editGroupPermissions.includes(p.id) && (
+                      <label className="ml-6 mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        Visibility:
+                        <select
+                          value={editGroupVisibility}
+                          onChange={(e) => setEditGroupVisibility(e.target.value as CardReadVisibility)}
+                          className="rounded border border-input bg-background px-1 py-0.5 text-xs"
+                        >
+                          {CARD_READ_VISIBILITIES.map((v) => (
+                            <option key={v} value={v}>
+                              {v}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    )}
+                  </div>
                 ))}
               </fieldset>
               <button
