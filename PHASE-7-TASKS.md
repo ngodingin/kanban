@@ -145,7 +145,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
-| 7.9.1 | 🔎 | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35)<br>[CL-74](#cl-74) | 80 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
+| 7.9.1 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35)<br>[CL-74](#cl-74)<br>[QA-CL-36](#qa-cl-36) | 100 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
 | 7.9.3 | ⬜️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06) | 0 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
 
@@ -235,6 +235,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-36"></a>
+### QA-CL-36 — 2026-08-28 · goal 7.9.1 terverifikasi (🔎 80% → ✅ 100%) — editor Group dan scoped Membership assignment patuh C.12/BR-042
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi fungsional:** UI mengambil katalog Permission dari `GET /permissions` dan mengirim `permissionId` hasil katalog, tanpa ID hard-coded atau model RBAC Role. Route `/projects/:projectId/permissions` merender editor, dan menu Permissions dalam context Project mengarah ke route tersebut. Editor memilih Membership aktif, membuat/list/revoke Group assignment, serta mengirim payload tepat `{ groupId, scopeType, scopeId }` untuk Project/Milestone/Board/List/Card. Scope non-Project tanpa `scopeId` tidak dapat dikirim. Validasi eksistensi/hierarchy scope, inheritance descendant, dan authorization tetap berada pada backend C.12/BR-042B yang telah lulus QA pada 7.9.0; Direct Permission tidak disentuh dan tetap scope 7.9.3.
+
+**Re-run independen:** `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm vitest run apps/web/test/permission-groups-editor.test.tsx"'` → **1 file / 16 test PASS**. `flatpak-spawn --host bash -lc 'distrobox enter envdev -- bash -lc "cd /var/home/arin/Devenv/kanban && pnpm test && pnpm run lint && pnpm run typecheck"'` → **139 file / 800 test PASS**, lint PASS, typecheck PASS.
+
+**Verdict:** `✅ 100%`. Dependency 7.9.1 terpenuhi; 7.9.2 dan 7.9.3 kini dapat dikerjakan Dev sesuai urutan dependency.
 
 <a id="qa-cl-35"></a>
 ### QA-CL-35 — 2026-08-28 · goal 7.9.1 gagal verifikasi ulang (🔎 80% → ⚠️ 65%) — route ada tetapi navigasi/context dan bukti lima scope belum benar
