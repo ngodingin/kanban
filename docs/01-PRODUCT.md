@@ -3,7 +3,7 @@
 > Project codename: **NGodingin Kanban**
 > Type: Project Management / Kanban Platform (API-based, multi-tenant via Project isolation)
 > Status: MVP Baseline — Source of Truth (SOT)
-> Version: 4.1.0
+> Version: 4.1.1
 
 ---
 
