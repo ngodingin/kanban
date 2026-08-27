@@ -88,6 +88,7 @@ export {
   getMembershipInProject,
   listMembershipAssignments,
   assertPermissionKey,
+  listPermissions,
   type MembershipAssignmentsList,
 } from "./database/project-admin.ts";
 export { loadEffectivePermissionInputs } from "./database/permission-resolution.ts";

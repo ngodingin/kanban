@@ -13,6 +13,7 @@ import {
   projectMemberships,
   projects,
   users,
+  type ScopedScopeType,
 } from "./global-schema.ts";
 import { PipelineError } from "../pipeline/errors.ts";
 import { runInDrizzleWriteTransaction } from "./transaction.ts";
@@ -346,8 +347,7 @@ export interface GroupAssignmentSummary {
   revokedAt: string | null;
 }
 
-// Assign scoped Group ke Membership — Phase 1 hanya scope project
-// (BR-042B catatan revisit Phase 2/3 saat resource non-project tersedia).
+// Assign scoped Group ke Membership — BR-042: scope Project/Milestone/Board/List/Card.
 export async function createGroupAssignment(
   globalClient: Client,
   input: { projectId: string; membershipId: string; groupId: string; scopeType: string; scopeId: string },
@@ -356,11 +356,12 @@ export async function createGroupAssignment(
   if (membership.revokedAt !== null) {
     throw new PipelineError("INVALID_STATE", "Membership sudah di-revoke — tidak dapat menerima assignment baru.", 409);
   }
-  if (input.scopeType !== "project") {
-    throw new PipelineError("INVALID_STATE", `scope_type '${input.scopeType}' belum didukung di Phase 1 (hanya 'project').`, 409);
+  const validScopeTypes = ["project", "milestone", "board", "list", "card"];
+  if (!validScopeTypes.includes(input.scopeType)) {
+    throw new PipelineError("VALIDATION_ERROR", `scope_type '${input.scopeType}' tidak valid. Harus salah satu: ${validScopeTypes.join(", ")}.`, 400);
   }
-  if (input.scopeId !== input.projectId) {
-    throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+  if (input.scopeType === "project" && input.scopeId !== input.projectId) {
+    throw new PipelineError("VALIDATION_ERROR", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 400);
   }
   const groupRows = await drizzle(globalClient).select().from(permissionGroups)
     .where(sql`${permissionGroups.id} = ${input.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
@@ -375,7 +376,7 @@ export async function createGroupAssignment(
       id,
       membershipId: input.membershipId,
       groupId: input.groupId,
-      scopeType: "project",
+      scopeType: input.scopeType as ScopedScopeType,
       scopeId: input.scopeId,
       createdAt: now,
       revokedAt: null,
@@ -383,7 +384,7 @@ export async function createGroupAssignment(
   } catch (error) {
     mapUniqueViolation(error, "Assignment aktif dengan (membership, group, scope) yang sama sudah ada.");
   }
-  return { id, membershipId: input.membershipId, groupId: input.groupId, scopeType: "project", scopeId: input.scopeId, createdAt: now, revokedAt: null };
+  return { id, membershipId: input.membershipId, groupId: input.groupId, scopeType: input.scopeType, scopeId: input.scopeId, createdAt: now, revokedAt: null };
 }
 
 // Revoke mempertahankan riwayat (set revoked_at, bukan delete); idempotent.
@@ -445,7 +446,7 @@ export interface PermissionAssignmentSummary {
   revokedAt: string | null;
 }
 
-// Assign direct permission ke Membership — Phase 1 hanya scope project.
+// Assign direct permission ke Membership — BR-042A: scope Project/Milestone/Board/List/Card.
 // Visibility hanya valid untuk card.read (B.2/C.12); default CREATED_BY_ME
 // bila tidak dikirim (BR-048).
 export async function createPermissionAssignment(
@@ -463,11 +464,12 @@ export async function createPermissionAssignment(
   if (membership.revokedAt !== null) {
     throw new PipelineError("INVALID_STATE", "Membership sudah di-revoke — tidak dapat menerima assignment baru.", 409);
   }
-  if (input.scopeType !== "project") {
-    throw new PipelineError("INVALID_STATE", `scope_type '${input.scopeType}' belum didukung di Phase 1 (hanya 'project').`, 409);
+  const validScopeTypes = ["project", "milestone", "board", "list", "card"];
+  if (!validScopeTypes.includes(input.scopeType)) {
+    throw new PipelineError("VALIDATION_ERROR", `scope_type '${input.scopeType}' tidak valid. Harus salah satu: ${validScopeTypes.join(", ")}.`, 400);
   }
-  if (input.scopeId !== input.projectId) {
-    throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+  if (input.scopeType === "project" && input.scopeId !== input.projectId) {
+    throw new PipelineError("VALIDATION_ERROR", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 400);
   }
   const permRows = await globalClient.execute({ sql: "SELECT key FROM permissions WHERE id = ?", args: [input.permissionId] });
   if (permRows.rows.length === 0) {
@@ -487,7 +489,7 @@ export async function createPermissionAssignment(
       id,
       membershipId: input.membershipId,
       permissionId: input.permissionId,
-      scopeType: "project",
+      scopeType: input.scopeType as ScopedScopeType,
       scopeId: input.scopeId,
       cardReadVisibility,
       createdAt: now,
@@ -500,7 +502,7 @@ export async function createPermissionAssignment(
     id,
     membershipId: input.membershipId,
     permissionId: input.permissionId,
-    scopeType: "project",
+    scopeType: input.scopeType,
     scopeId: input.scopeId,
     cardReadVisibility,
     createdAt: now,
@@ -594,14 +596,14 @@ export async function createInvitation(
     expiresAt = defaultExpiry.toISOString();
   }
 
-  // Validasi setiap assignment: group harus ada & aktif di Project ini
-  // (BR-042B boundary), Phase 1 hanya scope project.
+  // Validasi setiap assignment: group harus ada & aktif di Project ini (BR-042B).
+  const validScopeTypes = ["project", "milestone", "board", "list", "card"];
   for (const assignment of input.assignments) {
-    if (assignment.scopeType !== "project") {
-      throw new PipelineError("INVALID_STATE", `scope_type '${assignment.scopeType}' belum didukung di Phase 1 (hanya 'project').`, 409);
+    if (!validScopeTypes.includes(assignment.scopeType)) {
+      throw new PipelineError("VALIDATION_ERROR", `scope_type '${assignment.scopeType}' tidak valid. Harus salah satu: ${validScopeTypes.join(", ")}.`, 400);
     }
-    if (assignment.scopeId !== input.projectId) {
-      throw new PipelineError("INVALID_STATE", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 409);
+    if (assignment.scopeType === "project" && assignment.scopeId !== input.projectId) {
+      throw new PipelineError("VALIDATION_ERROR", "scope_id wajib sama dengan project_id untuk scope_type 'project' (BR-042B).", 400);
     }
     const groupRows = await drizzle(globalClient).select().from(permissionGroups)
       .where(sql`${permissionGroups.id} = ${assignment.groupId} AND ${permissionGroups.projectId} = ${input.projectId}`);
@@ -1057,4 +1059,23 @@ export async function assertPermissionKey(
   if (!hasPermission(effective, key)) {
     throw new PipelineError("PERMISSION_DENIED", `Permission '${key}' tidak dimiliki pada scope ini.`, 403);
   }
+}
+
+/**
+ * C.12 — Endpoint read-only mengembalikan seluruh permission catalog.
+ * Query langsung dari tabel Global DB `permissions` (bukan in-memory),
+ * mengembalikan `{ id, key, description }` per entry.
+ */
+export async function listPermissions(globalClient: Client): Promise<Array<{ id: string; key: string; description: string | null }>> {
+  const db = drizzle(globalClient);
+  const rows = await db.select({
+    id: permissions.id,
+    key: permissions.key,
+    description: permissions.description,
+  }).from(permissions).orderBy(asc(permissions.key));
+  return rows.map((row) => ({
+    id: String(row.id),
+    key: String(row.key),
+    description: row.description ?? null,
+  }));
 }

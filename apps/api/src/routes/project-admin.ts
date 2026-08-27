@@ -62,6 +62,7 @@ export interface ProjectAdminRoutesDeps {
     requesterUserId: string,
     opts: { includeDeleted: boolean },
   ): Promise<PermissionGroupSummary[]>;
+  listPermissions(): Promise<Array<{ id: string; key: string; description: string | null }>>;
   // Otorisasi dieksplisitkan terpisah agar route dapat menegakkan
   // "authorization first" sebelum validasi body (Implementation Rule 3).
   assertProjectOwner(projectId: string, requesterUserId: string): Promise<void>;
@@ -173,6 +174,20 @@ export function createProjectAdminRouter(getDeps: () => ProjectAdminRoutesDeps):
       const includeDeleted = c.req.query("include_deleted") === "true";
       const groups = await deps.listPermissionGroups(projectId, identity.userId, { includeDeleted });
       return { groups };
+    }),
+  );
+
+  router.get("/v1/projects/:project_id/permissions", (c) =>
+    withErrorHandling(c, async () => {
+      const deps = getDeps();
+      const projectId = c.req.param("project_id");
+      const identity = await new ResolveIdentityStep({
+        resolveIdentity: deps.resolveIdentity,
+      }).run(c.req.raw);
+      // C.12 — Authorization: project member aktif (bukan Owner-only).
+      await deps.requireActiveMember(projectId, identity.userId);
+      const permissions = await deps.listPermissions();
+      return { permissions };
     }),
   );
 

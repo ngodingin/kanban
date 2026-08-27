@@ -9,6 +9,7 @@ import {
   DbIdempotencyStore,
   deletePermissionGroup,
   listPermissionGroups,
+  listPermissions,
   listProjectInvitations,
   listProjectMembers,
   listProjectSummaries,
@@ -311,6 +312,7 @@ export function buildProjectAdminDeps(input: {
       await requireActiveMember(globalClient, projectId, requesterUserId);
       return listPermissionGroups(globalClient, projectId, opts);
     },
+    listPermissions: () => listPermissions(globalClient),
     assertProjectOwner: (projectId, requesterUserId) => assertProjectOwner(globalClient, projectId, requesterUserId),
     createPermissionGroup: async (projectId, payload) =>
       createPermissionGroup(globalClient, {
