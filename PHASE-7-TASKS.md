@@ -2,7 +2,7 @@
 
 > ✅ **GATE DIBUKA 2026-08-25** ([Review-CL-05](#review-cl-05)) — keputusan manusia eksplisit setelah Exit Criteria Phase 0–6 diverifikasi independen genuinely terpenuhi ([Review-CL-04, PHASE-6-TASKS.md](PHASE-6-TASKS.md#review-cl-04)). Goal di bawah sekarang `⬜️` (actionable), bukan lagi `⏸️`.
 >
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)). Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)); current SOT version: 4.2.0. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
 > **Audit terbaru:** outline sudah diselaraskan bertahap ke titik kontrak observable SOT 4.0.0 ([Review-CL-02](#review-cl-02)) — dikonfirmasi ulang [Review-CL-05](#review-cl-05): amandemen 4.1.0/4.1.1 (BR-054C revoke lintas-DB, journal deprovision, F.1 RTO/RPO) bersifat control-plane/operasional internal, TIDAK mengubah API contract yang UI konsumsi. Versi dependency UI (React/Vite/React Router/Tailwind/shadcn/TanStack Query/Zustand/dnd-kit) direvalidasi terhadap npm registry saat gate dibuka — seluruhnya cocok baseline `03-ENG A.8` tanpa revisi.
 >
 > **Catatan metodologi (C.6):** task granular di-*refresh* saat fase menjadi aktif, terhadap state repo nyata. `apps/web/` saat ini HANYA placeholder (`package.json` kosong, `README.md`, `public/index.html` static test shell) — TIDAK ADA scaffold Vite/React/shadcn sama sekali. `TASK-7.1.1` genuinely mulai dari nol, bukan refine kode existing.
@@ -195,8 +195,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.13.1 | ✅ | [QA-CL-15](#qa-cl-15)<br>[CL-30](#cl-30)<br>[CL-31](#cl-31) | 100 | P0 | Konfirmasi archive/delete menjelaskan dampak efektif subtree; tanpa child handling | [04-DELIVERY A.4](docs/04-DELIVERY.md), [02-SPEC A.4](docs/02-SPEC.md) | 7.5.1 |
 | 7.13.2 | ✅ | [QA-CL-16](#qa-cl-16)<br>[CL-32](#cl-32)<br>[CL-33](#cl-33) | 100 | P0 | Restore hanya ARCHIVED; DELETED tidak punya tombol restore | [INV-LIFE-002/004](docs/02-SPEC.md) | 7.13.1 |
-| 7.13.2 | ✅ | [QA-CL-17](#qa-cl-17)<br>[CL-32](#cl-32)<br>[CL-34](#cl-34) | 100 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
-| 7.13.3 | ✅ | [QA-CL-18](#qa-cl-18)<br>[CL-35](#cl-35)<br>[CL-36](#cl-36) | 100 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
+| 7.13.3 | ✅ | [QA-CL-17](#qa-cl-17)<br>[CL-32](#cl-32)<br>[CL-34](#cl-34)<br>[QA-CL-18](#qa-cl-18)<br>[Review-CL-07](#review-cl-07) | 100 | P0 | Restore ARCHIVED ditolak jika ancestor belum ACTIVE (+ shortcut "restore parent first") | [04-DELIVERY A.5](docs/04-DELIVERY.md) | 7.13.1 |
+| 7.13.4 | ✅ | [QA-CL-18](#qa-cl-18)<br>[CL-35](#cl-35)<br>[CL-36](#cl-36)<br>[QA-CL-19](#qa-cl-19)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | Archived/Deleted Audit view read-only sesuai permission | [02-SPEC A.3](docs/02-SPEC.md) | 7.13.1 |
 
 **Test:** Tidak ada child handling; restore hanya untuk ARCHIVED dengan ancestor ACTIVE; DELETED terminal; local state descendant tidak berubah.
 **DoD:** Lifecycle UI patuh effective ancestor state dan menjelaskan dampak terminal delete.
@@ -225,6 +225,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 ## Flag
 - Refresh terhadap state repo nyata sudah dilakukan saat gate dibuka 2026-08-25 ([Review-CL-05](#review-cl-05)): `apps/web/` dikonfirmasi placeholder murni; versi dependency direvalidasi terhadap npm registry, cocok baseline tanpa revisi.
 - ~~`[NEEDS-SPEC-AMENDMENT]` TASK-7.9 katalog Permission tidak tersedia untuk UI~~ → **DISELESAIKAN 2026-08-28 (manusia):** SOT 4.2.0 menambah `GET /api/v1/projects/:project_id/permissions`; goal 7.9.0 dibuka sebagai prerequisite backend support sebelum UI Permission Groups.
+- ~~Tracking drift TASK-7.13~~ → **DISELESAIKAN 2026-08-28:** tabel goal diselaraskan dengan Closure Log historis (`7.13.3` restore ancestor, `7.13.4` audit view) melalui [Review-CL-07](#review-cl-07), tanpa mengubah status/%.
 - Tidak ada `[NEEDS-SPEC-AMENDMENT]` terbuka — konflik mockup sudah direkonsiliasi di [05-FRONTEND §4](docs/05-FRONTEND.md).
 
 ---
@@ -234,6 +235,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-07"></a>
+### Review-CL-07 — 2026-08-28 · koreksi tracking metadata TASK-7.13 dan current SOT Phase 7
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Setelah SOT 4.2.0 diterapkan untuk TASK-7.9, header `PHASE-7-TASKS.md` masih menyebut SOT 4.1.1 sebagai versi current. Review lanjutan juga menemukan tabel TASK-7.13 memiliki duplikat ID `7.13.2` dan audit view tercatat sebagai `7.13.3`, sementara Closure Log historis memakai `CL-34`/`QA-CL-18` untuk restore ancestor (`7.13.3`) dan `CL-35`/`CL-36`/`QA-CL-19` untuk audit view (`7.13.4`).
+
+**Tindakan:** Header Phase 7 diperjelas sebagai generated-at SOT 4.1.1 dengan current SOT 4.2.0. Tabel TASK-7.13 diselaraskan menjadi `7.13.3` untuk restore ancestor dan `7.13.4` untuk audit view. Link lama di kolom CL dipertahankan append-only; link bukti yang hilang (`QA-CL-18`, `QA-CL-19`) dan entry review ini ditambahkan tanpa menghapus/mengganti link historis.
+
+**Catatan:** Tidak ada perubahan business invariant, API behavior, implementation code, status, atau persentase goal.
 
 <a id="review-cl-06"></a>
 ### Review-CL-06 — 2026-08-28 · keputusan manusia membuka prerequisite TASK-7.9; SOT 4.2.0 permission catalog endpoint
