@@ -577,4 +577,106 @@ describe("TASK-7.9.3 — Direct Permission Assignment", () => {
       expect(visibilitySelect.value).toBe("CREATED_BY_ME");
     });
   });
+
+  test("positif: submit direct permission mengirim payload benar", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission form
+    await waitFor(() => expect(screen.getByText("Assign Permission")).toBeTruthy());
+
+    // Select permission (card.move)
+    const permSelect = screen.getByLabelText("Permission") as HTMLSelectElement;
+    await user.selectOptions(permSelect, "p3");
+
+    // Select scope - use getAllByLabelText and pick the second one (direct permission scope)
+    const scopeSelects = screen.getAllByLabelText("Scope") as HTMLSelectElement[];
+    const scopeSelect = scopeSelects[1]; // Second Scope select is for direct permission
+    await user.selectOptions(scopeSelect, "board");
+
+    // Fill scope ID
+    const scopeIdInputs = screen.getAllByPlaceholderText("ID entity scope");
+    const scopeIdInput = scopeIdInputs[scopeIdInputs.length - 1];
+    await user.type(scopeIdInput, "b1");
+
+    // Submit
+    await user.click(screen.getByText("Assign Permission"));
+
+    // Wait for the API call and verify payload
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/permission-assignments"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(postCalls[postCalls.length - 1][1].body as string);
+      expect(body).toEqual({
+        permissionId: "p3",
+        scopeType: "board",
+        scopeId: "b1",
+        cardReadVisibility: undefined,
+      });
+    });
+  });
+
+  test("positif: revoke direct permission memanggil API", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    vi.stubGlobal("confirm", vi.fn(() => true));
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission list
+    await waitFor(() => expect(screen.getByText("card.update")).toBeTruthy());
+
+    // Click revoke - use the second Revoke button (direct permission)
+    const revokeButtons = screen.getAllByRole("button", { name: "Revoke" });
+    await user.click(revokeButtons[1]);
+
+    // Wait for the API call
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/permission-assignments/dp1/revoke"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  test("negatif: non-Project scope tanpa scopeId tidak dapat di-submit", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission form
+    await waitFor(() => expect(screen.getByText("Assign Permission")).toBeTruthy());
+
+    // Select permission
+    const permSelect = screen.getByLabelText("Permission") as HTMLSelectElement;
+    await user.selectOptions(permSelect, "p2");
+
+    // Select milestone scope (non-project) - use the second Scope select
+    const scopeSelects = screen.getAllByLabelText("Scope") as HTMLSelectElement[];
+    const scopeSelect = scopeSelects[1];
+    await user.selectOptions(scopeSelect, "milestone");
+
+    // Don't fill scope ID
+    const submitButton = screen.getByRole("button", { name: "Assign Permission" });
+    expect(submitButton.disabled).toBe(true);
+  });
 });
