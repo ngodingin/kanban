@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49) | 30 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-49"></a>
+### QA-CL-49 — 2026-08-28 · goal 7.12.1 gagal verifikasi (🔎 80% → ⚠️ 30%) — Command Palette belum reachable dari aplikasi
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/command-palette.test.tsx && pnpm --filter @kanban/web build` → **4/4 PASS** dan build PASS. Komponen terisolasi dapat memfilter dan menjalankan callback yang disuntikkan.
+
+**Kegagalan deliverable:** `CommandPalette` tidak diimpor/dirender oleh `App` atau layar lain, sehingga tidak ada state pembuka dan ⌘K/Ctrl+K tidak dapat membuka apa pun. Bahkan handler ⌘K di dalam komponen hanya memanggil `onClose` dan listener baru ada ketika `open` sudah true. Tidak ada navigasi Board, dan aksi Create/Move/Archive Card tidak disuntik dari layar aktif—test hanya memakai callback buatan.
+
+**Tindakan Dev yang diperlukan:** pasang palet pada shell dengan state open/toggle yang benar; sediakan navigasi Project/Board/My Tasks dari konteks nyata; hubungkan Create/Move/Archive ke callback domain command layar aktif (tanpa bypass permission/lifecycle); lalu tambah test integrasi App untuk shortcut open dan test aksi terhadap callback domain nyata.
+
+**Verdict:** `⚠️ 30%`.
 
 <a id="qa-cl-48"></a>
 ### QA-CL-48 — 2026-08-28 · goal 7.14.1 terverifikasi (🔎 80% → ✅ 100%) — kontrol sidebar collapsed dapat dijangkau
