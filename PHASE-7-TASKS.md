@@ -146,8 +146,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
 | 7.9.1 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35)<br>[CL-74](#cl-74)<br>[QA-CL-36](#qa-cl-36) | 100 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
-| 7.9.2 | 🔎 | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-75](#cl-75)<br>[CL-76](#cl-76)<br>[QA-CL-37](#qa-cl-37)<br>[CL-78](#cl-78) | 80 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
-| 7.9.3 | 🔎 | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-77](#cl-77)<br>[CL-79](#cl-79) | 80 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.2 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-75](#cl-75)<br>[CL-76](#cl-76)<br>[QA-CL-37](#qa-cl-37)<br>[CL-78](#cl-78)<br>[QA-CL-38](#qa-cl-38) | 100 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.3 | ⚠️ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-77](#cl-77)<br>[CL-79](#cl-79)<br>[QA-CL-39](#qa-cl-39) | 75 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
 
 **Test:** UI mencerminkan model Group (bukan RBAC Role→Permissions); scope & inheritance benar.
 **DoD:** Permission UI patuh authorization model; tidak menyederhanakan jadi RBAC.
@@ -235,6 +235,28 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-39"></a>
+### QA-CL-39 — 2026-08-28 · goal 7.9.3 gagal verifikasi (🔎 80% → ⚠️ 75%) — payload direct `card.read` belum dibuktikan
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/permission-groups-editor.test.tsx apps/api/test/permission-assignments.test.ts apps/api/test/card-visibility.test.ts packages/domain/test/permission-engine.test.ts packages/infrastructure/test/permission-resolution.test.ts` → **5 file / 64 test PASS**; lint dan typecheck PASS. UI memakai katalog C.12 tanpa hard-code ID, menampilkan/list/revoke direct assignment, mengirim scope Board non-`card.read` tepat, serta menolak submit scope non-Project tanpa ID.
+
+**Kegagalan bukti C.12/BR-042A/BR-048:** test direct hanya mengirim `card.move`; test `card.read` berhenti pada selector visibility terlihat. Tidak ada assertion POST untuk `card.read` yang membuktikan `permissionId`, scope, dan `cardReadVisibility` (default `CREATED_BY_ME` atau nilai pilihan) terkirim tepat. Tambahkan test payload `card.read` yang mengubah visibility, serta assertion bahwa permission selain `card.read` tidak memiliki field visibility. Inheritance/additive backend telah diuji di suite sebelumnya, tetapi UI baru ini belum terbukti meneruskan konfigurasi visibility-nya.
+
+**Verdict:** `⚠️ 75%`. Struktur UI dan guard scope ada, tetapi mutation authorization-sensitive `card.read` masih tanpa bukti payload kritis.
+
+<a id="qa-cl-38"></a>
+### QA-CL-38 — 2026-08-28 · goal 7.9.2 terverifikasi (🔎 80% → ✅ 100%) — default dan batas visibility Group patuh BR-047..049
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi fungsional:** editor Group membaca `cardReadVisibility` existing, menampilkan selector hanya ketika `card.read` aktif, menyediakan tiga nilai kanonik, dan membuat Group baru dengan payload `cardReadVisibility: "CREATED_BY_ME"`. Permission non-`card.read` terbukti tidak mengirim field visibility. Ini menjaga default BR-048 tanpa menciptakan field/domain baru.
+
+**Re-run independen:** targeted permission/visibility suite → **5 file / 64 test PASS**; `pnpm run lint && pnpm run typecheck` PASS.
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-37"></a>
 ### QA-CL-37 — 2026-08-28 · goal 7.9.2 gagal verifikasi (🔎 80% → ⚠️ 75%) — bukti default create belum menguji payload BR-048
