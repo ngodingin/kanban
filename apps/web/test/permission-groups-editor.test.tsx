@@ -35,6 +35,10 @@ const ASSIGNMENTS = [
   { id: "ga1", groupId: "g1", scopeType: "project", scopeId: "p1" },
 ];
 
+const DIRECT_PERM_ASSIGNMENTS = [
+  { id: "dp1", permissionId: "p2", scopeType: "milestone", scopeId: "m1", cardReadVisibility: null },
+];
+
 function stubApi() {
   return vi.fn().mockImplementation((url: string, opts?: RequestInit) => {
     const u = String(url);
@@ -50,10 +54,10 @@ function stubApi() {
       return Promise.resolve(jsonRes(200, { data: { members: MEMBERS } }));
     }
     if (u.includes("/members/ms1/assignments") && method === "GET") {
-      return Promise.resolve(jsonRes(200, { data: { groupAssignments: ASSIGNMENTS } }));
+      return Promise.resolve(jsonRes(200, { data: { groupAssignments: ASSIGNMENTS, permissionAssignments: DIRECT_PERM_ASSIGNMENTS } }));
     }
     if (u.includes("/members/ms2/assignments") && method === "GET") {
-      return Promise.resolve(jsonRes(200, { data: { groupAssignments: [] } }));
+      return Promise.resolve(jsonRes(200, { data: { groupAssignments: [], permissionAssignments: [] } }));
     }
     if (u.endsWith("/permission-groups") && method === "POST") {
       const body = JSON.parse(opts!.body as string) as { name: string; permissions: Array<{ permissionId: string }> };
@@ -90,6 +94,20 @@ function stubApi() {
     }
     if (u.includes("/members/ms1/group-assignments/ga1/revoke") && method === "POST") {
       return Promise.resolve(jsonRes(200, { data: { assignment: ASSIGNMENTS[0] } }));
+    }
+    if (u.includes("/members/ms1/permission-assignments") && method === "POST") {
+      const body = JSON.parse(opts!.body as string) as { permissionId: string; scopeType: string; scopeId: string };
+      const newAssignment = {
+        id: `dp${DIRECT_PERM_ASSIGNMENTS.length + 1}`,
+        permissionId: body.permissionId,
+        scopeType: body.scopeType,
+        scopeId: body.scopeId,
+        cardReadVisibility: null,
+      };
+      return Promise.resolve(jsonRes(201, { data: { assignment: newAssignment } }));
+    }
+    if (u.includes("/members/ms1/permission-assignments/dp1/revoke") && method === "POST") {
+      return Promise.resolve(jsonRes(200, { data: { assignment: DIRECT_PERM_ASSIGNMENTS[0] } }));
     }
     return Promise.reject(new Error(`unexpected ${u} ${method}`));
   });
@@ -242,12 +260,12 @@ describe("TASK-7.9.1 — Permission Groups Editor", () => {
     const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
     await user.selectOptions(memberSelect, "ms1");
 
-    // Wait for assignments to load
-    await waitFor(() => expect(screen.getByText("Revoke")).toBeTruthy());
+    // Wait for assignments to load - use getAllByText to handle multiple Revoke buttons
+    await waitFor(() => expect(screen.getAllByText("Revoke").length).toBeGreaterThan(0));
 
-    // Click revoke
-    const revokeButton = screen.getByRole("button", { name: "Revoke" });
-    await user.click(revokeButton);
+    // Click revoke - use the first Revoke button (group assignment)
+    const revokeButtons = screen.getAllByRole("button", { name: "Revoke" });
+    await user.click(revokeButtons[0]);
 
     // Wait for the API call to be made
     await waitFor(() => {
@@ -301,8 +319,9 @@ describe("TASK-7.9.1 — Five Scope Payloads", () => {
     const groupSelect = screen.getByLabelText("Group") as HTMLSelectElement;
     await user.selectOptions(groupSelect, "g1");
 
-    // Select scope type
-    const scopeSelect = screen.getByLabelText("Scope") as HTMLSelectElement;
+    // Select scope type - use the first Scope select (group assignment)
+    const scopeSelects = screen.getAllByLabelText("Scope") as HTMLSelectElement[];
+    const scopeSelect = scopeSelects[0];
     await user.selectOptions(scopeSelect, scopeType);
 
     // Fill scope ID for non-project scopes
@@ -348,8 +367,9 @@ describe("TASK-7.9.1 — Five Scope Payloads", () => {
     const groupSelect = screen.getByLabelText("Group") as HTMLSelectElement;
     await user.selectOptions(groupSelect, "g1");
 
-    // Select milestone scope (non-project)
-    const scopeSelect = screen.getByLabelText("Scope") as HTMLSelectElement;
+    // Select milestone scope (non-project) - use the first Scope select (group assignment)
+    const scopeSelects = screen.getAllByLabelText("Scope") as HTMLSelectElement[];
+    const scopeSelect = scopeSelects[0];
     await user.selectOptions(scopeSelect, "milestone");
 
     // Don't fill scope ID
@@ -373,12 +393,17 @@ describe("TASK-7.9.2 — Card Visibility Selector", () => {
     });
   });
 
-  test("positif: visibility default adalah CREATED_BY_ME saat create baru", async () => {
-    vi.stubGlobal("fetch", stubApi());
+  test("positif: visibility default adalah CREATED_BY_ME saat create baru + payload terkirim", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
     const user = userEvent.setup();
     renderEditor();
     await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
     await user.click(screen.getByText("+ Baru"));
+
+    // Fill group name
+    const nameInput = screen.getByLabelText("Nama Group") as HTMLInputElement;
+    await user.type(nameInput, "Test Group");
 
     // Check card.read checkbox
     const cardReadCheckbox = screen.getByText("card.read").closest("label")!.querySelector("input[type=checkbox]") as HTMLInputElement;
@@ -388,6 +413,54 @@ describe("TASK-7.9.2 — Card Visibility Selector", () => {
     await waitFor(() => {
       const visibilitySelect = screen.getByDisplayValue("CREATED_BY_ME") as HTMLSelectElement;
       expect(visibilitySelect).toBeTruthy();
+    });
+
+    // Submit
+    await user.click(screen.getByText("Buat"));
+
+    // Wait for the API call and verify payload includes cardReadVisibility: "CREATED_BY_ME" for card.read
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/permission-groups"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(postCalls[postCalls.length - 1][1].body as string);
+      expect(body.permissions).toContainEqual({
+        permissionId: "p1",
+        cardReadVisibility: "CREATED_BY_ME",
+      });
+    });
+  });
+
+  test("positif: non-card.read permission tidak mengirim cardReadVisibility", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+    await user.click(screen.getByText("+ Baru"));
+
+    // Fill group name
+    const nameInput = screen.getByLabelText("Nama Group") as HTMLInputElement;
+    await user.type(nameInput, "Test Group 2");
+
+    // Check card.update checkbox (NOT card.read)
+    const cardUpdateCheckbox = screen.getByText("card.update").closest("label")!.querySelector("input[type=checkbox]") as HTMLInputElement;
+    await user.click(cardUpdateCheckbox);
+
+    // Submit
+    await user.click(screen.getByText("Buat"));
+
+    // Wait for the API call and verify payload does NOT include cardReadVisibility for card.update
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/permission-groups"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(postCalls[postCalls.length - 1][1].body as string);
+      const cardUpdateEntry = body.permissions.find((p: { permissionId: string }) => p.permissionId === "p2");
+      expect(cardUpdateEntry).toBeDefined();
+      expect(cardUpdateEntry.cardReadVisibility).toBeUndefined();
     });
   });
 
@@ -440,6 +513,68 @@ describe("TASK-7.9.2 — Card Visibility Selector", () => {
           cardReadVisibility: "CREATED_BY_ME",
         }),
       );
+    });
+  });
+});
+
+describe("TASK-7.9.3 — Direct Permission Assignment", () => {
+  test("positif: menampilkan direct permission assignments dari API", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission section to appear
+    await waitFor(() => expect(screen.getByText("Direct Permission Assignments")).toBeTruthy());
+
+    // Should show existing direct permission
+    expect(screen.getByText("card.update")).toBeTruthy();
+    expect(screen.getByText("scope: milestone (m1)")).toBeTruthy();
+  });
+
+  test("positif: direct permission form ada", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission form
+    await waitFor(() => expect(screen.getByText("Assign Permission")).toBeTruthy());
+
+    // Permission select should exist
+    expect(screen.getByLabelText("Permission")).toBeTruthy();
+  });
+
+  test("positif: card.read permission menampilkan visibility selector", async () => {
+    vi.stubGlobal("fetch", stubApi());
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission form
+    await waitFor(() => expect(screen.getByText("Assign Permission")).toBeTruthy());
+
+    // Select card.read permission
+    const permSelect = screen.getByLabelText("Permission") as HTMLSelectElement;
+    await user.selectOptions(permSelect, "p1"); // card.read
+
+    // Visibility selector should appear
+    await waitFor(() => {
+      const visibilitySelect = screen.getByLabelText("Visibility") as HTMLSelectElement;
+      expect(visibilitySelect).toBeTruthy();
+      expect(visibilitySelect.value).toBe("CREATED_BY_ME");
     });
   });
 });
