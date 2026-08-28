@@ -25,6 +25,7 @@ export interface PermissionAssignment {
   permissionId: string;
   scopeType: string;
   scopeId: string;
+  cardReadVisibility?: string | null;
 }
 
 const SCOPES = ["project", "milestone", "board", "list", "card"] as const;
@@ -173,6 +174,74 @@ export function useRevokeGroupAssignment(projectId: string) {
       ),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["group-assignments", projectId] });
+    },
+  });
+}
+
+export function useDirectPermissionAssignments(
+  projectId: string | undefined,
+  membershipId: string | undefined,
+) {
+  return useQuery({
+    queryKey: ["permission-assignments", projectId, membershipId],
+    enabled: Boolean(projectId && membershipId),
+    queryFn: () =>
+      apiRequest<{ permissionAssignments: PermissionAssignment[] }>(
+        `/api/v1/projects/${projectId}/members/${membershipId}/assignments`,
+      ),
+    select: (d) => d.permissionAssignments,
+  });
+}
+
+export function useCreateDirectPermissionAssignment(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      membershipId,
+      permissionId,
+      scopeType,
+      scopeId,
+      cardReadVisibility,
+    }: {
+      membershipId: string;
+      permissionId: string;
+      scopeType: string;
+      scopeId: string;
+      cardReadVisibility?: string | null;
+    }) =>
+      apiRequest<{ assignment: PermissionAssignment }>(
+        `/api/v1/projects/${projectId}/members/${membershipId}/permission-assignments`,
+        {
+          method: "POST",
+          body: { permissionId, scopeType, scopeId, cardReadVisibility },
+          idempotencyKey: newIdempotencyKey(),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["permission-assignments", projectId] });
+    },
+  });
+}
+
+export function useRevokeDirectPermissionAssignment(projectId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      membershipId,
+      assignmentId,
+    }: {
+      membershipId: string;
+      assignmentId: string;
+    }) =>
+      apiRequest<{ assignment: PermissionAssignment }>(
+        `/api/v1/projects/${projectId}/members/${membershipId}/permission-assignments/${assignmentId}/revoke`,
+        {
+          method: "POST",
+          idempotencyKey: newIdempotencyKey(),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["permission-assignments", projectId] });
     },
   });
 }

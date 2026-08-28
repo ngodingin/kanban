@@ -9,10 +9,14 @@ import {
   useGroupAssignments,
   useCreateGroupAssignment,
   useRevokeGroupAssignment,
+  useDirectPermissionAssignments,
+  useCreateDirectPermissionAssignment,
+  useRevokeDirectPermissionAssignment,
   SCOPES,
   type Permission,
   type PermissionGroup,
   type GroupAssignment,
+  type PermissionAssignment,
 } from "./hooks";
 
 const CARD_READ_VISIBILITIES = ["CREATED_BY_ME", "ASSIGNED_TO_ME", "ALL"] as const;
@@ -31,6 +35,8 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   const deleteMutation = useDeletePermissionGroup(projectId);
   const createAssignmentMutation = useCreateGroupAssignment(projectId);
   const revokeAssignmentMutation = useRevokeGroupAssignment(projectId);
+  const createDirectPermissionMutation = useCreateDirectPermissionAssignment(projectId);
+  const revokeDirectPermissionMutation = useRevokeDirectPermissionAssignment(projectId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -41,11 +47,17 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   const [editGroupPermissions, setEditGroupPermissions] = useState<string[]>([]);
   const [editGroupVisibility, setEditGroupVisibility] = useState<CardReadVisibility>("CREATED_BY_ME");
 
-  // Assignment state
+  // Group Assignment state
   const [selectedMembershipId, setSelectedMembershipId] = useState<string | null>(null);
   const [assignGroupId, setAssignGroupId] = useState("");
   const [assignScopeType, setAssignScopeType] = useState<(typeof SCOPES)[number]>("project");
   const [assignScopeId, setAssignScopeId] = useState("");
+
+  // Direct Permission state
+  const [directPermPermissionId, setDirectPermPermissionId] = useState("");
+  const [directPermScopeType, setDirectPermScopeType] = useState<(typeof SCOPES)[number]>("project");
+  const [directPermScopeId, setDirectPermScopeId] = useState("");
+  const [directPermVisibility, setDirectPermVisibility] = useState<CardReadVisibility>("CREATED_BY_ME");
 
   const permissions = permissionsQuery.data ?? [];
   const groups = groupsQuery.data ?? [];
@@ -53,6 +65,8 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
   const assignmentsQuery = useGroupAssignments(projectId, selectedMembershipId ?? undefined);
   const assignments = assignmentsQuery.data ?? [];
+  const directPermAssignmentsQuery = useDirectPermissionAssignments(projectId, selectedMembershipId ?? undefined);
+  const directPermAssignments = directPermAssignmentsQuery.data ?? [];
 
   function findCardReadPermission(): Permission | undefined {
     return permissions.find((p) => p.key === "card.read");
@@ -155,6 +169,39 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
     if (!selectedMembershipId) return;
     if (!confirm("Cabut assignment ini?")) return;
     revokeAssignmentMutation.mutate({
+      membershipId: selectedMembershipId,
+      assignmentId,
+    });
+  }
+
+  function handleDirectPermSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!selectedMembershipId || !directPermPermissionId) return;
+    if (directPermScopeType !== "project" && !directPermScopeId.trim()) return;
+    const selectedPerm = permissions.find((p) => p.id === directPermPermissionId);
+    createDirectPermissionMutation.mutate(
+      {
+        membershipId: selectedMembershipId,
+        permissionId: directPermPermissionId,
+        scopeType: directPermScopeType,
+        scopeId: directPermScopeType === "project" ? projectId : directPermScopeId,
+        cardReadVisibility: selectedPerm?.key === "card.read" ? directPermVisibility : undefined,
+      },
+      {
+        onSuccess: () => {
+          setDirectPermPermissionId("");
+          setDirectPermScopeType("project");
+          setDirectPermScopeId("");
+          setDirectPermVisibility("CREATED_BY_ME");
+        },
+      },
+    );
+  }
+
+  function handleRevokeDirectPermission(assignmentId: string) {
+    if (!selectedMembershipId) return;
+    if (!confirm("Cabut direct permission ini?")) return;
+    revokeDirectPermissionMutation.mutate({
       membershipId: selectedMembershipId,
       assignmentId,
     });
@@ -477,6 +524,125 @@ export function PermissionGroupsEditor({ projectId }: PermissionGroupsEditorProp
           </>
         )}
       </div>
+
+      {/* Bagian 3: Direct Permission Assignment */}
+      {selectedMembershipId && (
+        <div className="border-t border-border pt-4">
+          <h3 className="mb-3 text-sm font-medium">Direct Permission Assignments</h3>
+
+          {/* Direct Permission form */}
+          <form onSubmit={handleDirectPermSubmit} className="mb-4 flex flex-wrap items-end gap-2">
+            <label className="text-xs text-muted-foreground">
+              Permission
+              <select
+                value={directPermPermissionId}
+                onChange={(e) => setDirectPermPermissionId(e.target.value)}
+                className="ml-2 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                required
+              >
+                <option value="" disabled>
+                  Pilih permission...
+                </option>
+                {permissions.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.key} — {p.description}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-xs text-muted-foreground">
+              Scope
+              <select
+                value={directPermScopeType}
+                onChange={(e) => setDirectPermScopeType(e.target.value as (typeof SCOPES)[number])}
+                className="ml-2 rounded-md border border-input bg-background px-2 py-1 text-sm"
+              >
+                {SCOPES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {directPermScopeType !== "project" && (
+              <input
+                aria-label="Scope ID"
+                placeholder="ID entity scope"
+                value={directPermScopeId}
+                onChange={(e) => setDirectPermScopeId(e.target.value)}
+                className="rounded-md border border-input bg-background px-2 py-1 text-sm"
+              />
+            )}
+            {directPermPermissionId && permissions.find((p) => p.id === directPermPermissionId)?.key === "card.read" && (
+              <label className="text-xs text-muted-foreground">
+                Visibility
+                <select
+                  value={directPermVisibility}
+                  onChange={(e) => setDirectPermVisibility(e.target.value as CardReadVisibility)}
+                  className="ml-2 rounded-md border border-input bg-background px-2 py-1 text-sm"
+                >
+                  {CARD_READ_VISIBILITIES.map((v) => (
+                    <option key={v} value={v}>
+                      {v}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <button
+              type="submit"
+              disabled={
+                createDirectPermissionMutation.isPending ||
+                !directPermPermissionId ||
+                (directPermScopeType !== "project" && !directPermScopeId.trim())
+              }
+              className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {createDirectPermissionMutation.isPending ? "Assigning..." : "Assign Permission"}
+            </button>
+          </form>
+          {createDirectPermissionMutation.isError && (
+            <p role="alert" className="mb-2 text-sm text-destructive">
+              {(createDirectPermissionMutation.error as Error).message}
+            </p>
+          )}
+
+          {/* Direct Permission list */}
+          {directPermAssignmentsQuery.isLoading ? (
+            <p className="text-xs text-muted-foreground">Memuat direct permissions...</p>
+          ) : directPermAssignments.length > 0 ? (
+            <ul className="flex flex-col gap-1" aria-label="Daftar Direct Permission Assignment">
+              {directPermAssignments.map((a: PermissionAssignment) => {
+                const perm = permissions.find((p) => p.id === a.permissionId);
+                return (
+                  <li key={a.id} className="flex items-center gap-3 text-sm">
+                    <span className="font-mono text-xs">{perm?.key ?? a.permissionId}</span>
+                    {a.cardReadVisibility && (
+                      <span className="text-xs text-muted-foreground">
+                        visibility: {a.cardReadVisibility}
+                      </span>
+                    )}
+                    <span className="text-xs text-muted-foreground">
+                      scope: {a.scopeType}
+                      {a.scopeType !== "project" ? ` (${a.scopeId})` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleRevokeDirectPermission(a.id)}
+                      disabled={revokeDirectPermissionMutation.isPending}
+                      className="rounded border border-destructive px-2 py-0.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                    >
+                      Revoke
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="text-xs text-muted-foreground">Belum ada direct permission assignment.</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }
