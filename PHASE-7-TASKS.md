@@ -207,7 +207,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.14.1 | 🔎 | [CL-54](#cl-54)<br>[CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45)<br>[CL-81](#cl-81) | 80 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.14.1 | ✅ | [CL-54](#cl-54)<br>[CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45)<br>[CL-81](#cl-81)<br>[QA-CL-48](#qa-cl-48) | 100 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
 | 7.14.2 | ✅ | [CL-54](#cl-54)<br>[CL-56](#cl-56)<br>[QA-CL-44](#qa-cl-44) | 100 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
 
 **Test:** Mobile tidak menumpuk kolom vertikal; card detail full-screen.
@@ -235,6 +235,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-48"></a>
+### QA-CL-48 — 2026-08-28 · goal 7.14.1 terverifikasi (🔎 80% → ✅ 100%) — kontrol sidebar collapsed dapat dijangkau
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti:** `pnpm vitest run apps/web/test/responsive.test.tsx apps/web/test/sidebar.test.tsx && pnpm --filter @kanban/web build` → **7/7 PASS** dan build PASS. Sidebar tetap tersembunyi pada mobile; pada tablet/desktop tombol ber-`aria-label` memanggil `toggleSidebar`, mengubah lebar dari `md:w-56` menjadi `md:w-14` dan mengganti label menu menjadi bentuk compact.
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-47"></a>
 ### QA-CL-47 — 2026-08-28 · goal 7.4.2 gagal verifikasi (🔎 80% → ⚠️ 55%) — Recent Projects belum merekam kunjungan nyata
