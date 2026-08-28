@@ -1,6 +1,37 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiRequest, newIdempotencyKey } from "@/lib/api/client";
 
+export interface CreateCardInput {
+  listId: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  dueDate?: string;
+  assignee?: string;
+}
+
+// Domain command Card create — POST /cards with Idempotency-Key (C.3).
+export function useCreateCard(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateCardInput) =>
+      apiRequest(`/api/v1/projects/${projectId}/lists/${input.listId}/cards`, {
+        method: "POST",
+        body: {
+          title: input.title,
+          subtitle: input.subtitle,
+          description: input.description,
+          dueDate: input.dueDate,
+          assignee: input.assignee,
+        },
+        idempotencyKey: newIdempotencyKey(),
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cards", projectId] });
+    },
+  });
+}
+
 export interface MoveCardInput {
   cardId: string;
   destinationListId: string;

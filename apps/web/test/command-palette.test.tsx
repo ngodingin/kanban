@@ -1,15 +1,19 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { CommandPalette, filterCommands } from "../src/components/navigation/command-palette";
 
-function renderPalette(open = true, extra = []) {
+function renderPalette(open = true, extra = [], initialEntry = "/") {
   const onClose = vi.fn();
   const utils = render(
-    <MemoryRouter>
-      <CommandPalette open={open} onClose={onClose} extraCommands={extra} />
+    <MemoryRouter initialEntries={[initialEntry]}>
+      <Routes>
+        <Route path="/" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
+        <Route path="/projects/:projectId" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
+        <Route path="/projects/:projectId/milestones/:milestoneId/boards/:boardId" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
+      </Routes>
     </MemoryRouter>,
   );
   return { ...utils, onClose };
@@ -53,5 +57,15 @@ describe("TASK-7.12.1 — command palette ⌘K (navigasi + aksi existing)", () =
     ]);
     await user.click(screen.getByRole("button", { name: /Arsipkan Card/ }));
     expect(archiveCard).toHaveBeenCalledTimes(1);
+  });
+
+  test("positif: di context Board — navigasi Board muncul", () => {
+    renderPalette(true, [], "/projects/p1/milestones/m1/boards/b1");
+    expect(screen.getByRole("button", { name: /Ke Board saat ini/ })).toBeTruthy();
+  });
+
+  test("positif: di context Project tanpa board — navigasi Board tidak muncul", () => {
+    renderPalette(true, [], "/projects/p1");
+    expect(screen.queryByRole("button", { name: /Board/ })).toBeNull();
   });
 });

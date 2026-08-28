@@ -1,11 +1,12 @@
 import { Route, Routes, useParams } from "react-router";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { LoginPage } from "./features/auth/login-page";
 import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
 import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecentProjectIds } from "./features/home/recent";
 import { CommandPalette } from "./components/navigation/command-palette";
+import { useUiStore } from "./lib/ui-store";
 
 function RecordVisit() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -53,9 +54,9 @@ function NotFound() {
 // Halaman domain nyata dibangun goal TASK-7.4+; shell menyediakan layout +
 // header breadcrumb berbasis params rute.
 function Shell({ children }: { children: React.ReactNode }) {
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const togglePalette = useCallback(() => setPaletteOpen((prev) => !prev), []);
-  const closePalette = useCallback(() => setPaletteOpen(false), []);
+  const paletteOpen = useUiStore((s) => s.paletteOpen);
+  const togglePalette = useUiStore((s) => s.togglePalette);
+  const closePalette = useUiStore((s) => s.closePalette);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

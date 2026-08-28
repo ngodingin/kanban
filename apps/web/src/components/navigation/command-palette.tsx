@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { readRecentProjectIds } from "@/features/home/recent";
 
 // Command palette (05-FRONTEND §3.1) — OPSIONAL, hanya navigasi/aksi yang
@@ -32,6 +32,7 @@ export function CommandPalette({
   extraCommands?: PaletteCommand[];
 }) {
   const navigate = useNavigate();
+  const { projectId, boardId } = useParams<{ projectId?: string; boardId?: string }>();
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export function CommandPalette({
 
   const commands = useMemo<PaletteCommand[]>(() => {
     const recent = readRecentProjectIds()[0];
-    return [
+    const navCommands: PaletteCommand[] = [
       { id: "nav-home", label: "Ke Home", group: "Navigasi", run: () => navigate("/") },
       {
         id: "nav-tasks",
@@ -53,19 +54,31 @@ export function CommandPalette({
         group: "Navigasi",
         run: () => navigate("/tasks"),
       },
-      ...(recent
-        ? [
-            {
-              id: "nav-project",
-              label: "Buka Project terakhir",
-              group: "Navigasi" as const,
-              run: () => navigate(`/projects/${recent}`),
-            },
-          ]
-        : []),
-      ...extraCommands,
     ];
-  }, [navigate, extraCommands]);
+
+    // Add project navigation if we have projectId or recent
+    const targetProject = projectId ?? recent;
+    if (targetProject) {
+      navCommands.push({
+        id: "nav-project",
+        label: "Ke Project",
+        group: "Navigasi",
+        run: () => navigate(`/projects/${targetProject}`),
+      });
+
+      // Add board navigation if we have boardId
+      if (boardId) {
+        navCommands.push({
+          id: "nav-board",
+          label: "Ke Board saat ini",
+          group: "Navigasi",
+          run: () => navigate(`/projects/${targetProject}/boards/${boardId}`),
+        });
+      }
+    }
+
+    return [...navCommands, ...extraCommands];
+  }, [navigate, projectId, boardId, extraCommands]);
 
   if (!open) return null;
   const visible = filterCommands(commands, query);

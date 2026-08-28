@@ -17,7 +17,7 @@ describe("TASK-7.1.4 — Zustand dibatasi ke UI/interaction state saja", () => {
     const keys = Object.keys(useUiStore.getState());
     // Guard struktural: hanya UI/interaction state yang boleh ada. Field
     // khas cache server/domain (entities, cards, projects, session data) dilarang.
-    const allowed = new Set(["sidebarCollapsed", "toggleSidebar"]);
+    const allowed = new Set(["sidebarCollapsed", "toggleSidebar", "paletteOpen", "openPalette", "closePalette", "togglePalette"]);
     for (const key of keys) {
       expect(allowed.has(key)).toBe(true);
     }

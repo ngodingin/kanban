@@ -6,9 +6,17 @@ import { create } from "zustand";
 export interface UiState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
+  paletteOpen: boolean;
+  openPalette: () => void;
+  closePalette: () => void;
+  togglePalette: () => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
   sidebarCollapsed: false,
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+  paletteOpen: false,
+  openPalette: () => set({ paletteOpen: true }),
+  closePalette: () => set({ paletteOpen: false }),
+  togglePalette: () => set((state) => ({ paletteOpen: !state.paletteOpen })),
 }));
