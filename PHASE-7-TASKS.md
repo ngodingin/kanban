@@ -55,8 +55,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.2.1 | ✅ | [QA-CL-05](#qa-cl-05)<br>[CL-09](#cl-09)<br>[CL-10](#cl-10) | 100 | P1 | Terapkan color tokens (indigo primary + slate + semantic) | [05-FRONTEND §2.1](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.2 | 🔎 | [CL-57](#cl-57)<br>[CL-58](#cl-58) | 80 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
-| 7.2.3 | 🔎 | [CL-57](#cl-57)<br>[CL-59](#cl-59) | 80 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.2.2 | ✅ | [CL-57](#cl-57)<br>[CL-58](#cl-58)<br>[QA-CL-40](#qa-cl-40) | 100 | P2 | Terapkan tipografi Inter + skala heading/body/small | [05-FRONTEND §2.2](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.2.3 | ✅ | [CL-57](#cl-57)<br>[CL-59](#cl-59)<br>[QA-CL-41](#qa-cl-41) | 100 | P2 | Set radius/density (sm/md/lg), light+dark | [05-FRONTEND §2.3](docs/05-FRONTEND.md) | 7.2.1 |
 
 **Test:** Token render benar di light & dark; kontras memadai; komponen shadcn memakai token.
 **DoD:** Theme konsisten sesuai tokens; tidak ada warna hard-coded di luar token.
@@ -235,6 +235,24 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-41"></a>
+### QA-CL-41 — 2026-08-28 · goal 7.2.3 terverifikasi (🔎 80% → ✅ 100%) — shape/density dan light-dark patuh §2.3
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti:** `design-tokens-2.test.ts` mengonfirmasi base radius `0.5rem`, pemetaan `sm < md < lg` untuk controls/cards/dialogs, `.dark` tersedia, dan tidak ada `rounded-[...]` hard-coded pada source. Build produksi lulus.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-40"></a>
+### QA-CL-40 — 2026-08-28 · goal 7.2.2 terverifikasi (🔎 80% → ✅ 100%) — Inter dan skala tipografi patuh §2.2
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti:** `pnpm vitest run apps/web/test/design-tokens-2.test.ts && pnpm --filter @kanban/web build` → **6/6 PASS** dan production build PASS. Inter self-host exact-pin dimuat melalui token `font-sans`; H1/H2/H3/Body/Small memiliki ukuran, line-height, dan weight sesuai SOT.
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-39"></a>
 ### QA-CL-39 — 2026-08-28 · goal 7.9.3 gagal verifikasi (🔎 80% → ⚠️ 75%) — payload direct `card.read` belum dibuktikan
