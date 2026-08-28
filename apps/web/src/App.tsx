@@ -7,6 +7,7 @@ import { PermissionGroupsEditor } from "./features/permissions/permission-groups
 import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecentProjectIds } from "./features/home/recent";
 import { CommandPalette } from "./components/navigation/command-palette";
 import { useUiStore } from "./lib/ui-store";
+import { BoardView } from "./components/kanban/board-view";
 
 function RecordVisit() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -84,6 +85,11 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function BoardPage() {
+  const { projectId, boardId } = useParams<{ projectId: string; boardId: string }>();
+  return <BoardView projectId={projectId!} boardId={boardId!} />;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -116,7 +122,7 @@ export default function App() {
         element={
           <Shell>
             <RecordVisit />
-            <BoardPlaceholder />
+            <BoardPage />
           </Shell>
         }
       />
@@ -153,10 +159,6 @@ function ProjectPlaceholder() {
 function MilestonePlaceholder() {
   const { milestoneId } = useParams();
   return <div className="p-6 text-sm text-muted-foreground">Milestone {milestoneId}</div>;
-}
-function BoardPlaceholder() {
-  const { boardId } = useParams();
-  return <div className="p-6 text-sm text-muted-foreground">Board {boardId}</div>;
 }
 function PermissionsPage() {
   const { projectId } = useParams<{ projectId: string }>();

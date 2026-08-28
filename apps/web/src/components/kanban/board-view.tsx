@@ -12,7 +12,8 @@ import { ApiError, apiRequest } from "@/lib/api/client";
 import { KanbanCard } from "@/components/kanban/card";
 import { useLists } from "@/features/lists/hooks";
 import { useCards } from "@/features/cards/hooks";
-import { useMoveCard } from "@/features/cards/mutations";
+import { useMoveCard, useCreateCard } from "@/features/cards/mutations";
+import { useLifecycleMutation } from "@/features/lifecycle/hooks";
 import { useUiStore } from "@/lib/ui-store";
 
 // Board view + drag & drop Card antar List (05-FRONTEND §3.1/§5): hanya Card
@@ -83,6 +84,8 @@ export function BoardView({
   const listsQuery = useLists(projectId, boardId);
   const lists = listsQuery.data?.lists ?? [];
   const moveMutation = useMoveCard(projectId);
+  const createMutation = useCreateCard(projectId);
+  const lifecycleMutation = useLifecycleMutation(projectId);
   const queryClient = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor));
   const [conflictDismissed, setConflictDismissed] = useState(false);
@@ -98,13 +101,34 @@ export function BoardView({
         label: "Buat Card Baru",
         group: "Aksi",
         run: () => {
-          // Placeholder — actual creation needs a form/modal (not in scope of palette)
-          window.alert(`Create Card in list ${firstListId}`);
+          createMutation.mutate(
+            { listId: firstListId, title: "Card Baru" },
+            {
+              onSuccess: () => {
+                void queryClient.invalidateQueries({ queryKey: ["cards", projectId] });
+              },
+            },
+          );
+        },
+      },
+      {
+        id: "act-archive-board",
+        label: "Arsipkan Board",
+        group: "Aksi",
+        run: () => {
+          lifecycleMutation.mutate(
+            { kind: "board", entityId: boardId, action: "archive", expectedVersion: 1 },
+            {
+              onSuccess: () => {
+                void queryClient.invalidateQueries({ queryKey: ["boards", projectId] });
+              },
+            },
+          );
         },
       },
     ]);
     return () => registerPaletteCommands([]);
-  }, [lists, registerPaletteCommands]);
+  }, [lists, registerPaletteCommands, createMutation, lifecycleMutation, projectId, boardId, queryClient]);
   const conflict =
     moveMutation.error instanceof ApiError && moveMutation.error.code === "VERSION_CONFLICT"
       ? moveMutation.error
