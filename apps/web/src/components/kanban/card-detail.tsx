@@ -6,7 +6,6 @@ import { useAddComment, useEditComment } from "@/features/comments/hooks";
 import { groupByDay } from "@/features/activity/hooks";
 import { apiRequest } from "@/lib/api/client";
 import { useQuery } from "@tanstack/react-query";
-import { useMoveCard } from "@/features/cards/mutations";
 import { useLifecycleMutation } from "@/features/lifecycle/hooks";
 import { useUiStore } from "@/lib/ui-store";
 
@@ -146,15 +145,16 @@ export function CardDetailPanel({
   projectId,
   cardId,
   currentUserId,
+  onClose,
 }: {
   projectId: string;
   cardId: string;
   currentUserId?: string;
+  onClose?: () => void;
 }) {
   const cardQuery = useCard(projectId, cardId);
   const activities = useCardActivities(projectId, cardId);
   const update = useUpdateCard(projectId);
-  const moveMutation = useMoveCard(projectId);
   const lifecycleMutation = useLifecycleMutation(projectId);
   const registerPaletteCommands = useUiStore((s) => s.registerPaletteCommands);
   const [tab, setTab] = useState<DetailTab>("details");
@@ -165,20 +165,6 @@ export function CardDetailPanel({
     if (!cardQuery.data) return;
     const card = cardQuery.data;
     registerPaletteCommands([
-      {
-        id: "act-move-card",
-        label: "Pindahkan Card",
-        group: "Aksi",
-        run: () => {
-          // Move to first available list (simplified — real UI needs list picker)
-          const destListId = card.listId; // Placeholder — should be user-selected
-          moveMutation.mutate({
-            cardId: card.id,
-            destinationListId: destListId,
-            expectedVersion: card.version,
-          });
-        },
-      },
       {
         id: "act-archive-card",
         label: "Arsipkan Card",
@@ -194,7 +180,7 @@ export function CardDetailPanel({
       },
     ]);
     return () => registerPaletteCommands([]);
-  }, [cardQuery.data, registerPaletteCommands, moveMutation, lifecycleMutation]);
+  }, [cardQuery.data, registerPaletteCommands, lifecycleMutation]);
 
   if (cardQuery.isLoading) return <p className="p-4 text-sm">Memuat…</p>;
   const card = cardQuery.data;
@@ -207,7 +193,19 @@ export function CardDetailPanel({
       aria-label="Detail kartu"
       className="flex flex-col gap-3 bg-background p-4 max-md:fixed max-md:inset-0 max-md:z-40 md:relative"
     >
-      <h2 className="text-lg font-semibold">{card.title}</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{card.title}</h2>
+        {onClose ? (
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Tutup detail kartu"
+            className="rounded px-2 py-1 text-sm hover:bg-accent"
+          >
+            ✕
+          </button>
+        ) : null}
+      </div>
 
       <nav aria-label="Tab detail kartu" className="flex gap-2 text-sm">
         {(

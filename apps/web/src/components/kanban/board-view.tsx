@@ -10,6 +10,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError, apiRequest } from "@/lib/api/client";
 import { KanbanCard } from "@/components/kanban/card";
+import { CardDetailPanel } from "@/components/kanban/card-detail";
 import { useLists } from "@/features/lists/hooks";
 import { useCards } from "@/features/cards/hooks";
 import { useMoveCard, useCreateCard } from "@/features/cards/mutations";
@@ -38,10 +39,12 @@ function BoardColumn({
   projectId,
   listId,
   title,
+  onSelectCard,
 }: {
   projectId: string;
   listId: string;
   title: string;
+  onSelectCard?: (cardId: string) => void;
 }) {
   const cardsQuery = useCards(projectId, listId);
   const cards = cardsQuery.data?.cards ?? [];
@@ -66,7 +69,7 @@ function BoardColumn({
       {/* Area drop kolom */}
       <ul ref={setNodeRef} className="flex min-h-16 flex-col gap-2">
         {cards.map((card) => (
-          <KanbanCard key={card.id} card={card} listId={listId} />
+          <KanbanCard key={card.id} card={card} listId={listId} onSelect={onSelectCard} />
         ))}
       </ul>
     </section>
@@ -87,6 +90,7 @@ export function BoardView({
   const queryClient = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor));
   const [conflictDismissed, setConflictDismissed] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const registerPaletteCommands = useUiStore((s) => s.registerPaletteCommands);
 
   // Register card commands for palette when on a board
@@ -167,10 +171,23 @@ export function BoardView({
         ) : null}
         <div className="flex flex-1 flex-nowrap items-start gap-4 overflow-x-auto p-4">
           {lists.map((list) => (
-            <BoardColumn key={list.id} projectId={projectId} listId={list.id} title={list.title} />
+            <BoardColumn
+              key={list.id}
+              projectId={projectId}
+              listId={list.id}
+              title={list.title}
+              onSelectCard={setSelectedCardId}
+            />
           ))}
         </div>
       </div>
+      {selectedCardId ? (
+        <CardDetailPanel
+          projectId={projectId}
+          cardId={selectedCardId}
+          onClose={() => setSelectedCardId(null)}
+        />
+      ) : null}
     </DndContext>
   );
 }

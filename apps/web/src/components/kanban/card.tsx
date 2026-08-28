@@ -27,7 +27,7 @@ export function formatDueDate(iso: string | null | undefined): string {
   return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 }
 
-export function KanbanCard({ card, listId }: { card: KanbanCardData; listId: string }) {
+export function KanbanCard({ card, listId, onSelect }: { card: KanbanCardData; listId: string; onSelect?: (cardId: string) => void }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `card:${card.id}`,
     data: { kind: "card", cardId: card.id, listId },
@@ -42,6 +42,7 @@ export function KanbanCard({ card, listId }: { card: KanbanCardData; listId: str
       {...listeners}
       data-card-id={card.id}
       aria-roledescription="Kartu dapat dipindahkan"
+      onClick={() => onSelect?.(card.id)}
       className={`cursor-grab rounded-md border border-border bg-card p-2 text-sm ${
         isDragging ? "opacity-50" : ""
       }`}
