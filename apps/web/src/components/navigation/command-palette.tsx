@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { readRecentProjectIds } from "@/features/home/recent";
+import { useUiStore } from "@/lib/ui-store";
 
 // Command palette (05-FRONTEND §3.1) — OPSIONAL, hanya navigasi/aksi yang
 // sudah ada; bukan search engine. ⌘K/Ctrl+K membuka. Aksi memanggil domain
@@ -32,7 +33,7 @@ export function CommandPalette({
   extraCommands?: PaletteCommand[];
 }) {
   const navigate = useNavigate();
-  const { projectId, boardId } = useParams<{ projectId?: string; boardId?: string }>();
+  const { projectId, milestoneId, boardId } = useParams<{ projectId?: string; milestoneId?: string; boardId?: string }>();
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -43,6 +44,8 @@ export function CommandPalette({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  const storeCommands = useUiStore((s) => s.paletteCommands);
 
   const commands = useMemo<PaletteCommand[]>(() => {
     const recent = readRecentProjectIds()[0];
@@ -66,19 +69,19 @@ export function CommandPalette({
         run: () => navigate(`/projects/${targetProject}`),
       });
 
-      // Add board navigation if we have boardId
-      if (boardId) {
+      // Add board navigation if we have boardId and milestoneId
+      if (boardId && milestoneId) {
         navCommands.push({
           id: "nav-board",
           label: "Ke Board saat ini",
           group: "Navigasi",
-          run: () => navigate(`/projects/${targetProject}/boards/${boardId}`),
+          run: () => navigate(`/projects/${targetProject}/milestones/${milestoneId}/boards/${boardId}`),
         });
       }
     }
 
-    return [...navCommands, ...extraCommands];
-  }, [navigate, projectId, boardId, extraCommands]);
+    return [...navCommands, ...storeCommands, ...extraCommands];
+  }, [navigate, projectId, milestoneId, boardId, storeCommands, extraCommands]);
 
   if (!open) return null;
   const visible = filterCommands(commands, query);

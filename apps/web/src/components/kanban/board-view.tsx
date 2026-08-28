@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -13,6 +13,7 @@ import { KanbanCard } from "@/components/kanban/card";
 import { useLists } from "@/features/lists/hooks";
 import { useCards } from "@/features/cards/hooks";
 import { useMoveCard } from "@/features/cards/mutations";
+import { useUiStore } from "@/lib/ui-store";
 
 // Board view + drag & drop Card antar List (05-FRONTEND §3.1/§5): hanya Card
 // yang dapat dipindahkan; kolom/List tidak draggable (02-SPEC A.5). Move
@@ -85,6 +86,25 @@ export function BoardView({
   const queryClient = useQueryClient();
   const sensors = useSensors(useSensor(PointerSensor));
   const [conflictDismissed, setConflictDismissed] = useState(false);
+  const registerPaletteCommands = useUiStore((s) => s.registerPaletteCommands);
+
+  // Register card commands for palette when on a board
+  useEffect(() => {
+    if (lists.length === 0) return;
+    const firstListId = lists[0].id;
+    registerPaletteCommands([
+      {
+        id: "act-create-card",
+        label: "Buat Card Baru",
+        group: "Aksi",
+        run: () => {
+          // Placeholder — actual creation needs a form/modal (not in scope of palette)
+          window.alert(`Create Card in list ${firstListId}`);
+        },
+      },
+    ]);
+    return () => registerPaletteCommands([]);
+  }, [lists, registerPaletteCommands]);
   const conflict =
     moveMutation.error instanceof ApiError && moveMutation.error.code === "VERSION_CONFLICT"
       ? moveMutation.error

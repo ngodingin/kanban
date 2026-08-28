@@ -11,6 +11,7 @@ function renderPalette(open = true, extra = [], initialEntry = "/") {
     <MemoryRouter initialEntries={[initialEntry]}>
       <Routes>
         <Route path="/" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
+        <Route path="/tasks" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
         <Route path="/projects/:projectId" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
         <Route path="/projects/:projectId/milestones/:milestoneId/boards/:boardId" element={<CommandPalette open={open} onClose={onClose} extraCommands={extra} />} />
       </Routes>

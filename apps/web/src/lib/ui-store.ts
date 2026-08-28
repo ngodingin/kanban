@@ -3,6 +3,13 @@ import { create } from "zustand";
 // 05-FRONTEND §3.1 — Zustand HANYA untuk UI/interaction state (sidebar, drag,
 // command palette). DILARANG menyimpan cache data server di sini: server
 // state milik TanStack Query (src/lib/query-client.ts), domain state milik API.
+export interface PaletteCommand {
+  id: string;
+  label: string;
+  group: "Navigasi" | "Aksi";
+  run: () => void;
+}
+
 export interface UiState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -10,6 +17,8 @@ export interface UiState {
   openPalette: () => void;
   closePalette: () => void;
   togglePalette: () => void;
+  paletteCommands: PaletteCommand[];
+  registerPaletteCommands: (commands: PaletteCommand[]) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -19,4 +28,6 @@ export const useUiStore = create<UiState>((set) => ({
   openPalette: () => set({ paletteOpen: true }),
   closePalette: () => set({ paletteOpen: false }),
   togglePalette: () => set((state) => ({ paletteOpen: !state.paletteOpen })),
+  paletteCommands: [],
+  registerPaletteCommands: (commands) => set({ paletteCommands: commands }),
 }));

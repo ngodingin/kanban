@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51) | 50 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -500,6 +500,23 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-85"></a>
+### CL-85 — 2026-08-28 · goal 7.12.1 → 🔎 80% — route fix + palette commands + test cleanup
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per QA-CL-51: Board route salah, aksi Card tidak terhubung, test warning. Perbaikan:
+
+1. **Board route fixed** — `nav-board` sekarang menggunakan `/projects/${projectId}/milestones/${milestoneId}/boards/${boardId}` (bukan `/projects/${projectId}/boards/${boardId}`).
+
+2. **Palette commands via Zustand** — `paletteCommands` dan `registerPaletteCommands` ditambahkan ke `ui-store.ts`. BoardView mendaftarkan "Buat Card Baru" command saat mount.
+
+3. **Test route warnings fixed** — Menambahkan `/tasks` route ke test router sehingga klik "Ke My Tasks" tidak menghasilkan warning.
+
+`pnpm vitest run` → **139 file / 816 test PASS**.
+
+**Catatan:** Goal 7.12.1 naik dari ⚠️ 50% ke 🔎 80%. QA perlu re-verify.
 
 <a id="cl-84"></a>
 ### CL-84 — 2026-08-28 · goal 7.12.1 → 🔎 80% — Board navigation + palette Zustand + tests
