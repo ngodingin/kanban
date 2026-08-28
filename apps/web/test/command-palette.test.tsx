@@ -36,14 +36,13 @@ describe("TASK-7.12.1 — command palette ⌘K (navigasi + aksi existing)", () =
     expect(filterCommands(cmds, "").length).toBe(2);
   });
 
-  test("negatif: tertutup → tidak merender apa pun; Escape/⌘K memanggil onClose", async () => {
+  test("negatif: tertutup → tidak merender apa pun; Escape memanggil onClose", async () => {
     const user = userEvent.setup();
-    const { container, onClose } = renderPalette(false);
+    const { container } = renderPalette(false);
     expect(container.innerHTML).toBe("");
     const openUtils = renderPalette(true);
     await user.keyboard("{Escape}");
     expect(openUtils.onClose).toHaveBeenCalled();
-    void onClose;
   });
 
   test("positif: aksi domain disuntik layar — palette hanya MENJALANKAN callback", async () => {

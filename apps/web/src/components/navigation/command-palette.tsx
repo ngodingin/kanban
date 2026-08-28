@@ -35,14 +35,11 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
 
   useEffect(() => {
+    if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        onClose(); // toggle sederhana: parent mengelola open state via prop
-      }
       if (e.key === "Escape") onClose();
     }
-    if (open) window.addEventListener("keydown", onKey);
+    window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
