@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89)<br>[QA-CL-57](#qa-cl-57) | 75 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89)<br>[QA-CL-57](#qa-cl-57)<br>[CL-90](#cl-90) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -567,6 +567,25 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
 
 <a id="cl-89"></a>
+### CL-90 — 2026-08-29 · goal 7.12.1 → 🔎 80% — Move Card picker test coverage
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per QA-CL-57: belum ada test untuk alur palet → picker → pilih List → payload mutation. Perbaikan:
+
+1. **`card-detail-move.test.tsx`** — 7 tests baru membuktikan:
+   - "Pindahkan Card" command ter-register di Zustand store (debug test)
+   - Trigger command membuka list picker dengan semua list dari board yang sama
+   - List asal ditandai "(saat ini)" dan disabled
+   - Klik list tujuan memanggil `moveMutation` dengan `{ cardId, destinationListId, expectedVersion: 3 }`
+   - Klik "Batal" menutup picker tanpa mutation
+   - Klik list asal (disabled) tidak memanggil mutation
+   - "Arsipkan Card" command memanggil `archiveMutation` dengan `{ kind: "card", entityId, action: "archive", expectedVersion: 3 }`
+
+2. **Test approach** — Zustand store `useUiStore` digunakan langsung (real instance), command `run()` dipanggil via `act()` untuk trigger React re-render.
+
+`pnpm vitest run` → **140 file / 823 test PASS** (+7 test baru).
+
 ### CL-89 — 2026-08-29 · goal 7.12.1 → 🔎 80% — Move Card with list picker
 
 **Role:** AI-Dev · **Model:** opencode/mimo-v2-free
