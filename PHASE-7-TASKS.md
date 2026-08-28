@@ -147,7 +147,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
 | 7.9.1 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35)<br>[CL-74](#cl-74)<br>[QA-CL-36](#qa-cl-36) | 100 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-75](#cl-75)<br>[CL-76](#cl-76)<br>[QA-CL-37](#qa-cl-37)<br>[CL-78](#cl-78)<br>[QA-CL-38](#qa-cl-38) | 100 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
-| 7.9.3 | 🔎 | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-77](#cl-77)<br>[CL-79](#cl-79)<br>[QA-CL-39](#qa-cl-39)<br>[CL-80](#cl-80) | 80 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
+| 7.9.3 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-77](#cl-77)<br>[CL-79](#cl-79)<br>[QA-CL-39](#qa-cl-39)<br>[CL-80](#cl-80)<br>[QA-CL-43](#qa-cl-43) | 100 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
 
 **Test:** UI mencerminkan model Group (bukan RBAC Role→Permissions); scope & inheritance benar.
 **DoD:** Permission UI patuh authorization model; tidak menyederhanakan jadi RBAC.
@@ -207,8 +207,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.14.1 | 🔎 | [CL-54](#cl-54)<br>[CL-55](#cl-55) | 80 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
-| 7.14.2 | 🔎 | [CL-54](#cl-54)<br>[CL-56](#cl-56) | 80 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
+| 7.14.1 | ⚠️ | [CL-54](#cl-54)<br>[CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45) | 55 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.14.2 | ✅ | [CL-54](#cl-54)<br>[CL-56](#cl-56)<br>[QA-CL-44](#qa-cl-44) | 100 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
 
 **Test:** Mobile tidak menumpuk kolom vertikal; card detail full-screen.
 **DoD:** Responsive sesuai [05-FRONTEND §7](docs/05-FRONTEND.md).
@@ -235,6 +235,37 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-45"></a>
+### QA-CL-45 — 2026-08-28 · goal 7.14.1 gagal verifikasi (🔎 80% → ⚠️ 55%) — tablet tidak benar-benar collapsed
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** responsive test dan production build lulus; sidebar memang tersembunyi pada mobile dan dapat merender lebar sempit ketika store dipaksa `sidebarCollapsed: true`.
+
+**Kegagalan §7:** source hanya memilih `md:w-56` atau `md:w-14` berdasarkan Zustand. Tidak ada breakpoint yang membuat tablet collapsed, dan `toggleSidebar` tidak digunakan oleh komponen UI mana pun. Test mengubah store langsung, sehingga tidak membuktikan perilaku produk. Tambahkan strategi responsive nyata (mis. lebar normal mulai desktop besar dan compact pada tablet) atau kontrol UI reachable yang memanggil toggle, disertai test.
+
+**Verdict:** `⚠️ 55%`.
+
+<a id="qa-cl-44"></a>
+### QA-CL-44 — 2026-08-28 · goal 7.14.2 terverifikasi (🔎 80% → ✅ 100%) — mobile board/detail patuh §7
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti:** `pnpm vitest run apps/web/test/responsive.test.tsx && pnpm --filter @kanban/web build` → **3/3 PASS** dan build PASS. Board memakai `flex-nowrap overflow-x-auto` dengan kolom fixed-width sehingga tidak menumpuk vertikal; Card Detail memakai `max-md:fixed max-md:inset-0` sehingga full-screen mobile.
+
+**Verdict:** `✅ 100%`.
+
+<a id="qa-cl-43"></a>
+### QA-CL-43 — 2026-08-28 · goal 7.9.3 terverifikasi (🔎 80% → ✅ 100%) — Direct Permission UI patuh C.12/BR-038/042A
+
+**Role:** AI-QA · **Model:** Codex
+
+**Verifikasi fungsional:** UI memakai katalog Permission C.12, membuat/list/revoke direct assignment scoped, menolak scope non-Project tanpa ID, dan tidak menambahkan DENY/RBAC. Test baru membuktikan POST `card.read` membawa default `CREATED_BY_ME`; permission lain terbukti tidak membawa field visibility. Inheritance/additive dan validasi hierarchy tetap ditegakkan backend yang sudah terverifikasi di 7.9.0.
+
+**Re-run independen:** targeted direct-permission/visibility suite → **5 file / 66 test PASS**.
+
+**Verdict:** `✅ 100%`.
 
 <a id="qa-cl-42"></a>
 ### QA-CL-42 — 2026-08-28 · goal 7.4.2 gagal verifikasi (🔎 80% → ⚠️ 40%) — Recent tidak reachable dari Home
