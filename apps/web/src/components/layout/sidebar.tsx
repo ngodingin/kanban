@@ -19,6 +19,7 @@ const PROJECT_ITEMS = [
 
 export function Sidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
+  const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const { projectId } = useParams<{ projectId: string }>();
 
   return (
@@ -29,6 +30,27 @@ export function Sidebar() {
         collapsed ? "md:w-14" : "md:w-56"
       }`}
     >
+      <div className="flex items-center justify-between border-b border-border p-3">
+        {!collapsed && (
+          <span className="text-xs font-semibold tracking-wide text-muted-foreground">Menu</span>
+        )}
+        <button
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {collapsed ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          )}
+        </button>
+      </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {NAV_ITEMS.map((item) => (
           <NavLink
@@ -49,7 +71,7 @@ export function Sidebar() {
 
         {/* PROJECTS ▾ — daftar Project nyata diisi goal projects feature; tanpa demo domain. */}
         <div className="mt-4 mb-1 px-3 text-xs font-semibold tracking-wide text-muted-foreground">
-          PROJECTS ▾
+          {collapsed ? "▾" : "PROJECTS ▾"}
         </div>
 
         {PROJECT_ITEMS.map((item) => {
@@ -74,7 +96,7 @@ export function Sidebar() {
         })}
       </nav>
       <div className="border-t border-border p-3 text-xs text-muted-foreground">
-        Powered by NGodingiN
+        {collapsed ? "©" : "Powered by NGodingiN"}
       </div>
     </aside>
   );

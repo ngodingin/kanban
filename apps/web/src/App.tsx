@@ -3,11 +3,33 @@ import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { LoginPage } from "./features/auth/login-page";
 import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
+import { useRecentContext, RecentActivityPreview } from "./features/home/recent";
 
 function Home() {
+  const { ordered, contextId } = useRecentContext();
   return (
-    <main className="p-6">
+    <main className="flex flex-col gap-6 p-6">
       <h1 className="text-2xl font-semibold tracking-tight">NGodingin Kanban</h1>
+
+      <section aria-label="Recent Projects" className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Recent Projects</h2>
+        {ordered.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada project.</p>
+        ) : (
+          <ul className="flex flex-col gap-1 text-sm">
+            {ordered.map((p) => (
+              <li key={p.id}>
+                <a href={`/projects/${p.id}`} className="hover:underline">{p.name ?? p.id}</a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section aria-label="Recent Activity" className="flex flex-col gap-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Recent Activity</h2>
+        <RecentActivityPreview projectId={contextId} />
+      </section>
     </main>
   );
 }

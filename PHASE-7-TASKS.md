@@ -81,7 +81,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
-| 7.4.2 | ⚠️ | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42) | 40 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
+| 7.4.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42)<br>[CL-81](#cl-81) | 80 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
 **DoD:** Home terasa work-management tool, bukan admin panel.
@@ -207,7 +207,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.14.1 | ⚠️ | [CL-54](#cl-54)<br>[CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45) | 55 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
+| 7.14.1 | 🔎 | [CL-54](#cl-54)<br>[CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45)<br>[CL-81](#cl-81) | 80 | P2 | Desktop `Sidebar\|Board`, Tablet collapsed sidebar | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.5.1 |
 | 7.14.2 | ✅ | [CL-54](#cl-54)<br>[CL-56](#cl-56)<br>[QA-CL-44](#qa-cl-44) | 100 | P2 | Mobile: List horizontal-scroll; Card detail full-screen | [05-FRONTEND §7](docs/05-FRONTEND.md) | 7.7.1 |
 
 **Test:** Mobile tidak menumpuk kolom vertikal; card detail full-screen.
@@ -428,6 +428,27 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-81"></a>
+### CL-81 — 2026-08-28 · goal 7.4.2 → 🔎 80% + 7.14.1 → 🔎 80% — Home + Sidebar fix
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Perbaikan dua goal sekaligus:
+
+**7.4.2 (QA-CL-42):** Home page terhubung dengan Recent modules:
+1. `useRecentContext` diimpor dan dipakai untuk mendapatkan `ordered` (recent projects) dan `contextId`
+2. Recent Projects section menampilkan daftar project dari localStorage ordering, dengan link ke `/projects/:id`
+3. `RecentActivityPreview` diimpor dan menampilkan activity terbaru berdasarkan `contextId` (project-scoped, tidak cross-project)
+4. Empty state untuk kedua section
+
+**7.14.1 (QA-CL-45):** Sidebar collapsed behavior:
+1. Toggle button ditambahkan di header sidebar (icon chevron kiri/kanan)
+2. `toggleSidebar` dari Zustand store dipanggil saat button diklik
+3. Collapsed state menampilkan icon/label pendek; expanded state menampilkan label lengkap
+4. `aria-label` untuk accessibility
+
+`pnpm run lint` pass, `pnpm run typecheck` pass, `pnpm vitest run` → **139 file / 813 test PASS**.
 
 <a id="cl-80"></a>
 ### CL-80 — 2026-08-28 · goal 7.9.3 → 🔎 80% — card.read payload proof
