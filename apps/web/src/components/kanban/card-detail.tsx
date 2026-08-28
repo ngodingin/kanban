@@ -168,9 +168,15 @@ export function CardDetailPanel({
   const [showMovePicker, setShowMovePicker] = useState(false);
 
   // Register card-specific commands when a card is selected
+  // Only register Move/Archive for active cards (not archived, not deleted)
   useEffect(() => {
     if (!cardQuery.data) return;
     const card = cardQuery.data;
+    const isActive = !card.archivedAt && !card.deletedAt;
+    if (!isActive) {
+      registerPaletteCommands([]);
+      return;
+    }
     registerPaletteCommands([
       {
         id: "act-move-card",

@@ -50,7 +50,7 @@ afterEach(() => {
   useUiStore.setState({ paletteCommands: [], paletteOpen: false });
 });
 
-function renderCardDetail() {
+function renderCardDetail(cardOverrides?: { archivedAt?: string | null; deletedAt?: string | null }) {
   const moveMutate = vi.fn();
   const archiveMutate = vi.fn();
   mocks.useCard.mockReturnValue({
@@ -59,8 +59,8 @@ function renderCardDetail() {
       listId: "list-a",
       title: "Test Card",
       version: 3,
-      archivedAt: null,
-      deletedAt: null,
+      archivedAt: cardOverrides?.archivedAt ?? null,
+      deletedAt: cardOverrides?.deletedAt ?? null,
     },
     isLoading: false,
   });
@@ -189,5 +189,47 @@ describe("TASK-7.12.1 — Move Card picker flow", () => {
       action: "archive",
       expectedVersion: 3,
     });
+  });
+
+  test("negatif: card archived → command Move/Archive tidak terdaftar", async () => {
+    renderCardDetail({ archivedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    const moveCmd = commands.find((c) => c.id === "act-move-card");
+    const archiveCmd = commands.find((c) => c.id === "act-archive-card");
+
+    expect(moveCmd).toBeUndefined();
+    expect(archiveCmd).toBeUndefined();
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: card deleted → command Move/Archive tidak terdaftar", async () => {
+    renderCardDetail({ deletedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    const moveCmd = commands.find((c) => c.id === "act-move-card");
+    const archiveCmd = commands.find((c) => c.id === "act-archive-card");
+
+    expect(moveCmd).toBeUndefined();
+    expect(archiveCmd).toBeUndefined();
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: card archived+deleted → command Move/Archive tidak terdaftar", async () => {
+    renderCardDetail({
+      archivedAt: "2026-08-28T00:00:00Z",
+      deletedAt: "2026-08-29T00:00:00Z",
+    });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: card archived → render card detail tanpa error", async () => {
+    renderCardDetail({ archivedAt: "2026-08-29T00:00:00Z" });
+
+    // Card detail should still render (read-only), just without lifecycle commands
+    expect(screen.getByText("Test Card")).toBeTruthy();
+    expect(screen.getByLabelText("Tutup detail kartu")).toBeTruthy();
   });
 });
