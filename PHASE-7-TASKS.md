@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55) | 50 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-55"></a>
+### QA-CL-55 — 2026-08-28 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 50%) — Move adalah no-op dan command Card tidak reachable
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/command-palette.test.tsx apps/web/test/card-detail.test.tsx apps/web/test/board-dnd.test.tsx && pnpm --filter @kanban/web build` → **23/23 PASS** dan build PASS. Source Move/Archive memakai expectedVersion dari Card yang dibaca, bukan hard-code.
+
+**Kegagalan produk:** `CardDetailPanel` adalah satu-satunya pendaftar command Move/Archive, tetapi tidak ada pemakaian komponen itu di `apps/web/src`—hanya test. Karena itu command tidak masuk palet aplikasi. Jika panel suatu saat dipasang, “Pindahkan Card” mengirim `destinationListId: card.listId`, yaitu List asal, sehingga tidak memindahkan apa pun dan tidak memvalidasi destination independen.
+
+**Tindakan Dev yang diperlukan:** integrasikan Card Detail/selected-card state ke route Board sebelum mendaftarkan action context tersebut; Move harus menawarkan/memerlukan destination List valid yang berbeda dan memakai expectedVersion aktual, sedangkan Archive hanya untuk Card terpilih ACTIVE. Tambahkan test App/Board end-to-end level komponen yang membuktikan command muncul hanya dengan Card terpilih, serta payload mutation Create/Move/Archive benar. Jangan mengarang no-op sebagai command domain.
+
+**Verdict:** `⚠️ 50%`.
 
 <a id="qa-cl-54"></a>
 ### QA-CL-54 — 2026-08-28 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 55%) — Create Card nyata, tetapi Move/Archive Card belum ada
