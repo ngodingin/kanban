@@ -1,23 +1,34 @@
 import { Route, Routes, useParams } from "react-router";
+import { useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { LoginPage } from "./features/auth/login-page";
 import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
-import { useRecentContext, RecentActivityPreview } from "./features/home/recent";
+import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecentProjectIds } from "./features/home/recent";
+
+function RecordVisit() {
+  const { projectId } = useParams<{ projectId: string }>();
+  useEffect(() => {
+    if (projectId) recordProjectVisit(projectId);
+  }, [projectId]);
+  return null;
+}
 
 function Home() {
   const { ordered, contextId } = useRecentContext();
+  const recentIds = readRecentProjectIds();
+  const recentProjects = ordered.filter((p) => recentIds.includes(p.id));
   return (
     <main className="flex flex-col gap-6 p-6">
       <h1 className="text-2xl font-semibold tracking-tight">NGodingin Kanban</h1>
 
       <section aria-label="Recent Projects" className="flex flex-col gap-2">
         <h2 className="text-sm font-medium text-muted-foreground">Recent Projects</h2>
-        {ordered.length === 0 ? (
+        {recentProjects.length === 0 ? (
           <p className="text-sm text-muted-foreground">Belum ada project.</p>
         ) : (
           <ul className="flex flex-col gap-1 text-sm">
-            {ordered.map((p) => (
+            {recentProjects.map((p) => (
               <li key={p.id}>
                 <a href={`/projects/${p.id}`} className="hover:underline">{p.name ?? p.id}</a>
               </li>
@@ -65,6 +76,7 @@ export default function App() {
         path="/projects/:projectId"
         element={
           <Shell>
+            <RecordVisit />
             <ProjectPlaceholder />
           </Shell>
         }
@@ -73,6 +85,7 @@ export default function App() {
         path="/projects/:projectId/milestones/:milestoneId"
         element={
           <Shell>
+            <RecordVisit />
             <MilestonePlaceholder />
           </Shell>
         }
@@ -81,6 +94,7 @@ export default function App() {
         path="/projects/:projectId/milestones/:milestoneId/boards/:boardId"
         element={
           <Shell>
+            <RecordVisit />
             <BoardPlaceholder />
           </Shell>
         }
@@ -89,6 +103,7 @@ export default function App() {
         path="/projects/:projectId/permissions"
         element={
           <Shell>
+            <RecordVisit />
             <PermissionsPage />
           </Shell>
         }

@@ -81,7 +81,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
-| 7.4.2 | ⚠️ | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42)<br>[CL-81](#cl-81)<br>[QA-CL-47](#qa-cl-47) | 55 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
+| 7.4.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42)<br>[CL-81](#cl-81)<br>[QA-CL-47](#qa-cl-47)<br>[CL-82](#cl-82) | 80 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
 **DoD:** Home terasa work-management tool, bukan admin panel.
@@ -463,6 +463,24 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-82"></a>
+### CL-82 — 2026-08-28 · goal 7.4.2 → 🔎 80% — recordProjectVisit + integration test
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per QA-CL-47: `recordProjectVisit()` belum dipanggil dari route/UI mana pun. Perbaikan:
+
+1. **RecordVisit component** ditambahkan di `App.tsx` — menggunakan `useParams` untuk mendapatkan `projectId` dan memanggil `recordProjectVisit()` via `useEffect`. Dipasang di semua project routes (`/projects/:projectId`, `/projects/:projectId/milestones/...`, `/projects/:projectId/permissions`).
+
+2. **Home page fix** — menggunakan `readRecentProjectIds()` untuk memfilter `ordered` sehingga hanya menampilkan project yang ada di localStorage (recent), bukan semua project.
+
+3. **Integration test** — "navigasi ke Project mencatat kunjungan, Recent berubah urutan" membuktikan:
+   - Navigate ke `/projects/p3` → localStorage berisi `["p3"]`
+   - Navigate ke `/projects/p1` → localStorage berisi `["p1", "p3"]`
+   - Home page menampilkan Alpha (p1) pertama, Gamma (p3) kedua
+
+`pnpm vitest run` → **139 file / 814 test PASS**.
 
 <a id="cl-81"></a>
 ### CL-81 — 2026-08-28 · goal 7.4.2 → 🔎 80% + 7.14.1 → 🔎 80% — Home + Sidebar fix
