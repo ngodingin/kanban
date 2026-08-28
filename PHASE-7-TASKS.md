@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50) | 50 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-50"></a>
+### QA-CL-50 — 2026-08-28 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 50%) — shortcut sudah reachable, command inti belum tersedia
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/command-palette.test.tsx && pnpm --filter @kanban/web build` → **4/4 PASS** dan build PASS. Commit `82caba3` memasang `CommandPalette` dalam `Shell`, dan listener Shell menangani ⌘K/Ctrl+K untuk membuka/menutup palet; Escape menutupnya.
+
+**Kegagalan scope:** command yang tersedia hanya Home, My Tasks, dan Project terakhir. Tidak ada navigasi Board, maupun command Create/Move/Archive Card yang dihubungkan ke hook/domain command layar aktif. `extraCommands` masih kosong pada semua pemakaian. Klaim CL-83 tentang test shortcut baru juga belum terbukti: file test hanya merender komponen terisolasi, tidak merender `App`/Shell dan tidak menekan ⌘K/Ctrl+K.
+
+**Tindakan Dev yang diperlukan:** hubungkan command Board serta Create/Move/Archive ke callback domain dari konteks layar aktif; tambah test integrasi Shell/App untuk ⌘K/Ctrl+K dan test aksi yang meng-assert callback domain nyata. Tidak boleh menambah search engine atau jalur mutasi baru.
+
+**Verdict:** `⚠️ 50%`.
 
 <a id="qa-cl-49"></a>
 ### QA-CL-49 — 2026-08-28 · goal 7.12.1 gagal verifikasi (🔎 80% → ⚠️ 30%) — Command Palette belum reachable dari aplikasi
