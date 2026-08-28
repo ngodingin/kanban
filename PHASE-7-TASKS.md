@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51) | 50 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -235,6 +235,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-51"></a>
+### QA-CL-51 — 2026-08-28 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 50%) — command Board salah route, aksi Card tetap tidak terhubung
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/command-palette.test.tsx apps/web/test/ui-store.test.ts && pnpm --filter @kanban/web build` → **8/8 PASS** dan build PASS. Command Board muncul pada context Board; Zustand tetap menyimpan interaction state, bukan server state.
+
+**Kegagalan kontrak route:** aplikasi mendaftarkan Board pada `/projects/:projectId/milestones/:milestoneId/boards/:boardId`, tetapi `nav-board` menuju `/projects/${projectId}/boards/${boardId}`. Tombol tersebut akan menuju NotFound. Test tidak menangkapnya; bahkan test klik My Tasks mengeluarkan `No routes matched location "/tasks"` dan tetap hijau.
+
+**Kegagalan aksi:** `useCreateCard` hanya dideklarasikan di `mutations.ts`; tidak ada pemakaian pada Shell/palet. `extraCommands` tetap kosong pada satu-satunya pemakaian `CommandPalette`; Move dan Archive juga tidak tersedia. Karena itu Create/Move/Archive belum menjalankan domain command dari layar aktif.
+
+**Tindakan Dev yang diperlukan:** bentuk route Board lengkap dengan milestoneId nyata dan assert destination route pada test; sediakan command Card hanya ketika konteks/list/card yang diperlukan ada, masing-masing memanggil hook domain existing dengan input/version yang benar, lalu test integrasi Shell/App tanpa warning route. Jangan mengarang route atau mutation baru.
+
+**Verdict:** `⚠️ 50%`.
 
 <a id="qa-cl-50"></a>
 ### QA-CL-50 — 2026-08-28 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 50%) — shortcut sudah reachable, command inti belum tersedia
