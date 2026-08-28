@@ -6,7 +6,9 @@ import { useAddComment, useEditComment } from "@/features/comments/hooks";
 import { groupByDay } from "@/features/activity/hooks";
 import { apiRequest } from "@/lib/api/client";
 import { useQuery } from "@tanstack/react-query";
+import { useMoveCard } from "@/features/cards/mutations";
 import { useLifecycleMutation } from "@/features/lifecycle/hooks";
+import { useLists } from "@/features/lists/hooks";
 import { useUiStore } from "@/lib/ui-store";
 
 // Card Detail (05-FRONTEND §5): tab Details (description, assignee, due date,
@@ -143,11 +145,13 @@ function CommentsTab({
 
 export function CardDetailPanel({
   projectId,
+  boardId,
   cardId,
   currentUserId,
   onClose,
 }: {
   projectId: string;
+  boardId: string;
   cardId: string;
   currentUserId?: string;
   onClose?: () => void;
@@ -155,16 +159,27 @@ export function CardDetailPanel({
   const cardQuery = useCard(projectId, cardId);
   const activities = useCardActivities(projectId, cardId);
   const update = useUpdateCard(projectId);
+  const moveMutation = useMoveCard(projectId);
   const lifecycleMutation = useLifecycleMutation(projectId);
+  const listsQuery = useLists(projectId, boardId);
   const registerPaletteCommands = useUiStore((s) => s.registerPaletteCommands);
   const [tab, setTab] = useState<DetailTab>("details");
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
+  const [showMovePicker, setShowMovePicker] = useState(false);
 
   // Register card-specific commands when a card is selected
   useEffect(() => {
     if (!cardQuery.data) return;
     const card = cardQuery.data;
     registerPaletteCommands([
+      {
+        id: "act-move-card",
+        label: "Pindahkan Card",
+        group: "Aksi",
+        run: () => {
+          setShowMovePicker(true);
+        },
+      },
       {
         id: "act-archive-card",
         label: "Arsipkan Card",
@@ -180,7 +195,24 @@ export function CardDetailPanel({
       },
     ]);
     return () => registerPaletteCommands([]);
-  }, [cardQuery.data, registerPaletteCommands, lifecycleMutation]);
+  }, [cardQuery.data, registerPaletteCommands, moveMutation, lifecycleMutation]);
+
+  function handleMoveCard(destinationListId: string) {
+    if (!cardQuery.data) return;
+    const card = cardQuery.data;
+    moveMutation.mutate(
+      {
+        cardId: card.id,
+        destinationListId,
+        expectedVersion: card.version,
+      },
+      {
+        onSuccess: () => {
+          setShowMovePicker(false);
+        },
+      },
+    );
+  }
 
   if (cardQuery.isLoading) return <p className="p-4 text-sm">Memuat…</p>;
   const card = cardQuery.data;
@@ -226,6 +258,39 @@ export function CardDetailPanel({
           </button>
         ))}
       </nav>
+
+      {/* Move Card picker — shown when user selects "Pindahkan Card" from palette */}
+      {showMovePicker ? (
+        <div className="rounded-md border border-border p-3">
+          <h3 className="mb-2 text-sm font-medium">Pindahkan ke List:</h3>
+          <ul className="flex flex-col gap-1">
+            {(listsQuery.data?.lists ?? []).map((list) => (
+              <li key={list.id}>
+                <button
+                  type="button"
+                  disabled={list.id === card.listId}
+                  onClick={() => handleMoveCard(list.id)}
+                  className={`w-full rounded px-3 py-1.5 text-left text-sm ${
+                    list.id === card.listId
+                      ? "cursor-not-allowed text-muted-foreground"
+                      : "hover:bg-accent"
+                  }`}
+                >
+                  {list.title}
+                  {list.id === card.listId ? " (saat ini)" : ""}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <button
+            type="button"
+            onClick={() => setShowMovePicker(false)}
+            className="mt-2 rounded px-3 py-1 text-sm hover:bg-accent"
+          >
+            Batal
+          </button>
+        </div>
+      ) : null}
 
       {tab === "details" ? (
         <dl className="flex flex-col gap-2 text-sm">

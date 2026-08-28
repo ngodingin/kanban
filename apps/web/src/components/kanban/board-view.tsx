@@ -184,6 +184,7 @@ export function BoardView({
       {selectedCardId ? (
         <CardDetailPanel
           projectId={projectId}
+          boardId={boardId}
           cardId={selectedCardId}
           onClose={() => setSelectedCardId(null)}
         />

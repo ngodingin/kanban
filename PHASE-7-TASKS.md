@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56) | 65 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -552,6 +552,28 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-89"></a>
+### CL-89 — 2026-08-29 · goal 7.12.1 → 🔎 80% — Move Card with list picker
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per QA-CL-56: Move Card belum ada di palet. Perbaikan:
+
+1. **Move Card command** — `CardDetailPanel` mendaftarkan "Pindahkan Card" command yang membuka list picker.
+
+2. **List picker UI** — Saat "Pindahkan Card" dipilih dari palet, CardDetailPanel menampilkan daftar List dari Board yang sama. List saat ini ditandai "(saat ini)" dan disabled.
+
+3. **Move mutation** — Saat List tujuan dipilih, `moveMutation.mutate()` dipanggil dengan:
+   - `cardId`: dari card yang dipilih
+   - `destinationListId`: dari list yang dipilih user
+   - `expectedVersion`: dari `card.version` (bukan hardcoded)
+
+4. **boardId prop** — `CardDetailPanel` sekarang menerima `boardId` untuk fetch lists.
+
+`pnpm vitest run` → **139 file / 816 test PASS**.
+
+**Catatan:** Goal 7.12.1 naik dari ⚠️ 65% ke 🔎 80%. QA perlu re-verify.
 
 <a id="cl-88"></a>
 ### CL-88 — 2026-08-29 · goal 7.12.1 → 🔎 80% — CardDetailPanel integrated + Archive Card works
