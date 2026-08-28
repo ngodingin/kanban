@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53) | 45 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-53"></a>
+### QA-CL-53 — 2026-08-28 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 45%) — command Create adalah placeholder dan BoardView tidak reachable
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/command-palette.test.tsx apps/web/test/board-dnd.test.tsx apps/web/test/board-move-guard.test.tsx && pnpm --filter @kanban/web build` → **14/14 PASS** dan build PASS. Route command Board kini memasukkan milestoneId dengan benar.
+
+**Kegagalan aksi/domain:** `BoardView` mendaftarkan satu command “Buat Card Baru”, tetapi callback-nya hanya `window.alert`, bukan `useCreateCard` atau command domain mana pun. Move dan Archive tetap tidak didaftarkan. Lebih mendasar, `App` merender `BoardPlaceholder` pada route Board dan tidak pernah merender `BoardView`; hasil `rg` menunjukkan BoardView hanya dipakai test. Maka command tersebut tidak akan terdaftar di aplikasi nyata.
+
+**Tindakan Dev yang diperlukan:** jangan gunakan placeholder. Sambungkan route Board ke BoardView/layar domain nyata, lalu register hanya command Create/Move/Archive yang memiliki input konteks lengkap dan memanggil mutation domain existing (termasuk `expectedVersion` untuk Move/Archive bila kontrak mewajibkannya). Tambahkan test integrasi App route Board + palette yang membuktikan mutation dipanggil dan tetap tunduk permission/lifecycle; jangan simpan server data di Zustand.
+
+**Verdict:** `⚠️ 45%`.
 
 <a id="qa-cl-52"></a>
 ### QA-CL-52 — 2026-08-28 · goal 7.4.2 terverifikasi (🔎 80% → ✅ 100%) — Recent terhubung ke kunjungan Project nyata
