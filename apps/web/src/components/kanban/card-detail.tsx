@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useCard, useUpdateCard } from "@/features/cards/detail-hooks";
 import { useCardActivities } from "@/features/cards/detail-hooks";
 import { deriveCommentThread } from "@/features/comments/thread";
@@ -6,6 +6,9 @@ import { useAddComment, useEditComment } from "@/features/comments/hooks";
 import { groupByDay } from "@/features/activity/hooks";
 import { apiRequest } from "@/lib/api/client";
 import { useQuery } from "@tanstack/react-query";
+import { useMoveCard } from "@/features/cards/mutations";
+import { useLifecycleMutation } from "@/features/lifecycle/hooks";
+import { useUiStore } from "@/lib/ui-store";
 
 // Card Detail (05-FRONTEND §5): tab Details (description, assignee, due date,
 // labels, **current List** — bukan "status") + Activity (immutable) +
@@ -151,8 +154,47 @@ export function CardDetailPanel({
   const cardQuery = useCard(projectId, cardId);
   const activities = useCardActivities(projectId, cardId);
   const update = useUpdateCard(projectId);
+  const moveMutation = useMoveCard(projectId);
+  const lifecycleMutation = useLifecycleMutation(projectId);
+  const registerPaletteCommands = useUiStore((s) => s.registerPaletteCommands);
   const [tab, setTab] = useState<DetailTab>("details");
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
+
+  // Register card-specific commands when a card is selected
+  useEffect(() => {
+    if (!cardQuery.data) return;
+    const card = cardQuery.data;
+    registerPaletteCommands([
+      {
+        id: "act-move-card",
+        label: "Pindahkan Card",
+        group: "Aksi",
+        run: () => {
+          // Move to first available list (simplified — real UI needs list picker)
+          const destListId = card.listId; // Placeholder — should be user-selected
+          moveMutation.mutate({
+            cardId: card.id,
+            destinationListId: destListId,
+            expectedVersion: card.version,
+          });
+        },
+      },
+      {
+        id: "act-archive-card",
+        label: "Arsipkan Card",
+        group: "Aksi",
+        run: () => {
+          lifecycleMutation.mutate({
+            kind: "card",
+            entityId: card.id,
+            action: "archive",
+            expectedVersion: card.version,
+          });
+        },
+      },
+    ]);
+    return () => registerPaletteCommands([]);
+  }, [cardQuery.data, registerPaletteCommands, moveMutation, lifecycleMutation]);
 
   if (cardQuery.isLoading) return <p className="p-4 text-sm">Memuat…</p>;
   const card = cardQuery.data;
