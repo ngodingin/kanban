@@ -679,4 +679,82 @@ describe("TASK-7.9.3 — Direct Permission Assignment", () => {
     const submitButton = screen.getByRole("button", { name: "Assign Permission" });
     expect(submitButton.disabled).toBe(true);
   });
+
+  test("positif: submit card.read direct permission mengirim cardReadVisibility", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission form
+    await waitFor(() => expect(screen.getByText("Assign Permission")).toBeTruthy());
+
+    // Select card.read permission
+    const permSelect = screen.getByLabelText("Permission") as HTMLSelectElement;
+    await user.selectOptions(permSelect, "p1");
+
+    // Select scope
+    const scopeSelects = screen.getAllByLabelText("Scope") as HTMLSelectElement[];
+    await user.selectOptions(scopeSelects[1], "project");
+
+    // Submit
+    await user.click(screen.getByText("Assign Permission"));
+
+    // Wait for API call — payload MUST contain cardReadVisibility
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/permission-assignments"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(postCalls[postCalls.length - 1][1].body as string);
+      expect(body).toEqual({
+        permissionId: "p1",
+        scopeType: "project",
+        scopeId: "p1",
+        cardReadVisibility: "CREATED_BY_ME",
+      });
+    });
+  });
+
+  test("negatif: submit non-card.read direct permission TIDAK mengirim cardReadVisibility", async () => {
+    const api = stubApi();
+    vi.stubGlobal("fetch", api);
+    const user = userEvent.setup();
+    renderEditor();
+    await waitFor(() => expect(screen.getByText("Manager")).toBeTruthy());
+
+    // Select first member
+    const memberSelect = screen.getByDisplayValue("— Pilih member —") as HTMLSelectElement;
+    await user.selectOptions(memberSelect, "ms1");
+
+    // Wait for direct permission form
+    await waitFor(() => expect(screen.getByText("Assign Permission")).toBeTruthy());
+
+    // Select card.update permission (NOT card.read)
+    const permSelect = screen.getByLabelText("Permission") as HTMLSelectElement;
+    await user.selectOptions(permSelect, "p2");
+
+    // Select scope
+    const scopeSelects = screen.getAllByLabelText("Scope") as HTMLSelectElement[];
+    await user.selectOptions(scopeSelects[1], "project");
+
+    // Submit
+    await user.click(screen.getByText("Assign Permission"));
+
+    // Wait for API call — payload MUST NOT contain cardReadVisibility
+    await waitFor(() => {
+      const postCalls = api.mock.calls.filter(
+        (c) => c[1]?.method === "POST" && String(c[0]).includes("/permission-assignments"),
+      );
+      expect(postCalls.length).toBeGreaterThan(0);
+      const body = JSON.parse(postCalls[postCalls.length - 1][1].body as string);
+      expect(body.permissionId).toBe("p2");
+      expect(body).not.toHaveProperty("cardReadVisibility");
+    });
+  });
 });
