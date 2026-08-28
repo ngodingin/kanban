@@ -81,7 +81,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
-| 7.4.2 | 🔎 | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42)<br>[CL-81](#cl-81) | 80 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
+| 7.4.2 | ⚠️ | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42)<br>[CL-81](#cl-81)<br>[QA-CL-47](#qa-cl-47) | 55 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
 **DoD:** Home terasa work-management tool, bukan admin panel.
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-47"></a>
+### QA-CL-47 — 2026-08-28 · goal 7.4.2 gagal verifikasi (🔎 80% → ⚠️ 55%) — Recent Projects belum merekam kunjungan nyata
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/recent.test.tsx apps/web/test/recent-activity-url.test.tsx && pnpm --filter @kanban/web build` → **4/4 PASS** dan build PASS. `Home` kini merender kedua panel; `useActivities` memakai `enabled: Boolean(projectId)` dan endpoint C.9 Project-scoped.
+
+**Kegagalan inti:** `recordProjectVisit()` hanya muncul sebagai definisi dan test unit—tidak ada pemanggilan di source aplikasi. Karena itu localStorage `kanban.recent-projects` tidak pernah terisi saat pengguna membuka Project; panel bernama “Recent Projects” hanya menampilkan daftar API dalam urutan default, bukan riwayat kunjungan. Test Dev juga tidak merender `App`/route Project sehingga jalur produk ini tidak dibuktikan.
+
+**Tindakan Dev yang diperlukan:** panggil pencatatan kunjungan saat route Project yang sah dibuka (tanpa membuat data domain baru), lalu tambah test integrasi App/route yang membuktikan kunjungan mengubah urutan panel Home. Pertahankan Activity per Project dan negative check tanpa endpoint search lintas-Project.
+
+**Verdict:** `⚠️ 55%`.
 
 <a id="qa-cl-46"></a>
 ### QA-CL-46 — 2026-08-28 · goal 7.3.3 terverifikasi (🔎 80% → ✅ 100%) — branding ditempatkan sesuai §5
