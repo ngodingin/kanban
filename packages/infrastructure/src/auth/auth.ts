@@ -71,7 +71,11 @@ function guardedSendMagicLink(
 export function createAuth(config: AuthConfigInput) {
   const db = drizzle(config.globalClient);
   return betterAuth({
-    baseURL: config.baseUrl,
+    // Auth routes are mounted at /api/auth/* via Hono basePath("/api") + route
+    // /auth/*. Better Auth needs the full base path (including /api/auth) to:
+    // 1. Construct correct magic link verify URLs in emails
+    // 2. Strip the path prefix when matching internal routes
+    baseURL: `${config.baseUrl}/api/auth`,
     secret: config.secret,
     trustedOrigins: config.trustedOrigins,
     database: drizzleAdapter(db, {
