@@ -49,6 +49,7 @@ describe("TASK-7.1.2 — UI Magic Link (satu form email, tanpa password/social)"
       callbackURL: string;
     };
     expect(arg.email).toBe("orang@example.com");
+    // Tanpa returnTo → fallback ke /
     expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
     expect(await screen.findByRole("status")).toBeTruthy();
     expect(screen.getByRole("status").textContent).toContain("Tautan sudah dikirim");
@@ -87,5 +88,78 @@ describe("TASK-7.1.2 — UI Magic Link (satu form email, tanpa password/social)"
     await user.click(button);
     expect(button.hasAttribute("disabled")).toBe(true);
     resolveFn?.();
+  });
+});
+
+describe("TASK-7.15.2 — returnTo save/restore setelah login", () => {
+  test("positif: returnTo valid → callbackURL mengandung returnTo path", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    renderLogin("/login?returnTo=%2Fprojects%2Fp1%2Fmilestones%2Fm2");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toContain("/projects/p1/milestones/m2");
+  });
+
+  test("negatif: returnTo eksternal (https://evil.com) → callbackURL fallback ke /", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    renderLogin("/login?returnTo=https%3A%2F%2Fevil.com%2Fphish");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("negatif: returnTo protocol-relative (//evil.com) → callbackURL fallback ke /", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    renderLogin("/login?returnTo=%2F%2Fevil.com");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("negatif: returnTo /api/* → callbackURL fallback ke /", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    renderLogin("/login?returnTo=%2Fapi%2Fv1%2Fprojects");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("negatif: returnTo /login → callbackURL fallback ke /", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    renderLogin("/login?returnTo=%2Flogin");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("negatif: returnTo tanpa / prefix (malformed) → callbackURL fallback ke /", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    renderLogin("/login?returnTo=evil.com");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("positif: deep link /projects/p1 → login tanpa returnTo → callbackURL fallback ke /", async () => {
+    const user = userEvent.setup();
+    signInMagicLink.mockResolvedValue({ error: null });
+    // Login page without returnTo param
+    renderLogin("/login");
+    await user.type(screen.getByLabelText("Email"), "user@example.com");
+    await user.click(screen.getByRole("button", { name: /kirim tautan masuk/i }));
+    const arg = signInMagicLink.mock.calls[0][0] as { callbackURL: string };
+    expect(arg.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
   });
 });

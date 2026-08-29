@@ -123,4 +123,77 @@ test.describe("Session Gate (03-ENG A.14, 05-FRONTEND §5)", () => {
     const returnTo = url.searchParams.get("returnTo");
     expect(returnTo).toBe("/projects/p1/milestones/m2/boards/b3");
   });
+
+  test("positif: login page with returnTo uses it in Magic Link callbackURL", async ({ page }) => {
+    // Capture the Magic Link request to verify callbackURL
+    let magicLinkBody: string = "";
+    await page.route("**/api/auth/sign-in/magic-link", async (route) => {
+      magicLinkBody = route.request().postData() ?? "";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: null }),
+      });
+    });
+
+    await page.goto("/login?returnTo=%2Fprojects%2Fp1%2Fmilestones%2Fm2");
+    await page.getByLabel("Email").fill("user@example.com");
+    await page.getByRole("button", { name: /Kirim tautan masuk/ }).click();
+
+    // Wait for the Magic Link request
+    await expect(async () => {
+      expect(magicLinkBody).toBeTruthy();
+    }).toPass({ timeout: 5000 });
+
+    // Verify callbackURL includes the returnTo path
+    const body = JSON.parse(magicLinkBody);
+    expect(body.callbackURL).toContain("/projects/p1/milestones/m2");
+  });
+
+  test("negatif: login page with external returnTo falls back to /", async ({ page }) => {
+    let magicLinkBody: string = "";
+    await page.route("**/api/auth/sign-in/magic-link", async (route) => {
+      magicLinkBody = route.request().postData() ?? "";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: null }),
+      });
+    });
+
+    await page.goto("/login?returnTo=https%3A%2F%2Fevil.com%2Fphish");
+    await page.getByLabel("Email").fill("user@example.com");
+    await page.getByRole("button", { name: /Kirim tautan masuk/ }).click();
+
+    await expect(async () => {
+      expect(magicLinkBody).toBeTruthy();
+    }).toPass({ timeout: 5000 });
+
+    const body = JSON.parse(magicLinkBody);
+    // callbackURL should be root, not the external URL
+    expect(body.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("negatif: login page with /api/ returnTo falls back to /", async ({ page }) => {
+    let magicLinkBody: string = "";
+    await page.route("**/api/auth/sign-in/magic-link", async (route) => {
+      magicLinkBody = route.request().postData() ?? "";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: null }),
+      });
+    });
+
+    await page.goto("/login?returnTo=%2Fapi%2Fv1%2Fprojects");
+    await page.getByLabel("Email").fill("user@example.com");
+    await page.getByRole("button", { name: /Kirim tautan masuk/ }).click();
+
+    await expect(async () => {
+      expect(magicLinkBody).toBeTruthy();
+    }).toPass({ timeout: 5000 });
+
+    const body = JSON.parse(magicLinkBody);
+    expect(body.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
 });

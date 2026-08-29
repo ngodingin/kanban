@@ -1,5 +1,6 @@
 import { type FormEvent, useState } from "react";
 import { useSearchParams } from "react-router";
+import { isSafeReturnTo } from "@/components/auth/session-gate";
 import { authClient } from "./auth-client";
 
 // 05-FRONTEND §5 — satu form email untuk meminta Magic Link. UI menangani
@@ -19,6 +20,8 @@ export function LoginPage() {
   );
 
   const linkError = searchParams.get("error");
+  const returnTo = searchParams.get("returnTo");
+  const safeReturnTo = isSafeReturnTo(returnTo) ? returnTo : "/";
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26,7 +29,7 @@ export function LoginPage() {
     try {
       await authClient.signIn.magicLink({
         email,
-        callbackURL: `${window.location.origin}/`,
+        callbackURL: `${window.location.origin}${safeReturnTo}`,
       });
       setStatus("sent");
     } catch {
