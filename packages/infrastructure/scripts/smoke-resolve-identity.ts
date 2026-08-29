@@ -45,7 +45,7 @@ try {
     secret,
   });
   const ctx = await auth.$context;
-  const resolver = new BetterAuthIdentityResolver(auth);
+  const resolver = new BetterAuthIdentityResolver(auth, client);
 
   const now = new Date();
   const user = await ctx.internalAdapter.createUser({

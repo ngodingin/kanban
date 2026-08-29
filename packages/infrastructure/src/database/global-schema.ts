@@ -24,6 +24,10 @@ export const authSessions = sqliteTable(
       .references(() => users.id),
     token: text("token").notNull(),
     expires_at: integer("expires_at", { mode: "timestamp" }).notNull(),
+    /** Batas idle saat ini; hanya request aksi pengguna 2xx yang boleh mengubahnya. */
+    last_activity_at: integer("last_activity_at", { mode: "timestamp" }).notNull(),
+    /** Hard cap minggu UTC yang ditetapkan saat sesi diterbitkan dan tidak pernah diperpanjang. */
+    absolute_expires_at: integer("absolute_expires_at", { mode: "timestamp" }).notNull(),
     ip_address: text("ip_address"),
     user_agent: text("user_agent"),
     created_at: text("created_at").notNull(),

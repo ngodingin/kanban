@@ -5,6 +5,15 @@ export {
   type ResolvedIdentity,
   type SessionIdentity,
 } from "./auth/resolve-identity.ts";
+export {
+  initialSessionLifetime,
+  nextSundayUtc,
+  shouldTouchSessionAfterResponse,
+  SessionLifetimeService,
+  SESSION_IDLE_TIMEOUT_MS,
+  USER_ACTIVITY_HEADER,
+  USER_ACTIVITY_VALUE,
+} from "./auth/session-lifetime.ts";
 export { loadAppConfig, type AppConfig, type AppEnv } from "./config/env.ts";
 export { createGlobalClient } from "./database/factory.ts";
 export {

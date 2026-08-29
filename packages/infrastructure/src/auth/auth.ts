@@ -7,6 +7,7 @@ import { ulid } from "ulid";
 import { Resend } from "resend";
 import { users, authSessions, authAccounts, authVerifications } from "../database/global-schema.ts";
 import { loadAppConfig } from "../config/env.ts";
+import { initialSessionLifetime } from "./session-lifetime.ts";
 
 export interface SendMagicLinkData {
   email: string;
@@ -92,6 +93,10 @@ export function createAuth(config: AuthConfigInput) {
     },
     session: {
       modelName: "auth_sessions",
+      // Better Auth tidak boleh melakukan sliding refresh sendiri: lifetime
+      // diatur oleh session-lifetime.ts setelah aksi pengguna yang berhasil.
+      expiresIn: 60 * 60,
+      disableSessionRefresh: true,
       fields: {
         userId: "user_id",
         expiresAt: "expires_at",
@@ -99,6 +104,38 @@ export function createAuth(config: AuthConfigInput) {
         userAgent: "user_agent",
         createdAt: "created_at",
         updatedAt: "updated_at",
+      },
+      additionalFields: {
+        lastActivityAt: {
+          type: "date",
+          required: true,
+          input: false,
+          fieldName: "last_activity_at",
+        },
+        absoluteExpiresAt: {
+          type: "date",
+          required: true,
+          input: false,
+          fieldName: "absolute_expires_at",
+        },
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => {
+            const issuedAt = session.createdAt instanceof Date ? session.createdAt : new Date();
+            const lifetime = initialSessionLifetime(issuedAt);
+            return {
+              data: {
+                ...session,
+                expiresAt: lifetime.idleExpiresAt,
+                lastActivityAt: issuedAt,
+                absoluteExpiresAt: lifetime.absoluteExpiresAt,
+              },
+            };
+          },
+        },
       },
     },
     account: {

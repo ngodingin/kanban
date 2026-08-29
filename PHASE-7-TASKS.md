@@ -234,7 +234,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.15.0 | ⬜️ | [Review-CL-13](#review-cl-13) | 0 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
+| 7.15.0 | 🔎 | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
 | 7.15.1 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada, idle-expired, atau absolute-expired diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.0 |
 | 7.15.2 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah timeout/login; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
 
@@ -248,6 +248,24 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-98"></a>
+### CL-98 — 2026-08-29 · 7.15.0 🔄 → 🔎 80% — lifetime session server-side siap QA
+
+**Role:** AI-Dev · **Model:** Codex
+
+**Bukti:** `pnpm vitest run packages/infrastructure/test/session-lifetime.test.ts` → **8/8 PASS** (Sunday boundary UTC, idle/touch menit 45, cap absolut, expiry/revocation, Better Auth config, serta negatif polling/refetch/request gagal/health/API Key/PAT). `pnpm test` → **141 files / 848 tests PASS**. `pnpm --filter @kanban/infrastructure typecheck`, `pnpm --filter @kanban/api typecheck`, `pnpm lint`, dan `pnpm build` → PASS. `pnpm --filter @kanban/infrastructure test:smoke-migration` → PASS (migrasi idempoten).
+
+**Catatan:** Ditambahkan migration Global DB yang menghapus sesi legacy sebelum menambah `last_activity_at`/`absolute_expires_at`, hook sesi Better Auth dengan `expiresIn=3600` serta `disableSessionRefresh=true`, resolver enforcement, dan touch atomik pasca respons 2xx ber-marker. `expires_at` dibatasi hard cap Sunday 00:00 UTC; UI gate dan safe return-to tetap belum dikerjakan (7.15.1/7.15.2). Siap verifikasi AI-QA.
+
+<a id="cl-97"></a>
+### CL-97 — 2026-08-29 · 7.15.0 ⬜️ → 🔄 0% — mulai enforcement lifetime session server-side
+
+**Role:** AI-Dev · **Model:** Codex
+
+**Bukti:** Lane AI-Dev dan scope `7.15.0` dikonfirmasi manusia. Freshness check membaca ulang row goal, dependency `7.1.2 ✅`, Test/DoD, Review-CL-13, HEAD `5a36446`, serta worktree bersih. Baseline dan reference SOT v4.3.0 dibaca: A.14/B.2/C.1, A.0, dan aturan test/DoD; tidak ada dependency atau gate yang tersisa.
+
+**Catatan:** Scope dibatasi pada schema/migration Global DB, konfigurasi/resolver Better Auth, activity touch server, dan test deterministik. UI session gate/return-to tetap goal 7.15.1/7.15.2. Tidak ada implementasi atau hasil test yang diklaim pada entry awal ini.
 
 <a id="review-cl-13"></a>
 ### Review-CL-13 — 2026-08-29 · keputusan manusia: timeout idle 1 jam dan batas absolut Minggu 00:00 UTC

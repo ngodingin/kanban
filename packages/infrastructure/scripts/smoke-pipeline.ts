@@ -108,7 +108,7 @@ try {
   };
 
   const pipeline = new RequestPipeline({
-    identityResolver: new BetterAuthIdentityResolver(auth),
+    identityResolver: new BetterAuthIdentityResolver(auth, globalClient),
     globalClient,
     databaseResolver: spyResolver,
     projectClientFactory: {

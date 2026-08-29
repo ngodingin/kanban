@@ -1,4 +1,6 @@
 import type { Auth } from "./auth.ts";
+import type { Client } from "@libsql/client";
+import { SessionLifetimeService } from "./session-lifetime.ts";
 
 export interface SessionIdentity {
   type: "session";
@@ -29,16 +31,19 @@ export interface IdentityResolver {
 
 export class BetterAuthIdentityResolver implements IdentityResolver {
   private readonly auth: Auth;
+  private readonly lifetime: SessionLifetimeService;
 
-  constructor(auth: Auth) {
+  constructor(auth: Auth, globalClient: Client) {
     this.auth = auth;
+    this.lifetime = new SessionLifetimeService(globalClient);
   }
 
   async resolveIdentity(request: Request): Promise<ResolvedIdentity | null> {
     const session = await this.auth.api.getSession({
       headers: request.headers,
     });
-    if (!session?.user) return null;
+    if (!session?.user || !session.session?.id) return null;
+    if (!(await this.lifetime.isSessionActive(session.session.id))) return null;
     return {
       type: "session",
       userId: session.user.id,

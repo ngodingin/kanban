@@ -17,6 +17,8 @@ import {
   createGlobalClient,
   loadAppConfig,
   readTursoEnvFromProcess,
+  SessionLifetimeService,
+  shouldTouchSessionAfterResponse,
   type SendMagicLinkData,
 } from "@kanban/infrastructure";
 import { buildActivityRoutesDeps, buildBoardLabelRoutesDeps, buildBoardRoutesDeps, buildCardLabelRoutesDeps, buildCardRoutesDeps, buildCommentRoutesDeps, buildListRoutesDeps, buildMilestoneLabelRoutesDeps, buildMilestoneRoutesDeps, buildProjectAdminDeps, buildProjectRoutesDeps } from "./project-deps.ts";
@@ -71,13 +73,26 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     return ready;
   };
 
+  // TASK-7.15.0: hanya aksi domain yang sukses yang boleh memperpanjang idle
+  // deadline. Better Auth automatic refresh telah dimatikan di createAuth().
+  app.use("/v1/*", async (c, next) => {
+    await next();
+    if (!shouldTouchSessionAfterResponse(c.req.raw, c.res.status)) return;
+
+    const r = ensure();
+    const resolved = await r.auth.api.getSession({ headers: c.req.raw.headers });
+    if (resolved?.session?.id) {
+      await new SessionLifetimeService(r.globalClient).touchAfterSuccessfulUserAction(resolved.session.id);
+    }
+  });
+
   let projectDeps: ProjectRoutesDeps | null = null;
   const getProjectDeps = (): ProjectRoutesDeps => {
     let deps = projectDeps;
     if (!deps) {
       const r = ensure();
       deps = buildProjectRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -92,7 +107,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildProjectAdminDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -131,7 +146,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       const r = ensure();
       const identityResolver = new CompositeIdentityResolver({
         globalClient: r.globalClient,
-        fallback: new BetterAuthIdentityResolver(r.auth),
+        fallback: new BetterAuthIdentityResolver(r.auth, r.globalClient),
       });
       deps = {
         resolveIdentity: (request) => identityResolver.resolveIdentity(request),
@@ -154,7 +169,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       const r = ensure();
       const identityResolver = new CompositeIdentityResolver({
         globalClient: r.globalClient,
-        fallback: new BetterAuthIdentityResolver(r.auth),
+        fallback: new BetterAuthIdentityResolver(r.auth, r.globalClient),
       });
       deps = {
         resolveIdentity: (request) => identityResolver.resolveIdentity(request),
@@ -176,7 +191,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildMilestoneRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -191,7 +206,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildBoardRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -206,7 +221,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildListRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -221,7 +236,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildCardRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -236,7 +251,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildMilestoneLabelRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -251,7 +266,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildBoardLabelRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -266,7 +281,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildActivityRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -281,7 +296,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildCardLabelRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
@@ -296,7 +311,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     if (!deps) {
       const r = ensure();
       deps = buildCommentRoutesDeps({
-        identityResolver: new BetterAuthIdentityResolver(r.auth),
+        identityResolver: new BetterAuthIdentityResolver(r.auth, r.globalClient),
         globalClient: r.globalClient,
         turso: readTursoEnvFromProcess(),
       });
