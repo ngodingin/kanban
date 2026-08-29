@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89)<br>[QA-CL-57](#qa-cl-57)<br>[CL-90](#cl-90)<br>[QA-CL-58](#qa-cl-58)<br>[CL-91](#cl-91)<br>[QA-CL-59](#qa-cl-59)<br>[CL-92](#cl-92)<br>[QA-CL-60](#qa-cl-60)<br>[CL-93](#cl-93)<br>[QA-CL-61](#qa-cl-61) | 75 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89)<br>[QA-CL-57](#qa-cl-57)<br>[CL-90](#cl-90)<br>[QA-CL-58](#qa-cl-58)<br>[CL-91](#cl-91)<br>[QA-CL-59](#qa-cl-59)<br>[CL-92](#cl-92)<br>[QA-CL-60](#qa-cl-60)<br>[CL-93](#cl-93)<br>[QA-CL-61](#qa-cl-61)<br>[CL-94](#cl-94) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -617,6 +617,24 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-94"></a>
+### CL-94 — 2026-08-29 · goal 7.12.1 → 🔎 80% — List ancestor lifecycle validation
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per QA-CL-61: guard menemukan List berdasarkan ID tetapi tidak memeriksa `archivedAt`/`deletedAt`. Perbaikan:
+
+1. **`ListSummary` type extended** — `archivedAt: string | null` dan `deletedAt: string | null` ditambahkan ke interface `ListSummary` di `features/lists/hooks.ts`.
+
+2. **List lifecycle check** — Guard sekarang memeriksa `currentList.archivedAt` dan `currentList.deletedAt` setelah menemukan List. Jika List ARCHIVED atau DELETED, command tidak didaftarkan.
+
+3. **Negative List tests** — 3 tests baru:
+   - List archived → command Move/Archive tidak terdaftar
+   - List deleted → command Move/Archive tidak terdaftar
+   - List archived → render card detail tetap tanpa error
+
+`pnpm vitest run` → **140 file / 841 test PASS** (+3 test baru).
 
 <a id="cl-93"></a>
 ### CL-93 — 2026-08-29 · goal 7.12.1 → 🔎 80% — fail-closed guard + List ancestor + loading tests

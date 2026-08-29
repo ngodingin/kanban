@@ -68,6 +68,8 @@ function renderCardDetail(overrides?: {
   milestoneDeletedAt?: string | null;
   projectArchivedAt?: string | null;
   projectDeletedAt?: string | null;
+  listArchivedAt?: string | null;
+  listDeletedAt?: string | null;
   cardLoading?: boolean;
   listsLoading?: boolean;
   boardLoading?: boolean;
@@ -98,9 +100,27 @@ function renderCardDetail(overrides?: {
       ? undefined
       : {
           lists: [
-            { id: "list-a", title: "To Do" },
-            { id: "list-b", title: "In Progress" },
-            { id: "list-c", title: "Done" },
+            {
+              id: "list-a",
+              boardId: "b1",
+              title: "To Do",
+              archivedAt: overrides?.listArchivedAt ?? null,
+              deletedAt: overrides?.listDeletedAt ?? null,
+            },
+            {
+              id: "list-b",
+              boardId: "b1",
+              title: "In Progress",
+              archivedAt: null,
+              deletedAt: null,
+            },
+            {
+              id: "list-c",
+              boardId: "b1",
+              title: "Done",
+              archivedAt: null,
+              deletedAt: null,
+            },
           ],
         },
     isLoading: overrides?.listsLoading ?? false,
@@ -379,5 +399,36 @@ describe("TASK-7.12.1 — Move Card picker flow", () => {
 
     const commands = useUiStore.getState().paletteCommands;
     expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: list archived → command Move/Archive tidak terdaftar", async () => {
+    renderCardDetail({ listArchivedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    const moveCmd = commands.find((c) => c.id === "act-move-card");
+    const archiveCmd = commands.find((c) => c.id === "act-archive-card");
+
+    expect(moveCmd).toBeUndefined();
+    expect(archiveCmd).toBeUndefined();
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: list deleted → command Move/Archive tidak terdaftar", async () => {
+    renderCardDetail({ listDeletedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    const moveCmd = commands.find((c) => c.id === "act-move-card");
+    const archiveCmd = commands.find((c) => c.id === "act-archive-card");
+
+    expect(moveCmd).toBeUndefined();
+    expect(archiveCmd).toBeUndefined();
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: list archived → render card detail tanpa error", async () => {
+    renderCardDetail({ listArchivedAt: "2026-08-29T00:00:00Z" });
+
+    expect(screen.getByText("Test Card")).toBeTruthy();
+    expect(screen.getByLabelText("Tutup detail kartu")).toBeTruthy();
   });
 });

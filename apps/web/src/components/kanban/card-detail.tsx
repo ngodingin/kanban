@@ -191,6 +191,7 @@ export function CardDetailPanel({
     const lists = listsQuery.data.lists;
     const currentList = lists.find((l) => l.id === card.listId);
     if (!currentList) return false;
+    if (currentList.archivedAt || currentList.deletedAt) return false;
 
     const board = boardQuery.data as Record<string, unknown>;
     if (board.archivedAt || board.deletedAt) return false;

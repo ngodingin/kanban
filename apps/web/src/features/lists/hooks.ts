@@ -5,6 +5,8 @@ export interface ListSummary {
   id: string;
   boardId: string;
   title: string;
+  archivedAt: string | null;
+  deletedAt: string | null;
 }
 
 // GET /v1/projects/:project_id/boards/:board_id/lists → { lists: [...] }
