@@ -234,7 +234,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.15.0 | ⚠️ | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
+| 7.15.0 | 🔎 | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
 | 7.15.1 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada, idle-expired, atau absolute-expired diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.0 |
 | 7.15.2 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah timeout/login; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
 
@@ -248,6 +248,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-99"></a>
+### CL-99 — 2026-08-29 · 7.15.0 🔄 → 🔎 80% — revoke-vs-touch + interleaving touch tests
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per QA-CL-64: test/DoD mewajibkan bukti bahwa revoke dan interleaving touch tidak dapat menghidupkan sesi mati. Perbaikan:
+
+1. **Revoke-vs-touch test** — Sesi yang sudah di-revoke (DELETE) tidak dapat dihidupkan kembali oleh touch. `touchAfterSuccessfulUserAction` mengembalikan `false` dan row tetap tidak ada.
+
+2. **Interleaving touch test** — Dua touch yang diinterleave: touch di T+45min memperpanjang deadline, lalu touch di T+30min (lebih tua) tidak memundurkan deadline. `expires_at` tetap pada nilai dari touch pertama (T+1h45min), bukan mundur ke T+1h30min.
+
+`pnpm vitest run packages/infrastructure/test/session-lifetime.test.ts` → **10/10 PASS**. `pnpm test` → **141 files / 851 tests PASS**. Lint + typecheck PASS.
 
 <a id="qa-cl-64"></a>
 ### QA-CL-64 — 2026-08-29 · 7.15.0 🔎 80% → ⚠️ 80% — bukti revoke/interleaving belum ada

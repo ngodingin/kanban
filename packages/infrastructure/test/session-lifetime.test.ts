@@ -110,4 +110,40 @@ describe("TASK-7.15.0 session lifetime — SOT 4.3.0", () => {
     expect(auth.options.session?.disableSessionRefresh).toBe(true);
     expect(auth.options.session?.expiresIn).toBe(60 * 60);
   });
+
+  it("[SEC-SESSION] revoke-vs-touch: sesi yang sudah di-revoke tidak dapat dihidupkan kembali oleh touch", async () => {
+    const issued = new Date("2026-08-28T10:00:00.000Z");
+    const absolute = nextSundayUtc(issued);
+    await insertSession("revoke-vs-touch", issued, absolute);
+
+    // Revoke (delete) the session
+    await client.execute({ sql: "DELETE FROM auth_sessions WHERE id = ?", args: ["revoke-vs-touch"] });
+    expect(await row("revoke-vs-touch")).toBeUndefined();
+
+    // Touch after revoke — should fail, row stays deleted
+    const touchResult = await lifetime.touchAfterSuccessfulUserAction("revoke-vs-touch", new Date("2026-08-28T10:30:00.000Z"));
+    expect(touchResult).toBe(false);
+    expect(await row("revoke-vs-touch")).toBeUndefined();
+  });
+
+  it("[SEC-SESSION] interleaving touch: touch yang lebih tua tidak memundurkan deadline dari touch yang lebih baru", async () => {
+    const issued = new Date("2026-08-28T10:00:00.000Z");
+    const absolute = nextSundayUtc(issued);
+    await insertSession("interleave-touch", issued, absolute);
+
+    // Touch at T+45min — extends deadline to T+1h45min
+    expect(await lifetime.touchAfterSuccessfulUserAction("interleave-touch", new Date("2026-08-28T10:45:00.000Z"))).toBe(true);
+    const afterFirst = await row("interleave-touch");
+    const firstExpiry = Number(afterFirst?.expires_at);
+    expect(firstExpiry).toBe(new Date("2026-08-28T11:45:00.000Z").getTime());
+
+    // Interleaved touch at T+30min (older) — must NOT move deadline backwards
+    expect(await lifetime.touchAfterSuccessfulUserAction("interleave-touch", new Date("2026-08-28T10:30:00.000Z"))).toBe(true);
+    const afterSecond = await row("interleave-touch");
+    const secondExpiry = Number(afterSecond?.expires_at);
+    expect(secondExpiry).toBe(firstExpiry);
+
+    // last_activity_at also must not regress
+    expect(Number(afterSecond?.last_activity_at)).toBeGreaterThanOrEqual(new Date("2026-08-28T10:45:00.000Z").getTime());
+  });
 });
