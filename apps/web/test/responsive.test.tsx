@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
   useCards: vi.fn(),
   useCard: vi.fn(),
   useCardActivities: vi.fn(),
+  useBoard: vi.fn(),
+  useMilestone: vi.fn(),
+  useProject: vi.fn(),
 }));
 
 vi.mock("../src/features/lists/hooks", () => ({ useLists: mocks.useLists }));
@@ -27,6 +30,11 @@ vi.mock("../src/features/cards/detail-hooks", async (orig) => {
     useCardActivities: mocks.useCardActivities,
   };
 });
+vi.mock("../src/features/projects/hooks", () => ({
+  useBoard: mocks.useBoard,
+  useMilestone: mocks.useMilestone,
+  useProject: mocks.useProject,
+}));
 
 function renderSidebar() {
   return render(
@@ -87,11 +95,32 @@ describe("TASK-7.14.2 — Mobile horizontal-scroll + card detail full-screen", (
       isLoading: false,
     });
     mocks.useCardActivities.mockReturnValue({ data: [], isLoading: false });
+    mocks.useBoard.mockReturnValue({
+      data: { id: "b1", title: "Board 1" },
+      isLoading: false,
+    });
+    mocks.useMilestone.mockReturnValue({
+      data: { id: "m1", title: "M1" },
+      isLoading: false,
+    });
+    mocks.useProject.mockReturnValue({
+      data: { id: "p1", name: "P1" },
+      isLoading: false,
+    });
+    mocks.useLists.mockReturnValue({
+      data: {
+        lists: [
+          { id: "l1", boardId: "b1", title: "Todo" },
+          { id: "l2", boardId: "b1", title: "Done" },
+        ],
+      },
+      isLoading: false,
+    });
 
     const { container } = render(
       <QueryClientProvider client={queryClient}>
         <DndContext>
-          <CardDetailPanel projectId="p1" cardId="c1" />
+          <CardDetailPanel projectId="p1" milestoneId="m1" boardId="b1" cardId="c1" />
         </DndContext>
       </QueryClientProvider>,
     );

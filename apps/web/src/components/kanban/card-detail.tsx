@@ -173,21 +173,33 @@ export function CardDetailPanel({
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
   const [showMovePicker, setShowMovePicker] = useState(false);
 
-  // Check if entity and all ancestors are ACTIVE (FR-044/AC-008/INV-LIFE-001).
-  // Card → Board → Milestone → Project must all be ACTIVE.
+  // Fail-closed: ALL queries must be loaded and ALL entities must be ACTIVE
+  // before registering lifecycle commands (FR-044/AC-008/INV-LIFE-001).
+  // Chain: Card → List → Board → Milestone → Project.
   function isEffectivelyActive(): boolean {
-    if (!cardQuery.data) return false;
+    // All queries must be loaded (fail-closed on loading/error)
+    if (cardQuery.isLoading || !cardQuery.data) return false;
+    if (listsQuery.isLoading || !listsQuery.data) return false;
+    if (boardQuery.isLoading || !boardQuery.data) return false;
+    if (milestoneQuery.isLoading || !milestoneQuery.data) return false;
+    if (projectQuery.isLoading || !projectQuery.data) return false;
+
     const card = cardQuery.data;
     if (card.archivedAt || card.deletedAt) return false;
 
-    const board = boardQuery.data as Record<string, unknown> | undefined;
-    if (board?.archivedAt || board?.deletedAt) return false;
+    // Check List ancestor lifecycle
+    const lists = listsQuery.data.lists;
+    const currentList = lists.find((l) => l.id === card.listId);
+    if (!currentList) return false;
 
-    const milestone = milestoneQuery.data as Record<string, unknown> | undefined;
-    if (milestone?.archivedAt || milestone?.deletedAt) return false;
+    const board = boardQuery.data as Record<string, unknown>;
+    if (board.archivedAt || board.deletedAt) return false;
 
-    const project = projectQuery.data as Record<string, unknown> | undefined;
-    if (project?.archivedAt || project?.deletedAt) return false;
+    const milestone = milestoneQuery.data as Record<string, unknown>;
+    if (milestone.archivedAt || milestone.deletedAt) return false;
+
+    const project = projectQuery.data as Record<string, unknown>;
+    if (project.archivedAt || project.deletedAt) return false;
 
     return true;
   }
@@ -227,6 +239,7 @@ export function CardDetailPanel({
     return () => registerPaletteCommands([]);
   }, [
     cardQuery.data,
+    listsQuery.data,
     boardQuery.data,
     milestoneQuery.data,
     projectQuery.data,

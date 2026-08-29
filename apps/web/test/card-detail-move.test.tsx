@@ -68,60 +68,75 @@ function renderCardDetail(overrides?: {
   milestoneDeletedAt?: string | null;
   projectArchivedAt?: string | null;
   projectDeletedAt?: string | null;
+  cardLoading?: boolean;
+  listsLoading?: boolean;
+  boardLoading?: boolean;
+  milestoneLoading?: boolean;
+  projectLoading?: boolean;
+  cardListId?: string;
 }) {
   const moveMutate = vi.fn();
   const archiveMutate = vi.fn();
+  const cardListId = overrides?.cardListId ?? "list-a";
   mocks.useCard.mockReturnValue({
     data: {
       id: "card-1",
-      listId: "list-a",
+      listId: cardListId,
       title: "Test Card",
       version: 3,
       archivedAt: overrides?.archivedAt ?? null,
       deletedAt: overrides?.deletedAt ?? null,
     },
-    isLoading: false,
+    isLoading: overrides?.cardLoading ?? false,
   });
   mocks.useCardActivities.mockReturnValue({ data: [], isLoading: false });
   mocks.useUpdateCard.mockReturnValue({ mutate: vi.fn() });
   mocks.useMoveCard.mockReturnValue({ mutate: moveMutate, error: null });
   mocks.useLifecycleMutation.mockReturnValue({ mutate: archiveMutate, error: null });
   mocks.useLists.mockReturnValue({
-    data: {
-      lists: [
-        { id: "list-a", title: "To Do" },
-        { id: "list-b", title: "In Progress" },
-        { id: "list-c", title: "Done" },
-      ],
-    },
-    isLoading: false,
+    data: overrides?.listsLoading
+      ? undefined
+      : {
+          lists: [
+            { id: "list-a", title: "To Do" },
+            { id: "list-b", title: "In Progress" },
+            { id: "list-c", title: "Done" },
+          ],
+        },
+    isLoading: overrides?.listsLoading ?? false,
   });
   mocks.useBoard.mockReturnValue({
-    data: {
-      id: "b1",
-      title: "Board 1",
-      archivedAt: overrides?.boardArchivedAt ?? null,
-      deletedAt: overrides?.boardDeletedAt ?? null,
-    },
-    isLoading: false,
+    data: overrides?.boardLoading
+      ? undefined
+      : {
+          id: "b1",
+          title: "Board 1",
+          archivedAt: overrides?.boardArchivedAt ?? null,
+          deletedAt: overrides?.boardDeletedAt ?? null,
+        },
+    isLoading: overrides?.boardLoading ?? false,
   });
   mocks.useMilestone.mockReturnValue({
-    data: {
-      id: "m1",
-      title: "Milestone 1",
-      archivedAt: overrides?.milestoneArchivedAt ?? null,
-      deletedAt: overrides?.milestoneDeletedAt ?? null,
-    },
-    isLoading: false,
+    data: overrides?.milestoneLoading
+      ? undefined
+      : {
+          id: "m1",
+          title: "Milestone 1",
+          archivedAt: overrides?.milestoneArchivedAt ?? null,
+          deletedAt: overrides?.milestoneDeletedAt ?? null,
+        },
+    isLoading: overrides?.milestoneLoading ?? false,
   });
   mocks.useProject.mockReturnValue({
-    data: {
-      id: "p1",
-      name: "Project 1",
-      archivedAt: overrides?.projectArchivedAt ?? null,
-      deletedAt: overrides?.projectDeletedAt ?? null,
-    },
-    isLoading: false,
+    data: overrides?.projectLoading
+      ? undefined
+      : {
+          id: "p1",
+          name: "Project 1",
+          archivedAt: overrides?.projectArchivedAt ?? null,
+          deletedAt: overrides?.projectDeletedAt ?? null,
+        },
+    isLoading: overrides?.projectLoading ?? false,
   });
 
   const onClose = vi.fn();
@@ -322,5 +337,47 @@ describe("TASK-7.12.1 — Move Card picker flow", () => {
 
     expect(screen.getByText("Test Card")).toBeTruthy();
     expect(screen.getByLabelText("Tutup detail kartu")).toBeTruthy();
+  });
+
+  test("negatif: card loading → command tidak terdaftar (fail-closed)", async () => {
+    renderCardDetail({ cardLoading: true });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: lists loading → command tidak terdaftar (fail-closed)", async () => {
+    renderCardDetail({ listsLoading: true });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: board loading → command tidak terdaftar (fail-closed)", async () => {
+    renderCardDetail({ boardLoading: true });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: milestone loading → command tidak terdaftar (fail-closed)", async () => {
+    renderCardDetail({ milestoneLoading: true });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: project loading → command tidak terdaftar (fail-closed)", async () => {
+    renderCardDetail({ projectLoading: true });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: card listId tidak ditemukan di lists → command tidak terdaftar", async () => {
+    renderCardDetail({ cardListId: "list-nonexistent" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
   });
 });

@@ -39,6 +39,33 @@ function stubCardApi() {
     if (u.endsWith("/cards/c1/activities")) {
       return Promise.resolve(jsonRes(200, { data: { activities: [] } }));
     }
+    if (u.endsWith("/boards/b1/lists")) {
+      return Promise.resolve(
+        jsonRes(200, {
+          data: {
+            lists: [
+              { id: "l1", boardId: "b1", title: "Todo" },
+              { id: "l2", boardId: "b1", title: "Done" },
+            ],
+          },
+        }),
+      );
+    }
+    if (u.endsWith("/milestones/m1/boards/b1")) {
+      return Promise.resolve(
+        jsonRes(200, { data: { board: { id: "b1", title: "Board 1" } } }),
+      );
+    }
+    if (u.endsWith("/milestones/m1")) {
+      return Promise.resolve(
+        jsonRes(200, { data: { milestone: { id: "m1", title: "M1" } } }),
+      );
+    }
+    if (u.endsWith("/projects/p1")) {
+      return Promise.resolve(
+        jsonRes(200, { data: { project: { id: "p1", name: "P1" } } }),
+      );
+    }
     return Promise.reject(new Error(`unexpected ${u}`));
   });
 }
@@ -53,7 +80,13 @@ function jsonRes(status: number, body: unknown): Response {
 function renderDetail(currentUserId?: string) {
   return render(
     <QueryClientProvider client={queryClient}>
-      <CardDetailPanel projectId="p1" cardId="c1" currentUserId={currentUserId} />
+      <CardDetailPanel
+        projectId="p1"
+        milestoneId="m1"
+        boardId="b1"
+        cardId="c1"
+        currentUserId={currentUserId}
+      />
     </QueryClientProvider>,
   );
 }
