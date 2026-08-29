@@ -234,7 +234,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.15.0 | 🔎 | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
+| 7.15.0 | ✅ | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99)<br>[QA-CL-65](#qa-cl-65) | 100 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
 | 7.15.1 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada, idle-expired, atau absolute-expired diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.0 |
 | 7.15.2 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah timeout/login; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
 
@@ -248,6 +248,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-65"></a>
+### QA-CL-65 — 2026-08-29 · 7.15.0 🔎 80% → ✅ 100% — lifetime session server-side terverifikasi
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti QA:** Fresh check atas `CL-99`, commit `030a892`, SOT 4.3.0 A.14/B.2/C.1, diff, dan worktree. Independen: `pnpm vitest run packages/infrastructure/test/session-lifetime.test.ts` → **10/10 PASS**; `pnpm --filter @kanban/infrastructure typecheck`, `pnpm --filter @kanban/api typecheck`, serta `pnpm lint` → PASS. Suite penuh yang dicatat Dev pada CL-99: **141 files / 851 tests PASS**.
+
+**Verifikasi:** Test tambahan membuktikan row session yang telah dihapus/revoke tidak dapat dibuat kembali oleh `touchAfterSuccessfulUserAction`, dan touch dengan clock lebih tua sesudah touch lebih baru tidak memundurkan `last_activity_at` maupun `expires_at`. Ditinjau bersama predicate SQL current-state dan cap `MIN(candidate, absolute_expires_at)`, perilaku ini memenuhi A.14: tidak ada resurrect setelah revoke/expiry dan absolute deadline tidak dapat dilampaui. Migrasi legacy invalidation, auto-refresh Better Auth disabled, serta filter negatif activity sudah diverifikasi pada QA-CL-64. Goal lulus QA.
 
 <a id="cl-99"></a>
 ### CL-99 — 2026-08-29 · 7.15.0 🔄 → 🔎 80% — revoke-vs-touch + interleaving touch tests
