@@ -329,6 +329,39 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     }
     return c.json(ok({ status: "ok", env }));
   });
+  // CL-107: Better Auth magic link verify endpoint SELALU mengembalikan 302
+  // redirect. Vercel CDN men-strip Set-Cookie dari 302 redirect responses.
+  // Intercept: jika request adalah GET /api/auth/magic-link/verify dan response
+  // adalah 302 dengan Set-Cookie, konversi ke 200 JSON + Set-Cookie.
+  // Cookie TIDAK di-strip pada response 200 (hanya 302 yang di-strip Vercel).
+  app.get("/auth/magic-link/verify", async (c) => {
+    try {
+      const res = await ensure().auth.handler(c.req.raw);
+      if (res.status === 302 || res.status === 303) {
+        const setCookie = res.headers.get("set-cookie");
+        const location = res.headers.get("location");
+        if (setCookie) {
+          return new Response(
+            JSON.stringify({ verified: true, redirectTo: location }),
+            {
+              status: 200,
+              headers: {
+                "content-type": "application/json",
+                "set-cookie": setCookie,
+              },
+            },
+          );
+        }
+      }
+      return res;
+    } catch (error) {
+      return c.json(
+        { error: { code: "INTERNAL_ERROR", message: String(error instanceof Error ? error.message : error) } },
+        500,
+      );
+    }
+  });
+
   app.on(["POST", "GET"], "/auth/*", async (c) => {
     try {
       return await ensure().auth.handler(c.req.raw);
