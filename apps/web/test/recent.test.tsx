@@ -18,12 +18,17 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("../src/features/activity/hooks", async (orig) => {
   const mod = await orig<typeof import("../src/features/activity/hooks")>();
-  return { ...mod, useActivities: mocks.useActivities };
+  return { ...mod, useActivities: () => mocks.useActivities() };
 });
 vi.mock("../src/features/projects/hooks", async (orig) => {
   const mod = await orig<typeof import("../src/features/projects/hooks")>();
-  return { ...mod, useProjects: mocks.useProjects };
+  return { ...mod, useProjects: () => mocks.useProjects() };
 });
+// Mock session-gate to always pass through (session valid in tests)
+vi.mock("@/components/auth/session-gate", () => ({
+  SessionGate: ({ children }: { children: React.ReactNode }) => children,
+  isSafeReturnTo: (v: string | null) => !!v && v.startsWith("/"),
+}));
 
 afterEach(() => {
   cleanup();

@@ -39,6 +39,18 @@ async function stubBoardApis(page: Page, opts?: { moveStatus?: number; moveBody?
   const moveStatus = opts?.moveStatus ?? 200;
   const moveBody = opts?.moveBody ?? JSON.stringify({ ok: true });
 
+  // Session gate: return valid session so SessionGate passes through
+  await page.route("**/api/auth/get-session", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        session: { id: "e2e-session", userId: "e2e-user-001", expiresAt: Date.now() + 3600_000 },
+        user: { id: "e2e-user-001", name: "E2E User" },
+      }),
+    });
+  });
+
   await page.route(`${BOARD_URL}/lists`, async (route) => {
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: { lists } }) });
   });

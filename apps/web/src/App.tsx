@@ -2,6 +2,7 @@ import { Route, Routes, useParams } from "react-router";
 import { useEffect } from "react";
 import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
+import { SessionGate } from "@/components/auth/session-gate";
 import { LoginPage } from "./features/auth/login-page";
 import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
 import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecentProjectIds } from "./features/home/recent";
@@ -100,56 +101,19 @@ export default function App() {
       {/* Layar autentikasi standalone — tanpa app shell (05-FRONTEND §5). */}
       <Route path="/login" element={<LoginPage />} />
 
-      <Route path="/" element={<Shell><Home /></Shell>} />
-
-      {/* Konteks Project/Milestone/Board — breadcrumb header mengikuti params. */}
       <Route
-        path="/projects/:projectId"
+        path="/*"
         element={
-          <Shell>
-            <RecordVisit />
-            <ProjectPlaceholder />
-          </Shell>
-        }
-      />
-      <Route
-        path="/projects/:projectId/milestones/:milestoneId"
-        element={
-          <Shell>
-            <RecordVisit />
-            <MilestonePlaceholder />
-          </Shell>
-        }
-      />
-      <Route
-        path="/projects/:projectId/milestones/:milestoneId/boards/:boardId"
-        element={
-          <Shell>
-            <RecordVisit />
-            <BoardPage />
-          </Shell>
-        }
-      />
-      <Route
-        path="/projects/:projectId/permissions"
-        element={
-          <Shell>
-            <RecordVisit />
-            <PermissionsPage />
-          </Shell>
-        }
-      />
-
-      {/* Route non-domain tetap memakai shell tanpa breadcrumb context. */}
-      <Route
-        path="*"
-        element={
-          <Shell>
+          <SessionGate>
             <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="*" element={<NotFound />} />
+              <Route path="/" element={<Shell><Home /></Shell>} />
+              <Route path="/projects/:projectId" element={<Shell><RecordVisit /><ProjectPlaceholder /></Shell>} />
+              <Route path="/projects/:projectId/milestones/:milestoneId" element={<Shell><RecordVisit /><MilestonePlaceholder /></Shell>} />
+              <Route path="/projects/:projectId/milestones/:milestoneId/boards/:boardId" element={<Shell><RecordVisit /><BoardPage /></Shell>} />
+              <Route path="/projects/:projectId/permissions" element={<Shell><RecordVisit /><PermissionsPage /></Shell>} />
+              <Route path="*" element={<Shell><NotFound /></Shell>} />
             </Routes>
-          </Shell>
+          </SessionGate>
         }
       />
     </Routes>

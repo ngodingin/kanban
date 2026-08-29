@@ -8,6 +8,15 @@ import App from "../src/App";
 import { PermissionGroupsEditor } from "../src/features/permissions/permission-groups-editor";
 import { queryClient } from "../src/lib/query-client";
 
+vi.mock("@/features/auth/auth-client", () => ({
+  authClient: {
+    getSession: vi.fn().mockResolvedValue({
+      data: { session: { id: "test-session" }, user: { id: "test-user" } },
+      error: null,
+    }),
+  },
+}));
+
 function jsonRes(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
