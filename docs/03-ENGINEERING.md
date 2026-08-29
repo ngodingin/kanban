@@ -258,6 +258,8 @@ Baseline Phase 7: React Router **8.x**, Tailwind CSS **4.x**, shadcn CLI/compone
 
 **Routing:** handler Better Auth dipasang sebelum catch-all lain pada `/api/auth/*`. Endpoint domain Hono berada di `/api/v1/*`. SPA fallback MUST tidak menangkap `/api/*`.
 
+**Session gate UI (login-first):** sebelum merender app shell atau memuat data domain, client web MUST menyelesaikan pemeriksaan session Better Auth. Saat pemeriksaan masih berjalan, UI hanya boleh menampilkan state loading netral—bukan shell atau data dari route tujuan. Session tidak ada atau kedaluwarsa MUST mengarahkan pengguna ke `/login`; halaman autentikasi dan callback-nya tetap publik. Setelah verifikasi Magic Link, client MAY kembali ke route aplikasi internal yang disimpan secara aman; tujuan yang bukan path internal aplikasi atau tidak tersedia MUST memakai `/` sebagai fallback. Gate ini adalah UX/defence-in-depth dan MUST NOT menggantikan pemeriksaan identity → membership → permission di API pada setiap request.
+
 **Provider scope:** `emailAndPassword` MUST disabled dan tidak ada social/OAuth provider pada MVP. Magic Link MAY membuat `users` baru setelah link berhasil diverifikasi; request link itu sendiri tidak boleh dianggap sebagai user terverifikasi.
 
 **Batas fase:** Phase 0 MUST mengimplementasikan request Magic Link, penyimpanan token dalam bentuk hash (`storeToken: "hashed"`), konsumsi atomik single-use/expiring, pengiriman email melalui `sendMagicLink()` + Resend SDK/API, callback, database-backed session, sign-out/revocation dasar, serta antarmuka uji minimal. Desain dan state UX login final (loading, link terkirim, expired/used link, error) dikerjakan pada Phase 7.

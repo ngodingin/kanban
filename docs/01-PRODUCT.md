@@ -3,7 +3,7 @@
 > Project codename: **NGodingin Kanban**
 > Type: Project Management / Kanban Platform (API-based, multi-tenant via Project isolation)
 > Status: MVP Baseline — Source of Truth (SOT)
-> Version: 4.2.0
+> Version: 4.2.1
 
 ---
 
@@ -57,7 +57,7 @@ AI coding agent **MUST NOT** menyelesaikan konflik spesifikasi dengan memilih pe
 ## 0.4 Versioning
 
 ```text
-SPEC_VERSION = 4.2.0
+SPEC_VERSION = 4.2.1
 ```
 
 - Perubahan pada business invariant, authorization semantics, lifecycle, API behavior, atau data model semantics → wajib update versi.
@@ -66,6 +66,7 @@ SPEC_VERSION = 4.2.0
 - `x.0.0` (major) — perubahan domain/API yang breaking.
 
 ### Changelog
+- **4.2.1** — Mengunci alur UX **login-first** untuk SPA web setelah keputusan manusia 2026-08-29: route aplikasi yang merender shell atau data domain wajib menunggu pemeriksaan session; session tidak ada/kedaluwarsa mengarahkan ke `/login`; halaman autentikasi tetap publik; setelah Magic Link berhasil, pengguna kembali hanya ke route aplikasi internal yang aman atau `/` sebagai fallback. Pengalihan UI bukan otorisasi: API tetap wajib menegakkan identity, membership, permission, dan batas Project pada setiap request. Patch — memperjelas perilaku UI/session yang sebelumnya belum ditentukan; tidak mengubah invariant domain, kontrak API, model data, maupun aturan authorization server-side.
 - **4.2.0** — Menambah endpoint read-only `GET /api/v1/projects/:project_id/permissions` di C.12 untuk mengekspos katalog Permission sebagai `{ id, key, description }` di dalam envelope `{ permissions }`. Keputusan manusia 2026-08-28 setelah blocker TASK-7.9 ditemukan: UI Permission Groups tidak dapat membuat/ubah Group atau direct Permission assignment tanpa mengetahui `permissionId` ULID hasil seed Global DB, sementara client hanya dapat memahami `permission.key` kanonik seperti `card.read`. Endpoint baru menjaga kontrak mutation existing tetap memakai `permissionId`, mencegah UI meng-hard-code ID atau menebak data, dan tetap Project-scoped/read-only melalui pipeline authorization. Goal implementasi dibuka di `PHASE-7-TASKS.md` sebagai prerequisite TASK-7.9. Minor — kapabilitas baca baru backward-compatible untuk UI Permission Groups, tidak mengubah endpoint yang sudah ada.
 - **4.1.1** — Melengkapi `03-ENGINEERING F.1` dengan RTO/RPO konkret (sebelumnya hanya prinsip umum "ditetapkan sebelum rilis") berdasarkan riset+drill nyata TASK-6.5.1/6.5.2 (PHASE-6-TASKS.md): Turso PITR (Point-in-Time Recovery) adalah fitur platform otomatis at-commit, bukan mekanisme kustom yang dibangun; organisasi proyek pada plan `starter` (terkonfirmasi via Turso API) memberi retensi 24 jam, RPO mendekati nol, RTO praktis <15 menit per database (restore mentah terukur <10 detik, drill nyata terhadap Global DB staging + satu Project DB throwaway, row count/sample cocok persis, resource cloud dibersihkan). Draft disiapkan AI-Dev (CL-02, `PHASE-6-TASKS.md`) namun sengaja TIDAK diterapkan sendiri (larangan mutlak Dev menyentuh SOT, `04-DELIVERY C.4`) — diterapkan lane AI-Planning & Review setelah draft diverifikasi. Opsi upgrade plan Turso untuk retensi lebih panjang (10/30/90 hari) adalah keputusan biaya/risiko bisnis terpisah, dicatat non-blocking. Patch — klarifikasi operasional/dokumentasi kapabilitas provider yang sudah ada, tidak mengubah business invariant/authorization/lifecycle/API semantics.
 - **4.1.0** — Dua keputusan manusia 2026-08-24 menutup temuan Review-CL-07 Phase 2 dan Review-CL-04 Phase 5. **Membership revoke lintas-DB** kini memakai guard `revocation_pending_at`: intent dicatat atomik di Global DB dan memblokir assignment baru, seluruh Card assignee dibersihkan bersama Activity dalam satu transaksi Project DB, lalu `revoked_at` difinalisasi conditional di Global DB; retry/crash recovery wajib idempotent. **Project deprovision** kini memakai journal Global DB `project_deprovision_jobs` dengan state `PENDING → DATABASE_DELETED → COMPLETED`, sehingga kegagalan setelah Turso DB terhapus tetapi sebelum cleanup registry commit dapat dilanjutkan tanpa perlu membuka Project DB yang sudah hilang. Minor karena menambah state control-plane/backward-compatible dan memperkuat failure semantics; tidak mengubah bentuk sukses API publik.

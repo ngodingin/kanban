@@ -2,7 +2,7 @@
 
 > ✅ **GATE DIBUKA 2026-08-25** ([Review-CL-05](#review-cl-05)) — keputusan manusia eksplisit setelah Exit Criteria Phase 0–6 diverifikasi independen genuinely terpenuhi ([Review-CL-04, PHASE-6-TASKS.md](PHASE-6-TASKS.md#review-cl-04)). Goal di bawah sekarang `⬜️` (actionable), bukan lagi `⏸️`.
 >
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)); current SOT version: 4.2.0. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)); current SOT version: 4.2.1. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
 > **Audit terbaru:** outline sudah diselaraskan bertahap ke titik kontrak observable SOT 4.0.0 ([Review-CL-02](#review-cl-02)) — dikonfirmasi ulang [Review-CL-05](#review-cl-05): amandemen 4.1.0/4.1.1 (BR-054C revoke lintas-DB, journal deprovision, F.1 RTO/RPO) bersifat control-plane/operasional internal, TIDAK mengubah API contract yang UI konsumsi. Versi dependency UI (React/Vite/React Router/Tailwind/shadcn/TanStack Query/Zustand/dnd-kit) direvalidasi terhadap npm registry saat gate dibuka — seluruhnya cocok baseline `03-ENG A.8` tanpa revisi.
 >
 > **Catatan metodologi (C.6):** task granular di-*refresh* saat fase menjadi aktif, terhadap state repo nyata. `apps/web/` saat ini HANYA placeholder (`package.json` kosong, `README.md`, `public/index.html` static test shell) — TIDAK ADA scaffold Vite/React/shadcn sama sekali. `TASK-7.1.1` genuinely mulai dari nol, bukan refine kode existing.
@@ -226,7 +226,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 - Refresh terhadap state repo nyata sudah dilakukan saat gate dibuka 2026-08-25 ([Review-CL-05](#review-cl-05)): `apps/web/` dikonfirmasi placeholder murni; versi dependency direvalidasi terhadap npm registry, cocok baseline tanpa revisi.
 - ~~`[NEEDS-SPEC-AMENDMENT]` TASK-7.9 katalog Permission tidak tersedia untuk UI~~ → **DISELESAIKAN 2026-08-28 (manusia):** SOT 4.2.0 menambah `GET /api/v1/projects/:project_id/permissions`; goal 7.9.0 dibuka sebagai prerequisite backend support sebelum UI Permission Groups.
 - ~~Tracking drift TASK-7.13~~ → **DISELESAIKAN 2026-08-28:** tabel goal diselaraskan dengan Closure Log historis (`7.13.3` restore ancestor, `7.13.4` audit view) melalui [Review-CL-07](#review-cl-07), tanpa mengubah status/%.
-- Tidak ada `[NEEDS-SPEC-AMENDMENT]` terbuka — konflik mockup sudah direkonsiliasi di [05-FRONTEND §4](docs/05-FRONTEND.md).
+- ~~`[NEEDS-SPEC-AMENDMENT]` alur login-first/session gate belum dikunci~~ → **DISELESAIKAN 2026-08-29 (manusia):** SOT 4.2.1 mengunci route aplikasi membutuhkan pemeriksaan session, redirect `/login` untuk session tidak ada/kedaluwarsa, dan return-to internal aman. Implementasi ditrack pada TASK-7.15 dan belum dimulai.
+
+---
+
+## TASK-7.15 — Login-first session gate
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 7.15.1 | ⬜️ | [Review-CL-12](#review-cl-12) | 0 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada atau kedaluwarsa diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.1.2 |
+| 7.15.2 | ⬜️ | [Review-CL-12](#review-cl-12) | 0 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah Magic Link; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
+
+**Test:** Unit/RTL — pending tidak merender shell/data; unauthenticated dan session expired menuju `/login`; `/login` tetap publik; session valid merender route tujuan. Negatif — `returnTo` eksternal, protocol-relative, atau malformed ditolak ke `/`. Playwright production build — deep link protected tanpa session menuju login, lalu session valid memulihkan hanya path internal.
+**DoD:** Tidak ada data domain atau shell aplikasi muncul sebelum session selesai diperiksa; redirect UI tidak pernah menjadi satu-satunya enforcement (API `401/403` tetap diuji); tidak ada password/social provider, token, atau session credential ditulis ke UI storage/log.
 
 ---
 
@@ -235,6 +247,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-12"></a>
+### Review-CL-12 — 2026-08-29 · keputusan manusia: login-first session gate dan task implementasi baru
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Keputusan manusia eksplisit menyetujui alur: pemeriksaan session sebelum app shell/data, redirect pengguna tanpa session ke `/login`, dan kembali hanya ke tujuan internal yang aman atau `/`. Impact scan mencakup `01-PRODUCT` §0.4, `03-ENGINEERING` A.14, `04-DELIVERY` A.0, `05-FRONTEND` §5, serta consumer `PHASE-7-TASKS`/goal Magic Link 7.1.2.
+
+**Review:** SOT dinaikkan **4.2.0 → 4.2.1** (patch): ini mengunci UX/session gate tanpa mengubah invariant domain, data model, kontrak API, atau authorization server-side. TASK-7.15 dihasilkan sesuai C.6 dan dipecah menjadi dua goal implementasi yang belum dimulai (`⬜️ 0%`); Phase 7 kembali memiliki pekerjaan terbuka. Implementasi dilarang dimulai sebelum manusia mereview dan mengonfirmasi TASK-7.15.
 
 <a id="review-cl-11"></a>
 ### Review-CL-11 — 2026-08-29 · audit penutupan Phase 7/MVP — Exit Criteria terpenuhi, metadata frontend diselaraskan

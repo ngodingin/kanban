@@ -9,6 +9,27 @@
 
 Fokus: alur pengguna utama yang mencerminkan aturan domain, bukan wireframe visual.
 
+## A.0 Authentication & Session Gate
+
+```text
+Pengunjung membuka route aplikasi
+        ▼
+Client memeriksa session Better Auth (loading netral; shell/data belum dirender)
+        ▼
+   ┌────┴────┐
+   ▼         ▼
+Session valid  Tidak ada/kedaluwarsa
+   │              ▼
+Render route   Arahkan ke /login
+aplikasi             ▼
+              Kirim dan verifikasi Magic Link
+                       ▼
+              Kembali ke route internal aman semula,
+              atau / bila tidak ada/tidak valid
+```
+
+**Catatan keamanan:** redirect UI hanya mengatur pengalaman pengguna. Semua endpoint domain tetap MUST mengautentikasi dan mengevaluasi membership/permission terkini server-side; route tujuan tidak boleh menerima URL eksternal atau mengakibatkan open redirect.
+
 ## A.1 Onboarding & Invitation
 
 ```text
