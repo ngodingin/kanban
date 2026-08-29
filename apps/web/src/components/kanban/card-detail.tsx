@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMoveCard } from "@/features/cards/mutations";
 import { useLifecycleMutation } from "@/features/lifecycle/hooks";
 import { useLists } from "@/features/lists/hooks";
+import { useBoard, useMilestone, useProject } from "@/features/projects/hooks";
 import { useUiStore } from "@/lib/ui-store";
 
 // Card Detail (05-FRONTEND §5): tab Details (description, assignee, due date,
@@ -145,12 +146,14 @@ function CommentsTab({
 
 export function CardDetailPanel({
   projectId,
+  milestoneId,
   boardId,
   cardId,
   currentUserId,
   onClose,
 }: {
   projectId: string;
+  milestoneId: string;
   boardId: string;
   cardId: string;
   currentUserId?: string;
@@ -162,21 +165,42 @@ export function CardDetailPanel({
   const moveMutation = useMoveCard(projectId);
   const lifecycleMutation = useLifecycleMutation(projectId);
   const listsQuery = useLists(projectId, boardId);
+  const boardQuery = useBoard(projectId, milestoneId, boardId);
+  const milestoneQuery = useMilestone(projectId, milestoneId);
+  const projectQuery = useProject(projectId);
   const registerPaletteCommands = useUiStore((s) => s.registerPaletteCommands);
   const [tab, setTab] = useState<DetailTab>("details");
   const [descriptionDraft, setDescriptionDraft] = useState<string | null>(null);
   const [showMovePicker, setShowMovePicker] = useState(false);
 
+  // Check if entity and all ancestors are ACTIVE (FR-044/AC-008/INV-LIFE-001).
+  // Card → Board → Milestone → Project must all be ACTIVE.
+  function isEffectivelyActive(): boolean {
+    if (!cardQuery.data) return false;
+    const card = cardQuery.data;
+    if (card.archivedAt || card.deletedAt) return false;
+
+    const board = boardQuery.data as Record<string, unknown> | undefined;
+    if (board?.archivedAt || board?.deletedAt) return false;
+
+    const milestone = milestoneQuery.data as Record<string, unknown> | undefined;
+    if (milestone?.archivedAt || milestone?.deletedAt) return false;
+
+    const project = projectQuery.data as Record<string, unknown> | undefined;
+    if (project?.archivedAt || project?.deletedAt) return false;
+
+    return true;
+  }
+
   // Register card-specific commands when a card is selected
-  // Only register Move/Archive for active cards (not archived, not deleted)
+  // Only register Move/Archive when card AND all ancestors are ACTIVE
   useEffect(() => {
     if (!cardQuery.data) return;
-    const card = cardQuery.data;
-    const isActive = !card.archivedAt && !card.deletedAt;
-    if (!isActive) {
+    if (!isEffectivelyActive()) {
       registerPaletteCommands([]);
       return;
     }
+    const card = cardQuery.data;
     registerPaletteCommands([
       {
         id: "act-move-card",
@@ -201,7 +225,15 @@ export function CardDetailPanel({
       },
     ]);
     return () => registerPaletteCommands([]);
-  }, [cardQuery.data, registerPaletteCommands, moveMutation, lifecycleMutation]);
+  }, [
+    cardQuery.data,
+    boardQuery.data,
+    milestoneQuery.data,
+    projectQuery.data,
+    registerPaletteCommands,
+    moveMutation,
+    lifecycleMutation,
+  ]);
 
   function handleMoveCard(destinationListId: string) {
     if (!cardQuery.data) return;

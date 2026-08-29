@@ -15,6 +15,9 @@ const mocks = vi.hoisted(() => ({
   useMoveCard: vi.fn(),
   useLifecycleMutation: vi.fn(),
   useLists: vi.fn(),
+  useBoard: vi.fn(),
+  useMilestone: vi.fn(),
+  useProject: vi.fn(),
 }));
 
 vi.mock("../src/features/cards/detail-hooks", () => ({
@@ -35,6 +38,12 @@ vi.mock("../src/features/lists/hooks", () => ({
   useLists: mocks.useLists,
 }));
 
+vi.mock("../src/features/projects/hooks", () => ({
+  useBoard: mocks.useBoard,
+  useMilestone: mocks.useMilestone,
+  useProject: mocks.useProject,
+}));
+
 vi.mock("../src/features/comments/hooks", () => ({
   useAddComment: vi.fn(() => ({ mutate: vi.fn() })),
   useEditComment: vi.fn(() => ({ mutate: vi.fn() })),
@@ -50,7 +59,16 @@ afterEach(() => {
   useUiStore.setState({ paletteCommands: [], paletteOpen: false });
 });
 
-function renderCardDetail(cardOverrides?: { archivedAt?: string | null; deletedAt?: string | null }) {
+function renderCardDetail(overrides?: {
+  archivedAt?: string | null;
+  deletedAt?: string | null;
+  boardArchivedAt?: string | null;
+  boardDeletedAt?: string | null;
+  milestoneArchivedAt?: string | null;
+  milestoneDeletedAt?: string | null;
+  projectArchivedAt?: string | null;
+  projectDeletedAt?: string | null;
+}) {
   const moveMutate = vi.fn();
   const archiveMutate = vi.fn();
   mocks.useCard.mockReturnValue({
@@ -59,8 +77,8 @@ function renderCardDetail(cardOverrides?: { archivedAt?: string | null; deletedA
       listId: "list-a",
       title: "Test Card",
       version: 3,
-      archivedAt: cardOverrides?.archivedAt ?? null,
-      deletedAt: cardOverrides?.deletedAt ?? null,
+      archivedAt: overrides?.archivedAt ?? null,
+      deletedAt: overrides?.deletedAt ?? null,
     },
     isLoading: false,
   });
@@ -78,12 +96,45 @@ function renderCardDetail(cardOverrides?: { archivedAt?: string | null; deletedA
     },
     isLoading: false,
   });
+  mocks.useBoard.mockReturnValue({
+    data: {
+      id: "b1",
+      title: "Board 1",
+      archivedAt: overrides?.boardArchivedAt ?? null,
+      deletedAt: overrides?.boardDeletedAt ?? null,
+    },
+    isLoading: false,
+  });
+  mocks.useMilestone.mockReturnValue({
+    data: {
+      id: "m1",
+      title: "Milestone 1",
+      archivedAt: overrides?.milestoneArchivedAt ?? null,
+      deletedAt: overrides?.milestoneDeletedAt ?? null,
+    },
+    isLoading: false,
+  });
+  mocks.useProject.mockReturnValue({
+    data: {
+      id: "p1",
+      name: "Project 1",
+      archivedAt: overrides?.projectArchivedAt ?? null,
+      deletedAt: overrides?.projectDeletedAt ?? null,
+    },
+    isLoading: false,
+  });
 
   const onClose = vi.fn();
   const utils = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/projects/p1/milestones/m1/boards/b1"]}>
-        <CardDetailPanel projectId="p1" boardId="b1" cardId="card-1" onClose={onClose} />
+        <CardDetailPanel
+          projectId="p1"
+          milestoneId="m1"
+          boardId="b1"
+          cardId="card-1"
+          onClose={onClose}
+        />
       </MemoryRouter>
     </QueryClientProvider>,
   );
@@ -229,6 +280,46 @@ describe("TASK-7.12.1 — Move Card picker flow", () => {
     renderCardDetail({ archivedAt: "2026-08-29T00:00:00Z" });
 
     // Card detail should still render (read-only), just without lifecycle commands
+    expect(screen.getByText("Test Card")).toBeTruthy();
+    expect(screen.getByLabelText("Tutup detail kartu")).toBeTruthy();
+  });
+
+  test("negatif: board archived → command Move/Archive tidak terdaftar (effective ancestor)", async () => {
+    renderCardDetail({ boardArchivedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    const moveCmd = commands.find((c) => c.id === "act-move-card");
+    const archiveCmd = commands.find((c) => c.id === "act-archive-card");
+
+    expect(moveCmd).toBeUndefined();
+    expect(archiveCmd).toBeUndefined();
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: milestone deleted → command Move/Archive tidak terdaftar (effective ancestor)", async () => {
+    renderCardDetail({ milestoneDeletedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: project archived → command Move/Archive tidak terdaftar (effective ancestor)", async () => {
+    renderCardDetail({ projectArchivedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: project deleted → command Move/Archive tidak terdaftar (effective ancestor)", async () => {
+    renderCardDetail({ projectDeletedAt: "2026-08-29T00:00:00Z" });
+
+    const commands = useUiStore.getState().paletteCommands;
+    expect(commands).toHaveLength(0);
+  });
+
+  test("negatif: card active tapi board archived → render card detail tanpa error", async () => {
+    renderCardDetail({ boardArchivedAt: "2026-08-29T00:00:00Z" });
+
     expect(screen.getByText("Test Card")).toBeTruthy();
     expect(screen.getByLabelText("Tutup detail kartu")).toBeTruthy();
   });

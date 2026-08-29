@@ -86,8 +86,12 @@ function Shell({ children }: { children: React.ReactNode }) {
 }
 
 function BoardPage() {
-  const { projectId, boardId } = useParams<{ projectId: string; boardId: string }>();
-  return <BoardView projectId={projectId!} boardId={boardId!} />;
+  const { projectId, milestoneId, boardId } = useParams<{
+    projectId: string;
+    milestoneId: string;
+    boardId: string;
+  }>();
+  return <BoardView projectId={projectId!} milestoneId={milestoneId!} boardId={boardId!} />;
 }
 
 export default function App() {

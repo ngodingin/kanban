@@ -78,9 +78,11 @@ function BoardColumn({
 
 export function BoardView({
   projectId,
+  milestoneId,
   boardId,
 }: {
   projectId: string;
+  milestoneId: string;
   boardId: string;
 }) {
   const listsQuery = useLists(projectId, boardId);
@@ -184,6 +186,7 @@ export function BoardView({
       {selectedCardId ? (
         <CardDetailPanel
           projectId={projectId}
+          milestoneId={milestoneId}
           boardId={boardId}
           cardId={selectedCardId}
           onClose={() => setSelectedCardId(null)}
