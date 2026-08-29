@@ -334,6 +334,9 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   // Intercept: jika request adalah GET /api/auth/magic-link/verify dan response
   // adalah 302 dengan Set-Cookie, konversi ke 200 JSON + Set-Cookie.
   // Cookie TIDAK di-strip pada response 200 (hanya 302 yang di-strip Vercel).
+  // CL-107-fix: preserve SEMUA headers dari response asli (bukan hanya set-cookie)
+  // karena Better Auth bisa menghasilkan beberapa Set-Cookie headers yang perlu
+  // diteruskan secara individual ke browser.
   app.get("/auth/magic-link/verify", async (c) => {
     try {
       const res = await ensure().auth.handler(c.req.raw);
@@ -341,15 +344,11 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         const setCookie = res.headers.get("set-cookie");
         const location = res.headers.get("location");
         if (setCookie) {
+          const headers = new Headers(res.headers);
+          headers.set("content-type", "application/json");
           return new Response(
             JSON.stringify({ verified: true, redirectTo: location }),
-            {
-              status: 200,
-              headers: {
-                "content-type": "application/json",
-                "set-cookie": setCookie,
-              },
-            },
+            { status: 200, headers },
           );
         }
       }
