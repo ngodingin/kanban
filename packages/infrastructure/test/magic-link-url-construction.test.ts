@@ -75,6 +75,54 @@ describe("magic link verify URL construction (CL-103) — email link must route 
     expect(parsed.origin).toBe(BASE_URL);
   });
 
+  it("real callback: verify endpoint creates a database-backed session (QA-CL-69 regression)", async () => {
+    let capturedToken = "";
+    const auth = createAuth({
+      globalClient,
+      baseUrl: BASE_URL,
+      secret: "x".repeat(32),
+      sendMagicLink: async (data) => {
+        capturedToken = data.token;
+      },
+    });
+
+    // 1. Request magic link → token is captured by mock sendMagicLink
+    const signInRes = await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/magic-link`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "real-callback@example.com" }),
+      }),
+    );
+    expect(signInRes.status).toBe(200);
+    expect(capturedToken.length).toBeGreaterThan(0);
+
+    // 2. Verify the token (no callbackURL → returns JSON with session)
+    const verifyRes = await auth.handler(
+      new Request(
+        `${BASE_URL}/api/auth/magic-link/verify?token=${encodeURIComponent(capturedToken)}`,
+        { method: "GET", headers: { cookie: "" } },
+      ),
+    );
+    expect(verifyRes.status).toBe(200);
+    const body = (await verifyRes.json()) as {
+      session?: { token?: string };
+      user?: { email?: string };
+    };
+
+    // 3. Session must exist with a token
+    expect(body.session).toBeDefined();
+    expect(body.session!.token!.length).toBeGreaterThan(0);
+
+    // 4. User must match
+    expect(body.user).toBeDefined();
+    expect(body.user!.email).toBe("real-callback@example.com");
+
+    // 5. Session cookie must be set in response
+    const setCookie = verifyRes.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain("kanban.session_token=");
+  });
+
   it("verify URL must include token and callbackURL query params", async () => {
     let capturedUrl = "";
     const auth = createAuth({
