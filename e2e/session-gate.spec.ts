@@ -196,4 +196,50 @@ test.describe("Session Gate (03-ENG A.14, 05-FRONTEND §5)", () => {
     const body = JSON.parse(magicLinkBody);
     expect(body.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
   });
+
+  test("negatif: login page with bare /api returnTo falls back to / (QA-CL-67)", async ({ page }) => {
+    let magicLinkBody: string = "";
+    await page.route("**/api/auth/sign-in/magic-link", async (route) => {
+      magicLinkBody = route.request().postData() ?? "";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: null }),
+      });
+    });
+
+    await page.goto("/login?returnTo=%2Fapi");
+    await page.getByLabel("Email").fill("user@example.com");
+    await page.getByRole("button", { name: /Kirim tautan masuk/ }).click();
+
+    await expect(async () => {
+      expect(magicLinkBody).toBeTruthy();
+    }).toPass({ timeout: 5000 });
+
+    const body = JSON.parse(magicLinkBody);
+    expect(body.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
+
+  test("negatif: login page with /api?x returnTo falls back to / (QA-CL-67)", async ({ page }) => {
+    let magicLinkBody: string = "";
+    await page.route("**/api/auth/sign-in/magic-link", async (route) => {
+      magicLinkBody = route.request().postData() ?? "";
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ data: null }),
+      });
+    });
+
+    await page.goto("/login?returnTo=%2Fapi%3Fx%3D1");
+    await page.getByLabel("Email").fill("user@example.com");
+    await page.getByRole("button", { name: /Kirim tautan masuk/ }).click();
+
+    await expect(async () => {
+      expect(magicLinkBody).toBeTruthy();
+    }).toPass({ timeout: 5000 });
+
+    const body = JSON.parse(magicLinkBody);
+    expect(body.callbackURL).toMatch(/^http:\/\/localhost(:\d+)?\/$/);
+  });
 });

@@ -20,7 +20,9 @@ export function isSafeReturnTo(returnTo: string | null): boolean {
   if (!returnTo || returnTo.length === 0) return false;
   // Reject absolute URLs, protocol-relative, and malformed
   if (returnTo.startsWith("//") || returnTo.startsWith("http://") || returnTo.startsWith("https://")) return false;
-  if (returnTo.startsWith("/api/")) return false;
+  // Reject /api namespace (root and sub-paths), including /api?x or /api#hash
+  const clean = returnTo.split("?")[0].split("#")[0];
+  if (clean === "/api" || clean.startsWith("/api/")) return false;
   if (isPublicPath(returnTo)) return false;
   // Must start with / (internal path only)
   if (!returnTo.startsWith("/")) return false;

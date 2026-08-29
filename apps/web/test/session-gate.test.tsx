@@ -37,6 +37,12 @@ describe("isSafeReturnTo — returnTo validation", () => {
     expect(isSafeReturnTo("/api/auth/callback")).toBe(false);
   });
 
+  test("rejects /api root namespace (QA-CL-67)", () => {
+    expect(isSafeReturnTo("/api")).toBe(false);
+    expect(isSafeReturnTo("/api?x=1")).toBe(false);
+    expect(isSafeReturnTo("/api#section")).toBe(false);
+  });
+
   test("rejects public/auth paths including query params", () => {
     expect(isSafeReturnTo("/login")).toBe(false);
     expect(isSafeReturnTo("/login?foo=bar")).toBe(false);
