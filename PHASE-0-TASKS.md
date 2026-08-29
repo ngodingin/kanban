@@ -204,7 +204,7 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 | 0.12.1 | ✅ | [CL-52](#cl-52)<br>[QA-CL-44](#qa-cl-44)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | CI: typecheck + test otomatis per push/PR | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.11.1 |
 | 0.12.2 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-59](#cl-59)<br>[QA-CL-46](#qa-cl-46) | 100 | P1 | Migrasi Global + seam fan-out Project DB saat deploy | [03-ENG F.3](docs/03-ENGINEERING.md) | 0.4.3, 0.5.3 |
 | 0.12.3 | ✅ | [CL-55](#cl-55)<br>[QA-CL-45](#qa-cl-45)<br>[Review-CL-07](#review-cl-07) | 100 | P1 | Env terpisah dev/staging/prod; staging dan production memakai canonical origin serta secret Resend terpisah | [03-ENG D.7](docs/03-ENGINEERING.md) | 0.1.4 |
-| 0.12.4 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-56](#cl-56)<br>[CL-57](#cl-57)<br>[CL-58](#cl-58)<br>[QA-CL-47](#qa-cl-47)<br>[CL-61](#cl-61)<br>[Review-CL-09](#review-cl-09)<br>[QA-CL-50](#qa-cl-50)<br>[Review-CL-27](#review-cl-27) | 100 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
+| 0.12.4 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-56](#cl-56)<br>[CL-57](#cl-57)<br>[CL-58](#cl-58)<br>[QA-CL-47](#qa-cl-47)<br>[CL-61](#cl-61)<br>[Review-CL-09](#review-cl-09)<br>[QA-CL-50](#qa-cl-50)<br>[Review-CL-27](#review-cl-27)<br>[Review-CL-28](#review-cl-28) | 100 | P0 | Preview deployment satu origin: Hono `/api/*` + static test shell; buktikan SPA fallback tidak menangkap API dan auth cookie/callback same-origin | [03-ENG D.1](docs/03-ENGINEERING.md), [D.5](docs/03-ENGINEERING.md), [A.14](docs/03-ENGINEERING.md) | 0.8.4, 0.12.1 |
 | 0.12.5 | ✅ | [Review-CL-07](#review-cl-07)<br>[CL-60](#cl-60)<br>[QA-CL-48](#qa-cl-48) | 100 | P2 | Hubungkan release checklist F.6 sebagai langkah CI | [03-ENG F.6](docs/03-ENGINEERING.md) | 0.12.1 |
 
 ---
@@ -349,6 +349,15 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-28"></a>
+### Review-CL-28 — 2026-08-29 · readiness review 0.12.4 — staging smoke terautentikasi terverifikasi
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Menggunakan `VERCEL_AUTOMATION_BYPASS_SECRET` dari `.env` hanya sebagai header `x-vercel-protection-bypass` (nilai tidak dicetak/disimpan): `GET https://kanban-ngodingin.vercel.app/` → **200**; `GET /api/v1/health` → **200** dengan `{ "data": { "status": "ok", "env": "staging" } }`.
+
+**Review:** Temuan akses staging Review-CL-27 tertutup. Vercel SSO tetap dapat dipertahankan; secret bypass menyediakan jalur smoke otomasi terautentikasi. `0.12.4` tetap `✅ 100%`; tidak ada perubahan Status/%, implementasi, atau SOT.
 
 <a id="review-cl-27"></a>
 ### Review-CL-27 — 2026-08-29 · readiness review 0.12.4 — production sehat, staging membutuhkan akses terautentikasi
