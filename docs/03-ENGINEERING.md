@@ -256,9 +256,13 @@ Baseline Phase 7: React Router **8.x**, Tailwind CSS **4.x**, shadcn CLI/compone
 - **Session strategy:** database-backed opaque session adalah baseline MVP agar session dapat dicabut segera. Cookie cache/stateless session Better Auth MUST tetap nonaktif sampai ada kebutuhan dan threat review tersendiri. Revocation membership tetap efektif walau session valid karena membership & permission SELALU diresolusi ulang terhadap Global DB per request — konsisten dengan BR-053 dan prinsip "credential ≠ authorization".
 - Better Auth MUST memakai custom table/field mapping B.2 dan custom `generateId` berbasis ULID agar tidak menciptakan identitas kedua atau format ID yang menyimpang.
 
+**Kebijakan lifetime session (locked v4.3.0):** session web berakhir pada batas yang lebih dahulu dari: (1) **1 jam** sejak `last_activity_at` terakhir; atau (2) batas absolut **Minggu 00:00 UTC** berikutnya setelah session diterbitkan (setara Minggu 07:00 Asia/Jakarta). `absolute_expires_at` tidak pernah diperpanjang. Better Auth automatic session refresh MUST dinonaktifkan; server hanya boleh memperbarui `last_activity_at` dan `expires_at` sesudah request domain yang terautentikasi selesai sukses (HTTP 2xx) dan membawa penanda internal aksi pengguna. Polling, TanStack Query refetch otomatis, pemeriksaan session, health check, static asset, request gagal, serta request API Key/PAT MUST NOT memperpanjang session. Update wajib kondisional terhadap current state/expiry agar request konkuren tidak menghidupkan kembali session revoked atau expired. Pada deploy migrasi kebijakan ini, session lama MUST dibuat tidak valid agar tidak menerima pengecualian tanpa `last_activity_at`/`absolute_expires_at`.
+
+**Tidak ada refresh token:** MVP tidak memakai OAuth/social provider atau JWT refresh-token flow. Cookie session opaque tetap menjadi credential tunggal; *activity touch* server hanya memperbarui batas idle, bukan menerbitkan refresh token maupun memperpanjang absolute timeout.
+
 **Routing:** handler Better Auth dipasang sebelum catch-all lain pada `/api/auth/*`. Endpoint domain Hono berada di `/api/v1/*`. SPA fallback MUST tidak menangkap `/api/*`.
 
-**Session gate UI (login-first):** sebelum merender app shell atau memuat data domain, client web MUST menyelesaikan pemeriksaan session Better Auth. Saat pemeriksaan masih berjalan, UI hanya boleh menampilkan state loading netral—bukan shell atau data dari route tujuan. Session tidak ada atau kedaluwarsa MUST mengarahkan pengguna ke `/login`; halaman autentikasi dan callback-nya tetap publik. Setelah verifikasi Magic Link, client MAY kembali ke route aplikasi internal yang disimpan secara aman; tujuan yang bukan path internal aplikasi atau tidak tersedia MUST memakai `/` sebagai fallback. Gate ini adalah UX/defence-in-depth dan MUST NOT menggantikan pemeriksaan identity → membership → permission di API pada setiap request.
+**Session gate UI (login-first):** sebelum merender app shell atau memuat data domain, client web MUST menyelesaikan pemeriksaan session Better Auth. Saat pemeriksaan masih berjalan, UI hanya boleh menampilkan state loading netral—bukan shell atau data dari route tujuan. Session tidak ada, idle-expired, atau absolute-expired MUST mengarahkan pengguna ke `/login`; halaman autentikasi dan callback-nya tetap publik. Ketika redirect karena session berakhir, client MUST menyimpan `returnTo` berupa path internal aplikasi saat ini; setelah verifikasi Magic Link, client kembali hanya ke path internal yang tervalidasi itu, atau `/` bila kosong/tidak valid/tidak tersedia. URL eksternal, protocol-relative, malformed, `/api/*`, serta route autentikasi MUST ditolak untuk mencegah open redirect. Gate ini adalah UX/defence-in-depth dan MUST NOT menggantikan pemeriksaan identity → membership → permission di API pada setiap request.
 
 **Provider scope:** `emailAndPassword` MUST disabled dan tidak ada social/OAuth provider pada MVP. Magic Link MAY membuat `users` baru setelah link berhasil diverifikasi; request link itu sendiri tidak boleh dianggap sebagai user terverifikasi.
 
@@ -301,8 +305,10 @@ users
 
 auth_sessions
   id · user_id(→users.id) · token(UNIQUE, sensitive) · expires_at
+  last_activity_at · absolute_expires_at
   ip_address(nullable) · user_agent(nullable) · created_at · updated_at
-  # Better Auth model `session`; cookie HTTP-only/Secure/SameSite, jangan log token
+  # Better Auth model `session`; cookie HTTP-only/Secure/SameSite, jangan log token.
+  # expires_at = idle deadline, dibatasi maksimum absolute_expires_at.
 
 auth_accounts
   id · user_id(→users.id) · account_id · provider_id

@@ -2,7 +2,7 @@
 
 > Status: **Gate dibuka 2026-08-25.** Pekerjaan frontend ([PHASE-7-TASKS.md](../PHASE-7-TASKS.md)) sekarang actionable — lihat Review-CL-05 di file itu.
 > Related: 01-PRODUCT.md, 02-SPEC.md, 03-ENGINEERING.md, 04-DELIVERY.md (Part A UX Flows)
-> SOT version: 4.2.1
+> SOT version: 4.3.0
 
 ---
 
@@ -100,7 +100,7 @@ Hasil rekonsiliasi mockup terhadap SOT. **UI MUST mengikuti kolom "Resolusi", bu
 ## 5. Layar Utama (ringkas — detail di PHASE-7-TASKS.md)
 
 - **Authentication:** satu form email untuk meminta Magic Link. UI final menangani state request, link terkirim, expired/used link, dan error tanpa membocorkan keberadaan akun. Tidak ada form password atau halaman register terpisah pada MVP.
-- **Session gate (login-first):** `/login` dan callback autentikasi adalah route publik. Semua route yang merender app shell atau data domain MUST menunggu pemeriksaan session; selama pending tampilkan loading netral. Session tidak ada/kedaluwarsa MUST diarahkan ke `/login`, dan login berhasil kembali hanya ke route internal aplikasi yang aman atau `/` sebagai fallback. Gate ini bukan pengganti authorization server-side.
+- **Session gate (login-first):** `/login` dan callback autentikasi adalah route publik. Semua route yang merender app shell atau data domain MUST menunggu pemeriksaan session; selama pending tampilkan loading netral. Session tidak ada, idle-expired (1 jam), atau absolute-expired (Minggu 00:00 UTC) MUST diarahkan ke `/login`. Hanya request domain sukses yang dipicu aksi pengguna boleh ditandai untuk memperbarui idle deadline; polling/refetch/check-session tidak boleh. Login berhasil kembali hanya ke route internal aplikasi yang aman atau `/` sebagai fallback. Gate ini bukan pengganti authorization server-side.
 - **App shell:** sidebar (Home · My Tasks · Activity · PROJECTS ▾ · Members · Permissions · API Keys · Settings) + header (breadcrumb Project › Milestone › Board). Branding "Kanban — Powered by NGodingiN" di layar autentikasi/sidebar-bawah/footer saja.
 - **Home/Dashboard:** work-management style ("Your work": My Tasks / Due soon / Overdue · Recent Projects · Recent Activity). BUKAN admin panel (revenue/charts).
 - **Board:** kolom = List (nama bebas), header kolom tampilkan count. Card compact. Drag & drop Card → panggil Card move API (bukan ubah state lokal saja). List tetap pada Board asal dan tidak dapat di-drag untuk dipindahkan. "Review"/"Done" hanyalah nama List, tanpa makna sistem.

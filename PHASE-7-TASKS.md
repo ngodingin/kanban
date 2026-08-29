@@ -2,7 +2,7 @@
 
 > ✅ **GATE DIBUKA 2026-08-25** ([Review-CL-05](#review-cl-05)) — keputusan manusia eksplisit setelah Exit Criteria Phase 0–6 diverifikasi independen genuinely terpenuhi ([Review-CL-04, PHASE-6-TASKS.md](PHASE-6-TASKS.md#review-cl-04)). Goal di bawah sekarang `⬜️` (actionable), bukan lagi `⏸️`.
 >
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)); current SOT version: 4.2.1. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.1 (direfresh dari 2.0.6 saat gate dibuka — lihat [Review-CL-05](#review-cl-05)); current SOT version: 4.3.0. Acuan desain: [docs/05-FRONTEND.md](docs/05-FRONTEND.md). Acuan alur: [04-DELIVERY Part A (UX Flows)](docs/04-DELIVERY.md).
 > **Audit terbaru:** outline sudah diselaraskan bertahap ke titik kontrak observable SOT 4.0.0 ([Review-CL-02](#review-cl-02)) — dikonfirmasi ulang [Review-CL-05](#review-cl-05): amandemen 4.1.0/4.1.1 (BR-054C revoke lintas-DB, journal deprovision, F.1 RTO/RPO) bersifat control-plane/operasional internal, TIDAK mengubah API contract yang UI konsumsi. Versi dependency UI (React/Vite/React Router/Tailwind/shadcn/TanStack Query/Zustand/dnd-kit) direvalidasi terhadap npm registry saat gate dibuka — seluruhnya cocok baseline `03-ENG A.8` tanpa revisi.
 >
 > **Catatan metodologi (C.6):** task granular di-*refresh* saat fase menjadi aktif, terhadap state repo nyata. `apps/web/` saat ini HANYA placeholder (`package.json` kosong, `README.md`, `public/index.html` static test shell) — TIDAK ADA scaffold Vite/React/shadcn sama sekali. `TASK-7.1.1` genuinely mulai dari nol, bukan refine kode existing.
@@ -234,11 +234,12 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.15.1 | ⬜️ | [Review-CL-12](#review-cl-12) | 0 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada atau kedaluwarsa diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.1.2 |
-| 7.15.2 | ⬜️ | [Review-CL-12](#review-cl-12) | 0 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah Magic Link; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
+| 7.15.0 | ⬜️ | [Review-CL-13](#review-cl-13) | 0 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
+| 7.15.1 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada, idle-expired, atau absolute-expired diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.0 |
+| 7.15.2 | ⬜️ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13) | 0 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah timeout/login; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
 
-**Test:** Unit/RTL — pending tidak merender shell/data; unauthenticated dan session expired menuju `/login`; `/login` tetap publik; session valid merender route tujuan. Negatif — `returnTo` eksternal, protocol-relative, atau malformed ditolak ke `/`. Playwright production build — deep link protected tanpa session menuju login, lalu session valid memulihkan hanya path internal.
-**DoD:** Tidak ada data domain atau shell aplikasi muncul sebelum session selesai diperiksa; redirect UI tidak pernah menjadi satu-satunya enforcement (API `401/403` tetap diuji); tidak ada password/social provider, token, atau session credential ditulis ke UI storage/log.
+**Test:** Server (fake clock) — activity 45 menit memperpanjang idle deadline menjadi satu jam lagi; tanpa aktivitas satu jam ditolak; Minggu 00:00 UTC menang atas activity; polling/refetch/check-session/request gagal/API Key/PAT tidak memperpanjang; revoke dan interleaving touch tidak dapat menghidupkan session mati. Unit/RTL — pending tidak merender shell/data; unauthenticated dan timeout menuju `/login`; `/login` tetap publik; session valid merender route tujuan. Negatif — `returnTo` eksternal, protocol-relative, malformed, `/api/*`, atau route auth ditolak ke `/`. Playwright production build — deep link protected tanpa session menuju login, lalu session valid memulihkan hanya path internal.
+**DoD:** `expires_at` tidak pernah melampaui `absolute_expires_at`; session lama dipaksa login ulang saat migrasi; tidak ada data domain atau shell aplikasi muncul sebelum session selesai diperiksa; redirect UI tidak pernah menjadi satu-satunya enforcement (API `401/403` tetap diuji); tidak ada password/social provider, refresh token, atau session credential ditulis ke UI storage/log.
 
 ---
 
@@ -247,6 +248,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-13"></a>
+### Review-CL-13 — 2026-08-29 · keputusan manusia: timeout idle 1 jam dan batas absolut Minggu 00:00 UTC
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Keputusan manusia eksplisit: idle timeout 1 jam; absolute timeout Minggu 00:00 UTC (Minggu 07:00 Asia/Jakarta); activity pada menit ke-45 memperbarui batas idle namun tidak menembus batas absolut; route terakhir yang aman dipulihkan setelah login ulang. Manusia juga menyetujui definisi aktivitas: hanya request domain sukses yang dipicu aksi pengguna, bukan polling/refetch/check-session/background request. Review konfigurasi Better Auth membuktikan default `expiresIn`/`updateAge` tidak cukup untuk dua batas ini dan MVP tidak menggunakan OAuth refresh token.
+
+**Review:** SOT dinaikkan **4.2.1 → 4.3.0** karena menambah state dan enforcement session security. TASK-7.15 diperluas: goal baru `7.15.0` adalah prerequisite server-side; `7.15.1`/`7.15.2` tetap belum mulai dan sekarang bergantung padanya. Migrasi wajib memaksa session lama login ulang—pilihan aman agar tidak ada session legacy tanpa state timeout baru. Implementasi dilarang dimulai sebelum manusia mereview dan mengonfirmasi scope TASK-7.15 yang diperbarui.
 
 <a id="review-cl-12"></a>
 ### Review-CL-12 — 2026-08-29 · keputusan manusia: login-first session gate dan task implementasi baru

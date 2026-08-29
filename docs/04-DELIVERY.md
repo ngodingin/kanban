@@ -18,7 +18,7 @@ Client memeriksa session Better Auth (loading netral; shell/data belum dirender)
         ▼
    ┌────┴────┐
    ▼         ▼
-Session valid  Tidak ada/kedaluwarsa
+Session valid  Tidak ada/idle-expired/absolute-expired
    │              ▼
 Render route   Arahkan ke /login
 aplikasi             ▼
@@ -27,6 +27,8 @@ aplikasi             ▼
               Kembali ke route internal aman semula,
               atau / bila tidak ada/tidak valid
 ```
+
+**Kebijakan session:** request domain terautentikasi yang sukses dan dipicu aksi pengguna memperbarui idle deadline menjadi satu jam dari saat itu; polling/refetch/check-session/background request tidak dihitung. Session selalu berakhir paling lambat Minggu 00:00 UTC, meskipun ada aktivitas sesudahnya. Saat timeout, simpan route internal saat ini sebagai `returnTo`; login pada browser/perangkat lain atau `returnTo` tidak valid memakai `/`.
 
 **Catatan keamanan:** redirect UI hanya mengatur pengalaman pengguna. Semua endpoint domain tetap MUST mengautentikasi dan mengevaluasi membership/permission terkini server-side; route tujuan tidak boleh menerima URL eksternal atau mengakibatkan open redirect.
 
