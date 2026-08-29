@@ -243,11 +243,39 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 ---
 
+## TASK-7.16 — E2E staging untuk alur bisnis MVP
+
+**Prasyarat:** seluruh goal task ini bergantung pada `7.15.0` kembali `✅`, karena setiap alur web nyata memerlukan database-backed session. Test hanya boleh menuju canonical staging `https://kanban-ngodingin.vercel.app`, menolak production/host lain sebelum test dimulai, memakai `E2E_TEST_EMAIL` dari environment (bukan hard-code), dan membuat data berawalan test-run unik yang dibersihkan melalui API/domain command. Inbox Mailinator publik hanya untuk staging; token/link tidak boleh tercetak, di-commit, atau tersimpan dalam artefak test.
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 7.16.1 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Magic Link Mailinator, assertion session nyata, namespace data test unik, dan cleanup wajib walau test gagal. Jangan membuat endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
+| 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1 |
+| 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2 |
+| 7.16.4 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji authorization/invitation nyata: invite scoped, accept, Group/direct Permission inheritance, dan request UI/API tanpa permission ditolak. Seluruh identity uji serta assignment dibersihkan/revoke setelah suite. | [02-SPEC A.10–A.13](docs/02-SPEC.md), [AC-003](docs/04-DELIVERY.md), [AC-025..028](docs/04-DELIVERY.md) | 7.16.2 |
+| 7.16.5 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P1 | Uji lifecycle dan kolaborasi nyata: archive/restore dependency ancestor, delete terminal, Label, comment create/edit, dan Activity historis immutable. Verifikasi penolakan mutation pada state non-operasional dari API dan UI. | [02-SPEC A.3–A.4](docs/02-SPEC.md), [02-SPEC A.8–A.9](docs/02-SPEC.md), [AC-008..016](docs/04-DELIVERY.md) | 7.16.3 |
+| 7.16.6 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P1 | Uji credential nyata: API Key terbatas Project dan PAT tetap tunduk Membership/Permission; revoke/expiry ditolak. Secret hanya disimpan in-memory test dan tidak boleh masuk screenshot, trace, output, atau git. | [02-SPEC A.13](docs/02-SPEC.md), [02-SPEC C.14](docs/02-SPEC.md), [AC-021..024](docs/04-DELIVERY.md) | 7.16.4 |
+| 7.16.7 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P1 | Konsolidasikan command `test:e2e:staging` yang menjalankan seluruh flow di atas terhadap staging saja, menghasilkan ringkasan bebas secret, selalu cleanup, dan menjadi gate release F.6 setelah semua flow hijau. | [03-ENG F.6](docs/03-ENGINEERING.md), [04-DELIVERY B.2–B.3](docs/04-DELIVERY.md) | 7.16.3, 7.16.4, 7.16.5, 7.16.6 |
+
+**Test:** tiap goal wajib memverifikasi respons API nyata dan observasi web nyata pada data test yang sama; test negatif yang dirujuk wajib dijalankan, dan `test:e2e:staging` MUST fail-fast bila target bukan staging atau session tidak terbentuk.
+**DoD:** tidak ada credential/token atau data pengguna nyata pada artefak; data uji tidak tersisa; tidak ada bypass authorization/domain command; seluruh flow yang relevan dengan F.6 hijau sebelum release.
+
+---
+
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-15"></a>
+### Review-CL-15 — 2026-08-29 · TASK-7.16 digenerate — E2E staging flow bisnis MVP
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Keputusan manusia mengonfirmasi cakupan seluruh flow MVP melalui API dan web staging. State task dibaca ulang: `7.15.0 ⚠️ 80%` melalui QA-CL-69; deployment staging `9701e11` telah dimigrasikan namun callback Magic Link tidak membentuk session. SOT 4.3.0 A.14, Delivery A.0/B.2–B.3/C.6, serta release checklist F.6 menjadi acuan.
+
+**Review:** TASK-7.16 dipecah menjadi tujuh goal kecil untuk harness/auth, provisioning/isolation, hierarchy/concurrency, authorization/invitation, lifecycle/collaboration, credential, dan suite release. Semua goal awal `⏸️` karena dependency objektif `7.15.0` gagal; ini mencegah test mock atau bypass memberi hasil positif palsu. Scope dibatasi ke staging dan cleanup via domain command; tidak ada SOT/API endpoint baru.
 
 <a id="qa-cl-69"></a>
 ### QA-CL-69 — 2026-08-29 · 7.15.0 ✅ 100% → ⚠️ 80% — callback Magic Link staging tidak membentuk session
