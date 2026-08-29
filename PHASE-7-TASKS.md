@@ -40,8 +40,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | ✅ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02) | 100 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
-| 7.1.2 | ✅ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04) | 100 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.1 | ⚠️ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[Review-CL-08](#review-cl-08) | 75 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.2 | ⚠️ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04)<br>[Review-CL-08](#review-cl-08) | 75 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ✅ | [QA-CL-03](#qa-cl-03)<br>[Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 100 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ✅ | [QA-CL-04](#qa-cl-04)<br>[CL-07](#cl-07)<br>[CL-08](#cl-08) | 100 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-08"></a>
+### Review-CL-08 — 2026-08-29 · review Exit Criteria Phase 7/MVP — bukti Playwright wajib belum mencakup UI production
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti review:** seluruh 39 goal Phase 7 sebelumnya `✅`; `pnpm vitest run` terakhir lulus **140 file / 841 test**, lint/typecheck/build lulus. `pnpm test:e2e` juga lulus, tetapi hanya **1** spec (`e2e/health.spec.ts`) yang meminta `GET /api/v1/health`. `playwright.config.ts` menjalankan `pnpm --filter @kanban/api build && pnpm --filter @kanban/api start`: ia tidak membangun/menyajikan Vite pada origin yang sama dan tidak membuka browser page UI.
+
+**Temuan:** `05-FRONTEND §5` mewajibkan Playwright untuk **routing, Magic Link, dan alur E2E pada production build Vite yang disajikan bersama Hono**. Bukti Vitest `web-serving.test.ts` tetap bernilai dan sudah membuktikan topologi server, tetapi bukan pengganti browser E2E Playwright yang diwajibkan. Tidak ada spec Playwright untuk SPA deep link/browser routing atau state Magic Link; artifact yang ada hanya health API.
+
+**Tindakan Dev yang diperlukan:** perbaiki setup Playwright agar menjalankan production build Vite bersama Hono pada satu origin, lalu tambah spec browser positif+negatif untuk (1) SPA deep link/routing dan `/api/*` tidak tertangkap fallback, (2) Magic Link UI request/link-sent/expired-or-used/error tanpa password/social atau enumerasi akun, dan (3) satu alur inti UI yang menggunakan API domain. Jalankan `pnpm test:e2e` beserta suite/lint/typecheck/build. Jangan mengubah SOT.
+
+**Dampak status:** `7.1.1` dan `7.1.2` menjadi `⚠️ 75%`; Exit Criteria Phase 7/MVP **belum dapat ditutup** sampai bukti ini tersedia dan diverifikasi QA.
 
 <a id="qa-cl-62"></a>
 ### QA-CL-62 — 2026-08-29 · goal 7.12.1 terverifikasi (🔎 80% → ✅ 100%) — Command Palette patuh domain command dan lifecycle efektif
