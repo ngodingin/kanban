@@ -184,8 +184,10 @@ describe("magic link verify URL construction (CL-103) — email link must route 
     const parsed = new URL(capturedUrl);
     expect(parsed.searchParams.has("token")).toBe(true);
     expect(parsed.searchParams.get("token")!.length).toBeGreaterThan(0);
-    expect(parsed.searchParams.get("callbackURL")).toBe(
-      "https://example.com/projects/p1",
-    );
+    // CL-105: guardedSendMagicLink rewrites callbackURL ke /login/verify untuk
+    // menghindari Vercel CDN yang men-strip Set-Cookie dari 302 redirect.
+    const rewrittenCallback = new URL(parsed.searchParams.get("callbackURL")!);
+    expect(rewrittenCallback.pathname).toBe("/login/verify");
+    expect(rewrittenCallback.searchParams.get("returnTo")).toBe("/projects/p1");
   });
 });

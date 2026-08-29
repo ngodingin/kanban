@@ -4,6 +4,7 @@ import { Header } from "@/components/layout/header";
 import { Sidebar } from "@/components/layout/sidebar";
 import { SessionGate } from "@/components/auth/session-gate";
 import { LoginPage } from "./features/auth/login-page";
+import { LoginPageVerify } from "./features/auth/login-page-verify";
 import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
 import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecentProjectIds } from "./features/home/recent";
 import { CommandPalette } from "./components/navigation/command-palette";
@@ -100,6 +101,11 @@ export default function App() {
     <Routes>
       {/* Layar autentikasi standalone — tanpa app shell (05-FRONTEND §5). */}
       <Route path="/login" element={<LoginPage />} />
+      {/* 7.15.0 CL-105 — magic link verify callback tanpa redirect 302.
+          Route ini dipanggil oleh email link setelah guardedSendMagicLink
+          me-rewrite callbackURL ke /login/verify. Session cookie di-set oleh
+          response 200 (bukan 302 redirect yang di-strip Vercel). */}
+      <Route path="/login/verify" element={<LoginPageVerify />} />
 
       <Route
         path="/*"

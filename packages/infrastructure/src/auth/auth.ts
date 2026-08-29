@@ -52,10 +52,51 @@ async function defaultSendMagicLink(data: SendMagicLinkData): Promise<void> {
  * (03-ENG A.14): client tetap dapat respons sukses standar Better Auth
  * dari sisi API (token benar dibuat), walau email fisiknya gagal terkirim.
  */
+/**
+ * Vercel CDN men-strip header Set-Cookie dari response 302 redirect. Akibatnya,
+ * magic link callback yang menggunakan redirect kehilangan session cookie di
+ * runtime Vercel (works locally, fails on staging — QA-CL-69/70/71).
+ *
+ * Solusi: rewrite callbackURL pada email agar mengarah ke route frontend
+ * `/login/verify` (bukan callbackURL asli). Frontend memanggil API verify
+ * tanpa callbackURL → response 200 JSON + Set-Cookie (cookie TIDAK hilang
+ * pada response 200), lalu redirect client-side ke tujuan asli.
+ *
+ * Flow:
+ *   1. Login page: signIn({ email, callbackURL: "https://host/projects/p1" })
+ *   2. Guard ini rewrite callbackURL → "https://host/login/verify?returnTo=/projects/p1"
+ *   3. Email berisi link ke /api/auth/magic-link/verify?token=...&callbackURL=...
+ *   4. User klik link → Better Auth creates session + Set-Cookie, redirects 302
+ *   5. Vercel strips Set-Cookie dari 302 → browser tiba di /login/verify TANPA cookie
+ *   6. /login/verify memanggil GET /api/auth/magic-link/verify?token=... (tanpa callbackURL)
+ *      → response 200 JSON + Set-Cookie → cookie TERSET (200, bukan 302)
+ *   7. Frontend redirect client-side ke returnTo (sudah punya session)
+ */
+function rewriteCallbackUrl(data: SendMagicLinkData): void {
+  try {
+    const url = new URL(data.url);
+    const rawCallback = url.searchParams.get("callbackURL");
+    if (!rawCallback) return;
+
+    const callbackUrl = new URL(rawCallback);
+    const returnTo = callbackUrl.pathname + callbackUrl.search + callbackUrl.hash;
+
+    const frontendVerify = new URL("/login/verify", data.url);
+    frontendVerify.searchParams.set("returnTo", returnTo);
+    url.searchParams.set("callbackURL", frontendVerify.toString());
+    data.url = url.toString();
+  } catch {
+    // Jika rewrite gagal (URL malformed), biarkan callbackURL asli.
+    // Verify endpoint akan tetap redirect ke callbackURL asli — fallback ke
+    // behavior Better Auth default (akan gagal di Vercel, tapi tidak crash).
+  }
+}
+
 function guardedSendMagicLink(
   impl: (data: SendMagicLinkData) => Promise<void>,
 ): (data: SendMagicLinkData) => Promise<void> {
   return async (data) => {
+    rewriteCallbackUrl(data);
     try {
       await impl(data);
     } catch (error) {

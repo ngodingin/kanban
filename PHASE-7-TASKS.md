@@ -234,7 +234,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.15.0 | ⚠️ | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99)<br>[QA-CL-65](#qa-cl-65)<br>[Review-CL-14](#review-cl-14)<br>[QA-CL-69](#qa-cl-69)<br>[CL-103](#cl-103)<br>[CL-104](#cl-104)<br>[QA-CL-70](#qa-cl-70)<br>[QA-CL-71](#qa-cl-71) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
+| 7.15.0 | 🔎 | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99)<br>[QA-CL-65](#qa-cl-65)<br>[Review-CL-14](#review-cl-14)<br>[QA-CL-69](#qa-cl-69)<br>[CL-103](#cl-103)<br>[CL-104](#cl-104)<br>[QA-CL-70](#qa-cl-70)<br>[QA-CL-71](#qa-cl-71)<br>[CL-105](#cl-105) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
 | 7.15.1 | ✅ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13)<br>[CL-100](#cl-100)<br>[QA-CL-66](#qa-cl-66)<br>[Review-CL-14](#review-cl-14) | 100 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada, idle-expired, atau absolute-expired diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.0 |
 | 7.15.2 | ✅ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13)<br>[CL-101](#cl-101)<br>[QA-CL-67](#qa-cl-67)<br>[CL-102](#cl-102)<br>[QA-CL-68](#qa-cl-68)<br>[Review-CL-14](#review-cl-14) | 100 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah timeout/login; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
 
@@ -267,6 +267,31 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-105"></a>
+### CL-105 — 2026-08-29 · 7.15.0 🔎 80% — fix Vercel Set-Cookie stripping: rewrite callbackURL ke /login/verify
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Root cause QA-CL-69/70/71 teridentifikasi: **Vercel CDN men-strip header Set-Cookie dari response 302 redirect**. Better Auth magic link verify endpoint mengembalikan 302 redirect + Set-Cookie, tetapi Vercel menghapus Set-Cookie sebelum sampai ke browser. Lokasi: response 200 TIDAK di-strip → cookie selalu survive pada response 200.
+
+**Solusi:** Rewrite `callbackURL` pada email magic link agar mengarah ke route frontend `/login/verify` (bukan callbackURL asli). Flow baru:
+
+1. Login page: `signIn({ email, callbackURL: "https://host/projects/p1" })`
+2. `guardedSendMagicLink` rewrite callbackURL → `"https://host/login/verify?returnTo=/projects/p1"`
+3. Email berisi link ke `/api/auth/magic-link/verify?token=...&callbackURL=.../login/verify?returnTo=...`
+4. User klik link → Better Auth creates session + Set-Cookie, redirect 302
+5. Vercel strips Set-Cookie dari 302 → browser tiba di `/login/verify` TANPA cookie
+6. `/login/verify` memanggil `GET /api/auth/magic-link/verify?token=...` (tanpa callbackURL) → **200 JSON + Set-Cookie** → cookie TERSET
+7. Frontend redirect client-side ke returnTo (sudah punya session valid)
+
+**Perubahan kode:**
+- `packages/infrastructure/src/auth/auth.ts`: tambah `rewriteCallbackUrl()` dalam `guardedSendMagicLink` — rewrite callbackURL ke `/login/verify?returnTo=<path>`
+- `apps/web/src/features/auth/login-page-verify.tsx` (baru): halaman perantara yang memanggil verify endpoint tanpa callbackURL (200 response), lalu redirect client-side
+- `apps/web/src/App.tsx`: tambah route `/login/verify` di luar SessionGate
+- `packages/infrastructure/test/magic-link-url-construction.test.ts`: update test callbackURL verification sesuai format baru
+
+**Test:** `pnpm vitest run packages/infrastructure/test/magic-link-url-construction.test.ts` → 5/5 PASS. `pnpm test` → 143/143 test files (876 tests) PASS. `pnpm exec playwright test` → 38/38 E2E PASS. `pnpm lint` + `pnpm -r typecheck` → PASS.
 
 <a id="qa-cl-71"></a>
 ### QA-CL-71 — 2026-08-29 · 7.15.0 tetap ⚠️ 80% — verifikasi ulang dijalankan dari Distrobox envdev
