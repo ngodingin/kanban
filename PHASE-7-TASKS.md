@@ -182,7 +182,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.12.1 | 🔎 | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89)<br>[QA-CL-57](#qa-cl-57)<br>[CL-90](#cl-90)<br>[QA-CL-58](#qa-cl-58)<br>[CL-91](#cl-91)<br>[QA-CL-59](#qa-cl-59)<br>[CL-92](#cl-92) | 80 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.12.1 | ⚠️ | [CL-62](#cl-62)<br>[CL-64](#cl-64)<br>[QA-CL-49](#qa-cl-49)<br>[CL-83](#cl-83)<br>[QA-CL-50](#qa-cl-50)<br>[CL-84](#cl-84)<br>[QA-CL-51](#qa-cl-51)<br>[CL-85](#cl-85)<br>[QA-CL-53](#qa-cl-53)<br>[CL-86](#cl-86)<br>[QA-CL-54](#qa-cl-54)<br>[CL-87](#cl-87)<br>[QA-CL-55](#qa-cl-55)<br>[CL-88](#cl-88)<br>[QA-CL-56](#qa-cl-56)<br>[CL-89](#cl-89)<br>[QA-CL-57](#qa-cl-57)<br>[CL-90](#cl-90)<br>[QA-CL-58](#qa-cl-58)<br>[CL-91](#cl-91)<br>[QA-CL-59](#qa-cl-59)<br>[CL-92](#cl-92)<br>[QA-CL-60](#qa-cl-60) | 75 | P3 | ⌘K: navigasi (Project/Board/My Tasks) + aksi (Create/Move/Archive Card) | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.3.1 |
 
 **Test:** Aksi command memanggil domain command yang benar (bukan shortcut yang mem-bypass rule).
 **DoD:** Command palette berfungsi & konsisten dengan permission/lifecycle.
@@ -235,6 +235,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-60"></a>
+### QA-CL-60 — 2026-08-29 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 75%) — guard lifecycle masih fail-open dan melewatkan List
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti yang lulus:** `pnpm vitest run apps/web/test/card-detail-move.test.tsx apps/web/test/command-palette.test.tsx apps/web/test/board-dnd.test.tsx apps/web/test/lifecycle-guards.test.tsx` → **27/27 PASS**; `pnpm run lint`, `pnpm run typecheck`, dan `pnpm --filter @kanban/web build` semuanya lulus. Test baru membuktikan Board, Milestone, dan Project yang inactive meniadakan command.
+
+**Kegagalan lifecycle:** `isEffectivelyActive()` menganggap Board/Milestone/Project yang belum tersedia dari query sebagai aktif (hanya menolak bila field timestamp pada data yang ada bernilai truthy). Jadi pada fase loading/error query, command mutation tetap didaftarkan tanpa bukti seluruh ancestor ACTIVE. Selain itu, chain Card → **List** → Board → Milestone → Project tidak memeriksa lifecycle List asal, padahal List adalah ancestor langsung Card.
+
+**Tindakan Dev yang diperlukan:** jadikan guard fail-closed sampai Card, List, Board, Milestone, dan Project berhasil dimuat dan seluruhnya local-ACTIVE; gunakan helper lifecycle yang konsisten bila tersedia. Tambah test negatif untuk List archived/deleted serta data ancestor belum tersedia/error, dan buktikan command tidak terdaftar maupun mutation tidak terpanggil. Jangan mengubah SOT.
+
+**Verdict:** `⚠️ 75%` — fitur dan sebagian besar guard sudah berfungsi, tetapi DoD lifecycle belum terpenuhi secara lengkap.
 
 <a id="qa-cl-59"></a>
 ### QA-CL-59 — 2026-08-29 · goal 7.12.1 gagal verifikasi ulang (🔎 80% → ⚠️ 80%) — effective ancestor state belum dijaga
