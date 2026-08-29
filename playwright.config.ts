@@ -13,9 +13,9 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "pnpm --filter @kanban/api build && pnpm --filter @kanban/api start",
+    command: "pnpm tsx scripts/playwright-server.ts",
     url: `http://localhost:${port}/api/v1/health`,
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    timeout: 120_000,
   },
 });

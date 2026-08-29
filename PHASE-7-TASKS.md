@@ -40,8 +40,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | ⚠️ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[Review-CL-08](#review-cl-08) | 75 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
-| 7.1.2 | ⚠️ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04)<br>[Review-CL-08](#review-cl-08) | 75 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.1 | 🔎 | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[Review-CL-08](#review-cl-08)<br>[CL-95](#cl-95) | 80 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.2 | 🔎 | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04)<br>[Review-CL-08](#review-cl-08)<br>[CL-95](#cl-95) | 80 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ✅ | [QA-CL-03](#qa-cl-03)<br>[Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 100 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ✅ | [QA-CL-04](#qa-cl-04)<br>[CL-07](#cl-07)<br>[CL-08](#cl-08) | 100 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
@@ -641,6 +641,39 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-95"></a>
+### CL-95 — 2026-08-29 · goals 7.1.1/7.1.2 → 🔎 80% — Playwright E2E for SPA routing + Magic Link UI
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per Review-CL-08: E2E coverage hanya ada health API spec; SPA routing dan Magic Link UI belum teruji. Perbaikan:
+
+1. **Playwright server** — `scripts/playwright-server.ts` dibuat: serves Vite production build + Hono API pada satu origin (port 3100). `createApiApp()` dengan mock `sendMagicLink` dijalankan in-process; static files dilayani dari `apps/web/dist/`.
+
+2. **playwright.config.ts** — diupdate untuk menggunakan `pnpm tsx scripts/playwright-server.ts` sebagai `webServer` command, membangun web jika belum ada.
+
+3. **SPA routing spec** — `e2e/spa-routing.spec.ts` (7 tests):
+   - Root `/` returns HTML app shell
+   - SPA deep link `/projects/p1/milestones/m1/boards/b1` returns HTML
+   - SPA deep link `/login` returns HTML
+   - Unknown SPA route returns HTML fallback
+   - `/api/*` does NOT return HTML fallback (returns JSON 404)
+   - `/api/v1/health` returns JSON
+   - Static assets served from filesystem
+
+4. **Magic Link UI spec** — `e2e/magic-link-ui.spec.ts` (8 tests):
+   - Login page renders email form without password/social
+   - Submit shows "Tautan sudah dikirim" state
+   - Submit button transitions from submitting to sent
+   - `?error=INVALID_TOKEN` shows expired/used message
+   - Error response shows generic message without account enumeration
+   - Form has no password input
+   - Powered by footer visible
+
+5. **Playwright browser install** — Chromium headless shell installed with system deps.
+
+`pnpm vitest run` → **140 file / 841 test PASS**. `pnpm test:e2e` → **15/15 PASS**. `pnpm run lint` + `pnpm run typecheck` → PASS.
 
 <a id="cl-94"></a>
 ### CL-94 — 2026-08-29 · goal 7.12.1 → 🔎 80% — List ancestor lifecycle validation
