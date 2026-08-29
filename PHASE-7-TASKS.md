@@ -40,8 +40,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.1.1 | ⚠️ | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[Review-CL-08](#review-cl-08)<br>[CL-95](#cl-95)<br>[Review-CL-09](#review-cl-09) | 75 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
-| 7.1.2 | ⚠️ | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04)<br>[Review-CL-08](#review-cl-08)<br>[CL-95](#cl-95)<br>[Review-CL-09](#review-cl-09) | 75 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
+| 7.1.1 | 🔎 | [QA-CL-01](#qa-cl-01)<br>[CL-01](#cl-01)<br>[CL-02](#cl-02)<br>[Review-CL-08](#review-cl-08)<br>[CL-95](#cl-95)<br>[Review-CL-09](#review-cl-09)<br>[CL-96](#cl-96) | 80 | P0 | Bootstrap `apps/web` dari nol (saat ini hanya placeholder) dengan exact-pinned React 19.2.x/Vite 8.x + React Router 8.x + Tailwind 4.x/shadcn 4.x sesuai baseline A.8 (direvalidasi terhadap npm registry 2026-08-25, lihat [Review-CL-05](#review-cl-05) — semua cocok, tanpa revisi) | [03-ENG A.7–A.8](docs/03-ENGINEERING.md), [05-FRONTEND §3](docs/05-FRONTEND.md) | — |
+| 7.1.2 | 🔎 | [QA-CL-02](#qa-cl-02)<br>[CL-03](#cl-03)<br>[CL-04](#cl-04)<br>[Review-CL-08](#review-cl-08)<br>[CL-95](#cl-95)<br>[Review-CL-09](#review-cl-09)<br>[CL-96](#cl-96) | 80 | P0 | Bangun UI final Better Auth Magic Link di atas mekanisme Phase 0; tidak menambah password/social provider | [03-ENG A.14](docs/03-ENGINEERING.md), [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 | 7.1.3 | ✅ | [QA-CL-03](#qa-cl-03)<br>[Review-CL-02](#review-cl-02)<br>[CL-05](#cl-05)<br>[CL-06](#cl-06) | 100 | P0 | Setup TanStack Query + same-origin API client layer terpisah dari UI; mutation berisiko tinggi memakai `Idempotency-Key` stabil per logical action dan menangani `IDEMPOTENCY_CONFLICT`/`IDEMPOTENCY_IN_PROGRESS` tanpa membuat side-effect kedua | [05-FRONTEND §3.2](docs/05-FRONTEND.md), [02-SPEC C.3](docs/02-SPEC.md) | 7.1.1 |
 | 7.1.4 | ✅ | [QA-CL-04](#qa-cl-04)<br>[CL-07](#cl-07)<br>[CL-08](#cl-08) | 100 | P1 | Batasi Zustand ke UI/interaction state saja | [05-FRONTEND §3.1](docs/05-FRONTEND.md) | 7.1.1 |
 
@@ -654,6 +654,33 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Tindakan Dev yang diperlukan:** validasi resource scope Project/Milestone/Board/List/Card terhadap Project DB dan hierarchy Project terkini sebelum assignment/invitation disimpan; tolak missing, type-mismatch, atau lintas-Project. Perbarui test lama yang tadinya hanya menguji penolakan scope non-project menjadi test positif lima scope valid dan negatif resource palsu/type-mismatch/lintas-Project untuk Group, direct Permission, dan invitation. Jangan mengubah SOT. Setelah semua test hijau, mulai ulang dari `⚠️` sesuai Gate A.
 
 **Verdict:** `⚠️ 40%`. Endpoint katalog siap, tetapi separuh deliverable—scoped assignment yang aman dan patuh hierarchy—belum benar dan menimbulkan regression.
+
+<a id="cl-96"></a>
+### CL-96 — 2026-08-29 · goals 7.1.1/7.1.2 → 🔎 80% — always rebuild + board domain flow E2E
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Per Review-CL-09: (1) `ensureBuild()` hanya membangun Vite bila `dist/index.html` belum ada — Playwright dapat menguji bundle stale. (2) Tidak ada spec browser yang menjalankan alur UI domain yang memanggil API domain.
+
+Perbaikan:
+
+1. **`ensureBuild()` always rebuilds** — hapus kondisi `existsSync` guard; server selalu menjalankan `pnpm --filter @kanban/web run build` sebelum listen, menjamin bundle yang diuji adalah source/commit terkini.
+
+2. **Board domain flow E2E** — `e2e/board-domain-flow.spec.ts` (8 tests):
+   - Board view renders List columns from API response
+   - Board view renders Cards within each List from API response
+   - Card count displays correctly per List
+   - Click Card opens detail panel with description
+   - Move Card via palette calls `/cards/:id/move` with correct `{ destinationListId, expectedVersion }` payload
+   - VERSION_CONFLICT move is handled — picker stays open, no crash
+   - Failed lists API shows error in console
+   - Empty board shows no list columns
+
+3. **API stubs** — Playwright route stubs untuk lists, cards, card detail, board, milestone, project, list title, move, dan activities — semua sesuai contract 02-SPEC C.8.
+
+4. **dnd-kit workaround** — Klik card menggunakan `locator.evaluate(el => el.click())` untuk bypass pointer event interception dnd-kit.
+
+`pnpm vitest run` → **140 file / 841 test PASS**. `pnpm test:e2e` → **23/23 PASS**. `pnpm run lint` + `pnpm run typecheck` → PASS.
 
 <a id="cl-95"></a>
 ### CL-95 — 2026-08-29 · goals 7.1.1/7.1.2 → 🔎 80% — Playwright E2E for SPA routing + Magic Link UI

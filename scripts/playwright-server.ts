@@ -1,6 +1,5 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
 import { extname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { createApiApp } from "../apps/api/src/index.ts";
@@ -11,14 +10,12 @@ const port = Number(new URL(ORIGIN).port) || 3100;
 const staticDir = resolve(import.meta.dirname, "../apps/web/dist");
 
 async function ensureBuild(): Promise<void> {
-  if (!existsSync(resolve(staticDir, "index.html"))) {
-    const built = spawnSync("pnpm", ["--filter", "@kanban/web", "run", "build"], {
-      cwd: resolve(import.meta.dirname, ".."),
-      stdio: "inherit",
-    });
-    if (built.status !== 0) {
-      throw new Error(`[playwright-server] build @kanban/web gagal (exit ${built.status})`);
-    }
+  const built = spawnSync("pnpm", ["--filter", "@kanban/web", "run", "build"], {
+    cwd: resolve(import.meta.dirname, ".."),
+    stdio: "inherit",
+  });
+  if (built.status !== 0) {
+    throw new Error(`[playwright-server] build @kanban/web gagal (exit ${built.status})`);
   }
 }
 
