@@ -61,6 +61,22 @@ async function main() {
         return;
       }
       const pathname = new URL(req.url ?? "/", ORIGIN).pathname;
+
+      // Test-only endpoint: expose captured magic link URLs for E2E verification.
+      // This is ONLY available on the playwright test server, never on production.
+      if (pathname === "/__test/captured-urls") {
+        const body = JSON.stringify({ urls: captured });
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end(body);
+        return;
+      }
+      if (pathname === "/__test/captured-urls/reset") {
+        captured.length = 0;
+        res.writeHead(200, { "content-type": "application/json" });
+        res.end('{"ok":true}');
+        return;
+      }
+
       if (pathname.startsWith("/api/")) {
         const chunks: Buffer[] = [];
         for await (const chunk of req) chunks.push(chunk as Buffer);

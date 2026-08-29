@@ -13,9 +13,14 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: "pnpm tsx scripts/playwright-server.ts",
+    command: "pnpm tsx --env-file-if-exists=.env scripts/playwright-server.ts",
     url: `http://localhost:${port}/api/v1/health`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET ?? "e2e-test-secret-at-least-32-characters-long!",
+      BETTER_AUTH_URL: process.env.BETTER_AUTH_URL ?? `http://localhost:${port}`,
+      MAIL_FROM: process.env.MAIL_FROM ?? "noreply@kanban.ngodingin.xyz",
+    },
   },
 });

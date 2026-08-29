@@ -123,6 +123,43 @@ describe("magic link verify URL construction (CL-103) — email link must route 
     expect(setCookie).toContain("kanban.session_token=");
   });
 
+  it("redirect callback: verify with callbackURL must include Set-Cookie header on redirect response", async () => {
+    let capturedToken = "";
+    const auth = createAuth({
+      globalClient,
+      baseUrl: BASE_URL,
+      secret: "x".repeat(32),
+      sendMagicLink: async (data) => {
+        capturedToken = data.token;
+      },
+    });
+
+    await auth.handler(
+      new Request(`${BASE_URL}/api/auth/sign-in/magic-link`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "redirect-callback@example.com" }),
+      }),
+    );
+
+    // Verify WITH callbackURL → should redirect (302) + Set-Cookie
+    const verifyRes = await auth.handler(
+      new Request(
+        `${BASE_URL}/api/auth/magic-link/verify?token=${encodeURIComponent(capturedToken)}&callbackURL=${encodeURIComponent("https://example.com/projects/p1")}`,
+        { method: "GET" },
+      ),
+    );
+
+    // Should be a redirect
+    expect([301, 302, 303, 307]).toContain(verifyRes.status);
+    const location = verifyRes.headers.get("location") ?? "";
+    expect(location).toContain("example.com");
+
+    // CRITICAL: Set-Cookie must be present on the redirect response
+    const setCookie = verifyRes.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain("kanban.session_token=");
+  });
+
   it("verify URL must include token and callbackURL query params", async () => {
     let capturedUrl = "";
     const auth = createAuth({

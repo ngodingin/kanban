@@ -234,7 +234,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.15.0 | ⚠️ | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99)<br>[QA-CL-65](#qa-cl-65)<br>[Review-CL-14](#review-cl-14)<br>[QA-CL-69](#qa-cl-69)<br>[CL-103](#cl-103) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
+| 7.15.0 | 🔎 | [Review-CL-13](#review-cl-13)<br>[CL-97](#cl-97)<br>[CL-98](#cl-98)<br>[QA-CL-64](#qa-cl-64)<br>[CL-99](#cl-99)<br>[QA-CL-65](#qa-cl-65)<br>[Review-CL-14](#review-cl-14)<br>[QA-CL-69](#qa-cl-69)<br>[CL-103](#cl-103)<br>[CL-104](#cl-104) | 80 | P0 | Tegakkan lifetime session server-side: tambah state idle/absolute pada Global DB, nonaktifkan refresh otomatis Better Auth, tolak serta invalidasi session lama/idle/absolute-expired, dan touch atomik hanya sesudah request domain 2xx yang ditandai aksi pengguna | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG B.2](docs/03-ENGINEERING.md), [03-ENG C.1](docs/03-ENGINEERING.md) | 7.1.2 |
 | 7.15.1 | ✅ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13)<br>[CL-100](#cl-100)<br>[QA-CL-66](#qa-cl-66)<br>[Review-CL-14](#review-cl-14) | 100 | P0 | Buat session gate pada routing web: route aplikasi menunggu pemeriksaan session dan tidak merender shell/data saat pending; session tidak ada, idle-expired, atau absolute-expired diarahkan ke `/login`, sementara `/login` dan callback tetap publik | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.0 |
 | 7.15.2 | ✅ | [Review-CL-12](#review-cl-12)<br>[Review-CL-13](#review-cl-13)<br>[CL-101](#cl-101)<br>[QA-CL-67](#qa-cl-67)<br>[CL-102](#cl-102)<br>[QA-CL-68](#qa-cl-68)<br>[Review-CL-14](#review-cl-14) | 100 | P1 | Simpan dan pulihkan tujuan route aplikasi internal secara aman setelah timeout/login; tujuan kosong/tidak valid memakai fallback `/` dan tidak boleh menghasilkan open redirect | [03-ENG A.14](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md), [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.15.1 |
 
@@ -274,6 +274,36 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Role:** AI-Dev · **Model:** opencode/mimo-v2-free
 
 **Bukti:** Per QA-CL-69: Magic link callback di staging tidak membuat session karena `baseURL` Better Auth diatur sebagai origin saja (`https://kanban-ngodingin.vercel.app`), tanpa prefix `/api/auth`. Better Auth membangun verify URL sebagai `{baseURL}/magic-link/verify` → `/magic-link/verify` yang tidak ada di server (SPA fallback). Perbaikan: `createAuth()` di `packages/infrastructure/src/auth/auth.ts` sekarang meneruskan `baseURL: ${config.baseUrl}/api/auth` sehingga: (1) email verify URL = `https://kanban-ngodingin.vercel.app/api/auth/magic-link/verify` (benar); (2) router Better Auth strip basePath `/api/auth` → cocok internal route. Test URL construction: `pnpm vitest run packages/infrastructure/test/magic-link-url-construction.test.ts` → 4/4 PASS. Regression test real callback (QA-CL-69 requirement): `signInMagicLink` → capture token → `magicLinkVerify` → assert session token + user email + `set-cookie` `kanban.session_token=`. Suite penuh: 143/143 test files (875 tests) PASS; lint + typecheck PASS.
+
+<a id="cl-104"></a>
+### CL-104 — 2026-08-29 · 7.15.0 ⚠️ 80% — investigasi root cause: flow lokal sempurna, issue staging Vercel-specific
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** Investigasi mendalam root cause QA-CL-69 (staging callback tidak membuat session):
+
+1. **Playwright E2E test baru** (`e2e/magic-link-callback.spec.ts`, 4 test) membuktikan flow callback **berhasil sempurna** melalui stack HTTP lokal (Hono server port 3100):
+   - `sign-in/magic-link` → mock capture URL → `magic-link/verify` → session created + Set-Cookie present ✅
+   - Redirect 302 dengan callbackURL: Set-Cookie **ADA** di response redirect ✅
+   - Full round-trip: sign-in → verify → get-session mengembalikan session valid ✅
+   - Browser flow: cookie disimpan di browser, session aktif setelah redirect ✅
+
+2. **Migration gap ditemukan**: CI pipeline (`ci.yml`) menjalankan `migrate:global` terhadap `file:///tmp/ci-global.db` (SQLite lokal, bukan Turso staging). Global DB staging **tidak dimigrasi otomatis** oleh Vercel deployment. Migrasi manual via `pnpm --filter @kanban/infrastructure migrate:global` diperlukan, menjalankan ke URL Turso dari `.env`.
+
+3. **Kesimpulan**: Issue terisolasi di infrastruktur Vercel. Kode berfungsi benar secara lokal melalui seluruh HTTP stack. Kemungkinan penyebab: (a) Vercel CDN/proxy men-strip Set-Cookie dari response 302 redirect; (b) cookie `__Secure-kanban.session_token` tidak survive redirect di Vercel runtime; atau (c) database staging belum ter-migrasi (kolom `last_activity_at`/`absolute_expires_at` belum ada).
+
+**Test:** `pnpm exec playwright test e2e/magic-link-callback.spec.ts` → 4/4 PASS. `pnpm test` → 143/143 test files (876 tests) PASS. `pnpm lint` + `pnpm -r typecheck` → PASS.
+
+**File berubah:**
+- `e2e/magic-link-callback.spec.ts` (baru): 4 E2E tests untuk full magic link callback flow
+- `scripts/playwright-server.ts`: tambah `/__test/captured-urls` + `/__test/captured-urls/reset` endpoints untuk E2E token capture
+- `playwright.config.ts`: tambah `--env-file-if-exists=.env` + env vars (`BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `MAIL_FROM`) untuk auth handler
+
+**Rekomendasi untuk manusia:**
+- Verifikasi migration staging: jalankan `pnpm --filter @kanban/infrastructure migrate:global` secara lokal (target Turso real) lalu cek kolom `last_activity_at`/`absolute_expires_at` di `auth_sessions`
+- Jika migration sudah benar: test manual di staging dengan browser DevTools Network tab — cek Set-Cookie header pada response `/api/auth/magic-link/verify`
+- Jika Set-Cookie hilang di response Vercel: issue di Vercel CDN/edge, bukan di kode
+- Pertimbangkan alternatif: gunakan JSON response (tanpa callbackURL) lalu client-side redirect dengan cookie handling
 
 <a id="review-cl-15"></a>
 ### Review-CL-15 — 2026-08-29 · TASK-7.16 digenerate — E2E staging flow bisnis MVP
