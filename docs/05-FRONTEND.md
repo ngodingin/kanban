@@ -2,7 +2,7 @@
 
 > Status: **Gate dibuka 2026-08-25.** Pekerjaan frontend ([PHASE-7-TASKS.md](../PHASE-7-TASKS.md)) sekarang actionable — lihat Review-CL-05 di file itu.
 > Related: 01-PRODUCT.md, 02-SPEC.md, 03-ENGINEERING.md, 04-DELIVERY.md (Part A UX Flows)
-> SOT version: 4.1.1
+> SOT version: 4.2.0
 
 ---
 

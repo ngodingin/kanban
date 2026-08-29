@@ -1,6 +1,6 @@
 # Phase 0 — Foundation · Task & Goal Breakdown
 
-> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.0; current SOT version: 4.1.1.
+> Generated per [04-DELIVERY C.6](docs/04-DELIVERY.md). Generated at SOT version: 4.1.0; current SOT version: 4.2.0.
 > Scope batas: [04-DELIVERY C.1 "Phase 0"](docs/04-DELIVERY.md). Acuan utama: [03-ENGINEERING Part A/B/D](docs/03-ENGINEERING.md) + [02-SPEC C.2](docs/02-SPEC.md).
 > **Konteks:** implementasi MVP berjalan; Phase 0 aktif kembali untuk remediation lintas-fase setelah audit terhadap SOT terkini. State aktual wajib dibaca dari Git dan tabel goal. File ini working list, **terpisah dari SOT**.
 >
@@ -349,6 +349,15 @@ Status dan `%` pada level **Task** tidak disimpan atau diedit manual. Keduanya d
 ## Closure Log
 
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Setiap entry `⚠️`/`⏸️` wajib mencantumkan alasan.
+
+<a id="review-cl-26"></a>
+### Review-CL-26 — 2026-08-29 · audit penutupan MVP — sinkronisasi metadata SOT 4.2.0
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** `docs/01-PRODUCT.md` menetapkan `SPEC_VERSION = 4.2.0`; seluruh 221 goal Phase 0–7 terhitung `✅ 100%`; audit QA terkini menjalankan 841 test unit/integrasi, 23 Playwright E2E production, lint, typecheck, build, dan release-check tanpa kegagalan.
+
+**Review:** Header Phase 0 masih menyebut SOT terkini 4.1.1. Diselaraskan ke 4.2.0; ini metadata current-version, bukan bukti historis. Tidak ada perubahan business invariant, authorization, lifecycle, API behavior, atau data-model semantics; `SPEC_VERSION` tidak dinaikkan dan tidak ada Status/% goal yang berubah.
 
 <a id="review-cl-25"></a>
 ### Review-CL-25 — 2026-08-28 · review metadata versi SOT Phase 0 terhadap SPEC_VERSION 4.1.1

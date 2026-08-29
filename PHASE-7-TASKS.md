@@ -144,7 +144,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
+| 7.9.0 | ✅ | [Review-CL-06](#review-cl-06)<br>[CL-65](#cl-65)<br>[CL-66](#cl-66)<br>[QA-CL-30](#qa-cl-30)<br>[CL-67](#cl-67)<br>[QA-CL-31](#qa-cl-31)<br>[CL-68](#cl-68)<br>[QA-CL-32](#qa-cl-32)<br>[CL-69](#cl-69)<br>[QA-CL-33](#qa-cl-33)<br>[Review-CL-11](#review-cl-11) | 100 | P0 | Implementasikan backend support minimum untuk UI Permission Groups: endpoint read-only katalog Permission `GET /api/v1/projects/:project_id/permissions` returning `{ permissions:[{id,key,description}] }` dan pastikan assignment Group/direct Permission menerima scope Project/Milestone/Board/List/Card sesuai SOT, bukan hanya `project` | [02-SPEC C.12](docs/02-SPEC.md), [02-SPEC A.10–A.11](docs/02-SPEC.md) | 7.3.1 |
 | 7.9.1 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-70](#cl-70)<br>[CL-71](#cl-71)<br>[QA-CL-34](#qa-cl-34)<br>[CL-73](#cl-73)<br>[QA-CL-35](#qa-cl-35)<br>[CL-74](#cl-74)<br>[QA-CL-36](#qa-cl-36) | 100 | P0 | Editor Group + scoped assignment ke Membership (Project/Milestone/Board/List/Card), memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC Part D](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.0 |
 | 7.9.2 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-75](#cl-75)<br>[CL-76](#cl-76)<br>[QA-CL-37](#qa-cl-37)<br>[CL-78](#cl-78)<br>[QA-CL-38](#qa-cl-38) | 100 | P0 | Card visibility: Created (default) / Assigned (created OR assigned) / All | [02-SPEC A.11](docs/02-SPEC.md) | 7.9.1 |
 | 7.9.3 | ✅ | [CL-29](#cl-29)<br>[Review-CL-06](#review-cl-06)<br>[CL-77](#cl-77)<br>[CL-79](#cl-79)<br>[QA-CL-39](#qa-cl-39)<br>[CL-80](#cl-80)<br>[QA-CL-43](#qa-cl-43) | 100 | P0 | Direct Permission scoped + inheritance + additive tanpa DENY, memakai katalog Permission dari endpoint C.12 tanpa hard-code `permissionId` | [02-SPEC A.10](docs/02-SPEC.md), [02-SPEC C.12](docs/02-SPEC.md) | 7.9.1 |
@@ -235,6 +235,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-11"></a>
+### Review-CL-11 — 2026-08-29 · audit penutupan Phase 7/MVP — Exit Criteria terpenuhi, metadata frontend diselaraskan
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Seluruh 39 goal Phase 7 dan 182 goal Phase 0–6 berstatus `✅ 100%`. Audit QA terkini membuktikan 841 test unit/integrasi, 23/23 Playwright E2E production, lint, typecheck, build, serta release-check (5 PASS / 0 FAIL / 1 DEFERRED-by-design). Pemeriksaan lintas-SOT mengonfirmasi C.12 `GET /projects/:project_id/permissions` ada di SPEC, route API, dan hook UI; tidak ada domain field/non-MVP yang ditambahkan pada UI.
+
+**Review:** Exit Criteria Phase 7/MVP terpenuhi. Ditemukan dan diperbaiki metadata non-semantik `docs/05-FRONTEND.md` yang masih menyebut SOT 4.1.1 padahal SOT aktif 4.2.0. Tidak ada perubahan Status/%, perilaku API/domain, atau `SPEC_VERSION`.
 
 <a id="qa-cl-63"></a>
 ### QA-CL-63 — 2026-08-29 · goals 7.1.1/7.1.2 terverifikasi (🔎 80% → ✅ 100%) — Playwright browser E2E production same-origin
