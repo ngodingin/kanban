@@ -29,8 +29,8 @@ afterAll(async () => {
   rmSync(dir, { recursive: true, force: true });
 });
 
-describe("magic link verify URL construction (CL-103) — email link must route through /api/auth/*", () => {
-  it("verify URL in email must contain /api/auth/magic-link/verify path prefix", async () => {
+describe("magic link verify URL construction (CL-103/CL-106) — email link must route to SPA /login/verify", () => {
+  it("email URL must point to SPA /login/verify route (not API endpoint)", async () => {
     let capturedUrl = "";
     const auth = createAuth({
       globalClient,
@@ -50,7 +50,10 @@ describe("magic link verify URL construction (CL-103) — email link must route 
     );
     expect(res.status).toBe(200);
     const parsed = new URL(capturedUrl);
-    expect(parsed.pathname).toBe("/api/auth/magic-link/verify");
+    // CL-106: Email URL di-rewrite ke route SPA (bukan endpoint API) untuk
+    // menghindari token consumption ganda pada Vercel.
+    expect(parsed.pathname).toBe("/login/verify");
+    expect(parsed.searchParams.has("token")).toBe(true);
   });
 
   it("verify URL must be on the same origin as the base URL", async () => {
@@ -160,7 +163,7 @@ describe("magic link verify URL construction (CL-103) — email link must route 
     expect(setCookie).toContain("kanban.session_token=");
   });
 
-  it("verify URL must include token and callbackURL query params", async () => {
+  it("email URL must point to SPA /login/verify route with token and returnTo (CL-106)", async () => {
     let capturedUrl = "";
     const auth = createAuth({
       globalClient,
@@ -182,12 +185,11 @@ describe("magic link verify URL construction (CL-103) — email link must route 
       }),
     );
     const parsed = new URL(capturedUrl);
+    // CL-106: Email URL di-rewrite ke route SPA /login/verify (bukan endpoint API)
+    // untuk menghindari token consumption ganda pada Vercel.
+    expect(parsed.pathname).toBe("/login/verify");
     expect(parsed.searchParams.has("token")).toBe(true);
     expect(parsed.searchParams.get("token")!.length).toBeGreaterThan(0);
-    // CL-105: guardedSendMagicLink rewrites callbackURL ke /login/verify untuk
-    // menghindari Vercel CDN yang men-strip Set-Cookie dari 302 redirect.
-    const rewrittenCallback = new URL(parsed.searchParams.get("callbackURL")!);
-    expect(rewrittenCallback.pathname).toBe("/login/verify");
-    expect(rewrittenCallback.searchParams.get("returnTo")).toBe("/projects/p1");
+    expect(parsed.searchParams.get("returnTo")).toBe("/projects/p1");
   });
 });

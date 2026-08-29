@@ -2,19 +2,17 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { isSafeReturnTo } from "@/components/auth/session-gate";
 
-// 7.15.0 (CL-105) — Halaman perantara untuk magic link callback.
+// 7.15.0 (CL-105/CL-106) — Halaman perantara untuk magic link callback.
 //
-// Vercel CDN men-strip header Set-Cookie dari response 302 redirect. Akibatnya,
-// magic link callback Better Auth (302 redirect + Set-Cookie) kehilangan session
-// cookie di Vercel runtime. Solusi: guardedSendMagicLink (auth.ts) me-rewrite
-// callbackURL email ke /login/verify?returnTo=..., sehingga flow menjadi:
+// Vercel CDN men-strip header Set-Cookie dari response 302 redirect. Solusi:
+// guardedSendMagicLink (auth.ts) me-rewrite URL email ke /login/verify (route
+// SPA), bukan ke endpoint API. Token hanya dikonsumsi SEKALI:
 //
-//   1. Email link → /api/auth/magic-link/verify?token=...&callbackURL=/login/verify?returnTo=...
-//   2. Better Auth creates session, Set-Cookie, redirect 302 → /login/verify
-//   3. Vercel strips Set-Cookie dari 302 → browser tiba di /login/verify TANPA cookie
-//   4. Halaman ini memanggil GET /api/auth/magic-link/verify?token=... (tanpa callbackURL)
+//   1. Email link → /login/verify?token=<raw>&returnTo=<path> (SPA route)
+//   2. SPA load, JavaScript ekstrak token dari URL
+//   3. SPA panggil GET /api/auth/magic-link/verify?token=<raw> (tanpa callbackURL)
 //      → response 200 JSON + Set-Cookie → cookie TERSET (200, bukan 302)
-//   5. Redirect client-side ke returnTo (sudah punya session valid)
+//   4. Redirect client-side ke returnTo (sudah punya session valid)
 
 export function LoginPageVerify() {
   const [searchParams] = useSearchParams();

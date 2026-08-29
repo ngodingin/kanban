@@ -53,42 +53,45 @@ async function defaultSendMagicLink(data: SendMagicLinkData): Promise<void> {
  * dari sisi API (token benar dibuat), walau email fisiknya gagal terkirim.
  */
 /**
- * Vercel CDN men-strip header Set-Cookie dari response 302 redirect. Akibatnya,
- * magic link callback yang menggunakan redirect kehilangan session cookie di
- * runtime Vercel (works locally, fails on staging — QA-CL-69/70/71).
+ * Vercel CDN men-strip header Set-Cookie dari response 302 redirect. Better Auth
+ * magic link verify mengembalikan 302 redirect + Set-Cookie, tetapi Vercel
+ * menghapus Set-Cookie sebelum sampai ke browser (QA-CL-69/70/71).
  *
- * Solusi: rewrite callbackURL pada email agar mengarah ke route frontend
- * `/login/verify` (bukan callbackURL asli). Frontend memanggil API verify
- * tanpa callbackURL → response 200 JSON + Set-Cookie (cookie TIDAK hilang
- * pada response 200), lalu redirect client-side ke tujuan asli.
+ * Solusi: rewrite email URL agar mengarah ke route SPA `/login/verify` (bukan
+ * endpoint API). URL email menjadi:
+ *   https://host/login/verify?token=<raw>&callbackURL=<original>&returnTo=<path>
  *
  * Flow:
- *   1. Login page: signIn({ email, callbackURL: "https://host/projects/p1" })
- *   2. Guard ini rewrite callbackURL → "https://host/login/verify?returnTo=/projects/p1"
- *   3. Email berisi link ke /api/auth/magic-link/verify?token=...&callbackURL=...
- *   4. User klik link → Better Auth creates session + Set-Cookie, redirects 302
- *   5. Vercel strips Set-Cookie dari 302 → browser tiba di /login/verify TANPA cookie
- *   6. /login/verify memanggil GET /api/auth/magic-link/verify?token=... (tanpa callbackURL)
+ *   1. User klik link email → browser navigasi ke /login/verify (SPA)
+ *   2. SPA load, JavaScript ekstrak token + returnTo dari URL
+ *   3. SPA panggil GET /api/auth/magic-link/verify?token=<raw> (tanpa callbackURL)
  *      → response 200 JSON + Set-Cookie → cookie TERSET (200, bukan 302)
- *   7. Frontend redirect client-side ke returnTo (sudah punya session)
+ *   4. SPA redirect client-side ke returnTo (sudah punya session valid)
+ *
+ * Token hanya dikonsumsi SEKALI (saat SPA panggil API), tidak ada 302 redirect
+ * yang mengonsumsi token tapi kehilangan cookie.
  */
-function rewriteCallbackUrl(data: SendMagicLinkData): void {
+function rewriteEmailUrl(data: SendMagicLinkData): void {
   try {
-    const url = new URL(data.url);
-    const rawCallback = url.searchParams.get("callbackURL");
-    if (!rawCallback) return;
+    const raw = data.url.startsWith("http") ? data.url : `http://placeholder${data.url}`;
+    const url = new URL(raw);
+    const callbackRaw = url.searchParams.get("callbackURL");
 
-    const callbackUrl = new URL(rawCallback);
-    const returnTo = callbackUrl.pathname + callbackUrl.search + callbackUrl.hash;
+    let returnTo = "/";
+    if (callbackRaw) {
+      const cbUrl = callbackRaw.startsWith("http")
+        ? new URL(callbackRaw)
+        : new URL(callbackRaw, url.origin);
+      returnTo = cbUrl.pathname + cbUrl.search + cbUrl.hash;
+    }
 
-    const frontendVerify = new URL("/login/verify", data.url);
-    frontendVerify.searchParams.set("returnTo", returnTo);
-    url.searchParams.set("callbackURL", frontendVerify.toString());
-    data.url = url.toString();
+    const origin = data.url.startsWith("http") ? url.origin : "";
+    const spaUrl = new URL(`${origin}/login/verify`);
+    spaUrl.searchParams.set("token", data.token);
+    spaUrl.searchParams.set("returnTo", returnTo);
+    data.url = spaUrl.toString();
   } catch {
-    // Jika rewrite gagal (URL malformed), biarkan callbackURL asli.
-    // Verify endpoint akan tetap redirect ke callbackURL asli — fallback ke
-    // behavior Better Auth default (akan gagal di Vercel, tapi tidak crash).
+    // Jika rewrite gagal, biarkan URL asli.
   }
 }
 
@@ -96,7 +99,7 @@ function guardedSendMagicLink(
   impl: (data: SendMagicLinkData) => Promise<void>,
 ): (data: SendMagicLinkData) => Promise<void> {
   return async (data) => {
-    rewriteCallbackUrl(data);
+    rewriteEmailUrl(data);
     try {
       await impl(data);
     } catch (error) {

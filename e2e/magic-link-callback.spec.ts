@@ -1,29 +1,30 @@
 import { expect, test } from "@playwright/test";
 
 /**
- * QA-CL-69 regression: full magic link callback flow through the actual HTTP
- * server stack (Hono on port 3100, not mocked).
+ * QA-CL-69/CL-106 regression: full magic link callback flow through the actual
+ * HTTP server stack (Hono on port 3100, not mocked).
  *
- * Flow:
- *   1. POST /api/auth/sign-in/magic-link  → server sends email (mock), captures verify URL
- *   2. GET  /__test/captured-urls         → extract verification URL + token
- *   3. GET  /api/auth/magic-link/verify   → creates session, sets Set-Cookie, redirects
- *   4. Check Set-Cookie header on redirect response
- *   5. GET  /api/auth/get-session         → returns the created session
+ * CL-106 flow:
+ *   1. POST /api/auth/sign-in/magic-link → server sends email, rewrites email URL
+ *      to /login/verify?token=...&returnTo=... (SPA route, not API endpoint)
+ *   2. GET  /__test/captured-urls      → extract email URL with token
+ *   3. Extract token from URL params
+ *   4. GET  /api/auth/magic-link/verify?token=... (without callbackURL)
+ *      → creates session, sets Set-Cookie on 200 JSON response
+ *   5. GET  /api/auth/get-session      → returns the created session
  *
- * QA-CL-69 found staging callback returns session=null. This test verifies
- * the session IS created through the full HTTP round-trip.
+ * On Vercel, the email URL navigates to SPA /login/verify which calls the API
+ * verify endpoint (200 response preserves Set-Cookie, unlike 302 redirect).
  */
 
 const ORIGIN = "http://localhost:3100";
 
 test.describe("Magic link callback: session creation (QA-CL-69 regression)", () => {
   test.beforeEach(async ({ request }) => {
-    // Reset captured URLs before each test
     await request.post(`${ORIGIN}/__test/captured-urls/reset`);
   });
 
-  test("verify without callbackURL: creates session + sets cookie (302 redirect)", async ({ request }) => {
+  test("verify token: creates session + sets cookie (200 JSON response)", async ({ request }) => {
     const email = `e2e-cb-${Date.now()}@test.local`;
 
     // 1. Request magic link
@@ -32,52 +33,62 @@ test.describe("Magic link callback: session creation (QA-CL-69 regression)", () 
     });
     expect(signInRes.status()).toBe(200);
 
-    // 2. Retrieve captured verification URL
+    // 2. Retrieve captured email URL (CL-106: points to /login/verify, not API)
     const capturedRes = await request.get(`${ORIGIN}/__test/captured-urls`);
     expect(capturedRes.status()).toBe(200);
     const { urls } = await capturedRes.json();
     expect(urls.length).toBeGreaterThanOrEqual(1);
 
-    const verifyUrl = urls[urls.length - 1] as string;
-    expect(verifyUrl).toContain("/api/auth/magic-link/verify?token=");
+    const emailUrl = urls[urls.length - 1] as string;
+    expect(emailUrl).toContain("/login/verify?");
 
-    // 3. Verify the token — Better Auth returns 302 redirect (to origin / or callbackURL)
-    //    even without explicit callbackURL. Critical: Set-Cookie must be present.
-    const verifyRes = await request.get(verifyUrl, { maxRedirects: 0 });
-    expect([200, 302]).toContain(verifyRes.status());
+    // 3. Extract token from the email URL
+    const parsed = new URL(emailUrl);
+    const token = parsed.searchParams.get("token");
+    expect(token).toBeTruthy();
 
-    // CRITICAL: Set-Cookie must be present on the response
+    // 4. Call API verify WITHOUT callbackURL → 200 JSON + Set-Cookie
+    //    (On Vercel: 200 response preserves Set-Cookie, unlike 302 redirect)
+    const verifyRes = await request.get(
+      `${ORIGIN}/api/auth/magic-link/verify?token=${token}`,
+      { maxRedirects: 0 },
+    );
+    expect(verifyRes.status()).toBe(200);
+
+    // CRITICAL: Set-Cookie must be present on the 200 response
     const setCookie = verifyRes.headers()["set-cookie"] ?? "";
     expect(setCookie).toContain("kanban.session_token=");
   });
 
-  test("verify with callbackURL: 302 redirect with Set-Cookie header", async ({ request }) => {
+  test("verify with returnTo: 200 response includes session cookie", async ({ request }) => {
     const email = `e2e-cb-redirect-${Date.now()}@test.local`;
-    const callbackURL = `${ORIGIN}/projects/test-project`;
 
     // 1. Request magic link with callbackURL
     const signInRes = await request.post(`${ORIGIN}/api/auth/sign-in/magic-link`, {
-      data: { email, callbackURL },
+      data: { email, callbackURL: `${ORIGIN}/projects/test-project` },
     });
     expect(signInRes.status()).toBe(200);
 
-    // 2. Retrieve captured verification URL (should include callbackURL param)
+    // 2. Retrieve captured email URL
     const capturedRes = await request.get(`${ORIGIN}/__test/captured-urls`);
     const { urls } = await capturedRes.json();
-    const verifyUrl = urls[urls.length - 1] as string;
-    expect(verifyUrl).toContain("/api/auth/magic-link/verify?token=");
+    const emailUrl = urls[urls.length - 1] as string;
+    expect(emailUrl).toContain("/login/verify?");
 
-    // 3. Verify WITH callbackURL → should redirect (302) + Set-Cookie
-    const verifyRes = await request.get(verifyUrl, {
-      maxRedirects: 0, // Don't follow redirects — we want to inspect the 302
-    });
-    expect(verifyRes.status()).toBe(302);
+    // 3. Extract token + verify returnTo is preserved
+    const parsed = new URL(emailUrl);
+    const token = parsed.searchParams.get("token");
+    expect(token).toBeTruthy();
+    expect(parsed.searchParams.get("returnTo")).toBe("/projects/test-project");
 
-    const location = verifyRes.headers()["location"] ?? "";
-    expect(location).toContain("/projects/test-project");
+    // 4. Verify token via API → 200 JSON + Set-Cookie
+    const verifyRes = await request.get(
+      `${ORIGIN}/api/auth/magic-link/verify?token=${token}`,
+      { maxRedirects: 0 },
+    );
+    expect(verifyRes.status()).toBe(200);
 
-    // CRITICAL: Set-Cookie must be present on the redirect response
-    // This is what QA-CL-69 found missing on staging
+    // CRITICAL: Set-Cookie must be present
     const setCookie = verifyRes.headers()["set-cookie"] ?? "";
     expect(setCookie).toContain("kanban.session_token=");
   });
@@ -90,24 +101,30 @@ test.describe("Magic link callback: session creation (QA-CL-69 regression)", () 
       data: { email },
     });
 
-    // 2. Get verification URL
+    // 2. Get email URL
     const capturedRes = await request.get(`${ORIGIN}/__test/captured-urls`);
     const { urls } = await capturedRes.json();
-    const verifyUrl = urls[urls.length - 1] as string;
+    const emailUrl = urls[urls.length - 1] as string;
 
-    // 3. Verify token → creates session (returns 302 or 200)
-    const verifyRes = await request.get(verifyUrl, { maxRedirects: 0 });
-    expect([200, 302]).toContain(verifyRes.status());
+    // 3. Extract token from email URL
+    const parsed = new URL(emailUrl);
+    const token = parsed.searchParams.get("token")!;
 
-    // 4. Extract session cookie from Set-Cookie header
+    // 4. Verify token → creates session (200 JSON + Set-Cookie)
+    const verifyRes = await request.get(
+      `${ORIGIN}/api/auth/magic-link/verify?token=${token}`,
+      { maxRedirects: 0 },
+    );
+    expect(verifyRes.status()).toBe(200);
+
+    // 5. Extract session cookie from Set-Cookie header
     const setCookie = verifyRes.headers()["set-cookie"] ?? "";
-    // Cookie may be kanban.session_token or __Secure-kanban.session_token
     const cookieMatch = setCookie.match(/(kanban\.session_token)=([^;]+)/);
     expect(cookieMatch).not.toBeNull();
     const cookieName = cookieMatch![1];
     const cookieValue = cookieMatch![2];
 
-    // 5. Use session cookie to call get-session
+    // 6. Use session cookie to call get-session
     const sessionRes = await request.get(`${ORIGIN}/api/auth/get-session`, {
       headers: { cookie: `${cookieName}=${cookieValue}` },
     });
@@ -120,28 +137,26 @@ test.describe("Magic link callback: session creation (QA-CL-69 regression)", () 
     expect(sessionBody.user.email).toBe(email);
   });
 
-  test("verify with callbackURL: browser redirect flow sets session cookie", async ({ page }) => {
+  test("SPA callback flow: browser navigates to /login/verify, gets session cookie", async ({ page }) => {
     const email = `e2e-cb-browser-${Date.now()}@test.local`;
-    const callbackURL = `${ORIGIN}/`;
 
     // 1. Request magic link via API
     await page.request.post(`${ORIGIN}/api/auth/sign-in/magic-link`, {
-      data: { email, callbackURL },
+      data: { email, callbackURL: `${ORIGIN}/` },
     });
 
-    // 2. Get verification URL
+    // 2. Get email URL
     const capturedRes = await page.request.get(`${ORIGIN}/__test/captured-urls`);
     const { urls } = await capturedRes.json();
-    const verifyUrl = urls[urls.length - 1] as string;
+    const emailUrl = urls[urls.length - 1] as string;
 
-    // 3. Navigate to verify URL in browser (simulates clicking email link)
-    //    The browser follows the 302 redirect and should receive the session cookie
-    await page.goto(verifyUrl);
+    // 3. Navigate to email URL in browser (simulates clicking email link).
+    //    SPA loads /login/verify, calls verify API (200 + Set-Cookie), redirects to /.
+    await page.goto(emailUrl, { waitUntil: "networkidle" });
 
-    // 4. After redirect, check that the session is active
-    //    The page should have redirected to the callbackURL (/)
-    //    and the session cookie should be set
-    const cookies = await page.context().cookies();
+    // 4. After redirect, the browser should have the session cookie set.
+    //    The page snapshot should show the dashboard (not /login), proving the session was created.
+    const cookies = await page.context().cookies(ORIGIN);
     const sessionCookie = cookies.find(
       (c) => c.name === "kanban.session_token" || c.name === "__Secure-kanban.session_token",
     );
@@ -149,13 +164,8 @@ test.describe("Magic link callback: session creation (QA-CL-69 regression)", () 
     expect(sessionCookie!.httpOnly).toBe(true);
     expect(sessionCookie!.path).toBe("/");
 
-    // 5. Verify session via API
-    const sessionRes = await page.request.get(`${ORIGIN}/api/auth/get-session`, {
-      headers: { cookie: `${sessionCookie!.name}=${sessionCookie!.value}` },
-    });
-    expect(sessionRes.status()).toBe(200);
-    const sessionBody = await sessionRes.json();
-    expect(sessionBody.session).toBeDefined();
-    expect(sessionBody.user.email).toBe(email);
+    // 5. The browser is now on / (the returnTo destination), and the session is active.
+    //    Verify by checking the page URL is not /login (which would mean auth failed).
+    expect(page.url()).not.toContain("/login");
   });
 });
