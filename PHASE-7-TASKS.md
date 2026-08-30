@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | ⚠️ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | 🔎 | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ✅ | [CL-63](#cl-63)<br>[CL-65](#cl-65)<br>[QA-CL-46](#qa-cl-46) | 100 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -267,6 +267,26 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="cl-122"></a>
+### CL-122 — 2026-08-30 · goal 7.3.1 remediasi routing — sidebar nav items reachable (⚠️ → 🔄 → 🔎 · 80%)
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2.5-free
+
+**Konteks:** Review-CL-16 (2026-08-30) menurunkan 7.3.1 ke `⚠️` karena sidebar menawarkan nav items (My Tasks, Activity, Members, API Keys, Settings) yang tidak memiliki route di `App.tsx` — komponen ada tapi tidak reachable. Dependency 7.2.1 sudah `✅`.
+
+**Fix:** `apps/web/src/App.tsx` — menambah 5 route baru + 5 page components:
+- `/tasks` → `MyTasksPage` (placeholder, full implementation goal 7.4.1)
+- `/activity` → `ActivityPage` (placeholder, full implementation goal 7.8.1)
+- `/projects/:projectId/members` → `MembersPage` (renders `MembersTable` existing)
+- `/projects/:projectId/api-keys` → `ApiKeysPage` (renders `ApiKeysPanel` existing)
+- `/projects/:projectId/settings` → `SettingsPage` (placeholder)
+
+Import baru: `MembersTable` dari `features/members/members-table.tsx`, `ApiKeysPanel` dari `features/credentials/credential-panels.tsx`. Seluruh route dibungkus `<Shell>` + `<RecordVisit>` (project-scoped) konsisten dengan route existing.
+
+**Bukti:** `pnpm --filter @kanban/web typecheck` → bersih; `npx vitest run apps/web/test/sidebar.test.tsx` → **4/4 PASS** (termasuk guard negatif Inbox + non-MVP regex); `pnpm lint` → 0 error; `pnpm --filter @kanban/web build` → sukses; full suite **145 file / 883 test PASS**.
+
+**Catatan:** Placeholder pages sengaja minimal — implementasi penuh (Your Work panel, Activity timeline, Members table enrichment, Settings) adalah scope goal terpisah (7.4.1, 7.8.1, 7.10.1, dll). Tujuan goal ini adalah memastikan seluruh sidebar nav items memiliki route yang reachable, bukan implementasi fitur lengkap.
 
 <a id="cl-121"></a>
 ### CL-121 — 2026-08-30 · 7.16.1 ⚠️ (tetap) — regresi QA-CL-90: test anon get-session 200 + test negatif sender + normalisasi body

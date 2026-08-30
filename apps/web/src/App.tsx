@@ -6,6 +6,8 @@ import { SessionGate } from "@/components/auth/session-gate";
 import { LoginPage } from "./features/auth/login-page";
 import { LoginPageVerify } from "./features/auth/login-page-verify";
 import { PermissionGroupsEditor } from "./features/permissions/permission-groups-editor";
+import { MembersTable } from "./features/members/members-table";
+import { ApiKeysPanel } from "./features/credentials/credential-panels";
 import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecentProjectIds } from "./features/home/recent";
 import { CommandPalette } from "./components/navigation/command-palette";
 import { useUiStore } from "./lib/ui-store";
@@ -113,10 +115,15 @@ export default function App() {
           <SessionGate>
             <Routes>
               <Route path="/" element={<Shell><Home /></Shell>} />
+              <Route path="/tasks" element={<Shell><MyTasksPage /></Shell>} />
+              <Route path="/activity" element={<Shell><ActivityPage /></Shell>} />
               <Route path="/projects/:projectId" element={<Shell><RecordVisit /><ProjectPlaceholder /></Shell>} />
               <Route path="/projects/:projectId/milestones/:milestoneId" element={<Shell><RecordVisit /><MilestonePlaceholder /></Shell>} />
               <Route path="/projects/:projectId/milestones/:milestoneId/boards/:boardId" element={<Shell><RecordVisit /><BoardPage /></Shell>} />
+              <Route path="/projects/:projectId/members" element={<Shell><RecordVisit /><MembersPage /></Shell>} />
               <Route path="/projects/:projectId/permissions" element={<Shell><RecordVisit /><PermissionsPage /></Shell>} />
+              <Route path="/projects/:projectId/api-keys" element={<Shell><RecordVisit /><ApiKeysPage /></Shell>} />
+              <Route path="/projects/:projectId/settings" element={<Shell><RecordVisit /><SettingsPage /></Shell>} />
               <Route path="*" element={<Shell><NotFound /></Shell>} />
             </Routes>
           </SessionGate>
@@ -137,4 +144,51 @@ function MilestonePlaceholder() {
 function PermissionsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   return <PermissionGroupsEditor projectId={projectId!} />;
+}
+
+function MyTasksPage() {
+  return (
+    <main className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">My Tasks</h1>
+      <p className="text-sm text-muted-foreground">Tugas yang ditugaskan kepada Anda dari seluruh Project.</p>
+    </main>
+  );
+}
+
+function ActivityPage() {
+  return (
+    <main className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">Activity</h1>
+      <p className="text-sm text-muted-foreground">Timeline aktivitas dari seluruh Project.</p>
+    </main>
+  );
+}
+
+function MembersPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  return (
+    <main className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">Members</h1>
+      <MembersTable projectId={projectId} />
+    </main>
+  );
+}
+
+function ApiKeysPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  return (
+    <main className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">API Keys</h1>
+      <ApiKeysPanel projectId={projectId!} />
+    </main>
+  );
+}
+
+function SettingsPage() {
+  return (
+    <main className="p-6">
+      <h1 className="mb-4 text-xl font-semibold">Settings</h1>
+      <p className="text-sm text-muted-foreground">Pengaturan Project.</p>
+    </main>
+  );
 }
