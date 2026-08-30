@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { CANONICAL_ORIGIN, assertStagingOrigin, testNamespace } from "./staging-core.ts";
 
 // TASK-7.16.1a — Hard gate konfigurasi staging harness.
@@ -59,6 +61,15 @@ describe("TASK-7.16.1a — testNamespace", () => {
     const ns1 = testNamespace();
     const ns2 = testNamespace();
     expect(ns1).toBe(ns2);
+  });
+});
+
+describe("TASK-7.16.1a — single source of truth", () => {
+  it("playwright.staging.config.ts import CANONICAL_ORIGIN dari staging-core", () => {
+    const configPath = resolve(import.meta.dirname, "../../../playwright.staging.config.ts");
+    const content = readFileSync(configPath, "utf-8");
+    expect(content).toContain('import { CANONICAL_ORIGIN } from "./e2e/staging/helpers/staging-core.ts"');
+    expect(content).not.toContain("kanban-ngodingin.vercel.app");
   });
 });
 
