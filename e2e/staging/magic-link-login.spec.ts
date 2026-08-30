@@ -31,8 +31,8 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
     const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
     await mailboxPage.close();
 
-    // 1. Buka /login di browser, isi form, submit
-    await page.goto(`${STAGING_ORIGIN}/login`);
+    // 1. Buka /login di browser dengan returnTo, isi form, submit
+    await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
     await page.waitForLoadState("networkidle");
 
     const emailInput = page.locator('input[type="email"], input[name="email"]');
