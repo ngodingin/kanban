@@ -12,6 +12,7 @@ import { useRecentContext, RecentActivityPreview, recordProjectVisit, readRecent
 import { CommandPalette } from "./components/navigation/command-palette";
 import { useUiStore } from "./lib/ui-store";
 import { BoardView } from "./components/kanban/board-view";
+import { NewProjectPage } from "./features/projects/new-project-page";
 
 function RecordVisit() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -117,6 +118,7 @@ export default function App() {
               <Route path="/" element={<Shell><Home /></Shell>} />
               <Route path="/tasks" element={<Shell><MyTasksPage /></Shell>} />
               <Route path="/activity" element={<Shell><ActivityPage /></Shell>} />
+              <Route path="/projects/new" element={<Shell><NewProjectPage /></Shell>} />
               <Route path="/projects/:projectId" element={<Shell><RecordVisit /><ProjectPlaceholder /></Shell>} />
               <Route path="/projects/:projectId/milestones/:milestoneId" element={<Shell><RecordVisit /><MilestonePlaceholder /></Shell>} />
               <Route path="/projects/:projectId/milestones/:milestoneId/boards/:boardId" element={<Shell><RecordVisit /><BoardPage /></Shell>} />
