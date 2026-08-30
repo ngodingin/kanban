@@ -4,12 +4,24 @@ import {
   assertStagingOrigin,
   testNamespace,
 } from "./helpers/staging.ts";
-import { getSession, signOut } from "./helpers/api.ts";
+import { getSession } from "./helpers/api.ts";
 import {
   buildRecipientAddress,
   waitForResendEmail,
   extractTokenFromUrl,
 } from "./helpers/resend.ts";
+
+async function signOutViaBrowser(page: import("@playwright/test").Page): Promise<number> {
+  const status = await page.evaluate(async () => {
+    const res = await fetch("/api/auth/sign-out", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      credentials: "include",
+    });
+    return res.status;
+  });
+  return status;
+}
 
 test.describe("Staging: Magic Link login (7.16.1)", () => {
   test.beforeAll(() => {
@@ -70,11 +82,11 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
       expect(sessionResult.status, "get-session harus 200").toBe(200);
       expect(sessionResult.hasSession, "session harus aktif").toBe(true);
     } finally {
-      // 6. Cleanup: sign-out dijalankan saat fixture request masih aktif.
+      // 6. Cleanup: sign-out via browser context (memiliki origin + cookie benar).
       // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error.
       if (sessionCookie) {
-        const result = await signOut(request, sessionCookie);
-        expect(result.status, "sign-out harus sukses").toBe(200);
+        const status = await signOutViaBrowser(page);
+        expect(status, "sign-out harus sukses").toBe(200);
         const afterSignOut = await getSession(request, sessionCookie);
         expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
       }
@@ -163,11 +175,11 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
         expect(sessionResult.hasSession, `session harus aktif setelah navigasi ke ${route}`).toBe(true);
       }
     } finally {
-      // 4. Cleanup: sign-out dijalankan saat fixture request masih aktif.
+      // 4. Cleanup: sign-out via browser context (memiliki origin + cookie benar).
       // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error.
       if (sessionCookie) {
-        const result = await signOut(request, sessionCookie);
-        expect(result.status, "sign-out harus sukses").toBe(200);
+        const status = await signOutViaBrowser(page);
+        expect(status, "sign-out harus sukses").toBe(200);
         const afterSignOut = await getSession(request, sessionCookie);
         expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
       }
