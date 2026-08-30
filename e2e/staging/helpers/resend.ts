@@ -39,6 +39,17 @@ interface ResendGetResponse {
   text: string | null;
 }
 
+export function filterEmailsByDate(
+  emails: ResendEmail[],
+  since: Date,
+): ResendEmail[] {
+  const sinceTime = since.getTime();
+  return emails.filter((email) => {
+    const emailTime = new Date(email.created_at).getTime();
+    return emailTime >= sinceTime;
+  });
+}
+
 async function listReceivedEmails(since: Date): Promise<ResendEmail[]> {
   const apiKey = getApiKey();
   const url = `${RESEND_API_BASE}/emails/receiving?limit=50`;
@@ -48,16 +59,12 @@ async function listReceivedEmails(since: Date): Promise<ResendEmail[]> {
   });
 
   if (!res.ok) {
-    throw new Error(`Resend list failed: ${res.status} ${await res.text()}`);
+    throw new Error(`Resend list failed: HTTP ${res.status}`);
   }
 
   const body = (await res.json()) as ResendListResponse;
-  const sinceTime = since.getTime();
 
-  return (body.data ?? []).filter((email) => {
-    const emailTime = new Date(email.created_at).getTime();
-    return emailTime >= sinceTime;
-  });
+  return filterEmailsByDate(body.data ?? [], since);
 }
 
 async function getReceivedEmail(emailId: string): Promise<ResendGetResponse> {
@@ -69,7 +76,7 @@ async function getReceivedEmail(emailId: string): Promise<ResendGetResponse> {
   });
 
   if (!res.ok) {
-    throw new Error(`Resend get failed: ${res.status} ${await res.text()}`);
+    throw new Error(`Resend get failed: HTTP ${res.status}`);
   }
 
   return (await res.json()) as ResendGetResponse;
@@ -156,7 +163,7 @@ export async function waitForResendEmail(
         throw new Error(
           `Magic link tidak ditemukan di email HTML. ` +
           `Subject: "${latest.subject}". ` +
-          `HTML snippet: ${html.substring(0, 200)}`,
+          `Email ID: ${latest.id}`,
         );
       }
 

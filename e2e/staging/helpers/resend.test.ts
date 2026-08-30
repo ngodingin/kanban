@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildRecipientAddress,
   filterEmailsByRecipient,
+  filterEmailsByDate,
   validateMagicLinkEmail,
   extractMagicLinkFromHtml,
   extractTokenFromUrl,
@@ -79,6 +80,47 @@ describe("TASK-7.16.1b — filterEmailsByRecipient", () => {
     const emails = [email({ to: [`e2e-harness-extra@${DOMAIN}`] })];
     const result = filterEmailsByRecipient(emails, `e2e-harness@${DOMAIN}`);
     expect(result).toHaveLength(0);
+  });
+});
+
+describe("TASK-7.16.1b — filterEmailsByDate", () => {
+  it("mengembalikan email yang waktunya >= since", () => {
+    const since = new Date("2026-08-30T00:00:00.000Z");
+    const emails = [
+      email({ id: "e1", created_at: "2026-08-30T00:00:00.000Z" }),
+      email({ id: "e2", created_at: "2026-08-30T00:01:00.000Z" }),
+      email({ id: "e3", created_at: "2026-08-29T23:59:59.999Z" }),
+    ];
+    const result = filterEmailsByDate(emails, since);
+    expect(result.map((e) => e.id)).toEqual(["e1", "e2"]);
+  });
+
+  it("mengembalikan array kosong jika semua email sebelum since", () => {
+    const since = new Date("2026-08-30T12:00:00.000Z");
+    const emails = [
+      email({ created_at: "2026-08-30T00:00:00.000Z" }),
+      email({ created_at: "2026-08-30T11:59:59.999Z" }),
+    ];
+    const result = filterEmailsByDate(emails, since);
+    expect(result).toHaveLength(0);
+  });
+
+  it("[negatif] email 1 milidetik sebelum since ditolak", () => {
+    const since = new Date("2026-08-30T00:00:00.001Z");
+    const emails = [
+      email({ id: "e1", created_at: "2026-08-30T00:00:00.000Z" }),
+    ];
+    const result = filterEmailsByDate(emails, since);
+    expect(result).toHaveLength(0);
+  });
+
+  it("[negatif] email tepat pada since diterima", () => {
+    const since = new Date("2026-08-30T00:00:00.000Z");
+    const emails = [
+      email({ id: "e1", created_at: "2026-08-30T00:00:00.000Z" }),
+    ];
+    const result = filterEmailsByDate(emails, since);
+    expect(result).toHaveLength(1);
   });
 });
 
@@ -182,14 +224,38 @@ describe("TASK-7.16.1b — extractTokenFromUrl", () => {
 
 describe("TASK-7.16.1b — no secrets in exports", () => {
   it("tidak ada API key atau secret dalam kode sumber", () => {
-    // Fungsi hanya mengekstrak dari environment, tidak menghardcode
     const forbidden = ["sk_", "re_", "api_key=", "secret="];
-    // Cek bahwa tidak ada literal hardcoded di export
-    const exports = ["buildRecipientAddress", "filterEmailsByRecipient", "validateMagicLinkEmail", "extractMagicLinkFromHtml", "extractTokenFromUrl"];
+    const exports = ["buildRecipientAddress", "filterEmailsByRecipient", "filterEmailsByDate", "validateMagicLinkEmail", "extractMagicLinkFromHtml", "extractTokenFromUrl"];
     for (const fn of exports) {
       for (const f of forbidden) {
         expect(fn).not.toContain(f);
       }
     }
+  });
+});
+
+describe("TASK-7.16.1b — error redaction", () => {
+  const ORIGIN = "https://kanban-ngodingin.vercel.app";
+  const SECRET_TOKEN = "super_secret_token_abc123xyz789";
+
+  it("extractMagicLinkFromHtml tidak membocorkan token saat link tidak ditemukan", () => {
+    const html = `<p>Your token: ${SECRET_TOKEN}</p>`;
+    const link = extractMagicLinkFromHtml(html, ORIGIN);
+    expect(link).toBeNull();
+    // link adalah null — token tidak mungkin bocor dari return value
+  });
+
+  it("extractMagicLinkFromHtml mengembalikan link tanpa membocorkan token lain", () => {
+    const html = `<a href="${ORIGIN}/login/verify?token=valid123">Click</a>`;
+    const link = extractMagicLinkFromHtml(html, ORIGIN);
+    expect(link).toBe(`${ORIGIN}/login/verify?token=valid123`);
+    expect(link).not.toContain(SECRET_TOKEN);
+  });
+
+  it("extractTokenFromUrl tidak membocorkan token di luar query param", () => {
+    const url = `https://example.com/path?token=abc123&extra=${SECRET_TOKEN}`;
+    const token = extractTokenFromUrl(url);
+    expect(token).toBe("abc123");
+    expect(token).not.toContain(SECRET_TOKEN);
   });
 });
