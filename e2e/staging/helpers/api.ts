@@ -74,7 +74,20 @@ export async function getSession(
   };
 }
 
+export async function signOut(
+  request: APIRequestContext,
+  cookieHeader: string,
+): Promise<{ status: number }> {
+  const res = await request.post(`${STAGING_ORIGIN}/api/auth/sign-out`, {
+    headers: {
+      cookie: cookieHeader,
+      "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "",
+    },
+  });
+  return { status: res.status() };
+}
+
 export function extractSessionCookie(setCookieHeader: string): string {
-  const match = setCookieHeader.match(/kanban\.session_token=[^;]+/);
+  const match = setCookieHeader.match(/(?:__Secure-)?kanban\.session_token=[^;]+/);
   return match ? match[0] : "";
 }

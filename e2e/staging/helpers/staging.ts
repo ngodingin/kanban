@@ -26,11 +26,11 @@ export function testNamespace(): string {
   return `e2e-${getTestRunId()}`;
 }
 
-type CleanupAction = { label: string; fn: () => Promise<void> };
+type CleanupAction = { label: string; fn: () => Promise<void>; assertSuccess: boolean };
 const cleanupActions: CleanupAction[] = [];
 
-export function registerCleanup(label: string, fn: () => Promise<void>): void {
-  cleanupActions.push({ label, fn });
+export function registerCleanup(label: string, fn: () => Promise<void>, assertSuccess: boolean = true): void {
+  cleanupActions.push({ label, fn, assertSuccess });
 }
 
 export async function runCleanup(): Promise<void> {
@@ -40,19 +40,14 @@ export async function runCleanup(): Promise<void> {
     try {
       await action.fn();
     } catch (err) {
-      errors.push(new Error(`Cleanup gagal [${action.label}]: ${err instanceof Error ? err.message : String(err)}`));
+      if (action.assertSuccess) {
+        errors.push(new Error(`Cleanup gagal [${action.label}]: ${err instanceof Error ? err.message : String(err)}`));
+      }
     }
   }
   if (errors.length > 0) {
     throw new Error(`Cleanup errors:\n${errors.map((e) => e.message).join("\n")}`);
   }
-}
-
-export function stagingTest(name: string, fn: (args: { request: import("@playwright/test").APIRequestContext }) => Promise<void>) {
-  test(name, async ({ request }) => {
-    assertStagingOrigin(STAGING_ORIGIN);
-    await fn({ request });
-  });
 }
 
 test.afterAll(async () => {

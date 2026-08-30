@@ -1,56 +1,75 @@
-const MAILINATOR_API_BASE = "https://www.mailinator.com/api/v2";
+import type { Page } from "@playwright/test";
 
-export interface MailinatorMessage {
-  id: string;
-  from: string;
-  subject: string;
-  created_at: string;
+const MAILINATOR_ORIGIN = "https://www.mailinator.com";
+
+export interface InboxSnapshot {
+  messageIds: string[];
 }
 
-export interface MailinatorEmail {
-  data: {
-    id: string;
-    from: string;
-    subject: string;
-    html_body: string;
-    text_body: string;
-  };
-}
-
-export async function listInboxMessages(
-  request: import("@playwright/test").APIRequestContext,
+export async function snapshotInbox(
+  page: Page,
   email: string,
-): Promise<MailinatorMessage[]> {
+  timeoutMs: number = 10_000,
+): Promise<InboxSnapshot> {
   const localPart = email.split("@")[0];
-  const res = await request.get(`${MAILINATOR_API_BASE}/domains/public/inboxes/${localPart}`);
-  if (!res.ok()) {
-    throw new Error(`Mailinator inbox fetch gagal: ${res.status()} ${await res.text()}`);
+  const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
+  await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+
+  const messageRows = page.locator("table tbody tr");
+  const count = await messageRows.count();
+  const messageIds: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const id = await messageRows.nth(i).getAttribute("id");
+    if (id) messageIds.push(id);
   }
-  const body = await res.json();
-  return (body as { data?: MailinatorMessage[] }).data ?? [];
+  return { messageIds };
 }
 
-export async function getMessage(
-  request: import("@playwright/test").APIRequestContext,
+export async function waitForNewEmail(
+  page: Page,
   email: string,
-  messageId: string,
-): Promise<MailinatorEmail["data"]> {
+  snapshot: InboxSnapshot,
+  timeoutMs: number = 90_000,
+  pollIntervalMs: number = 3_000,
+): Promise<{ subject: string; rowLocator: ReturnType<Page["locator"]> }> {
   const localPart = email.split("@")[0];
-  const res = await request.get(`${MAILINATOR_API_BASE}/domains/public/inboxes/${localPart}/messages/${messageId}`);
-  if (!res.ok()) {
-    throw new Error(`Mailinator message fetch gagal: ${res.status()} ${await res.text()}`);
+  const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 15_000 });
+
+    const messageRows = page.locator("table tbody tr");
+    const count = await messageRows.count();
+    for (let i = 0; i < count; i++) {
+      const row = messageRows.nth(i);
+      const id = await row.getAttribute("id");
+      if (id && !snapshot.messageIds.includes(id)) {
+        const subject = (await row.locator("td").nth(1).textContent()) ?? "";
+        return { subject, rowLocator: row };
+      }
+    }
+    await page.waitForTimeout(pollIntervalMs);
   }
-  const body = await res.json();
-  const data = (body as MailinatorEmail).data;
-  if (!data) throw new Error("Mailinator response tidak memiliki field data");
-  return data;
+  throw new Error(`Email baru tidak ditemukan di ${email} setelah ${timeoutMs}ms`);
 }
 
-export function extractMagicLinkUrl(htmlBody: string, stagingOrigin: string): string | null {
-  const originEscaped = stagingOrigin.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const regex = new RegExp(`href="(${originEscaped}/login/verify\\?[^"]+)"`, "i");
-  const match = htmlBody.match(regex);
-  return match?.[1] ?? null;
+export async function openEmailAndExtractLink(
+  page: Page,
+  rowLocator: ReturnType<Page["locator"]>,
+  stagingOrigin: string,
+): Promise<string> {
+  await rowLocator.click();
+  await page.waitForLoadState("domcontentloaded");
+
+  const iframe = page.frameLocator("iframe#html_message, iframe[name='html_message']");
+  const linkSelector = `a[href*="${stagingOrigin}/login/verify"]`;
+
+  const link = iframe.locator(linkSelector).first();
+  await link.waitFor({ timeout: 10_000 });
+  const href = await link.getAttribute("href");
+  if (!href) throw new Error("Magic link href tidak ditemukan di email body");
+  return href;
 }
 
 export function extractTokenFromUrl(url: string): string | null {
@@ -60,33 +79,4 @@ export function extractTokenFromUrl(url: string): string | null {
   } catch {
     return null;
   }
-}
-
-export async function waitForMagicLinkEmail(
-  request: import("@playwright/test").APIRequestContext,
-  email: string,
-  stagingOrigin: string,
-  timeoutMs: number = 60_000,
-  pollIntervalMs: number = 3_000,
-): Promise<{ token: string; emailUrl: string }> {
-  const deadline = Date.now() + timeoutMs;
-  let lastCount = 0;
-
-  while (Date.now() < deadline) {
-    const messages = await listInboxMessages(request, email);
-    if (messages.length > lastCount) {
-      const newest = messages[0];
-      const full = await getMessage(request, email, newest.id);
-      const linkUrl = extractMagicLinkUrl(full.html_body, stagingOrigin);
-      if (linkUrl) {
-        const token = extractTokenFromUrl(linkUrl);
-        if (token) {
-          return { token, emailUrl: linkUrl };
-        }
-      }
-      lastCount = messages.length;
-    }
-    await new Promise((r) => setTimeout(r, pollIntervalMs));
-  }
-  throw new Error(`Magic link email tidak ditemukan di ${email} setelah ${timeoutMs}ms`);
 }
