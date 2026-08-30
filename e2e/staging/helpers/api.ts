@@ -81,8 +81,10 @@ export async function signOut(
   const res = await request.post(`${STAGING_ORIGIN}/api/auth/sign-out`, {
     headers: {
       cookie: cookieHeader,
+      "content-type": "application/json",
       "x-vercel-protection-bypass": process.env.VERCEL_AUTOMATION_BYPASS_SECRET ?? "",
     },
+    data: {},
   });
   return { status: res.status() };
 }
