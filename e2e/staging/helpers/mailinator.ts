@@ -3,26 +3,28 @@ import type { Page } from "@playwright/test";
 const MAILINATOR_ORIGIN = "https://www.mailinator.com";
 
 export interface InboxSnapshot {
-  messageIds: string[];
+  rowCount: number;
 }
 
 export async function snapshotInbox(
   page: Page,
   email: string,
-  timeoutMs: number = 10_000,
+  timeoutMs: number = 15_000,
 ): Promise<InboxSnapshot> {
   const localPart = email.split("@")[0];
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
   await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
-  const messageRows = page.locator("table tbody tr");
-  const count = await messageRows.count();
-  const messageIds: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const id = await messageRows.nth(i).getAttribute("id");
-    if (id) messageIds.push(id);
+  // Wait for Angular to render rows — selector: table rows with id starting with "row_"
+  try {
+    await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
+  } catch {
+    // Inbox might be empty — no rows is valid
   }
-  return { messageIds };
+
+  const rows = page.locator("tr[id^='row_']");
+  const rowCount = await rows.count();
+  return { rowCount };
 }
 
 export async function waitForNewEmail(
@@ -31,7 +33,7 @@ export async function waitForNewEmail(
   snapshot: InboxSnapshot,
   timeoutMs: number = 90_000,
   pollIntervalMs: number = 3_000,
-): Promise<{ subject: string; rowLocator: ReturnType<Page["locator"]> }> {
+): Promise<{ rowId: string }> {
   const localPart = email.split("@")[0];
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
   const deadline = Date.now() + timeoutMs;
@@ -39,37 +41,77 @@ export async function waitForNewEmail(
   while (Date.now() < deadline) {
     await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 15_000 });
 
-    const messageRows = page.locator("table tbody tr");
-    const count = await messageRows.count();
-    for (let i = 0; i < count; i++) {
-      const row = messageRows.nth(i);
-      const id = await row.getAttribute("id");
-      if (id && !snapshot.messageIds.includes(id)) {
-        const subject = (await row.locator("td").nth(1).textContent()) ?? "";
-        return { subject, rowLocator: row };
+    try {
+      await page.waitForSelector("tr[id^='row_']", { timeout: 8_000 });
+    } catch {
+      await page.waitForTimeout(pollIntervalMs);
+      continue;
+    }
+
+    const rows = page.locator("tr[id^='row_']");
+    const count = await rows.count();
+
+    // If we have more rows than snapshot, we found a new email
+    if (count > snapshot.rowCount) {
+      // First row is the newest email
+      const firstRow = rows.first();
+      const rowId = await firstRow.getAttribute("id");
+      if (rowId) {
+        return { rowId };
       }
     }
+
     await page.waitForTimeout(pollIntervalMs);
   }
-  throw new Error(`Email baru tidak ditemukan di ${email} setelah ${timeoutMs}ms`);
+
+  throw new Error(
+    `Email baru tidak ditemukan di ${email} setelah ${timeoutMs}ms. ` +
+    `Inbox memiliki ${await rows(page, email).catch(() => "?")} baris (snapshot: ${snapshot.rowCount}). ` +
+    `Kemungkinan: (a) email tidak terkirim, atau (b) selector Mailinator berubah.`,
+  );
+}
+
+async function rows(page: Page, email: string): Promise<number> {
+  const localPart = email.split("@")[0];
+  const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
+  await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 10_000 });
+  try {
+    await page.waitForSelector("tr[id^='row_']", { timeout: 5_000 });
+  } catch {
+    // empty
+  }
+  return page.locator("tr[id^='row_']").count();
 }
 
 export async function openEmailAndExtractLink(
   page: Page,
-  rowLocator: ReturnType<Page["locator"]>,
+  rowId: string,
   stagingOrigin: string,
 ): Promise<string> {
-  await rowLocator.click();
-  await page.waitForLoadState("domcontentloaded");
+  // Click the row to open the email
+  const row = page.locator(`tr#${CSS.escape(rowId)}`);
+  await row.click();
 
-  const iframe = page.frameLocator("iframe#html_message, iframe[name='html_message']");
+  // Wait for email view to load
+  await page.waitForSelector("#email_pane", { state: "visible", timeout: 10_000 });
+
+  // The HTML email body is in an iframe with name="html_msg_body"
+  const iframe = page.frameLocator("iframe[name='html_msg_body']");
   const linkSelector = `a[href*="${stagingOrigin}/login/verify"]`;
 
-  const link = iframe.locator(linkSelector).first();
-  await link.waitFor({ timeout: 10_000 });
-  const href = await link.getAttribute("href");
-  if (!href) throw new Error("Magic link href tidak ditemukan di email body");
-  return href;
+  try {
+    const link = iframe.locator(linkSelector).first();
+    await link.waitFor({ state: "attached", timeout: 15_000 });
+    const href = await link.getAttribute("href");
+    if (!href) throw new Error("Magic link href null");
+    return href;
+  } catch {
+    // Fallback: try to find the link in the page itself (some emails embed directly)
+    const fallback = page.locator(`a[href*="${stagingOrigin}/login/verify"]`).first();
+    const href = await fallback.getAttribute("href");
+    if (href) return href;
+    throw new Error(`Magic link tidak ditemukan di email (iframe: html_msg_body, origin: ${stagingOrigin})`);
+  }
 }
 
 export function extractTokenFromUrl(url: string): string | null {

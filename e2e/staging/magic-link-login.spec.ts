@@ -46,8 +46,8 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
 
     // 2. Buka Mailinator di tab baru, tunggu email baru, ambil link
     const mailPage = await page.context().newPage();
-    const { rowLocator } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
-    const emailLink = await openEmailAndExtractLink(mailPage, rowLocator, STAGING_ORIGIN);
+    const { rowId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
+    const emailLink = await openEmailAndExtractLink(mailPage, rowId, STAGING_ORIGIN);
     await mailPage.close();
 
     expect(emailLink).toContain("/login/verify?");
