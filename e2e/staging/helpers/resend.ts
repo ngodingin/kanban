@@ -82,6 +82,8 @@ export function filterEmailsByRecipient(
   return emails.filter((e) => e.to.includes(recipient));
 }
 
+const EXPECTED_SENDER = "noreply@kanban.ngodingin.xyz";
+
 export function validateMagicLinkEmail(
   email: ResendEmail,
   expectedRecipient: string,
@@ -91,11 +93,12 @@ export function validateMagicLinkEmail(
       `Email penerima salah: diharapkan ${expectedRecipient}, diperoleh ${email.to.join(", ")}`,
     );
   }
-  const senderLower = email.from.toLowerCase();
-  if (!senderLower.includes("noreply@kanban.ngodingin.xyz") &&
-      !senderLower.includes("kanban.ngodingin.xyz")) {
+  // Extract email from "Name <email>" or plain "email"
+  const senderMatch = email.from.match(/<([^>]+)>/) ?? [null, email.from];
+  const senderEmail = (senderMatch[1] ?? "").trim().toLowerCase();
+  if (senderEmail !== EXPECTED_SENDER) {
     throw new Error(
-      `Email sender tidak cocok: "${email.from}" — diharapkan noreply@kanban.ngodingin.xyz`,
+      `Email sender tidak cocok: "${email.from}" — diharapkan ${EXPECTED_SENDER}`,
     );
   }
   if (!email.subject.toLowerCase().includes("magic") &&

@@ -378,7 +378,6 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       try {
         res = await r.auth.handler(c.req.raw);
       } catch {
-        // Better Auth throws when no valid session exists — treat as anonymous
         return new Response(
           JSON.stringify({ session: null, user: null }),
           { status: 200, headers: { "content-type": "application/json" } },
@@ -386,10 +385,24 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       }
 
       const contentType = res.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) return res;
+      if (!contentType.includes("application/json")) {
+        return new Response(
+          JSON.stringify({ session: null, user: null }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
 
-      const body = await res.json() as Record<string, unknown>;
-      const session = body.session as Record<string, unknown> | null | undefined;
+      let body: Record<string, unknown>;
+      try {
+        body = await res.json() as Record<string, unknown>;
+      } catch {
+        return new Response(
+          JSON.stringify({ session: null, user: null }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
+
+      const session = body?.session as Record<string, unknown> | null | undefined;
 
       if (session?.id && typeof session.id === "string") {
         const active = await new SessionLifetimeService(r.globalClient).isSessionActive(session.id);
@@ -402,7 +415,7 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       }
 
       return new Response(JSON.stringify(body), {
-        status: res.status,
+        status: 200,
         headers: { "content-type": "application/json" },
       });
     } catch (error) {
