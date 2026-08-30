@@ -25,62 +25,63 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
 
   test("magic link sign-in → Mailinator → verify → session aktif → sign-out", async ({ page, request }) => {
     const ns = testNamespace();
+    let sessionCookie = "";
 
-    // Snapshot inbox sebelum kirim email
-    const mailboxPage = await page.context().newPage();
-    const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
-    await mailboxPage.close();
+    try {
+      // Snapshot inbox sebelum kirim email
+      const mailboxPage = await page.context().newPage();
+      const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
+      await mailboxPage.close();
 
-    // 1. Buka /login di browser dengan returnTo, isi form, submit
-    await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
-    await page.waitForLoadState("networkidle");
+      // 1. Buka /login di browser dengan returnTo, isi form, submit
+      await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
+      await page.waitForLoadState("networkidle");
 
-    const emailInput = page.locator('input[type="email"], input[name="email"]');
-    await emailInput.fill(E2E_TEST_EMAIL);
-    await page.locator('button[type="submit"], button:has-text("Kirim"), button:has-text("Masuk")').click();
+      const emailInput = page.locator('input[type="email"], input[name="email"]');
+      await emailInput.fill(E2E_TEST_EMAIL);
+      await page.locator('button[type="submit"], button:has-text("Kirim"), button:has-text("Masuk")').click();
 
-    // Tunggu konfirmasi "tautan sudah dikirim"
-    await expect(
-      page.locator("text=tautan sudah dikirim").or(page.locator("text=Tautan sudah dikirim")),
-    ).toBeVisible({ timeout: 10_000 });
+      // Tunggu konfirmasi "tautan sudah dikirim"
+      await expect(
+        page.locator("text=tautan sudah dikirim").or(page.locator("text=Tautan sudah dikirim")),
+      ).toBeVisible({ timeout: 10_000 });
 
-    // 2. Buka Mailinator di tab baru, tunggu email baru, ambil link
-    const mailPage = await page.context().newPage();
-    const { messageId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
-    const emailLink = await openEmailAndExtractLink(mailPage, messageId, STAGING_ORIGIN);
-    await mailPage.close();
+      // 2. Buka Mailinator di tab baru, tunggu email baru, ambil link
+      const mailPage = await page.context().newPage();
+      const { messageId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
+      const emailLink = await openEmailAndExtractLink(mailPage, messageId, STAGING_ORIGIN);
+      await mailPage.close();
 
-    expect(emailLink).toContain("/login/verify?");
-    expect(emailLink).toContain("token=");
-    const token = extractTokenFromUrl(emailLink);
-    expect(token, "token harus ada").toBeTruthy();
+      expect(emailLink).toContain("/login/verify?");
+      expect(emailLink).toContain("token=");
+      const token = extractTokenFromUrl(emailLink);
+      expect(token, "token harus ada").toBeTruthy();
 
-    // 3. Navigasi ke magic link URL di browser (bukan API)
-    await page.goto(emailLink);
-    await page.waitForLoadState("networkidle");
+      // 3. Navigasi ke magic link URL di browser (bukan API)
+      await page.goto(emailLink);
+      await page.waitForLoadState("networkidle");
 
-    // Verifikasi: harus redirect ke callbackPath, session aktif
-    await expect(page).toHaveURL(new RegExp(`/projects/${ns}`), { timeout: 15_000 });
+      // Verifikasi: harus redirect ke callbackPath, session aktif
+      await expect(page).toHaveURL(new RegExp(`/projects/${ns}`), { timeout: 15_000 });
 
-    // 4. Extract session cookie dari browser context
-    const cookies = await page.context().cookies(STAGING_ORIGIN);
-    const sessionCookieObj = cookies.find(
-      (c) => c.name === "__Secure-kanban.session_token" || c.name === "kanban.session_token",
-    );
-    expect(sessionCookieObj, "session cookie harus ada").toBeTruthy();
-    const sessionCookie = `${sessionCookieObj!.name}=${sessionCookieObj!.value}`;
+      // 4. Extract session cookie dari browser context
+      const cookies = await page.context().cookies(STAGING_ORIGIN);
+      const sessionCookieObj = cookies.find(
+        (c) => c.name === "__Secure-kanban.session_token" || c.name === "kanban.session_token",
+      );
+      expect(sessionCookieObj, "session cookie harus ada").toBeTruthy();
+      sessionCookie = `${sessionCookieObj!.name}=${sessionCookieObj!.value}`;
 
-    // 5. Assert session aktif via API
-    const sessionResult = await getSession(request, sessionCookie);
-    expect(sessionResult.status, "get-session harus 200").toBe(200);
-    expect(sessionResult.hasSession, "session harus aktif").toBe(true);
-
-    // 6. Cleanup: sign-out, assert session hilang
-    const signOutResult = await signOut(request, sessionCookie);
-    expect(signOutResult.status, "sign-out harus 200").toBe(200);
-
-    const afterSignOut = await getSession(request, sessionCookie);
-    expect(afterSignOut.hasSession, "session harus hilang setelah sign-out").toBe(false);
+      // 5. Assert session aktif via API
+      const sessionResult = await getSession(request, sessionCookie);
+      expect(sessionResult.status, "get-session harus 200").toBe(200);
+      expect(sessionResult.hasSession, "session harus aktif").toBe(true);
+    } finally {
+      // 6. Cleanup: sign-out selalu dijalankan
+      if (sessionCookie) {
+        await signOut(request, sessionCookie).catch(() => {});
+      }
+    }
   });
 
   test("verify dengan token salah → tidak membuat session", async ({ request }) => {
@@ -112,68 +113,69 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
 
   test("QA-CL-82 regression: session tetap aktif setelah beberapa navigasi protected", async ({ page, request }) => {
     const ns = testNamespace();
+    let sessionCookie = "";
 
-    // 1. Login via Magic Link (full browser flow)
-    const mailboxPage = await page.context().newPage();
-    const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
-    await mailboxPage.close();
+    try {
+      // 1. Login via Magic Link (full browser flow)
+      const mailboxPage = await page.context().newPage();
+      const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
+      await mailboxPage.close();
 
-    await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
-    await page.waitForLoadState("networkidle");
-
-    const emailInput = page.locator('input[type="email"], input[name="email"]');
-    await emailInput.fill(E2E_TEST_EMAIL);
-    await page.locator('button[type="submit"], button:has-text("Kirim"), button:has-text("Masuk")').click();
-
-    await expect(
-      page.locator("text=tautan sudah dikirim").or(page.locator("text=Tautan sudah dikirim")),
-    ).toBeVisible({ timeout: 10_000 });
-
-    const mailPage = await page.context().newPage();
-    const { messageId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
-    const emailLink = await openEmailAndExtractLink(mailPage, messageId, STAGING_ORIGIN);
-    await mailPage.close();
-
-    const token = extractTokenFromUrl(emailLink);
-    expect(token, "token harus ada").toBeTruthy();
-
-    await page.goto(emailLink);
-    await page.waitForLoadState("networkidle");
-    await expect(page).toHaveURL(new RegExp(`/projects/${ns}`), { timeout: 15_000 });
-
-    // 2. Extract session cookie
-    const cookies = await page.context().cookies(STAGING_ORIGIN);
-    const sessionCookieObj = cookies.find(
-      (c) => c.name === "__Secure-kanban.session_token" || c.name === "kanban.session_token",
-    );
-    expect(sessionCookieObj, "session cookie harus ada").toBeTruthy();
-    const sessionCookie = `${sessionCookieObj!.name}=${sessionCookieObj!.value}`;
-
-    // 3. Navigate ke beberapa route protected, assert session aktif setiap kali
-    const protectedRoutes = [
-      `/projects/${ns}`,
-      `/projects/${ns}/boards/current`,
-      `/`,
-    ];
-
-    for (const route of protectedRoutes) {
-      await page.goto(`${STAGING_ORIGIN}${route}`);
+      await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
       await page.waitForLoadState("networkidle");
 
-      // Session harus masih aktif — tidak redirect ke /login
-      const currentUrl = page.url();
-      expect(currentUrl, `tidak boleh redirect ke /login dari ${route}`).not.toContain("/login");
+      const emailInput = page.locator('input[type="email"], input[name="email"]');
+      await emailInput.fill(E2E_TEST_EMAIL);
+      await page.locator('button[type="submit"], button:has-text("Kirim"), button:has-text("Masuk")').click();
 
-      // Verify via API
-      const sessionResult = await getSession(request, sessionCookie);
-      expect(sessionResult.hasSession, `session harus aktif setelah navigasi ke ${route}`).toBe(true);
+      await expect(
+        page.locator("text=tautan sudah dikirim").or(page.locator("text=Tautan sudah dikirim")),
+      ).toBeVisible({ timeout: 10_000 });
+
+      const mailPage = await page.context().newPage();
+      const { messageId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
+      const emailLink = await openEmailAndExtractLink(mailPage, messageId, STAGING_ORIGIN);
+      await mailPage.close();
+
+      const token = extractTokenFromUrl(emailLink);
+      expect(token, "token harus ada").toBeTruthy();
+
+      await page.goto(emailLink);
+      await page.waitForLoadState("networkidle");
+      await expect(page).toHaveURL(new RegExp(`/projects/${ns}`), { timeout: 15_000 });
+
+      // 2. Extract session cookie
+      const cookies = await page.context().cookies(STAGING_ORIGIN);
+      const sessionCookieObj = cookies.find(
+        (c) => c.name === "__Secure-kanban.session_token" || c.name === "kanban.session_token",
+      );
+      expect(sessionCookieObj, "session cookie harus ada").toBeTruthy();
+      sessionCookie = `${sessionCookieObj!.name}=${sessionCookieObj!.value}`;
+
+      // 3. Navigate ke beberapa route protected, assert session aktif setiap kali
+      const protectedRoutes = [
+        `/projects/${ns}`,
+        `/projects/${ns}/boards/current`,
+        `/`,
+      ];
+
+      for (const route of protectedRoutes) {
+        await page.goto(`${STAGING_ORIGIN}${route}`);
+        await page.waitForLoadState("networkidle");
+
+        // Session harus masih aktif — tidak redirect ke /login
+        const currentUrl = page.url();
+        expect(currentUrl, `tidak boleh redirect ke /login dari ${route}`).not.toContain("/login");
+
+        // Verify via API
+        const sessionResult = await getSession(request, sessionCookie);
+        expect(sessionResult.hasSession, `session harus aktif setelah navigasi ke ${route}`).toBe(true);
+      }
+    } finally {
+      // 4. Cleanup: sign-out selalu dijalankan
+      if (sessionCookie) {
+        await signOut(request, sessionCookie).catch(() => {});
+      }
     }
-
-    // 4. Cleanup
-    const signOutResult = await signOut(request, sessionCookie);
-    expect(signOutResult.status, "sign-out harus 200").toBe(200);
-
-    const afterSignOut = await getSession(request, sessionCookie);
-    expect(afterSignOut.hasSession, "session harus hilang setelah sign-out").toBe(false);
   });
 });

@@ -10,26 +10,36 @@ export async function snapshotInbox(
   page: Page,
   email: string,
   timeoutMs: number = 15_000,
+  retries: number = 3,
 ): Promise<InboxSnapshot> {
   const localPart = email.split("@")[0];
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
-  await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
-  // Wait for Angular to render rows — selector: tr with id starting with "row_"
-  try {
-    await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
-  } catch {
-    // Inbox might be empty — no rows is valid
+  for (let attempt = 0; attempt < retries; attempt++) {
+    await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+
+    try {
+      await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
+    } catch {
+      // Inbox might be empty — no rows is valid
+    }
+
+    const rows = page.locator("tr[id^='row_']");
+    const count = await rows.count();
+    if (count > 0 || attempt === retries - 1) {
+      const messageIds: string[] = [];
+      for (let i = 0; i < count; i++) {
+        const id = await rows.nth(i).getAttribute("id");
+        if (id) messageIds.push(id);
+      }
+      return { messageIds };
+    }
+
+    // Retry: inbox might not have loaded yet
+    await page.waitForTimeout(2_000);
   }
 
-  const rows = page.locator("tr[id^='row_']");
-  const count = await rows.count();
-  const messageIds: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const id = await rows.nth(i).getAttribute("id");
-    if (id) messageIds.push(id);
-  }
-  return { messageIds };
+  return { messageIds: [] };
 }
 
 export async function waitForNewEmail(
@@ -46,15 +56,24 @@ export async function waitForNewEmail(
   while (Date.now() < deadline) {
     await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 15_000 });
 
+    // Wait for Angular to render — but don't fail if inbox is empty
     try {
       await page.waitForSelector("tr[id^='row_']", { timeout: 8_000 });
     } catch {
+      // Inbox might be temporarily empty — retry
       await page.waitForTimeout(pollIntervalMs);
       continue;
     }
 
     const rows = page.locator("tr[id^='row_']");
     const count = await rows.count();
+
+    // If 0 rows after previously having rows, Angular might still be loading
+    if (count === 0) {
+      await page.waitForTimeout(pollIntervalMs);
+      continue;
+    }
+
     const currentIds: string[] = [];
     for (let i = 0; i < count; i++) {
       const id = await rows.nth(i).getAttribute("id");
@@ -71,11 +90,11 @@ export async function waitForNewEmail(
     await page.waitForTimeout(pollIntervalMs);
   }
 
-  const currentCount = await page.locator("tr[id^='row_']").count().catch(() => 0);
+  const finalCount = await page.locator("tr[id^='row_']").count().catch(() => 0);
   throw new Error(
     `Email baru tidak ditemukan di ${email} setelah ${timeoutMs}ms. ` +
-    `Inbox: ${currentCount} baris, ${currentCount} ID aktif (snapshot: ${snapshot.messageIds.length} ID). ` +
-    `Kemungkinan: (a) email tidak terkirim, (b) email menggantikan email lama tanpa menambah jumlah, atau (c) selector Mailinator berubah.`,
+    `Inbox final: ${finalCount} baris (snapshot: ${snapshot.messageIds.length} ID). ` +
+    `Kemungkinan: (a) email tidak terkirim, (b) email menggantikan email lama, atau (c) selector berubah.`,
   );
 }
 
@@ -84,14 +103,11 @@ export async function openEmailAndExtractLink(
   messageId: string,
   stagingOrigin: string,
 ): Promise<string> {
-  // Click the row to open the email — use attribute selector (safe for Node.js)
   const row = page.locator(`tr[id="${messageId}"]`);
   await row.click();
 
-  // Wait for email view to load
   await page.waitForSelector("#email_pane", { state: "visible", timeout: 10_000 });
 
-  // The HTML email body is in an iframe with name="html_msg_body"
   const iframe = page.frameLocator("iframe[name='html_msg_body']");
   const linkSelector = `a[href*="${stagingOrigin}/login/verify"]`;
 
@@ -102,7 +118,6 @@ export async function openEmailAndExtractLink(
     if (!href) throw new Error("Magic link href null");
     return href;
   } catch {
-    // Fallback: try to find the link in the page itself (some emails embed directly)
     const fallback = page.locator(`a[href*="${stagingOrigin}/login/verify"]`).first();
     const href = await fallback.getAttribute("href");
     if (href) return href;

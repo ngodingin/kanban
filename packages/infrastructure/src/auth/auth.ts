@@ -177,7 +177,11 @@ export function createAuth(config: AuthConfigInput) {
             return {
               data: {
                 ...session,
-                expiresAt: lifetime.idleExpiresAt,
+                // CL-115: JANGAN override expiresAt — biarkan Better Auth
+                // menggunakan expiresIn: 3600 secara konsisten dengan cookie
+                // lifetime. Jika expiresAt di-override ke nilai yang lebih
+                // pendek (mis. dekat Sunday boundary), session record expired
+                // di DB sementara cookie masih valid → get-session kosong.
                 lastActivityAt: issuedAt,
                 absoluteExpiresAt: lifetime.absoluteExpiresAt,
               },
