@@ -1,5 +1,8 @@
 import type { APIRequestContext } from "@playwright/test";
 import { STAGING_ORIGIN } from "./staging.ts";
+import { extractSessionCookie } from "./api-core.ts";
+
+export { extractSessionCookie };
 
 export interface SignInResult {
   status: number;
@@ -87,9 +90,4 @@ export async function signOut(
     data: {},
   });
   return { status: res.status() };
-}
-
-export function extractSessionCookie(setCookieHeader: string): string {
-  const match = setCookieHeader.match(/(?:__Secure-)?kanban\.session_token=[^;]+/);
-  return match ? match[0] : "";
 }
