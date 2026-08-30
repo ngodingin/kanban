@@ -1,5 +1,6 @@
-import { NavLink, useParams } from "react-router";
+import { NavLink, useParams, Link } from "react-router";
 import { useUiStore } from "@/lib/ui-store";
+import { useProjects } from "@/lib/use-projects";
 
 // App shell — sidebar context-aware (05-FRONTEND §5). Tanpa Inbox:
 // notification = non-goal (§4 rekonsiliasi UI↔domain).
@@ -21,6 +22,7 @@ export function Sidebar() {
   const collapsed = useUiStore((s) => s.sidebarCollapsed);
   const toggleSidebar = useUiStore((s) => s.toggleSidebar);
   const { projectId } = useParams<{ projectId: string }>();
+  const { data: projects = [], isLoading } = useProjects();
 
   return (
     <aside
@@ -69,11 +71,46 @@ export function Sidebar() {
           </NavLink>
         ))}
 
-        {/* PROJECTS ▾ — daftar Project nyata diisi goal projects feature; tanpa demo domain. */}
+        {/* PROJECTS ▾ — daftar Project nyata dari API */}
         <div className="mt-4 mb-1 px-3 text-xs font-semibold tracking-wide text-muted-foreground">
           {collapsed ? "▾" : "PROJECTS ▾"}
         </div>
 
+        {isLoading && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">Memuat…</div>
+        )}
+
+        {!isLoading && projects.length === 0 && (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            {collapsed ? (
+              <Link to="/projects/new" className="hover:text-foreground" title="New Project">
+                +
+              </Link>
+            ) : (
+              <span>Belum ada Project. <Link to="/projects/new" className="text-primary hover:underline">Buat baru</Link></span>
+            )}
+          </div>
+        )}
+
+        {projects.map((project) => (
+          <NavLink
+            key={project.id}
+            to={`/projects/${project.id}`}
+            className={({ isActive }) =>
+              `rounded-md px-3 py-2 text-sm ${
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-foreground hover:bg-accent"
+              }`
+            }
+          >
+            {collapsed ? project.name.charAt(0).toUpperCase() : project.name}
+          </NavLink>
+        ))}
+
+        <div className="mt-2 mb-1 px-3 text-xs font-semibold tracking-wide text-muted-foreground">
+          {collapsed ? "▾" : "PROJECT ▾"}
+        </div>
         {PROJECT_ITEMS.map((item) => {
           const to = projectId
             ? `/projects/${projectId}${item.segment}`

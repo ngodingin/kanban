@@ -1,14 +1,20 @@
 // @vitest-environment happy-dom
 import { cleanup, render, screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, test } from "vitest";
 import { Sidebar } from "../src/components/layout/sidebar";
 
 function renderSidebar(path = "/") {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   return render(
-    <MemoryRouter initialEntries={[path]}>
-      <Sidebar />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter initialEntries={[path]}>
+        <Sidebar />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

@@ -38,9 +38,11 @@ vi.mock("../src/features/projects/hooks", () => ({
 
 function renderSidebar() {
   return render(
-    <MemoryRouter>
-      <Sidebar />
-    </MemoryRouter>,
+    <QueryClientProvider client={queryClient}>
+      <MemoryRouter>
+        <Sidebar />
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 }
 

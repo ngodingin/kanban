@@ -1,11 +1,19 @@
 // @vitest-environment happy-dom
 import { cleanup, render } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, test } from "vitest";
 import { LoginPage } from "../src/features/auth/login-page";
 import { Sidebar } from "../src/components/layout/sidebar";
 
 const BRAND = "Powered by NGodingiN";
+
+function withQueryClient(children: React.ReactNode) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
 
 afterEach(cleanup);
 
@@ -21,9 +29,11 @@ describe("TASK-7.3.3 — Branding Powered by NGodingiN di tempat yang ditentukan
 
   test("positif: sidebar-bawah menampilkan branding", () => {
     render(
-      <MemoryRouter>
-        <Sidebar />
-      </MemoryRouter>,
+      withQueryClient(
+        <MemoryRouter>
+          <Sidebar />
+        </MemoryRouter>,
+      ),
     );
     expect(screen2()).toContain(BRAND);
     function screen2() {
@@ -32,11 +42,12 @@ describe("TASK-7.3.3 — Branding Powered by NGodingiN di tempat yang ditentukan
   });
 
   test("negatif: konten domain (board) tidak membawa branding", () => {
-    // Kolom board tidak merender branding — hanya sidebar/footer/auth.
     const { container } = render(
-      <MemoryRouter>
-        <Sidebar />
-      </MemoryRouter>,
+      withQueryClient(
+        <MemoryRouter>
+          <Sidebar />
+        </MemoryRouter>,
+      ),
     );
     const nav = container.querySelector("nav")!;
     expect(nav.textContent).not.toContain(BRAND);

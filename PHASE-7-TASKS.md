@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | ⚠️ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122)<br>[Review-CL-20](#review-cl-20)<br>[Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23)<br>[QA-CL-112](#qa-cl-112) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | 🔄 | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122)<br>[Review-CL-20](#review-cl-20)<br>[Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23)<br>[QA-CL-112](#qa-cl-112)<br>[CL-142](#cl-142) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ✅ | [CL-63](#cl-63)<br>[CL-65](#cl-65)<br>[QA-CL-46](#qa-cl-46) | 100 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -406,6 +406,21 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 - Hapus unused `const fs = { readFileSync }` yang menyebabkan lint error.
 
 **Bukti:** `pnpm lint` → bersih; `pnpm exec vitest run` → 148 file / 955 test PASS; `npx playwright test --list` → 5 spec.
+
+<a id="cl-142"></a>
+### CL-142 — 2026-08-30 · goal 7.3.1 sidebar project list from API (⚠️ → 🔄 · 80%)
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2.5-free
+
+**Konteks:** QA-CL-112 menemukan `PROJECTS ▾` masih judul statis; pengguna belum bisa memilih Project lain untuk mengganti context.
+
+**Fix:**
+- `apps/web/src/lib/use-projects.ts` — hook `useProjects()` memanggil `GET /api/v1/projects` via `apiRequest`, mengembalikan `Project[]` (id, name, slug, status, createdAt).
+- `apps/web/src/components/layout/sidebar.tsx` — import `useProjects`; `PROJECTS ▾` menampilkan daftar Project nyata dari API; empty state menampilkan CTA "Buat baru" jika tidak ada Project; loading state "Memuat…"; PROJECT items (Members/Permissions/API Keys/Settings) tetap tampil dan link ke `projectId` aktif.
+- `apps/web/test/lib/projects-api.test.ts` — 5 test kontrak API: envelope `data`, field wajib, status valid (ACTIVE/ARCHIVED/DELETED), error 401.
+- `apps/web/test/sidebar.test.tsx`, `branding.test.tsx`, `responsive.test.tsx` — tambah `QueryClientProvider` wrapper agar sidebar dengan `useProjects` tidak throw.
+
+**Bukti:** `pnpm lint` → bersih; `pnpm exec vitest run` → 149 file / 960 test PASS.
 
 <a id="qa-cl-111"></a>
 ### QA-CL-111 — 2026-08-30 · 7.16.1e 🔎 80% → ✅ 100% — harness lima flow staging terverifikasi
