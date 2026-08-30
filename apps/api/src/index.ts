@@ -345,15 +345,21 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
         const location = res.headers.get("location");
         if (setCookie) {
           const headers = new Headers(res.headers);
+          // CL-114: Hapus location header agar browser tidak mengikuti redirect
+          // secara otomatis. SPA hanya membaca redirectTo dari JSON body.
+          headers.delete("location");
           headers.set("content-type", "application/json");
+          console.log("[auth] verify intercept: 302→200, set-cookie present, redirectTo:", location);
           return new Response(
             JSON.stringify({ verified: true, redirectTo: location }),
             { status: 200, headers },
           );
         }
+        console.log("[auth] verify intercept: 302 tanpa set-cookie, pass-through");
       }
       return res;
     } catch (error) {
+      console.error("[auth] verify intercept error:", error);
       return c.json(
         { error: { code: "INTERNAL_ERROR", message: String(error instanceof Error ? error.message : error) } },
         500,

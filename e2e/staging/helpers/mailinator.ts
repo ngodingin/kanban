@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 const MAILINATOR_ORIGIN = "https://www.mailinator.com";
 
 export interface InboxSnapshot {
-  rowCount: number;
+  messageIds: string[];
 }
 
 export async function snapshotInbox(
@@ -15,7 +15,7 @@ export async function snapshotInbox(
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
   await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
 
-  // Wait for Angular to render rows — selector: table rows with id starting with "row_"
+  // Wait for Angular to render rows — selector: tr with id starting with "row_"
   try {
     await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
   } catch {
@@ -23,8 +23,13 @@ export async function snapshotInbox(
   }
 
   const rows = page.locator("tr[id^='row_']");
-  const rowCount = await rows.count();
-  return { rowCount };
+  const count = await rows.count();
+  const messageIds: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const id = await rows.nth(i).getAttribute("id");
+    if (id) messageIds.push(id);
+  }
+  return { messageIds };
 }
 
 export async function waitForNewEmail(
@@ -33,7 +38,7 @@ export async function waitForNewEmail(
   snapshot: InboxSnapshot,
   timeoutMs: number = 90_000,
   pollIntervalMs: number = 3_000,
-): Promise<{ rowId: string }> {
+): Promise<{ messageId: string }> {
   const localPart = email.split("@")[0];
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
   const deadline = Date.now() + timeoutMs;
@@ -50,46 +55,37 @@ export async function waitForNewEmail(
 
     const rows = page.locator("tr[id^='row_']");
     const count = await rows.count();
+    const currentIds: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const id = await rows.nth(i).getAttribute("id");
+      if (id) currentIds.push(id);
+    }
 
-    // If we have more rows than snapshot, we found a new email
-    if (count > snapshot.rowCount) {
-      // First row is the newest email
-      const firstRow = rows.first();
-      const rowId = await firstRow.getAttribute("id");
-      if (rowId) {
-        return { rowId };
+    // Find new IDs not in snapshot
+    for (const id of currentIds) {
+      if (!snapshot.messageIds.includes(id)) {
+        return { messageId: id };
       }
     }
 
     await page.waitForTimeout(pollIntervalMs);
   }
 
+  const currentCount = await page.locator("tr[id^='row_']").count().catch(() => 0);
   throw new Error(
     `Email baru tidak ditemukan di ${email} setelah ${timeoutMs}ms. ` +
-    `Inbox memiliki ${await rows(page, email).catch(() => "?")} baris (snapshot: ${snapshot.rowCount}). ` +
-    `Kemungkinan: (a) email tidak terkirim, atau (b) selector Mailinator berubah.`,
+    `Inbox: ${currentCount} baris, ${currentCount} ID aktif (snapshot: ${snapshot.messageIds.length} ID). ` +
+    `Kemungkinan: (a) email tidak terkirim, (b) email menggantikan email lama tanpa menambah jumlah, atau (c) selector Mailinator berubah.`,
   );
-}
-
-async function rows(page: Page, email: string): Promise<number> {
-  const localPart = email.split("@")[0];
-  const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
-  await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 10_000 });
-  try {
-    await page.waitForSelector("tr[id^='row_']", { timeout: 5_000 });
-  } catch {
-    // empty
-  }
-  return page.locator("tr[id^='row_']").count();
 }
 
 export async function openEmailAndExtractLink(
   page: Page,
-  rowId: string,
+  messageId: string,
   stagingOrigin: string,
 ): Promise<string> {
-  // Click the row to open the email
-  const row = page.locator(`tr[id="${rowId}"]`);
+  // Click the row to open the email — use attribute selector (safe for Node.js)
+  const row = page.locator(`tr[id="${messageId}"]`);
   await row.click();
 
   // Wait for email view to load
