@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | 🔎 | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122)<br>[Review-CL-20](#review-cl-20)<br>[Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | ⚠️ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122)<br>[Review-CL-20](#review-cl-20)<br>[Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23)<br>[QA-CL-112](#qa-cl-112) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ✅ | [CL-63](#cl-63)<br>[CL-65](#cl-65)<br>[QA-CL-46](#qa-cl-46) | 100 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -302,6 +302,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-112"></a>
+### QA-CL-112 — 2026-08-30 · 7.3.1 🔎 80% → ⚠️ 80% — Projects tidak dapat mengganti context dari UI
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti QA:** Freshness check HEAD `da37938`, worktree bersih. `pnpm exec vitest run apps/web/test/sidebar.test.tsx` lulus **4/4**; `pnpm --filter @kanban/web typecheck` dan `pnpm --filter @kanban/web build` lulus. Observasi browser nyata di `https://kanban-ngodingin.vercel.app` setelah Magic Link membuktikan sidebar tampil dan tanpa Inbox; link scope Project mengikuti URL aktif (`/projects/e2e-sidebar-qa/{members,permissions,api-keys,settings}`).
+
+**Gagal verifikasi:** `PROJECTS ▾` hanya heading statis; tidak ada daftar atau picker Project sehingga pengguna tidak dapat melakukan navigasi antar Project dan mengganti context melalui sidebar. Test 4/4 juga hanya merender Sidebar tanpa route parameter Project dan tidak membuktikan Test goal tersebut. Ini konsisten dengan Review-CL-21/23 dan blocking 7.17.1 yang sudah mendefinisikan sumber data API nyata tanpa demo.
+
+**Handoff Dev:** kerjakan 7.17.1 lebih dahulu sebagai unit implementasi yang sudah disetujui: empty state + daftar Project milik session dari API nyata, lalu hubungkan daftar/picker itu pada `PROJECTS ▾`. Tambahkan test route-aware untuk ganti Project context dan negative test tidak ada Project demo/cross-project. Setelah 7.17.1 `🔎`, serahkan 7.3.1 kembali untuk QA dengan bukti browser staging.
 
 <a id="qa-cl-105"></a>
 ### QA-CL-105 — 2026-08-30 · 7.16.1b 🔎 80% → ✅ 100% — Resend helper aman dan terverifikasi
