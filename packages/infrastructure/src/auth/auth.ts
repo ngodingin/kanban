@@ -177,11 +177,12 @@ export function createAuth(config: AuthConfigInput) {
             return {
               data: {
                 ...session,
-                // CL-116: Set expiresAt = absoluteExpiresAt (Sunday 00:00 UTC).
-                // Better Auth's getSession uses expiresAt untuk validasi —
-                // ini menegakkan absolute boundary. Idle check dilakukan
-                // oleh isSessionActive via lastActivityAt + idleTimeout.
-                expiresAt: lifetime.absoluteExpiresAt,
+                // CL-117: expiresAt = idleExpiresAt (bukan absoluteExpiresAt).
+                // Better Auth getSession mengecek expiresAt → menolak idle-expired.
+                // isSessionActive mengecek idle (via lastActivityAt) DAN absolute
+                // (via absoluteExpiresAt) — dijalankan sebagai intercept pada
+                // GET /auth/get-session DAN pada domain API /v1/*.
+                expiresAt: lifetime.idleExpiresAt,
                 lastActivityAt: issuedAt,
                 absoluteExpiresAt: lifetime.absoluteExpiresAt,
               },

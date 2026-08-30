@@ -367,6 +367,48 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
     }
   });
 
+  // CL-117: Intercept get-session — enforce idle + absolute lifetime via
+  // isSessionActive SEBELUM mengembalikan session ke client (SessionGate).
+  // Tanpa ini, get-session hanya mengecek expiresAt (idle) tapi tidak
+  // mengecek absoluteExpiresAt, sehingga session bisa melewati Sunday boundary.
+  app.on(["GET", "POST"], "/auth/get-session", async (c) => {
+    try {
+      const r = ensure();
+      const res = await r.auth.handler(c.req.raw);
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) return res;
+
+      const body = await res.json() as Record<string, unknown>;
+      const session = body.session as Record<string, unknown> | null | undefined;
+
+      if (session?.id && typeof session.id === "string") {
+        const active = await new SessionLifetimeService(r.globalClient).isSessionActive(session.id);
+        if (!active) {
+          return new Response(
+            JSON.stringify({ session: null, user: null }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+      }
+
+      return new Response(JSON.stringify(body), {
+        status: res.status,
+        headers: { "content-type": "application/json" },
+      });
+    } catch (error) {
+      return c.json(
+        {
+          error: {
+            code: "INTERNAL_ERROR",
+            message: `auth tidak tersedia: ${String(error instanceof Error ? error.message : error)}`,
+          },
+        },
+        500,
+      );
+    }
+  });
+
   app.on(["POST", "GET"], "/auth/*", async (c) => {
     try {
       return await ensure().auth.handler(c.req.raw);

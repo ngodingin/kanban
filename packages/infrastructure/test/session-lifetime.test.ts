@@ -9,12 +9,16 @@ let dir: string;
 let client: Client;
 let lifetime: SessionLifetimeService;
 
+function toSec(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
+}
+
 async function insertSession(id: string, lastActivityAt: Date, absoluteExpiresAt: Date, expiresAt = new Date(lastActivityAt.getTime() + SESSION_IDLE_TIMEOUT_MS)): Promise<void> {
   await client.execute({
     sql: `INSERT INTO auth_sessions
       (id, user_id, token, expires_at, last_activity_at, absolute_expires_at, created_at, updated_at)
       VALUES (?, 'user-1', ?, ?, ?, ?, ?, ?)`,
-    args: [id, `token-${id}`, expiresAt.getTime(), lastActivityAt.getTime(), absoluteExpiresAt.getTime(), lastActivityAt.toISOString(), lastActivityAt.toISOString()],
+    args: [id, `token-${id}`, toSec(expiresAt), toSec(lastActivityAt), toSec(absoluteExpiresAt), lastActivityAt.toISOString(), lastActivityAt.toISOString()],
   });
 }
 
@@ -60,9 +64,9 @@ describe("TASK-7.15.0 session lifetime — SOT 4.3.0", () => {
     await insertSession("touch-45", issued, absolute);
     expect(await lifetime.touchAfterSuccessfulUserAction("touch-45", new Date("2026-08-28T10:45:00.000Z"))).toBe(true);
     const saved = await row("touch-45");
-    expect(saved?.last_activity_at).toBe(new Date("2026-08-28T10:45:00.000Z").getTime());
-    expect(saved?.expires_at).toBe(new Date("2026-08-28T11:45:00.000Z").getTime());
-    expect(saved?.absolute_expires_at).toBe(absolute.getTime());
+    expect(saved?.last_activity_at).toBe(toSec(new Date("2026-08-28T10:45:00.000Z")));
+    expect(saved?.expires_at).toBe(toSec(new Date("2026-08-28T11:45:00.000Z")));
+    expect(saved?.absolute_expires_at).toBe(toSec(absolute));
   });
 
   it("[SEC-SESSION negatif] polling/refetch, request gagal, health, dan API Key/PAT tidak memenuhi syarat touch", () => {
@@ -81,7 +85,7 @@ describe("TASK-7.15.0 session lifetime — SOT 4.3.0", () => {
     const absolute = nextSundayUtc(issued);
     await insertSession("touch-boundary", issued, absolute);
     expect(await lifetime.touchAfterSuccessfulUserAction("touch-boundary", new Date("2026-08-29T23:45:00.000Z"))).toBe(true);
-    expect((await row("touch-boundary"))?.expires_at).toBe(absolute.getTime());
+    expect((await row("touch-boundary"))?.expires_at).toBe(toSec(absolute));
   });
 
   it("[SEC-SESSION] menolak dan menghapus sesi idle yang sudah lewat satu jam", async () => {
@@ -135,7 +139,7 @@ describe("TASK-7.15.0 session lifetime — SOT 4.3.0", () => {
     expect(await lifetime.touchAfterSuccessfulUserAction("interleave-touch", new Date("2026-08-28T10:45:00.000Z"))).toBe(true);
     const afterFirst = await row("interleave-touch");
     const firstExpiry = Number(afterFirst?.expires_at);
-    expect(firstExpiry).toBe(new Date("2026-08-28T11:45:00.000Z").getTime());
+    expect(firstExpiry).toBe(toSec(new Date("2026-08-28T11:45:00.000Z")));
 
     // Interleaved touch at T+30min (older) — must NOT move deadline backwards
     expect(await lifetime.touchAfterSuccessfulUserAction("interleave-touch", new Date("2026-08-28T10:30:00.000Z"))).toBe(true);
@@ -144,6 +148,6 @@ describe("TASK-7.15.0 session lifetime — SOT 4.3.0", () => {
     expect(secondExpiry).toBe(firstExpiry);
 
     // last_activity_at also must not regress
-    expect(Number(afterSecond?.last_activity_at)).toBeGreaterThanOrEqual(new Date("2026-08-28T10:45:00.000Z").getTime());
+    expect(Number(afterSecond?.last_activity_at)).toBeGreaterThanOrEqual(toSec(new Date("2026-08-28T10:45:00.000Z")));
   });
 });

@@ -6,43 +6,62 @@ export interface InboxSnapshot {
   messageIds: string[];
 }
 
+async function readRowIds(page: Page): Promise<string[]> {
+  const rows = page.locator("tr[id^='row_']");
+  const count = await rows.count();
+  const ids: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const id = await rows.nth(i).getAttribute("id");
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
 export async function snapshotInbox(
   page: Page,
   email: string,
   timeoutMs: number = 20_000,
-  retries: number = 5,
 ): Promise<InboxSnapshot> {
   const localPart = email.split("@")[0];
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
 
-  for (let attempt = 0; attempt < retries; attempt++) {
+  // Retry up to 5 times with stabilization check
+  for (let attempt = 0; attempt < 5; attempt++) {
     await page.goto(inboxUrl, { waitUntil: "networkidle", timeout: timeoutMs });
 
-    // Wait for Angular to render rows
+    // Wait for Angular to render
     try {
       await page.waitForSelector("tr[id^='row_']", { timeout: 12_000 });
     } catch {
-      // Inbox might be empty or Angular still loading
+      // No rows — might be empty or still loading
     }
 
-    const rows = page.locator("tr[id^='row_']");
-    const count = await rows.count();
+    const ids = await readRowIds(page);
 
-    // Success if we have rows, or this is the last retry
-    if (count > 0 || attempt === retries - 1) {
-      const messageIds: string[] = [];
-      for (let i = 0; i < count; i++) {
-        const id = await rows.nth(i).getAttribute("id");
-        if (id) messageIds.push(id);
+    if (ids.length > 0) {
+      // Stabilization: wait 2s, re-read. If rows disappeared, retry.
+      await page.waitForTimeout(2_000);
+      const stableIds = await readRowIds(page);
+      if (stableIds.length > 0) {
+        return { messageIds: stableIds };
       }
-      return { messageIds };
     }
 
-    // Retry with increasing delay
+    // Empty or unstable — retry with increasing delay
     await page.waitForTimeout(3_000 * (attempt + 1));
   }
 
-  return { messageIds: [] };
+  // Final attempt — return whatever we have (may be empty)
+  await page.goto(
+    `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`,
+    { waitUntil: "networkidle", timeout: timeoutMs },
+  );
+  try {
+    await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
+  } catch {
+    // Empty inbox
+  }
+  return { messageIds: await readRowIds(page) };
 }
 
 export async function waitForNewEmail(
@@ -59,30 +78,22 @@ export async function waitForNewEmail(
   while (Date.now() < deadline) {
     await page.goto(inboxUrl, { waitUntil: "networkidle", timeout: 15_000 });
 
-    // Wait for Angular to render — don't fail if inbox is empty
     try {
       await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
     } catch {
-      // Inbox temporarily empty — retry
       await page.waitForTimeout(pollIntervalMs);
       continue;
     }
 
-    const rows = page.locator("tr[id^='row_']");
-    const count = await rows.count();
+    // Stabilization: re-read after short delay
+    await page.waitForTimeout(1_500);
+    const currentIds = await readRowIds(page);
 
-    if (count === 0) {
+    if (currentIds.length === 0) {
       await page.waitForTimeout(pollIntervalMs);
       continue;
     }
 
-    const currentIds: string[] = [];
-    for (let i = 0; i < count; i++) {
-      const id = await rows.nth(i).getAttribute("id");
-      if (id) currentIds.push(id);
-    }
-
-    // Find new IDs not in snapshot
     for (const id of currentIds) {
       if (!snapshot.messageIds.includes(id)) {
         return { messageId: id };

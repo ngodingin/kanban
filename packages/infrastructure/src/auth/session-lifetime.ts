@@ -39,8 +39,18 @@ export function initialSessionLifetime(issuedAt: Date): SessionLifetime {
 
 function asEpoch(value: unknown): number {
   if (value instanceof Date) return value.getTime();
-  if (typeof value === "number") return value;
-  if (typeof value === "string") return Number(value);
+  if (typeof value === "number") {
+    // Better Auth stores epoch seconds for SQLite integer columns;
+    // detect and normalize to milliseconds when value < 10^12.
+    return value < 1e12 ? value * 1000 : value;
+  }
+  if (typeof value === "string") {
+    const num = Number(value);
+    if (Number.isFinite(num)) return num < 1e12 ? num * 1000 : num;
+    // ISO date string — parse to epoch ms
+    const date = new Date(value);
+    if (!Number.isNaN(date.getTime())) return date.getTime();
+  }
   return Number.NaN;
 }
 
@@ -73,16 +83,19 @@ export class SessionLifetimeService {
 
     // Delete bukan sekadar menandai expired agar row lama tidak bisa dipakai
     // kembali oleh request paralel maupun integrasi Better Auth lain.
+    // Use epoch seconds for comparison since Better Auth stores seconds in SQLite.
+    const nowSec = Math.floor(nowMs / 1000);
     await this.globalClient.execute({
       sql: "DELETE FROM auth_sessions WHERE id = ? AND (expires_at <= ? OR absolute_expires_at <= ?)",
-      args: [sessionId, nowMs, nowMs],
+      args: [sessionId, nowSec, nowSec],
     });
     return false;
   }
 
   async touchAfterSuccessfulUserAction(sessionId: string, now = new Date()): Promise<boolean> {
-    const nowMs = now.getTime();
-    const candidateExpiryMs = nowMs + SESSION_IDLE_TIMEOUT_MS;
+    // Better Auth stores epoch seconds in SQLite; normalize now to seconds.
+    const nowSec = Math.floor(now.getTime() / 1000);
+    const candidateExpirySec = nowSec + Math.floor(SESSION_IDLE_TIMEOUT_MS / 1000);
     const result = await this.globalClient.execute({
       sql: `UPDATE auth_sessions
         SET last_activity_at = CASE WHEN last_activity_at < ? THEN ? ELSE last_activity_at END,
@@ -92,7 +105,7 @@ export class SessionLifetimeService {
             END,
             updated_at = ?
         WHERE id = ? AND expires_at > ? AND absolute_expires_at > ?`,
-      args: [nowMs, nowMs, candidateExpiryMs, candidateExpiryMs, now.toISOString(), sessionId, nowMs, nowMs],
+      args: [nowSec, nowSec, candidateExpirySec, candidateExpirySec, now.toISOString(), sessionId, nowSec, nowSec],
     });
     return result.rowsAffected > 0;
   }
