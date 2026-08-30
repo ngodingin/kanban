@@ -17,6 +17,7 @@ async function signOutViaBrowser(page: import("@playwright/test").Page): Promise
       method: "POST",
       headers: { "content-type": "application/json" },
       credentials: "include",
+      body: "{}",
     });
     return res.status;
   });
