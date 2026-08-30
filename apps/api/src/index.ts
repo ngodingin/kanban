@@ -394,7 +394,16 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
 
       let body: Record<string, unknown>;
       try {
-        body = await res.json() as Record<string, unknown>;
+        const parsed = await res.json() as unknown;
+        // QA-CL-90 / QA-CL-89: normalkan payload JSON non-object (null literal,
+        // array, primitif) menjadi { session: null, user: null } supaya jalur
+        // anonymous get-session SELALU mengembalikan object valid (HTTP 200),
+        // bukan body null yang membuat klien .json().session throw.
+        if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+          body = { session: null, user: null };
+        } else {
+          body = parsed as Record<string, unknown>;
+        }
       } catch {
         return new Response(
           JSON.stringify({ session: null, user: null }),
@@ -403,7 +412,6 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
       }
 
       const session = body?.session as Record<string, unknown> | null | undefined;
-
       if (session?.id && typeof session.id === "string") {
         const active = await new SessionLifetimeService(r.globalClient).isSessionActive(session.id);
         if (!active) {

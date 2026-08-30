@@ -14,6 +14,7 @@ export default defineConfig({
       "packages/*/test/**/*.test.ts",
       "apps/*/test/**/*.test.ts",
       "apps/*/test/**/*.test.tsx",
+      "e2e/**/*.test.ts",
     ],
     environment: "node",
   },
