@@ -9,23 +9,26 @@ export interface InboxSnapshot {
 export async function snapshotInbox(
   page: Page,
   email: string,
-  timeoutMs: number = 15_000,
-  retries: number = 3,
+  timeoutMs: number = 20_000,
+  retries: number = 5,
 ): Promise<InboxSnapshot> {
   const localPart = email.split("@")[0];
   const inboxUrl = `${MAILINATOR_ORIGIN}/v4/public/inboxes.jsp?to=${localPart}`;
 
   for (let attempt = 0; attempt < retries; attempt++) {
-    await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: timeoutMs });
+    await page.goto(inboxUrl, { waitUntil: "networkidle", timeout: timeoutMs });
 
+    // Wait for Angular to render rows
     try {
-      await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
+      await page.waitForSelector("tr[id^='row_']", { timeout: 12_000 });
     } catch {
-      // Inbox might be empty — no rows is valid
+      // Inbox might be empty or Angular still loading
     }
 
     const rows = page.locator("tr[id^='row_']");
     const count = await rows.count();
+
+    // Success if we have rows, or this is the last retry
     if (count > 0 || attempt === retries - 1) {
       const messageIds: string[] = [];
       for (let i = 0; i < count; i++) {
@@ -35,8 +38,8 @@ export async function snapshotInbox(
       return { messageIds };
     }
 
-    // Retry: inbox might not have loaded yet
-    await page.waitForTimeout(2_000);
+    // Retry with increasing delay
+    await page.waitForTimeout(3_000 * (attempt + 1));
   }
 
   return { messageIds: [] };
@@ -54,13 +57,13 @@ export async function waitForNewEmail(
   const deadline = Date.now() + timeoutMs;
 
   while (Date.now() < deadline) {
-    await page.goto(inboxUrl, { waitUntil: "domcontentloaded", timeout: 15_000 });
+    await page.goto(inboxUrl, { waitUntil: "networkidle", timeout: 15_000 });
 
-    // Wait for Angular to render — but don't fail if inbox is empty
+    // Wait for Angular to render — don't fail if inbox is empty
     try {
-      await page.waitForSelector("tr[id^='row_']", { timeout: 8_000 });
+      await page.waitForSelector("tr[id^='row_']", { timeout: 10_000 });
     } catch {
-      // Inbox might be temporarily empty — retry
+      // Inbox temporarily empty — retry
       await page.waitForTimeout(pollIntervalMs);
       continue;
     }
@@ -68,7 +71,6 @@ export async function waitForNewEmail(
     const rows = page.locator("tr[id^='row_']");
     const count = await rows.count();
 
-    // If 0 rows after previously having rows, Angular might still be loading
     if (count === 0) {
       await page.waitForTimeout(pollIntervalMs);
       continue;
