@@ -4,6 +4,7 @@ const port = 3100;
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: "**/staging/**",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

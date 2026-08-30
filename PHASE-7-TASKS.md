@@ -249,7 +249,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.16.1 | ⬜️ | [Review-CL-15](#review-cl-15)<br>[QA-CL-77](#qa-cl-77) | 0 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Magic Link Mailinator, assertion session nyata, namespace data test unik, dan cleanup wajib walau test gagal. Jangan membuat endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
+| 7.16.1 | 🔎 | [Review-CL-15](#review-cl-15)<br>[QA-CL-77](#qa-cl-77)<br>[CL-109](#cl-109) | 80 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Magic Link Mailinator, assertion session nyata, namespace data test unik, dan cleanup wajib walau test gagal. Jangan membuat endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
 | 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1 |
 | 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2 |
 | 7.16.4 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji authorization/invitation nyata: invite scoped, accept, Group/direct Permission inheritance, dan request UI/API tanpa permission ditolak. Seluruh identity uji serta assignment dibersihkan/revoke setelah suite. | [02-SPEC A.10–A.13](docs/02-SPEC.md), [AC-003](docs/04-DELIVERY.md), [AC-025..028](docs/04-DELIVERY.md) | 7.16.2 |
@@ -321,6 +321,51 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Bukti QA:** Seluruh pemeriksaan melalui Distrobox envdev (Node v24.19.0, pnpm 11.22.0). Worktree bersih pada `33f41df` dan CL-105 dibaca ulang. `pnpm vitest run packages/infrastructure/test/magic-link-url-construction.test.ts apps/web/test/session-gate.test.tsx apps/web/test/magic-link-ui.test.tsx` → **3 file / 30 test PASS**; `pnpm exec playwright test --reporter=line` → **38/38 PASS**. Namun branch `stag` adalah **ahead 3** dari `ai-github/stag` (termasuk `33f41df`); lookup deployment Vercel untuk alias canonical `kanban-ngodingin.vercel.app` menunjukkan `READY` tetapi masih pada commit **`6a627e8`**, sebelum CL-105. Karena itu URL staging belum berisi `/login/verify` atau rewrite callback baru dan tidak dapat membuktikan Magic Link session nyata.
 
 **Gagal verifikasi:** DoD 7.15.0 dan A.14 mewajibkan alur browser nyata, bukan hanya test lokal. Push commit fix ke remote `stag`, tunggu deployment staging `READY` pada commit yang memuat fix, lalu QA harus menguji callback, single-use token, cookie HTTP-only, session aktif, dan returnTo internal. Status tidak dapat diluluskan sebelum bukti itu ada.
+
+<a id="cl-109"></a>
+### CL-109 — 2026-08-30 · 7.16.1 🔎 80% — staging E2E harness: Playwright config + utilities + magic link test
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** 7.15.0 ✅ 100% (QA-CL-76). 7.16.1 dependency terpenuhi, gate QA-CL-77 sudah dibuka. Seluruh SOT reference (03-ENG A.14, D.7, 04-DELIVERY A.0) dibaca dan diimplementasikan.
+
+**Implementasi:**
+
+1. **`playwright.staging.config.ts`** — Playwright config terpisah untuk staging:
+   - `testDir: "./e2e/staging"`, `fullyParallel: false`, `forbidOnly: true`
+   - `baseURL: "https://kanban-ngodingin.vercel.app"`
+   - `extraHTTPHeaders: { "x-vercel-protection-bypass": VERCEL_AUTOMATION_BYPASS_SECRET }`
+
+2. **`e2e/staging/helpers/staging.ts`** — Core harness utilities:
+   - `ALLOWED_ORIGINS` allowlist — `assertStagingOrigin()` reject host lain sebelum test
+   - `testNamespace()` — unique prefix per test-run (`ts-{timestamp}-{rand}`)
+   - `registerCleanup()` + `runCleanup()` — cleanup actions via `test.afterAll`, jalan walau test gagal
+   - `stagingTest()` wrapper — validasi origin sebelum eksekusi
+
+3. **`e2e/staging/helpers/mailinator.ts`** — Mailinator public API client:
+   - `listInboxMessages()` — GET inbox via Mailinator API v2
+   - `getMessage()` — GET full email content (HTML body)
+   - `extractMagicLinkUrl()` — parse HTML cari href `/login/verify?token=...`
+   - `extractTokenFromUrl()` — ekstrak token dari URL params
+   - `waitForMagicLinkEmail()` — poll inbox dengan timeout + configurable interval
+
+4. **`e2e/staging/helpers/api.ts`** — Staging API client:
+   - `signInMagicLink()` — POST `/api/auth/sign-in/magic-link`
+   - `verifyMagicLink()` — GET `/api/auth/magic-link/verify?token=...` (maxRedirects: 0)
+   - `getSession()` — GET `/api/auth/get-session` dengan cookie header
+   - `extractSessionCookie()` — parse `kanban.session_token=...` dari set-cookie
+
+5. **`e2e/staging/magic-link-login.spec.ts`** — 4 tests:
+   - Origin allowlist validation (positif + negatif)
+   - Full flow: sign-in → Mailinator poll → verify → get-session aktif
+   - Verify token salah → tidak membuat session
+   - Get-session tanpa cookie → tidak ada session
+
+6. **`playwright.config.ts`** — tambah `testIgnore: "**/staging/**"` agar local E2E tidak menjalankan staging tests.
+
+7. **`package.json`** — tambah script `test:e2e:staging`.
+
+**Test:** `pnpm test` → 143/143 PASS (876 tests). `pnpm exec playwright test` → 38/38 local E2E PASS. `pnpm lint` + `pnpm -r typecheck` → PASS.
 
 <a id="cl-108"></a>
 ### CL-108 — 2026-08-29 · 7.15.0 🔎 80% — fix header forwarding: preserve semua headers dari response Better Auth

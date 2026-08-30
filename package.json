@@ -13,7 +13,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:e2e:staging": "playwright test --config playwright.staging.config.ts"
   },
   "dependencies": {
     "@libsql/client": "0.17.4",
