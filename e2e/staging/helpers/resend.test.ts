@@ -258,4 +258,40 @@ describe("TASK-7.16.1b — error redaction", () => {
     expect(token).toBe("abc123");
     expect(token).not.toContain(SECRET_TOKEN);
   });
+
+  it("validateMagicLinkEmail tidak membocorkan subject di error", () => {
+    const e = email({ subject: `Login with token ${SECRET_TOKEN}` });
+    try {
+      validateMagicLinkEmail(e, `e2e-harness@${DOMAIN}`);
+      throw new Error("should have thrown");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      expect(msg).not.toContain(SECRET_TOKEN);
+      expect(msg).not.toContain("Login with token");
+    }
+  });
+
+  it("validateMagicLinkEmail tidak membocorkan sender di error", () => {
+    const e = email({ from: `Attacker <leak-${SECRET_TOKEN}@evil.test>` });
+    try {
+      validateMagicLinkEmail(e, `e2e-harness@${DOMAIN}`);
+      throw new Error("should have thrown");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      expect(msg).not.toContain(SECRET_TOKEN);
+      expect(msg).not.toContain("leak-");
+    }
+  });
+
+  it("validateMagicLinkEmail tidak membocorkan recipient di error", () => {
+    const e = email({ to: [`leak-${SECRET_TOKEN}@evil.test`] });
+    try {
+      validateMagicLinkEmail(e, `e2e-harness@${DOMAIN}`);
+      throw new Error("should have thrown");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      expect(msg).not.toContain(SECRET_TOKEN);
+      expect(msg).not.toContain("leak-");
+    }
+  });
 });

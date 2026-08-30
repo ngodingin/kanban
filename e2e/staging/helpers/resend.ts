@@ -97,7 +97,7 @@ export function validateMagicLinkEmail(
 ): void {
   if (!email.to.includes(expectedRecipient)) {
     throw new Error(
-      `Email penerima salah: diharapkan ${expectedRecipient}, diperoleh ${email.to.join(", ")}`,
+      `Email penerima salah: diharapkan ${expectedRecipient}, diperoleh ${email.to.length} penerima`,
     );
   }
   // Extract email from "Name <email>" or plain "email"
@@ -105,7 +105,7 @@ export function validateMagicLinkEmail(
   const senderEmail = (senderMatch[1] ?? "").trim().toLowerCase();
   if (senderEmail !== EXPECTED_SENDER) {
     throw new Error(
-      `Email sender tidak cocok: "${email.from}" — diharapkan ${EXPECTED_SENDER}`,
+      `Email sender tidak cocok: diharapkan ${EXPECTED_SENDER}`,
     );
   }
   if (!email.subject.toLowerCase().includes("magic") &&
@@ -114,7 +114,7 @@ export function validateMagicLinkEmail(
       !email.subject.toLowerCase().includes("login") &&
       !email.subject.toLowerCase().includes("kanban")) {
     throw new Error(
-      `Subject email tidak cocok: "${email.subject}" — diharapkan magic link email`,
+      `Subject email tidak cocok: diharapkan magic link email`,
     );
   }
 }
