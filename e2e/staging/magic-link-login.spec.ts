@@ -3,7 +3,6 @@ import {
   STAGING_ORIGIN,
   assertStagingOrigin,
   testNamespace,
-  registerCleanup,
 } from "./helpers/staging.ts";
 import { getSession, signOut } from "./helpers/api.ts";
 import {
@@ -27,18 +26,6 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
     const ns = testNamespace();
     const recipient = buildRecipientAddress(ns);
     let sessionCookie = "";
-
-    // Register cleanup FIRST — wajib di-assert, tidak boleh menelan error (Review-CL-18).
-    // Identity unik hasil Magic Link boleh tersisa (akun test non-member), tetapi
-    // session dan credential wajib dibersihkan; cleanup gagal = suite gagal.
-    registerCleanup("sign-out after magic-link-login", async () => {
-      if (!sessionCookie) return;
-      const result = await signOut(request, sessionCookie);
-      expect(result.status, "sign-out harus sukses").toBe(200);
-      // Verify session hilang setelah cleanup
-      const afterSignOut = await getSession(request, sessionCookie);
-      expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
-    });
 
     try {
       // 1. Buka /login di browser dengan returnTo, isi form dengan Resend recipient, submit
@@ -83,10 +70,14 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
       expect(sessionResult.status, "get-session harus 200").toBe(200);
       expect(sessionResult.hasSession, "session harus aktif").toBe(true);
     } finally {
-      // Cleanup sudah terdaftar via registerCleanup — dijalankan oleh afterAll.
-      // Tidak perlu sign-out manual di sini; biarkan registerCleanup yang handle.
-      // Tapi tetap clear sessionCookie kalau test gagal sebelum session terbentuk
-      // supaya registerCleanup tidak mencoba sign-out dengan cookie kosong.
+      // 6. Cleanup: sign-out dijalankan saat fixture request masih aktif.
+      // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error.
+      if (sessionCookie) {
+        const result = await signOut(request, sessionCookie);
+        expect(result.status, "sign-out harus sukses").toBe(200);
+        const afterSignOut = await getSession(request, sessionCookie);
+        expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
+      }
     }
   });
 
@@ -121,15 +112,6 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
     const ns = testNamespace();
     const recipient = buildRecipientAddress(ns);
     let sessionCookie = "";
-
-    // Register cleanup FIRST — wajib di-assert, tidak boleh menelan error (Review-CL-18).
-    registerCleanup("sign-out after qa-cl-82 regression", async () => {
-      if (!sessionCookie) return;
-      const result = await signOut(request, sessionCookie);
-      expect(result.status, "sign-out harus sukses").toBe(200);
-      const afterSignOut = await getSession(request, sessionCookie);
-      expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
-    });
 
     try {
       // 1. Login via Magic Link (full browser flow)
@@ -181,7 +163,14 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
         expect(sessionResult.hasSession, `session harus aktif setelah navigasi ke ${route}`).toBe(true);
       }
     } finally {
-      // Cleanup sudah terdaftar via registerCleanup — dijalankan oleh afterAll.
+      // 4. Cleanup: sign-out dijalankan saat fixture request masih aktif.
+      // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error.
+      if (sessionCookie) {
+        const result = await signOut(request, sessionCookie);
+        expect(result.status, "sign-out harus sukses").toBe(200);
+        const afterSignOut = await getSession(request, sessionCookie);
+        expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
+      }
     }
   });
 });
