@@ -249,7 +249,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.16.1 | ⚠️ | [Review-CL-15](#review-cl-15)<br>[QA-CL-77](#qa-cl-77)<br>[CL-109](#cl-109)<br>[QA-CL-78](#qa-cl-78)<br>[CL-110](#cl-110)<br>[QA-CL-79](#qa-cl-79)<br>[CL-111](#cl-111)<br>[QA-CL-80](#qa-cl-80)<br>[CL-112](#cl-112)<br>[QA-CL-81](#qa-cl-81)<br>[CL-113](#cl-113)<br>[QA-CL-82](#qa-cl-82)<br>[CL-114](#cl-114)<br>[QA-CL-84](#qa-cl-84)<br>[CL-115](#cl-115)<br>[QA-CL-86](#qa-cl-86)<br>[CL-116](#cl-116)<br>[QA-CL-88](#qa-cl-88)<br>[Review-CL-17](#review-cl-17)<br>[CL-117](#cl-117)<br>[CL-118](#cl-118)<br>[QA-CL-89](#qa-cl-89)<br>[CL-119](#cl-119)<br>[QA-CL-90](#qa-cl-90)<br>[CL-120](#cl-120)<br>[QA-CL-91](#qa-cl-91)<br>[CL-121](#cl-121)<br>[Review-CL-18](#review-cl-18) | 80 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Resend Receiving API untuk Magic Link, assertion session nyata, namespace penerima unik, dan cleanup wajib walau test gagal. Jangan membuat webhook/endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
+| 7.16.1 | 🔎 | [Review-CL-15](#review-cl-15)<br>[QA-CL-77](#qa-cl-77)<br>[CL-109](#cl-109)<br>[QA-CL-78](#qa-cl-78)<br>[CL-110](#cl-110)<br>[QA-CL-79](#qa-cl-79)<br>[CL-111](#cl-111)<br>[QA-CL-80](#qa-cl-80)<br>[CL-112](#cl-112)<br>[QA-CL-81](#qa-cl-81)<br>[CL-113](#cl-113)<br>[QA-CL-82](#qa-cl-82)<br>[CL-114](#cl-114)<br>[QA-CL-84](#qa-cl-84)<br>[CL-115](#cl-115)<br>[QA-CL-86](#qa-cl-86)<br>[CL-116](#cl-116)<br>[QA-CL-88](#qa-cl-88)<br>[Review-CL-17](#review-cl-17)<br>[CL-117](#cl-117)<br>[CL-118](#cl-118)<br>[QA-CL-89](#qa-cl-89)<br>[CL-119](#cl-119)<br>[QA-CL-90](#qa-cl-90)<br>[CL-120](#cl-120)<br>[QA-CL-91](#qa-cl-91)<br>[CL-121](#cl-121)<br>[Review-CL-18](#review-cl-18)<br>[CL-123](#cl-123) | 80 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Resend Receiving API untuk Magic Link, assertion session nyata, namespace penerima unik, dan cleanup wajib walau test gagal. Jangan membuat webhook/endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
 | 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1 |
 | 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2 |
 | 7.16.4 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji authorization/invitation nyata: invite scoped, accept, Group/direct Permission inheritance, dan request UI/API tanpa permission ditolak. Seluruh identity uji serta assignment dibersihkan/revoke setelah suite. | [02-SPEC A.10–A.13](docs/02-SPEC.md), [AC-003](docs/04-DELIVERY.md), [AC-025..028](docs/04-DELIVERY.md) | 7.16.2 |
@@ -276,6 +276,24 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Keputusan manusia:** Opsi 1 disetujui. Identity yang dibuat oleh Magic Link dengan recipient unik boleh bertahan sebagai akun test non-member, tanpa Project, Membership, Permission assignment, Invitation, API Key/PAT, maupun session aktif. Identity ini tidak dipakai kembali lintas run dan tidak dianggap data domain uji yang wajib dipurge.
 
 **Alasan & impact:** `users` adalah anchor identitas/historis Global DB (03-ENG A.14) dan SOT tidak menyediakan lifecycle delete User; endpoint test-only dilarang. Keputusan ini menghindari penambahan lifecycle/API baru sambil mempertahankan cleanup tegas untuk seluruh resource domain, credential, dan session yang dapat dicabut. Dev 7.16.1 wajib mendaftarkan cleanup sign-out yang di-assert (tidak boleh menelan error), membuktikan session hilang setelah cleanup, dan mempertahankan unique-recipient isolation. Goal tetap `⚠️` sampai implementasi/test tersebut tersedia. Tidak ada perubahan SOT atau `SPEC_VERSION`: ini hanya kontrak acceptance khusus harness E2E di task.
+
+<a id="cl-123"></a>
+### CL-123 — 2026-08-30 · goal 7.16.1 remediasi cleanup sign-out (⚠️ → 🔄 → 🔎 · 80%)
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2.5-free
+
+**Konteks:** Review-CL-18 (2026-08-30) memutuskan: identity unik hasil Magic Link boleh tersisa sebagai akun test non-member (tidak ada lifecycle delete User di SOT), tetapi session + credential + data domain wajib dibersihkan; cleanup gagal harus menggagalkan suite; `registerCleanup` harus dipakai dan di-assert.
+
+**Fix:** `e2e/staging/magic-link-login.spec.ts` — pada kedua flow Magic Link (sign-in + QA-CL-82 regression):
+1. Import `registerCleanup` dari `helpers/staging.ts`.
+2. Daftarkan cleanup sign-out via `registerCleanup(label, fn, assertSuccess=true)` SEBELUM flow utama — menggunakan闭包 yang menangkap `sessionCookie`.
+3. Di dalam cleanup: panggil `signOut()`, assert `status === 200`, lalu verifikasi `getSession()` menghasilkan `hasSession === false`.
+4. Hapus `.catch(() => {})` yang menelan kegagalan — cleanup sekarang di-assert, gagal = suite gagal.
+5. `finally` block dibiarkan kosong (cleanup sudah terdaftar via `registerCleanup`, dijalankan `afterAll`).
+
+**Bukti:** `pnpm lint` → bersih; `pnpm exec vitest run` → **145 file / 883 test PASS** (tidak berubah — E2E Playwright tidak dijalankan di sini, hanya unit/integration). `e2e/staging/magic-link-login.spec.ts` dikonfirmasi tercompile (tidak ada error import/type).
+
+**Catatan:** E2E Playwright staging hanya bisa dijalankan dengan `VERCEL_AUTOMATION_BYPASS_SECRET` + `E2E_RESEND_API_KEY` + `E2E_RESEND_RECEIVING_DOMAIN` dari environment — tidak tersedia di environment dev lokal. Verifikasi penuh dilakukan QA di staging.
 
 <a id="cl-122"></a>
 ### CL-122 — 2026-08-30 · goal 7.3.1 remediasi routing — sidebar nav items reachable (⚠️ → 🔄 → 🔎 · 80%)
