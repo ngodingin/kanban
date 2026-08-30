@@ -160,6 +160,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.10.1 | ⚠️ | [QA-CL-14](#qa-cl-14)<br>[QA-CL-20](#qa-cl-20)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45)<br>[Review-CL-16](#review-cl-16) | 50 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.10.2 | ⚠️ | [QA-CL-27](#qa-cl-27)<br>[Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40)<br>[Review-CL-16](#review-cl-16) | 50 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
+| 7.10.3 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Pasang surface Invitation pada route Members yang sudah ada: list, form, dan revoke memakai komponen/hook existing tanpa mengubah kontrak API. **Test:** form dan pending/revoke reachable dari browser route; payload scope tetap C.13. **DoD:** tidak ada invite UI yang tersembunyi atau route test-only. | [04-DELIVERY A.1](docs/04-DELIVERY.md) | 7.10.1, 7.10.2 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
 **DoD:** Members & Invitation patuh invitation flow.
@@ -172,6 +173,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 |---|:--:|:--:|:--:|:--:|---|---|---|
 | 7.11.1 | ⚠️ | [QA-CL-28](#qa-cl-28)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42)<br>[Review-CL-16](#review-cl-16) | 50 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
 | 7.11.2 | ⚠️ | [QA-CL-29](#qa-cl-29)<br>[CL-41](#cl-41)<br>[CL-43](#cl-43)<br>[Review-CL-16](#review-cl-16) | 50 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
+| 7.11.3 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P1 | Lengkapi flow API Key pada route Project: list → create → secret tampil sekali → revoke, memakai panel/hook existing. **Test:** browser surface + secret tidak muncul setelah reload/list. **DoD:** route tetap Project-scoped. | [02-SPEC C.14](docs/02-SPEC.md) | 7.11.1 |
+| 7.11.4 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P1 | Buat surface User Settings untuk PAT terpisah dari Project: list → create → secret sekali → revoke, memakai endpoint `/me` existing. **Test:** browser route tidak membawa `projectId`; secret tidak muncul setelah reload/list. **DoD:** tidak ada PAT pada Project Settings. | [02-SPEC C.14](docs/02-SPEC.md) | 7.11.2 |
 
 **Test:** Secret hanya tampil sekali; revoke berfungsi; PAT di User Settings bukan Project.
 **DoD:** Credential UI patuh security model.
@@ -243,6 +246,33 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 ---
 
+## TASK-7.17 — Onboarding dan pemilihan Project
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 7.17.1 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Empty state Home dan daftar Project milik session: tampilkan data API nyata tanpa demo/cross-project search. **Test:** tanpa Project menampilkan CTA; daftar hanya memuat Project yang dikembalikan API. **DoD:** sidebar/picker tidak menebak atau menyimpan Project domain lokal. | [01-PRODUCT US-001](docs/01-PRODUCT.md) | 7.15.0 |
+| 7.17.2 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Form Create Project memakai endpoint domain existing dan `Idempotency-Key` stabil. **Test:** create positif; error API ditampilkan; submit ganda tidak membuat dua logical action. **DoD:** tidak ada provisioning/client-side bypass. | [02-SPEC C.4](docs/02-SPEC.md) | 7.17.1 |
+| 7.17.3 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P1 | Setelah create berhasil, refresh daftar lalu arahkan ke Project baru melalui route internal. **Test:** success redirect; error tetap di form; route eksternal tidak dipakai. **DoD:** owner/membership diambil dari server, bukan state UI. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.17.2 |
+
+**Test:** browser production build mencakup empty state dan create Project satu kali; API domain tetap sumber data.
+**DoD:** US-001 dapat diselesaikan manusia dari UI tanpa data demo atau akses lintas Project.
+
+---
+
+## TASK-7.18 — Pembuatan hierarchy dari UI
+
+| ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
+|---|:--:|:--:|:--:|:--:|---|---|---|
+| 7.18.1 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Form New Milestone pada Project: title, due date opsional, progress manual sesuai kontrak. **Test:** payload valid/invalid; error API terlihat. **DoD:** tidak ada status otomatis atau field non-MVP. | [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.17.3 |
+| 7.18.2 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Form New Board di dalam Milestone aktif. **Test:** Board hanya dibuat pada Milestone route yang dipilih; error permission/state terlihat. **DoD:** UI tidak menawarkan move Board. | [02-SPEC BR-002](docs/02-SPEC.md) | 7.18.1 |
+| 7.18.3 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Form New List di Board aktif dengan nama bebas. **Test:** payload title; tidak ada sugesti List wajib; error terlihat. **DoD:** UI tidak menawarkan move List. | [02-SPEC BR-003](docs/02-SPEC.md) | 7.18.2 |
+| 7.18.4 | ⬜️ | [Review-CL-22](#review-cl-22) | 0 | P0 | Form New Card pada List aktif dengan input title pengguna, bukan judul tetap command palette. **Test:** create positif dan validation error; mutation memakai Idempotency-Key. **DoD:** Card tepat pada List terpilih dan tidak ada field priority/progress/status. | [02-SPEC BR-004](docs/02-SPEC.md) | 7.18.3 |
+
+**Test:** alur browser Project → Milestone → Board → List → Card memakai endpoint nyata dan tidak menawarkan move parent.
+**DoD:** UX Flow A.2 terpenuhi tanpa aturan domain baru atau bypass permission/concurrency.
+
+---
+
 ## TASK-7.16 — E2E staging untuk alur bisnis MVP
 
 **Prasyarat:** seluruh goal task ini bergantung pada `7.15.0` kembali `✅`, karena setiap alur web nyata memerlukan database-backed session. Test hanya boleh menuju canonical staging `https://kanban-ngodingin.vercel.app`, menolak production/host lain sebelum test dimulai, memakai receiving domain Resend `E2E_RESEND_RECEIVING_DOMAIN=ulkiipbi.resend.app` dan API key khusus QA `E2E_RESEND_API_KEY` dari environment (bukan hard-code). Setiap run membuat penerima unik `e2e-<testNamespace>@<domain>` dan hanya mengambil email Resend yang cocok dengan penerima tersebut serta diterima setelah waktu mulai test. Token/link/API key tidak boleh tercetak, di-commit, atau tersimpan dalam artefak test. **Keputusan cleanup E2E (Review-CL-18):** identity yang tercipta oleh Magic Link boleh dipertahankan sebagai akun test non-member tanpa Project, Membership, Permission assignment, Invitation, API Key/PAT, atau session aktif; identity tersebut bukan data domain dan tidak boleh dipakai kembali lintas run. Semua resource domain/credential/session yang dapat dicabut tetap wajib dibersihkan melalui command sah dan kegagalan cleanup wajib menggagalkan suite.
@@ -255,8 +285,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | 7.16.1c | ⬜️ | [Review-CL-19](#review-cl-19) | 0 | P0 | Flow browser Magic Link sampai session aktif: form login, email hasil 7.16.1b, callback internal, cookie HTTP-only, dan `get-session` aktif. **Test:** callback valid positif; token salah tidak membuat session. **DoD:** tidak ada API/test-only bypass. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1a, 7.16.1b |
 | 7.16.1d | ⬜️ | [Review-CL-19](#review-cl-19) | 0 | P0 | Cleanup per-test untuk flow Magic Link: gunakan kontrak sign-out terverifikasi dari 7.16.1, fail-hard pada kegagalan, lalu buktikan cookie lama tidak lagi menghasilkan session. **Test:** cleanup sukses dan cleanup failure membuat test gagal. **DoD:** identity unik hanya non-member sesuai Review-CL-18. | [03-ENG A.14](docs/03-ENGINEERING.md) | 7.16.1, 7.16.1c |
 | 7.16.1e | ⬜️ | [Review-CL-19](#review-cl-19) | 0 | P0 | Regression session protected setelah beberapa navigasi dan konsolidasi **lima** test harness dasar dalam `test:e2e:staging`. **Test:** semua lima flow hijau pada staging; command gagal bila satu flow/cleanup gagal. **DoD:** output ringkas bebas secret. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1d |
-| 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-19](#review-cl-19) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1e |
-| 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2 |
+| 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-19](#review-cl-19)<br>[Review-CL-22](#review-cl-22) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1e, 7.17.3 |
+| 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-22](#review-cl-22) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2, 7.18.4 |
 | 7.16.4 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji authorization/invitation nyata: invite scoped, accept, Group/direct Permission inheritance, dan request UI/API tanpa permission ditolak. Seluruh identity uji serta assignment dibersihkan/revoke setelah suite. | [02-SPEC A.10–A.13](docs/02-SPEC.md), [AC-003](docs/04-DELIVERY.md), [AC-025..028](docs/04-DELIVERY.md) | 7.16.2 |
 | 7.16.5 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P1 | Uji lifecycle dan kolaborasi nyata: archive/restore dependency ancestor, delete terminal, Label, comment create/edit, dan Activity historis immutable. Verifikasi penolakan mutation pada state non-operasional dari API dan UI. | [02-SPEC A.3–A.4](docs/02-SPEC.md), [02-SPEC A.8–A.9](docs/02-SPEC.md), [AC-008..016](docs/04-DELIVERY.md) | 7.16.3 |
 | 7.16.6 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P1 | Uji credential nyata: API Key terbatas Project dan PAT tetap tunduk Membership/Permission; revoke/expiry ditolak. Secret hanya disimpan in-memory test dan tidak boleh masuk screenshot, trace, output, atau git. | [02-SPEC A.13](docs/02-SPEC.md), [02-SPEC C.14](docs/02-SPEC.md), [AC-021..024](docs/04-DELIVERY.md) | 7.16.4 |
@@ -272,6 +302,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-22"></a>
+### Review-CL-22 — 2026-08-30 · keputusan manusia: tambah goal UI granular untuk MiMo V2.5 Free
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Keputusan manusia:** pengguna menyetujui rekomendasi review total untuk melengkapi target UI Phase 7 dan memecah pekerjaan agar sesuai model AI free MiMo V2.5 Free di OpenCode Zen.
+
+**Perubahan roadmap:** Tambah 7.10.3 (surface Invitation), 7.11.3–7.11.4 (surface credential terpisah), TASK-7.17 (Project list/empty/create/redirect), dan TASK-7.18 (form Milestone→Board→List→Card). Tiap goal memiliki satu unit UI/command, reference, test, DoD, dan dependency eksplisit; tidak ada endpoint, aturan bisnis, atau fitur non-MVP baru.
+
+**Protokol MiMo:** kerjakan satu goal saja, baca AGENTS.md + row/CL/reference yang dituju, jangan menyentuh SOT/status goal lain, batasi sekitar tiga file, buktikan test fokus positif+negatif sebelum suite yang lebih luas, dan handoff hanya pada `🔎 80%` dengan command/hasil/commit. Ambiguitas API/domain wajib `[NEEDS-DECISION]`, bukan ditebak.
 
 <a id="review-cl-21"></a>
 ### Review-CL-21 — 2026-08-30 · review total target, goal, dan rancangan eksekusi Phase 7 untuk MiMo V2.5 Free
