@@ -4,6 +4,7 @@ const STAGING_ORIGIN = "https://kanban-ngodingin.vercel.app";
 
 export default defineConfig({
   testDir: "./e2e/staging",
+  testMatch: "*.spec.ts",
   fullyParallel: false,
   forbidOnly: true,
   retries: 0,
