@@ -10,6 +10,7 @@ import {
   waitForResendEmail,
   extractTokenFromUrl,
 } from "./helpers/resend.ts";
+import { assertCleanupSuccess } from "./helpers/cleanup-core.ts";
 
 async function signOutViaBrowser(page: import("@playwright/test").Page): Promise<number> {
   const status = await page.evaluate(async () => {
@@ -86,10 +87,12 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
       // 6. Cleanup: sign-out via browser context (memiliki origin + cookie benar).
       // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error.
       if (sessionCookie) {
-        const status = await signOutViaBrowser(page);
-        expect(status, "sign-out harus sukses").toBe(200);
+        const signOutStatus = await signOutViaBrowser(page);
         const afterSignOut = await getSession(request, sessionCookie);
-        expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
+        assertCleanupSuccess({
+          signOutStatus,
+          sessionAfterSignOut: afterSignOut.hasSession,
+        });
       }
     }
   });
@@ -179,10 +182,12 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
       // 4. Cleanup: sign-out via browser context (memiliki origin + cookie benar).
       // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error.
       if (sessionCookie) {
-        const status = await signOutViaBrowser(page);
-        expect(status, "sign-out harus sukses").toBe(200);
+        const signOutStatus = await signOutViaBrowser(page);
         const afterSignOut = await getSession(request, sessionCookie);
-        expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false);
+        assertCleanupSuccess({
+          signOutStatus,
+          sessionAfterSignOut: afterSignOut.hasSession,
+        });
       }
     }
   });

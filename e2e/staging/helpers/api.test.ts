@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { extractSessionCookie } from "./api-core.ts";
+import { assertCleanupSuccess } from "./cleanup-core.ts";
 
 // TASK-7.16.1c — Flow browser Magic Link: session cookie extraction + flow components.
 // Reference: [04-DELIVERY A.0]
@@ -65,38 +66,44 @@ describe("TASK-7.16.1c — flow contract", () => {
 
 describe("TASK-7.16.1d — cleanup contract", () => {
   it("cleanup hanya dijalankan jika sessionCookie ada", () => {
-    // Cleanup guard: if (!sessionCookie) return — skip cleanup jika tidak ada session
     const sessionCookie = "";
     const shouldCleanup = !!sessionCookie;
     expect(shouldCleanup).toBe(false);
   });
 
-  it("cleanup sign-out harus mengembalikan 200", () => {
-    // Contract: expect(status, "sign-out harus sukses").toBe(200)
-    // Jika bukan 200, test akan gagal (fail-hard)
-    const status = 200;
-    expect(status).toBe(200);
+  it("cleanup sukses: sign-out 200 + session null", () => {
+    expect(() =>
+      assertCleanupSuccess({ signOutStatus: 200, sessionAfterSignOut: false }),
+    ).not.toThrow();
   });
 
-  it("cleanup harus memverifikasi session hilang setelah sign-out", () => {
-    // Contract: expect(afterSignOut.hasSession, "session harus null setelah sign-out").toBe(false)
-    const hasSession = false;
-    expect(hasSession).toBe(false);
+  it("cleanup gagal jika sign-out bukan 200", () => {
+    expect(() =>
+      assertCleanupSuccess({ signOutStatus: 403, sessionAfterSignOut: false }),
+    ).toThrow(/sign-out mengembalikan 403/);
+  });
+
+  it("cleanup gagal jika session masih aktif", () => {
+    expect(() =>
+      assertCleanupSuccess({ signOutStatus: 200, sessionAfterSignOut: true }),
+    ).toThrow(/session masih aktif/);
   });
 
   it("identity unik hasil Magic Link boleh tersisa sebagai non-member", () => {
-    // Review-CL-18: Identity unik boleh tersisa (akun test non-member),
-    // tetapi session dan credential wajib dibersihkan
     const identityRemains = true;
     const sessionCleaned = true;
     expect(identityRemains).toBe(true);
     expect(sessionCleaned).toBe(true);
   });
 
-  it("cleanup failure = suite gagal (fail-hard)", () => {
-    // Review-CL-18: cleanup gagal = suite gagal; tidak boleh menelan error
-    // Cleanup tidak menggunakan .catch(() => {}) — assertion akan throw
-    const catchesErrors = false;
-    expect(catchesErrors).toBe(false);
+  it("cleanup failure = suite gagal (fail-hard via throw)", () => {
+    let threw = false;
+    try {
+      assertCleanupSuccess({ signOutStatus: 500, sessionAfterSignOut: true });
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(true);
   });
 });
+
