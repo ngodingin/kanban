@@ -91,6 +91,13 @@ export function validateMagicLinkEmail(
       `Email penerima salah: diharapkan ${expectedRecipient}, diperoleh ${email.to.join(", ")}`,
     );
   }
+  const senderLower = email.from.toLowerCase();
+  if (!senderLower.includes("noreply@kanban.ngodingin.xyz") &&
+      !senderLower.includes("kanban.ngodingin.xyz")) {
+    throw new Error(
+      `Email sender tidak cocok: "${email.from}" — diharapkan noreply@kanban.ngodingin.xyz`,
+    );
+  }
   if (!email.subject.toLowerCase().includes("magic") &&
       !email.subject.toLowerCase().includes("tautan") &&
       !email.subject.toLowerCase().includes("link") &&

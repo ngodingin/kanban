@@ -374,7 +374,16 @@ export function createApiApp(opts: { sendMagicLink?: (data: SendMagicLinkData) =
   app.on(["GET", "POST"], "/auth/get-session", async (c) => {
     try {
       const r = ensure();
-      const res = await r.auth.handler(c.req.raw);
+      let res: Response;
+      try {
+        res = await r.auth.handler(c.req.raw);
+      } catch {
+        // Better Auth throws when no valid session exists — treat as anonymous
+        return new Response(
+          JSON.stringify({ session: null, user: null }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+      }
 
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) return res;
