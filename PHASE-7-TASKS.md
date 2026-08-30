@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | ✅ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12) | 100 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | ⚠️ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ✅ | [CL-63](#cl-63)<br>[CL-65](#cl-65)<br>[QA-CL-46](#qa-cl-46) | 100 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -80,7 +80,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.4.1 | ✅ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53) | 100 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
+| 7.4.1 | ⚠️ | [QA-CL-21](#qa-cl-21)<br>[Review-CL-02](#review-cl-02)<br>[CL-52](#cl-52)<br>[CL-53](#cl-53)<br>[Review-CL-16](#review-cl-16) | 50 | P2 | Panel "Your work": My Tasks / Due soon / Overdue; agregasi hanya dari Project yang dapat diakses melalui API Project-scoped, tanpa endpoint/search lintas-Project baru | [05-FRONTEND §5](docs/05-FRONTEND.md), [BR-010](docs/02-SPEC.md) | 7.3.1 |
 | 7.4.2 | ✅ | [Review-CL-02](#review-cl-02)<br>[CL-60](#cl-60)<br>[CL-61](#cl-61)<br>[QA-CL-42](#qa-cl-42)<br>[CL-81](#cl-81)<br>[QA-CL-47](#qa-cl-47)<br>[CL-82](#cl-82)<br>[QA-CL-52](#qa-cl-52) | 100 | P2 | Recent Projects + Recent Activity; Activity tetap diambil per konteks Project dan tidak membentuk cross-project search endpoint | [05-FRONTEND §5](docs/05-FRONTEND.md), [02-SPEC C.9](docs/02-SPEC.md) | 7.4.1 |
 
 **Test:** Data dari API nyata (bukan demo); tidak ada revenue/charts admin.
@@ -158,8 +158,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.10.1 | ✅ | [QA-CL-14](#qa-cl-14)<br>[QA-CL-20](#qa-cl-20)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45) | 100 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
-| 7.10.2 | ✅ | [QA-CL-27](#qa-cl-27)<br>[Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40) | 100 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
+| 7.10.1 | ⚠️ | [QA-CL-14](#qa-cl-14)<br>[QA-CL-20](#qa-cl-20)<br>[CL-37](#cl-37)<br>[CL-38](#cl-38)<br>[CL-44](#cl-44)<br>[CL-45](#cl-45)<br>[Review-CL-16](#review-cl-16) | 50 | P1 | Tabel Members (User · Group · Status Active/Pending) — reuse table | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
+| 7.10.2 | ⚠️ | [QA-CL-27](#qa-cl-27)<br>[Review-CL-02](#review-cl-02)<br>[CL-39](#cl-39)<br>[CL-40](#cl-40)<br>[Review-CL-16](#review-cl-16) | 50 | P0 | Invite: Email + Permission Group + hierarchy scope; konsumsi response create/accept/revoke melalui `data.invitation` dan list melalui `data.invitations` | [02-SPEC C.13](docs/02-SPEC.md), [BR-050..052](docs/02-SPEC.md) | 7.10.1 |
 
 **Test:** Invite mengirim sesuai kontrak; accept → membership dengan Group benar (AC-025).
 **DoD:** Members & Invitation patuh invitation flow.
@@ -170,8 +170,8 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.11.1 | ✅ | [QA-CL-28](#qa-cl-28)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42) | 100 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
-| 7.11.2 | ✅ | [QA-CL-29](#qa-cl-29)<br>[CL-41](#cl-41)<br>[CL-43](#cl-43) | 100 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
+| 7.11.1 | ⚠️ | [QA-CL-28](#qa-cl-28)<br>[CL-41](#cl-41)<br>[CL-42](#cl-42)<br>[Review-CL-16](#review-cl-16) | 50 | P1 | API Keys (Project Settings): list · create (secret sekali tampil) · revoke | [02-SPEC C.14](docs/02-SPEC.md), [03-ENGINEERING C.2](docs/03-ENGINEERING.md) | 7.3.1 |
+| 7.11.2 | ⚠️ | [QA-CL-29](#qa-cl-29)<br>[CL-41](#cl-41)<br>[CL-43](#cl-43)<br>[Review-CL-16](#review-cl-16) | 50 | P1 | PAT (User Settings): list · create · revoke; terpisah dari Project | [02-SPEC C.14](docs/02-SPEC.md) | 7.3.1 |
 
 **Test:** Secret hanya tampil sekali; revoke berfungsi; PAT di User Settings bukan Project.
 **DoD:** Credential UI patuh security model.
@@ -267,6 +267,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="review-cl-16"></a>
+### Review-CL-16 — 2026-08-30 · audit UI staging awal — goal unreachable dikembalikan ke ⚠️
+
+**Role:** AI-Planning & Review · **Model:** Codex
+
+**Bukti:** Audit browser canonical staging pada desktop 1440 px dan mobile 390 px memperlihatkan Home kosong hanya memuat Recent Projects/Recent Activity; panel `Your work` tidak terlihat. Source `apps/web/src/App.tsx` menegaskan `YourWorkPanel` tidak pernah diimpor/dirender. Audit source juga membuktikan router hanya mendaftarkan Home, Project/Milestone placeholder, Board, dan Permissions, sedangkan Sidebar menawarkan My Tasks, Activity, Members, API Keys, dan Settings. Komponen Members/Invite dan credential ada di source, tetapi tidak dirender dari route aplikasi. Pada mobile sidebar memakai `hidden ... md:flex` dan screenshot tidak memperlihatkan pemicu navigasi. Akun uji tidak memiliki Project, sedangkan UI first-use tidak menawarkan create Project walau US-001 mewajibkannya. Screenshot audit tidak memuat token/link dan tidak ditambahkan ke Git.
+
+**Keputusan review:** Status 7.3.1, 7.4.1, 7.10.1, 7.10.2, 7.11.1, dan 7.11.2 diturunkan ke `⚠️` karena implementasi komponen tanpa route/render yang reachable tidak memenuhi UI/DoD pengguna nyata. SOT tidak diubah: kontrak domain/API tetap benar. Remediasi harus memulihkan goal lama tersebut; proposal goal tambahan untuk onboarding first-use, mobile navigation, dan visual regression disajikan kepada manusia sebelum ditambahkan sesuai C.6.
 
 <a id="qa-cl-81"></a>
 ### QA-CL-81 — 2026-08-30 · 7.16.1 🔎 80% → ⚠️ 80% — inbox terdeteksi tetapi locator email memakai API browser di Node
