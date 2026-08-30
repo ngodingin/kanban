@@ -249,7 +249,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.16.1 | ⚠️ | [Review-CL-15](#review-cl-15)<br>[QA-CL-77](#qa-cl-77)<br>[CL-109](#cl-109)<br>[QA-CL-78](#qa-cl-78)<br>[CL-110](#cl-110)<br>[QA-CL-79](#qa-cl-79) | 80 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Magic Link Mailinator, assertion session nyata, namespace data test unik, dan cleanup wajib walau test gagal. Jangan membuat endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
+| 7.16.1 | 🔎 | [Review-CL-15](#review-cl-15)<br>[QA-CL-77](#qa-cl-77)<br>[CL-109](#cl-109)<br>[QA-CL-78](#qa-cl-78)<br>[CL-110](#cl-110)<br>[QA-CL-79](#qa-cl-79)<br>[CL-111](#cl-111) | 80 | P0 | Buat harness Playwright staging: canonical-origin allowlist, Vercel bypass dari environment, Magic Link Mailinator, assertion session nyata, namespace data test unik, dan cleanup wajib walau test gagal. Jangan membuat endpoint test-only atau melewati auth/domain command. | [03-ENG A.14](docs/03-ENGINEERING.md), [03-ENG D.7](docs/03-ENGINEERING.md), [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.15.0 |
 | 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1 |
 | 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2 |
 | 7.16.4 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji authorization/invitation nyata: invite scoped, accept, Group/direct Permission inheritance, dan request UI/API tanpa permission ditolak. Seluruh identity uji serta assignment dibersihkan/revoke setelah suite. | [02-SPEC A.10–A.13](docs/02-SPEC.md), [AC-003](docs/04-DELIVERY.md), [AC-025..028](docs/04-DELIVERY.md) | 7.16.2 |
@@ -355,6 +355,15 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 4. **`e2e/staging/magic-link-login.spec.ts`** — rewrite: browser flow, inbox snapshot, cleanup sign-out, hanya `E2E_TEST_EMAIL`
 
 **Test:** `pnpm test` → 143/143 PASS (876 tests). `pnpm exec playwright test` → 38/38 local E2E PASS. `pnpm lint` + `pnpm -r typecheck` → PASS.
+
+<a id="cl-111"></a>
+### CL-111 — 2026-08-30 · 7.16.1 🔎 80% — fix QA-CL-79: E2E_TEST_EMAIL + returnTo login flow
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2-free
+
+**Bukti:** QA-CL-79 menemukan 2 issue: (1) `.env` hanya punya `TEST_EMAIL`, tidak ada `E2E_TEST_EMAIL` sehingga test berhenti di awal; (2) test buka `/login` tanpa `returnTo`, sehingga setelah login redirect ke `/` bukan `/projects/<ns>`. Fix: (1) tambah `E2E_TEST_EMAIL=test-app.kanban@mailinator.com` ke `.env` (sama dengan `TEST_EMAIL`); (2) ubah navigasi login jadi `/login?returnTo=/projects/${ns}` agar callback redirect ke namespace test.
+
+**Test:** `pnpm lint` → PASS. `pnpm exec playwright test` → 38/38 local E2E PASS.
 
 <a id="cl-109"></a>
 ### CL-109 — 2026-08-30 · 7.16.1 🔎 80% — staging E2E harness: Playwright config + utilities + magic link test
