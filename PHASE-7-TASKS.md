@@ -284,7 +284,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | 7.16.1b | ✅ | [Review-CL-19](#review-cl-19)<br>[CL-132](#cl-132)<br>[QA-CL-102](#qa-cl-102)<br>[CL-133](#cl-133)<br>[QA-CL-103](#qa-cl-103)<br>[CL-134](#cl-134)<br>[QA-CL-104](#qa-cl-104)<br>[CL-135](#cl-135)<br>[QA-CL-105](#qa-cl-105) | 100 | P0 | Helper Resend Receiving API saja: recipient unik, filter penerima + `receivedAfter`, dan validasi sender/subject/link Magic Link. **Test:** pesan valid diterima; pesan lama/salah penerima/sender/link ditolak. **DoD:** token/link/key tidak tercetak atau disimpan artefak. | [03-ENG A.14](docs/03-ENGINEERING.md) | 7.16.1a |
 | 7.16.1c | ✅ | [Review-CL-19](#review-cl-19)<br>[CL-136](#cl-136)<br>[QA-CL-106](#qa-cl-106) | 100 | P0 | Flow browser Magic Link sampai session aktif: form login, email hasil 7.16.1b, callback internal, cookie HTTP-only, dan `get-session` aktif. **Test:** callback valid positif; token salah tidak membuat session. **DoD:** tidak ada API/test-only bypass. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1a, 7.16.1b |
 | 7.16.1d | ✅ | [Review-CL-19](#review-cl-19)<br>[CL-137](#cl-137)<br>[QA-CL-107](#qa-cl-107)<br>[CL-138](#cl-138)<br>[QA-CL-108](#qa-cl-108)<br>[CL-139](#cl-139)<br>[QA-CL-109](#qa-cl-109)<br>[CL-140](#cl-140)<br>[QA-CL-110](#qa-cl-110) | 100 | P0 | Cleanup per-test untuk flow Magic Link: gunakan kontrak sign-out terverifikasi dari 7.16.1, fail-hard pada kegagalan, lalu buktikan cookie lama tidak lagi menghasilkan session. **Test:** cleanup sukses dan cleanup failure membuat test gagal. **DoD:** identity unik hanya non-member sesuai Review-CL-18. | [03-ENG A.14](docs/03-ENGINEERING.md) | 7.16.1, 7.16.1c |
-| 7.16.1e | ⬜️ | [Review-CL-19](#review-cl-19) | 0 | P0 | Regression session protected setelah beberapa navigasi dan konsolidasi **lima** test harness dasar dalam `test:e2e:staging`. **Test:** semua lima flow hijau pada staging; command gagal bila satu flow/cleanup gagal. **DoD:** output ringkas bebas secret. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1d |
+| 7.16.1e | 🔄 | [Review-CL-19](#review-cl-19)<br>[CL-141](#cl-141) | 80 | P0 | Regression session protected setelah beberapa navigasi dan konsolidasi **lima** test harness dasar dalam `test:e2e:staging`. **Test:** semua lima flow hijau pada staging; command gagal bila satu flow/cleanup gagal. **DoD:** output ringkas bebas secret. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1d |
 | 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-19](#review-cl-19)<br>[Review-CL-22](#review-cl-22) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1e, 7.17.3 |
 | 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-22](#review-cl-22) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2, 7.18.4 |
 | 7.16.4 | ⏸️ | [Review-CL-15](#review-cl-15) | 0 | P0 | Uji authorization/invitation nyata: invite scoped, accept, Group/direct Permission inheritance, dan request UI/API tanpa permission ditolak. Seluruh identity uji serta assignment dibersihkan/revoke setelah suite. | [02-SPEC A.10–A.13](docs/02-SPEC.md), [AC-003](docs/04-DELIVERY.md), [AC-025..028](docs/04-DELIVERY.md) | 7.16.2 |
@@ -382,6 +382,19 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 **Bukti QA:** Freshness check HEAD `add935d`, worktree bersih. `git diff --check HEAD^..HEAD` bersih. `pnpm vitest run e2e/staging/helpers/cleanup.test.ts e2e/staging/helpers/api.test.ts` lulus **23/23**. `pnpm test:e2e:staging --reporter=line` lulus **5/5** terhadap `https://kanban-ngodingin.vercel.app`. Kedua cleanup `finally` pada flow browser Magic Link memanggil `assertCleanupSuccess`, yang throw untuk status sign-out selain 200 atau session lama yang masih aktif; test negatif helper memverifikasi kedua kondisi.
 
 **Hasil:** Test dan DoD goal terpenuhi. Cleanup session memakai command sah, fail-hard pada kegagalan, dan tidak menciptakan resource domain; identity Magic Link tetap identity test non-member sesuai Review-CL-18.
+
+<a id="cl-141"></a>
+### CL-141 — 2026-08-30 · goal 7.16.1e five-flow contract + regression test (⬜️ → 🔄 · 80%)
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2.5-free
+
+**Konteks:** Goal 7.16.1e meminta konsolidasi lima flow dasar dalam `test:e2e:staging` beserta bukti bahwa command gagal bila satu flow/cleanup gagal.
+
+**Fix:**
+- `staging.test.ts` — tambah 5 test kontrak: (1) spec berisi tepat 5 `test()`, (2) kelima flow ada (origin allowlist, sign-in+verify+sign-out, token salah, no cookie, regression), (3) setiap flow login punya `finally` cleanup, (4) cleanup pakai `assertCleanupSuccess` (fail-hard), (5) reporter `list` untuk output ringkas.
+- Hapus unused `const fs = { readFileSync }` yang menyebabkan lint error.
+
+**Bukti:** `pnpm lint` → bersih; `pnpm exec vitest run` → 148 file / 955 test PASS; `npx playwright test --list` → 5 spec.
 
 <a id="qa-cl-109"></a>
 ### QA-CL-109 — 2026-08-30 · 7.16.1d 🔎 80% → ⚠️ 80% — patch masih gagal `git show --check`

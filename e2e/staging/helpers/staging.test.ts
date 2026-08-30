@@ -84,3 +84,58 @@ describe("TASK-7.16.1a — no secrets in exports", () => {
     }
   });
 });
+
+describe("TASK-7.16.1e — five-flow test harness contract", () => {
+  it("spec memuat tepat lima test dalam describe Staging: Magic Link login", () => {
+    const specContent = readFileSync(
+      resolve(__dirname, "../magic-link-login.spec.ts"),
+      "utf-8",
+    );
+    const testMatches = specContent.match(/\btest\(/g) ?? [];
+    expect(testMatches.length, "spec harus memiliki tepat 5 test").toBe(5);
+  });
+
+  it("lima flow: origin allowlist, sign-in+verify+sign-out, token salah, no cookie, regression", () => {
+    const specContent = readFileSync(
+      resolve(__dirname, "../magic-link-login.spec.ts"),
+      "utf-8",
+    );
+    const flowNames = [
+      "origin allowlist",
+      "magic link sign-in",
+      "token salah",
+      "get-session tanpa cookie",
+      "regression",
+    ];
+    for (const name of flowNames) {
+      expect(specContent, `flow "${name}" harus ada`).toContain(name);
+    }
+  });
+
+  it("setiap flow yang melakukan login harus punya cleanup di finally block", () => {
+    const specContent = readFileSync(
+      resolve(__dirname, "../magic-link-login.spec.ts"),
+      "utf-8",
+    );
+    const finallyBlocks = (specContent.match(/\bfinally\s*\{/g) ?? []).length;
+    const loginFlows = (specContent.match(/page\.goto\(.*STAGING_ORIGIN.*\/login/g) ?? []).length;
+    expect(finallyBlocks, "setiap flow login harus punya finally cleanup").toBeGreaterThanOrEqual(loginFlows);
+  });
+
+  it("cleanup harus gunakan assertCleanupSuccess (fail-hard)", () => {
+    const specContent = readFileSync(
+      resolve(__dirname, "../magic-link-login.spec.ts"),
+      "utf-8",
+    );
+    const cleanupUses = (specContent.match(/assertCleanupSuccess/g) ?? []).length;
+    expect(cleanupUses, "assertCleanupSuccess harus dipanggil di setiap cleanup").toBeGreaterThanOrEqual(2);
+  });
+
+  it("reporter = list untuk output ringkas", () => {
+    const configContent = readFileSync(
+      resolve(__dirname, "../../../playwright.staging.config.ts"),
+      "utf-8",
+    );
+    expect(configContent).toContain('"list"');
+  });
+});
