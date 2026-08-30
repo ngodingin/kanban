@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
+import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { Sidebar } from "../src/components/layout/sidebar";
 
@@ -18,6 +18,11 @@ interface MockProject {
   slug: string;
   status: string;
   createdAt: string;
+}
+
+function LocationDisplay() {
+  const location = useLocation();
+  return <div data-testid="location">{location.pathname}</div>;
 }
 
 function renderSidebar(
@@ -38,6 +43,7 @@ function renderSidebar(
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[path]}>
+        <LocationDisplay />
         <Sidebar />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -105,10 +111,37 @@ describe("TASK-7.3.1 — Sidebar context-aware (tanpa Inbox)", () => {
     expect(link?.getAttribute("href")).toBe("/projects/p1");
   });
 
+  test("positif: klik Project Alpha → route berubah ke /projects/p1", () => {
+    const projects = [
+      { id: "p1", name: "Project Alpha", slug: "alpha", status: "ACTIVE", createdAt: "2026-01-01" },
+      { id: "p2", name: "Project Beta", slug: "beta", status: "ACTIVE", createdAt: "2026-01-02" },
+    ];
+    renderSidebar("/", { projects });
+    fireEvent.click(screen.getByText("Project Alpha"));
+    expect(screen.getByTestId("location").textContent).toBe("/projects/p1");
+  });
+
+  test("positif: klik Project B setelah A → route berubah ke /projects/p2", () => {
+    const projects = [
+      { id: "p1", name: "Project Alpha", slug: "alpha", status: "ACTIVE", createdAt: "2026-01-01" },
+      { id: "p2", name: "Project Beta", slug: "beta", status: "ACTIVE", createdAt: "2026-01-02" },
+    ];
+    renderSidebar("/projects/p1", { projects });
+    expect(screen.getByTestId("location").textContent).toBe("/projects/p1");
+    fireEvent.click(screen.getByText("Project Beta"));
+    expect(screen.getByTestId("location").textContent).toBe("/projects/p2");
+  });
+
   test("positif: empty state menampilkan CTA saat tidak ada Project", () => {
     renderSidebar("/", { projects: [] });
     expect(screen.getByText(/Belum ada Project/)).toBeTruthy();
     expect(screen.getByText("Buat baru")).toBeTruthy();
+  });
+
+  test("positif: CTA 'Buat baru' link ke /projects/new", () => {
+    renderSidebar("/", { projects: [] });
+    const link = screen.getByText("Buat baru").closest("a");
+    expect(link?.getAttribute("href")).toBe("/projects/new");
   });
 
   test("positif: loading state menampilkan 'Memuat…'", () => {

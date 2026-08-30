@@ -1,85 +1,51 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { ApiError, apiRequest } from "../../src/lib/api/client";
 
-// Mock fetch
 const mockFetch = vi.fn();
-vi.stubGlobal("fetch", mockFetch);
 
-describe("useProjects contract", () => {
+describe("TASK-7.3.1 — Project list API client", () => {
   beforeEach(() => {
     mockFetch.mockReset();
+    vi.stubGlobal("fetch", mockFetch);
   });
 
   afterEach(() => {
-    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
-  it("GET /api/v1/projects mengembalikan daftar Project", async () => {
+  it("mengambil envelope Project yang benar melalui apiRequest", async () => {
     const projects = [
-      { id: "p1", name: "Project Alpha", slug: "alpha", status: "ACTIVE", createdAt: "2026-01-01" },
+      { id: "p1", name: "Project Alpha" },
+      { id: "p2", name: "Project Beta" },
     ];
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ data: projects }),
+      status: 200,
+      json: async () => ({ data: { projects } }),
     });
 
-    const res = await fetch("/api/v1/projects");
-    const json = await res.json();
-    expect(json.data).toEqual(projects);
+    const result = await apiRequest<{ projects: typeof projects }>("/api/v1/projects");
+
+    expect(result.projects).toEqual(projects);
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/v1/projects",
+      expect.objectContaining({ method: "GET", credentials: "same-origin" }),
+    );
   });
 
-  it("response envelope: { data: Project[] }", async () => {
+  it("tidak mengarang daftar Project bila envelope tidak memuat projects", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ data: [] }),
+      status: 200,
+      json: async () => ({ data: {} }),
     });
 
-    const res = await fetch("/api/v1/projects");
-    const json = await res.json();
-    expect(json).toHaveProperty("data");
-    expect(Array.isArray(json.data)).toBe(true);
+    const result = await apiRequest<{ projects?: unknown }>("/api/v1/projects");
+
+    expect(result.projects).toBeUndefined();
   });
 
-  it("Project memiliki field wajib: id, name, slug, status, createdAt", async () => {
-    const project = { id: "p1", name: "Proj", slug: "proj", status: "ACTIVE", createdAt: "2026-01-01" };
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ data: [project] }),
-    });
-
-    const res = await fetch("/api/v1/projects");
-    const json = await res.json();
-    const p = json.data[0];
-
-    expect(p).toHaveProperty("id");
-    expect(p).toHaveProperty("name");
-    expect(p).toHaveProperty("slug");
-    expect(p).toHaveProperty("status");
-    expect(p).toHaveProperty("createdAt");
-  });
-
-  it("status hanya boleh ACTIVE, ARCHIVED, atau DELETED", async () => {
-    const validStatuses = ["ACTIVE", "ARCHIVED", "DELETED"];
-    const projects = validStatuses.map((status, i) => ({
-      id: `p${i}`,
-      name: `Proj ${i}`,
-      slug: `proj-${i}`,
-      status,
-      createdAt: "2026-01-01",
-    }));
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ data: projects }),
-    });
-
-    const res = await fetch("/api/v1/projects");
-    const json = await res.json();
-
-    for (const p of json.data) {
-      expect(validStatuses).toContain(p.status);
-    }
-  });
-
-  it("error 401 = UNAUTHORIZED", async () => {
+  it("meneruskan UNAUTHORIZED dari API, bukan menampilkan Project demo", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 401,
@@ -88,9 +54,9 @@ describe("useProjects contract", () => {
       }),
     });
 
-    const res = await fetch("/api/v1/projects");
-    expect(res.ok).toBe(false);
-    const json = await res.json();
-    expect(json.error.code).toBe("UNAUTHORIZED");
+    await expect(apiRequest("/api/v1/projects")).rejects.toMatchObject<ApiError>({
+      code: "UNAUTHORIZED",
+      status: 401,
+    });
   });
 });
