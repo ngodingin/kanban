@@ -106,4 +106,3 @@ describe("TASK-7.16.1d — cleanup contract", () => {
     expect(threw).toBe(true);
   });
 });
-
