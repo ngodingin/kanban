@@ -67,7 +67,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 
 | ID | Status | CL | % | Prior | Goal Description | Reference | Dependency |
 |---|:--:|:--:|:--:|:--:|---|---|---|
-| 7.3.1 | 🔎 | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122)<br>[Review-CL-20](#review-cl-20)<br>[Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23)<br>[QA-CL-112](#qa-cl-112)<br>[CL-142](#cl-142) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
+| 7.3.1 | ⚠️ | [QA-CL-06](#qa-cl-06)<br>[CL-11](#cl-11)<br>[CL-12](#cl-12)<br>[Review-CL-16](#review-cl-16)<br>[CL-122](#cl-122)<br>[Review-CL-20](#review-cl-20)<br>[Review-CL-21](#review-cl-21)<br>[Review-CL-23](#review-cl-23)<br>[QA-CL-112](#qa-cl-112)<br>[CL-142](#cl-142)<br>[QA-CL-113](#qa-cl-113) | 80 | P0 | Sidebar context-aware (Home/My Tasks/Activity/Projects▾/Members/Permissions/API Keys/Settings) — **tanpa Inbox** | [05-FRONTEND §4,§5](docs/05-FRONTEND.md) | 7.2.1 |
 | 7.3.2 | ✅ | [QA-CL-11](#qa-cl-11)<br>[QA-CL-07](#qa-cl-07)<br>[CL-13](#cl-13)<br>[CL-14](#cl-14)<br>[CL-26](#cl-26)<br>[CL-27](#cl-27) | 100 | P0 | Header breadcrumb Project › Milestone › Board + context switch | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 | 7.3.3 | ✅ | [CL-63](#cl-63)<br>[CL-65](#cl-65)<br>[QA-CL-46](#qa-cl-46) | 100 | P3 | Branding "Powered by NGodingiN" (layar autentikasi/sidebar-bawah/footer) | [05-FRONTEND §5](docs/05-FRONTEND.md) | 7.3.1 |
 
@@ -302,6 +302,17 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 > Isi tiap kali sebuah goal pindah status atau menerima hasil review. Setiap entry wajib mencantumkan Role dan nama Model aktual; jika model tidak diekspos, tulis nama platform yang menjalankan agent (mis. `GitHub Copilot` atau `Codex`) dan jangan menebak model. Tambah entry baru di atas (terbaru dulu), gunakan namespace sesuai lane, lalu **append** link entry ke baris baru dalam kolom **CL** tanpa mengubah link lama. Setiap perubahan Status wajib masuk commit; awal `→ 🔄` boleh menunggu commit pertama. Commit diverifikasi lewat history Git file ini, bukan dengan menulis hash commit yang sama ke entry. Entry `⚠️`/`⏸️→` wajib mencantumkan alasan.
 
 <!-- Dev: `### CL-nn — YYYY-MM-DD · goal <id> <ringkasan>`. QA: `### QA-CL-nn — ...`. Review: `### Review-CL-nn — ...`. Cantumkan Role + Model/platform aktual. Append-only, jangan hapus/ubah entry lama. -->
+
+<a id="qa-cl-113"></a>
+### QA-CL-113 — 2026-08-31 · 7.3.1 🔎 80% → ⚠️ 80% — daftar Project belum terbukti dan belum tersedia di staging
+
+**Role:** AI-QA · **Model:** Codex
+
+**Bukti QA:** Freshness check HEAD `2693849`, worktree bersih. `git fetch ai-github stag` menunjukkan branch lokal `stag` **ahead 30** commit dari `ai-github/stag`; implementasi CL-142 belum ada pada staging sehingga tidak dapat menjadi bukti browser nyata. `pnpm exec vitest run apps/web/test/sidebar.test.tsx apps/web/test/lib/projects-api.test.ts` lulus **9/9**, tetapi teardown mencetak `DOMException [AbortError]` dari request Sidebar yang tidak dimock.
+
+**Gagal verifikasi:** Test `projects-api.test.ts` hanya memanggil mock `fetch` langsung, tidak mengimpor atau menjalankan `useProjects`/`apiRequest`; `sidebar.test.tsx` juga tidak memock hasil query atau membuktikan nama Project, link `/projects/:id`, pergantian context, maupun empty state. Selain itu CTA `Buat baru` menuju `/projects/new`, yang saat ini ditangkap route `/projects/:projectId` dan hanya merender `ProjectPlaceholder`, bukan flow create. Dengan demikian daftar API nyata, navigasi context, dan CTA user-facing belum terbukti benar.
+
+**Handoff Dev:** buat test hook/Sidebar berbasis `apiRequest` yang memverifikasi daftar API nyata, empty state, dan klik Project A→B mengubah route context tanpa demo/cross-project; tangani CTA secara jujur melalui flow create pada 7.17.2 (atau jangan tampilkan sebagai CTA operasional sebelum route tersedia). Setelah test fokus dan `pnpm lint`/typecheck hijau, serahkan kembali pada `🔎 80%`. QA akan push commit yang sudah lolos review lalu menunggu deployment staging sebelum verifikasi browser.
 
 <a id="qa-cl-112"></a>
 ### QA-CL-112 — 2026-08-30 · 7.3.1 🔎 80% → ⚠️ 80% — Projects tidak dapat mengganti context dari UI
