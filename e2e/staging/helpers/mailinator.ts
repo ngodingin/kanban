@@ -89,7 +89,7 @@ export async function openEmailAndExtractLink(
   stagingOrigin: string,
 ): Promise<string> {
   // Click the row to open the email
-  const row = page.locator(`tr#${CSS.escape(rowId)}`);
+  const row = page.locator(`tr[id="${rowId}"]`);
   await row.click();
 
   // Wait for email view to load
