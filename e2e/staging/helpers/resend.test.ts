@@ -6,6 +6,7 @@ import {
   validateMagicLinkEmail,
   extractMagicLinkFromHtml,
   extractTokenFromUrl,
+  formatMissingLinkError,
   type ResendEmail,
 } from "./resend.ts";
 
@@ -293,5 +294,19 @@ describe("TASK-7.16.1b — error redaction", () => {
       expect(msg).not.toContain(SECRET_TOKEN);
       expect(msg).not.toContain("leak-");
     }
+  });
+
+  it("formatMissingLinkError tidak membocorkan subject atau token", () => {
+    const SUBJECT_WITH_TOKEN = `Login with secret ${SECRET_TOKEN}`;
+    const msg = formatMissingLinkError("email-123");
+    expect(msg).toContain("email-123");
+    expect(msg).not.toContain(SECRET_TOKEN);
+    expect(msg).not.toContain(SUBJECT_WITH_TOKEN);
+    expect(msg).not.toContain("Subject");
+  });
+
+  it("formatMissingLinkError hanya berisi email ID", () => {
+    const msg = formatMissingLinkError("e-abc");
+    expect(msg).toBe("Magic link tidak ditemukan di email HTML. Email ID: e-abc");
   });
 });

@@ -138,6 +138,10 @@ function escapeRegExp(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+export function formatMissingLinkError(emailId: string): string {
+  return `Magic link tidak ditemukan di email HTML. Email ID: ${emailId}`;
+}
+
 export async function waitForResendEmail(
   recipient: string,
   receivedAfter: Date,
@@ -160,11 +164,7 @@ export async function waitForResendEmail(
       const link = extractMagicLinkFromHtml(html, stagingOrigin);
 
       if (!link) {
-        throw new Error(
-          `Magic link tidak ditemukan di email HTML. ` +
-          `Subject: "${latest.subject}". ` +
-          `Email ID: ${latest.id}`,
-        );
+        throw new Error(formatMissingLinkError(latest.id));
       }
 
       return { email: latest, link };
