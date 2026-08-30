@@ -1,30 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { CANONICAL_ORIGIN, assertStagingOrigin, testNamespace } from "./staging-core.ts";
 
-const ALLOWED_ORIGINS = ["https://kanban-ngodingin.vercel.app"] as const;
+export { CANONICAL_ORIGIN, assertStagingOrigin, testNamespace };
 
-export const STAGING_ORIGIN = ALLOWED_ORIGINS[0];
-
-export function assertStagingOrigin(url: string): void {
-  const parsed = new URL(url);
-  if (!ALLOWED_ORIGINS.includes(parsed.origin as (typeof ALLOWED_ORIGINS)[number])) {
-    throw new Error(`Origin tidak diizinkan: ${parsed.origin}. Hanya boleh: ${ALLOWED_ORIGINS.join(", ")}`);
-  }
-}
-
-let testRunId: string | null = null;
-
-export function getTestRunId(): string {
-  if (!testRunId) {
-    const ts = Date.now().toString(36);
-    const rand = Math.random().toString(36).slice(2, 6);
-    testRunId = `ts-${ts}-${rand}`;
-  }
-  return testRunId;
-}
-
-export function testNamespace(): string {
-  return `e2e-${getTestRunId()}`;
-}
+export const STAGING_ORIGIN = CANONICAL_ORIGIN;
 
 type CleanupAction = { label: string; fn: () => Promise<void>; assertSuccess: boolean };
 const cleanupActions: CleanupAction[] = [];
