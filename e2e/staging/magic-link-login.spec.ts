@@ -5,16 +5,15 @@ import {
   testNamespace,
 } from "./helpers/staging.ts";
 import { getSession, signOut } from "./helpers/api.ts";
-import { snapshotInbox, waitForNewEmail, openEmailAndExtractLink, extractTokenFromUrl } from "./helpers/mailinator.ts";
-
-const E2E_TEST_EMAIL = process.env.E2E_TEST_EMAIL ?? "";
+import {
+  buildRecipientAddress,
+  waitForResendEmail,
+  extractTokenFromUrl,
+} from "./helpers/resend.ts";
 
 test.describe("Staging: Magic Link login (7.16.1)", () => {
   test.beforeAll(() => {
     assertStagingOrigin(STAGING_ORIGIN);
-    if (!E2E_TEST_EMAIL) {
-      throw new Error("E2E_TEST_EMAIL harus tersedia di environment");
-    }
   });
 
   test("origin allowlist: staging hanya menerima canonical origin", () => {
@@ -23,22 +22,19 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
     expect(() => assertStagingOrigin("https://evil.example.com")).toThrow("Origin tidak diizinkan");
   });
 
-  test("magic link sign-in → Mailinator → verify → session aktif → sign-out", async ({ page, request }) => {
+  test("magic link sign-in → Resend → verify → session aktif → sign-out", async ({ page, request }) => {
     const ns = testNamespace();
+    const recipient = buildRecipientAddress(ns);
     let sessionCookie = "";
 
     try {
-      // Snapshot inbox sebelum kirim email
-      const mailboxPage = await page.context().newPage();
-      const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
-      await mailboxPage.close();
-
-      // 1. Buka /login di browser dengan returnTo, isi form, submit
+      // 1. Buka /login di browser dengan returnTo, isi form dengan Resend recipient, submit
+      const receivedAfter = new Date();
       await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
       await page.waitForLoadState("networkidle");
 
       const emailInput = page.locator('input[type="email"], input[name="email"]');
-      await emailInput.fill(E2E_TEST_EMAIL);
+      await emailInput.fill(recipient);
       await page.locator('button[type="submit"], button:has-text("Kirim"), button:has-text("Masuk")').click();
 
       // Tunggu konfirmasi "tautan sudah dikirim"
@@ -46,11 +42,8 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
         page.locator("text=tautan sudah dikirim").or(page.locator("text=Tautan sudah dikirim")),
       ).toBeVisible({ timeout: 10_000 });
 
-      // 2. Buka Mailinator di tab baru, tunggu email baru, ambil link
-      const mailPage = await page.context().newPage();
-      const { messageId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
-      const emailLink = await openEmailAndExtractLink(mailPage, messageId, STAGING_ORIGIN);
-      await mailPage.close();
+      // 2. Tunggu email via Resend Receiving API (filter by recipient + receivedAfter)
+      const { link: emailLink } = await waitForResendEmail(recipient, receivedAfter, STAGING_ORIGIN);
 
       expect(emailLink).toContain("/login/verify?");
       expect(emailLink).toContain("token=");
@@ -113,30 +106,24 @@ test.describe("Staging: Magic Link login (7.16.1)", () => {
 
   test("QA-CL-82 regression: session tetap aktif setelah beberapa navigasi protected", async ({ page, request }) => {
     const ns = testNamespace();
+    const recipient = buildRecipientAddress(ns);
     let sessionCookie = "";
 
     try {
       // 1. Login via Magic Link (full browser flow)
-      const mailboxPage = await page.context().newPage();
-      const snapshot = await snapshotInbox(mailboxPage, E2E_TEST_EMAIL);
-      await mailboxPage.close();
-
+      const receivedAfter = new Date();
       await page.goto(`${STAGING_ORIGIN}/login?returnTo=/projects/${encodeURIComponent(ns)}`);
       await page.waitForLoadState("networkidle");
 
       const emailInput = page.locator('input[type="email"], input[name="email"]');
-      await emailInput.fill(E2E_TEST_EMAIL);
+      await emailInput.fill(recipient);
       await page.locator('button[type="submit"], button:has-text("Kirim"), button:has-text("Masuk")').click();
 
       await expect(
         page.locator("text=tautan sudah dikirim").or(page.locator("text=Tautan sudah dikirim")),
       ).toBeVisible({ timeout: 10_000 });
 
-      const mailPage = await page.context().newPage();
-      const { messageId } = await waitForNewEmail(mailPage, E2E_TEST_EMAIL, snapshot);
-      const emailLink = await openEmailAndExtractLink(mailPage, messageId, STAGING_ORIGIN);
-      await mailPage.close();
-
+      const { link: emailLink } = await waitForResendEmail(recipient, receivedAfter, STAGING_ORIGIN);
       const token = extractTokenFromUrl(emailLink);
       expect(token, "token harus ada").toBeTruthy();
 

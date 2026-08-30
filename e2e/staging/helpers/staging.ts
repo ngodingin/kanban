@@ -57,4 +57,8 @@ test.afterAll(async () => {
 test.beforeAll(async () => {
   const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
   expect(bypass, "VERCEL_AUTOMATION_BYPASS_SECRET harus tersedia di environment").toBeTruthy();
+  const resendKey = process.env.E2E_RESEND_API_KEY;
+  expect(resendKey, "E2E_RESEND_API_KEY harus tersedia di environment").toBeTruthy();
+  const resendDomain = process.env.E2E_RESEND_RECEIVING_DOMAIN;
+  expect(resendDomain, "E2E_RESEND_RECEIVING_DOMAIN harus tersedia di environment").toBeTruthy();
 });
