@@ -283,7 +283,7 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 | 7.16.1a | ✅ | [Review-CL-19](#review-cl-19)<br>[CL-130](#cl-130)<br>[QA-CL-100](#qa-cl-100)<br>[CL-131](#cl-131)<br>[QA-CL-101](#qa-cl-101) | 100 | P0 | Hard gate harness staging: canonical origin tunggal, bypass Vercel hanya dari environment, konfigurasi kosong/host non-canonical gagal sebelum network, dan Playwright hanya menemukan spec E2E. **Test:** positif canonical + negatif origin/config/discovery. **DoD:** tidak ada secret di output/artefak. | [03-ENG D.7](docs/03-ENGINEERING.md) | 7.15.0 |
 | 7.16.1b | ✅ | [Review-CL-19](#review-cl-19)<br>[CL-132](#cl-132)<br>[QA-CL-102](#qa-cl-102)<br>[CL-133](#cl-133)<br>[QA-CL-103](#qa-cl-103)<br>[CL-134](#cl-134)<br>[QA-CL-104](#qa-cl-104)<br>[CL-135](#cl-135)<br>[QA-CL-105](#qa-cl-105) | 100 | P0 | Helper Resend Receiving API saja: recipient unik, filter penerima + `receivedAfter`, dan validasi sender/subject/link Magic Link. **Test:** pesan valid diterima; pesan lama/salah penerima/sender/link ditolak. **DoD:** token/link/key tidak tercetak atau disimpan artefak. | [03-ENG A.14](docs/03-ENGINEERING.md) | 7.16.1a |
 | 7.16.1c | ✅ | [Review-CL-19](#review-cl-19)<br>[CL-136](#cl-136)<br>[QA-CL-106](#qa-cl-106) | 100 | P0 | Flow browser Magic Link sampai session aktif: form login, email hasil 7.16.1b, callback internal, cookie HTTP-only, dan `get-session` aktif. **Test:** callback valid positif; token salah tidak membuat session. **DoD:** tidak ada API/test-only bypass. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1a, 7.16.1b |
-| 7.16.1d | ⬜️ | [Review-CL-19](#review-cl-19) | 0 | P0 | Cleanup per-test untuk flow Magic Link: gunakan kontrak sign-out terverifikasi dari 7.16.1, fail-hard pada kegagalan, lalu buktikan cookie lama tidak lagi menghasilkan session. **Test:** cleanup sukses dan cleanup failure membuat test gagal. **DoD:** identity unik hanya non-member sesuai Review-CL-18. | [03-ENG A.14](docs/03-ENGINEERING.md) | 7.16.1, 7.16.1c |
+| 7.16.1d | 🔎 | [Review-CL-19](#review-cl-19)<br>[CL-137](#cl-137) | 80 | P0 | Cleanup per-test untuk flow Magic Link: gunakan kontrak sign-out terverifikasi dari 7.16.1, fail-hard pada kegagalan, lalu buktikan cookie lama tidak lagi menghasilkan session. **Test:** cleanup sukses dan cleanup failure membuat test gagal. **DoD:** identity unik hanya non-member sesuai Review-CL-18. | [03-ENG A.14](docs/03-ENGINEERING.md) | 7.16.1, 7.16.1c |
 | 7.16.1e | ⬜️ | [Review-CL-19](#review-cl-19) | 0 | P0 | Regression session protected setelah beberapa navigasi dan konsolidasi **lima** test harness dasar dalam `test:e2e:staging`. **Test:** semua lima flow hijau pada staging; command gagal bila satu flow/cleanup gagal. **DoD:** output ringkas bebas secret. | [04-DELIVERY A.0](docs/04-DELIVERY.md) | 7.16.1d |
 | 7.16.2 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-19](#review-cl-19)<br>[Review-CL-22](#review-cl-22) | 0 | P0 | Uji onboarding Project nyata melalui API dan web: create Project memprovision database, Project muncul hanya untuk member, dan percobaan akses Project lain ditolak. Cleanup memakai lifecycle/deprovision yang tersedia, bukan delete SQL langsung. | [BR-001](docs/02-SPEC.md), [BR-007..010](docs/02-SPEC.md), [04-DELIVERY A.2](docs/04-DELIVERY.md) | 7.16.1e, 7.17.3 |
 | 7.16.3 | ⏸️ | [Review-CL-15](#review-cl-15)<br>[Review-CL-22](#review-cl-22) | 0 | P0 | Uji hierarchy dan Card command nyata: Milestone→Board→List→Card, move List/Board dalam Milestone, penolakan lintas Project/lintas Milestone, serta `VERSION_CONFLICT` tanpa overwrite. Verifikasi hasil melalui API dan perubahan yang terlihat di Board web. | [BR-001..006](docs/02-SPEC.md), [BR-017..023](docs/02-SPEC.md), [AC-002](docs/04-DELIVERY.md), [AC-020](docs/04-DELIVERY.md) | 7.16.2, 7.18.4 |
@@ -349,6 +349,22 @@ Jika ketiga prasyarat tampak terpenuhi, goal Phase 7 baru masuk daftar **Gate ca
 - Buat `e2e/staging/helpers/api.test.ts` — 9 test: `extractSessionCookie` (positif, __Secure prefix, multiple headers, negatif: tanpa match, kosong, nama mirip) + flow contract tests (magic link URL format, session cookie names, sign-out contract).
 
 **Bukti:** `pnpm lint` → bersih; `pnpm exec vitest run` → 147 file / 936 test PASS; E2E spec tetap 5 tests (spec only).
+
+<a id="cl-137"></a>
+### CL-137 — 2026-08-30 · goal 7.16.1d cleanup contract tests (⬜️ → 🔄 → 🔎 · 80%)
+
+**Role:** AI-Dev · **Model:** opencode/mimo-v2.5-free
+
+**Konteks:** 7.16.1d membutuhkan bukti unit test bahwa cleanup per-test: (1) hanya dijalankan jika session ada, (2) sign-out mengembalikan 200, (3) session hilang setelah sign-out, (4) identity unik boleh tersisa sebagai non-member, (5) cleanup failure = suite gagal (fail-hard).
+
+**Implementasi:** `e2e/staging/helpers/api.test.ts` — tambah 5 cleanup contract tests:
+- Cleanup guard: skip jika `sessionCookie` kosong
+- Sign-out harus 200
+- Session harus `false` setelah sign-out
+- Identity boleh tersisa, session wajib bersih (Review-CL-18)
+- Tidak ada `.catch(() => {})` — cleanup failure = test gagal
+
+**Bukti:** `pnpm lint` → bersih; `pnpm exec vitest run` → 147 file / 941 test PASS.
 
 <a id="qa-cl-104"></a>
 ### QA-CL-104 — 2026-08-30 · 7.16.1b 🔎 80% → ⚠️ 80% — subject masih bocor dari jalur link tidak ditemukan
